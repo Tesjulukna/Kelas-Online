@@ -17,7 +17,8 @@ Fitur utama:
 - Member bisa membuka kelas, mengirim tugas, copy prompt, preview/download gambar, dan melihat balasan mentor.
 - Webhook Lynk.id siap membuat akun member otomatis setelah pembayaran sukses.
 - Backend lokal untuk development memakai Vite middleware.
-- Backend production untuk InfinityFree memakai PHP + MySQL di `public/api`.
+- Backend production untuk Vercel memakai Node serverless functions di `api/` dan Supabase.
+- Backend legacy untuk InfinityFree memakai PHP + MySQL di `public/api`.
 
 ## Development
 
@@ -38,6 +39,10 @@ npm run build
 
 Folder hasil build ada di `dist/`.
 
-## Deploy InfinityFree
+## Deploy Vercel + Supabase
+
+Ikuti panduan di [DEPLOY_VERCEL_SUPABASE.md](./DEPLOY_VERCEL_SUPABASE.md).
+
+## Deploy InfinityFree Legacy
 
 Ikuti panduan di [DEPLOY_INFINITYFREE.md](./DEPLOY_INFINITYFREE.md).

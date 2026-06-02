@@ -4,6 +4,11 @@ import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
 import { adminMenuItems } from '../data/platformData'
+import {
+  buildSignedUploadBody,
+  requestStorageUpload,
+  uploadStorageFile,
+} from '../lib/storageUpload'
 
 function createEmptyMaterial() {
   return {
@@ -122,8 +127,8 @@ function RichTextToolIcon({ name }) {
   )
 }
 
-const uploadVideoApiPath = '/api/upload-video.php'
-const uploadFileApiPath = '/api/upload-file.php'
+const uploadVideoApiPath = '/api/upload-video'
+const uploadFileApiPath = '/api/upload-file'
 const allowedVideoTypes = [
   'video/mp4',
   'video/webm',
@@ -180,20 +185,13 @@ async function compressImageFile(file, { maxSize = 1800, quality = 0.9 } = {}) {
 
 async function uploadClassImage(file, sessionToken = '') {
   const compressedFile = await compressImageFile(file)
-  const formData = new FormData()
-  formData.append('type', 'class-image')
-  formData.append('file', compressedFile)
 
-  const response = await fetch(uploadFileApiPath, {
-    method: 'POST',
-    body: formData,
-    headers: sessionToken ? { 'X-Session-Token': sessionToken } : {},
+  const data = await uploadStorageFile({
+    endpoint: uploadFileApiPath,
+    file: compressedFile,
+    type: 'class-image',
+    sessionToken,
   })
-  const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Gambar tidak bisa diupload.')
-  }
 
   return data.url
 }
@@ -248,6 +246,7 @@ function createEmptyResourceLink() {
 
 function createEmptyClassForm() {
   return {
+    id: `admin-class-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     title: '',
     students: 0,
     status: 'Aktif',
@@ -534,7 +533,7 @@ function AdminPage({
     if (materialDescriptionRef.current && activeMaterialEditor) {
       materialDescriptionRef.current.innerHTML = activeMaterialEditor.description || ''
     }
-  }, [activeMaterialEditorId])
+  }, [activeMaterialEditor, activeMaterialEditorId])
 
   const resetClassForm = () => {
     setClassForm(createEmptyClassForm())
@@ -607,7 +606,7 @@ function AdminPage({
     }))
   }
 
-  const handleMaterialDescriptionInput = (materialId, event) => {
+  const handleMaterialDescriptionInput = (materialId) => {
     rememberMaterialDescriptionSelection()
     handleMaterialChange(materialId, 'description', normalizeMaterialDescriptionEditor())
   }
@@ -825,22 +824,14 @@ function AdminPage({
       return
     }
 
-    const formData = new FormData()
-    formData.append('type', 'document')
-    formData.append('file', file)
-
     try {
       onNotify('Mengupload PDF materi...')
-      const response = await fetch(uploadFileApiPath, {
-        method: 'POST',
-        body: formData,
-        headers: sessionToken ? { 'X-Session-Token': sessionToken } : {},
+      const data = await uploadStorageFile({
+        endpoint: uploadFileApiPath,
+        file,
+        type: 'document',
+        sessionToken,
       })
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(data.message || 'PDF tidak bisa diupload.')
-      }
 
       setClassForm((current) => ({
         ...current,
@@ -881,9 +872,6 @@ function AdminPage({
       return
     }
 
-    const formData = new FormData()
-    formData.append('video', file)
-
     setVideoUploads((current) => ({
       ...current,
       [materialId]: {
@@ -892,41 +880,98 @@ function AdminPage({
         status: 'uploading',
       },
     }))
-    onNotify('Mengupload video materi...')
+    onNotify('Menyiapkan upload video...')
 
-    const xhr = new XMLHttpRequest()
+    requestStorageUpload({
+      endpoint: uploadVideoApiPath,
+      file,
+      type: 'video',
+      sessionToken,
+    })
+      .then((upload) => {
+        const xhr = new XMLHttpRequest()
 
-    xhr.open('POST', uploadVideoApiPath)
-    if (sessionToken) {
-      xhr.setRequestHeader('X-Session-Token', sessionToken)
-    }
-    xhr.responseType = 'json'
-    xhr.upload.onprogress = (progressEvent) => {
-      if (!progressEvent.lengthComputable) {
-        return
-      }
+        xhr.open('PUT', upload.signedUrl)
+        xhr.setRequestHeader('x-upsert', 'false')
+        xhr.responseType = 'json'
+        xhr.upload.onprogress = (progressEvent) => {
+          if (!progressEvent.lengthComputable) {
+            return
+          }
 
-      setVideoUploads((current) => ({
-        ...current,
-        [materialId]: {
-          ...(current[materialId] ?? {}),
-          percent: Math.round((progressEvent.loaded / progressEvent.total) * 100),
-          status: 'uploading',
-        },
-      }))
-    }
-    xhr.onload = () => {
-      let data = typeof xhr.response === 'object' && xhr.response ? xhr.response : {}
-
-      if (!Object.keys(data).length && xhr.responseText) {
-        try {
-          data = JSON.parse(xhr.responseText)
-        } catch {
-          data = {}
+          setVideoUploads((current) => ({
+            ...current,
+            [materialId]: {
+              ...(current[materialId] ?? {}),
+              percent: Math.round((progressEvent.loaded / progressEvent.total) * 100),
+              status: 'uploading',
+            },
+          }))
         }
-      }
+        xhr.onload = () => {
+          let data = typeof xhr.response === 'object' && xhr.response ? xhr.response : {}
 
-      if (xhr.status < 200 || xhr.status >= 300) {
+          if (!Object.keys(data).length && xhr.responseText) {
+            try {
+              data = JSON.parse(xhr.responseText)
+            } catch {
+              data = {}
+            }
+          }
+
+          if (xhr.status < 200 || xhr.status >= 300) {
+            setVideoUploads((current) => ({
+              ...current,
+              [materialId]: {
+                ...(current[materialId] ?? {}),
+                percent: 0,
+                status: 'error',
+              },
+            }))
+            onNotify(data.message || 'Video tidak bisa diupload.')
+            event.target.value = ''
+            return
+          }
+
+          setClassForm((current) => ({
+            ...current,
+            materials: current.materials.map((material) =>
+              material.id === materialId
+                ? {
+                    ...material,
+                    videoFile: upload.file || upload.path || '',
+                    videoName: upload.name || file.name,
+                    videoType: upload.type || file.type,
+                  }
+                : material,
+            ),
+          }))
+          setVideoUploads((current) => ({
+            ...current,
+            [materialId]: {
+              fileName: upload.name || file.name,
+              percent: 100,
+              status: 'done',
+            },
+          }))
+          onNotify('Video berhasil diupload. Klik Simpan Kelas agar masuk ke materi.')
+          event.target.value = ''
+        }
+        xhr.onerror = () => {
+          setVideoUploads((current) => ({
+            ...current,
+            [materialId]: {
+              ...(current[materialId] ?? {}),
+              percent: 0,
+              status: 'error',
+            },
+          }))
+          onNotify('Upload video gagal. Periksa koneksi dan pengaturan Supabase Storage.')
+          event.target.value = ''
+        }
+        xhr.send(buildSignedUploadBody(file))
+      })
+      .catch((error) => {
         setVideoUploads((current) => ({
           ...current,
           [materialId]: {
@@ -935,48 +980,9 @@ function AdminPage({
             status: 'error',
           },
         }))
-        onNotify(data.message || 'Video tidak bisa diupload.')
+        onNotify(error.message || 'Video tidak bisa diupload.')
         event.target.value = ''
-        return
-      }
-
-      setClassForm((current) => ({
-        ...current,
-        materials: current.materials.map((material) =>
-          material.id === materialId
-            ? {
-                ...material,
-                videoFile: data.file || '',
-                videoName: data.name || file.name,
-                videoType: data.type || file.type,
-              }
-            : material,
-        ),
-      }))
-      setVideoUploads((current) => ({
-        ...current,
-        [materialId]: {
-          fileName: data.name || file.name,
-          percent: 100,
-          status: 'done',
-        },
-      }))
-      onNotify('Video berhasil diupload. Klik Simpan Kelas agar masuk ke materi.')
-      event.target.value = ''
-    }
-    xhr.onerror = () => {
-      setVideoUploads((current) => ({
-        ...current,
-        [materialId]: {
-          ...(current[materialId] ?? {}),
-          percent: 0,
-          status: 'error',
-        },
-      }))
-      onNotify('Upload video gagal. Periksa koneksi, ukuran file, dan limit hosting.')
-      event.target.value = ''
-    }
-    xhr.send(formData)
+      })
   }
 
   const addMaterial = () => {
@@ -1137,7 +1143,7 @@ function AdminPage({
 
     const existingClass = classes.find((item) => item.id === editingClassId)
     const nextClass = {
-      id: editingClassId ?? `admin-class-${Date.now()}`,
+      id: editingClassId ?? classForm.id,
       title: classForm.title.trim(),
       students: existingClass?.students ?? 0,
       status: classForm.status,
@@ -1178,6 +1184,7 @@ function AdminPage({
 
   const handleEditClass = (item) => {
     setClassForm({
+      id: item.id,
       title: item.title,
       students: item.students,
       status: item.status,
@@ -2487,9 +2494,7 @@ function AdminPage({
                   onFocus={rememberMaterialDescriptionSelection}
                   onKeyUp={rememberMaterialDescriptionSelection}
                   onMouseUp={rememberMaterialDescriptionSelection}
-                  onInput={(event) =>
-                    handleMaterialDescriptionInput(activeMaterialEditor.id, event)
-                  }
+                  onInput={() => handleMaterialDescriptionInput(activeMaterialEditor.id)}
                 />
               </div>
               <div className="video-upload-field">

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import Icon from './Icon'
+import { uploadStorageFile } from '../lib/storageUpload'
 
-const uploadFileApiPath = '/api/upload-file.php'
+const uploadFileApiPath = '/api/upload-file'
 
 async function compressImageFile(file, { maxSize = 1400, quality = 0.9 } = {}) {
   if (!file.type.startsWith('image/')) {
@@ -68,19 +69,12 @@ function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
     try {
       setIsUploading(true)
       const compressedFile = await compressImageFile(file)
-      const formData = new FormData()
-      formData.append('type', 'profile')
-      formData.append('file', compressedFile)
-      const response = await fetch(uploadFileApiPath, {
-        method: 'POST',
-        body: formData,
-        headers: session.token ? { 'X-Session-Token': session.token } : {},
+      const data = await uploadStorageFile({
+        endpoint: uploadFileApiPath,
+        file: compressedFile,
+        type: 'profile',
+        sessionToken: session.token,
       })
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Foto profil tidak bisa diupload.')
-      }
 
       setAvatar(data.url)
       onNotify('Foto profil berhasil diupload.')

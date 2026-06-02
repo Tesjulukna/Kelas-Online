@@ -18,7 +18,7 @@ function cleanText(value, maxLength = 80) {
 }
 
 function cleanPromptText(value) {
-  return String(value ?? '').replace(/\u0000/g, '')
+  return String(value ?? '').split(String.fromCharCode(0)).join('')
 }
 
 function cleanUsername(value) {

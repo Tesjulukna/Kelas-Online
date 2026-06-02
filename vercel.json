@@ -1,0 +1,56 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/classes.php",
+      "destination": "/api/classes"
+    },
+    {
+      "source": "/api/members.php",
+      "destination": "/api/members"
+    },
+    {
+      "source": "/api/support.php",
+      "destination": "/api/support"
+    },
+    {
+      "source": "/api/submissions.php",
+      "destination": "/api/submissions"
+    },
+    {
+      "source": "/api/progress.php",
+      "destination": "/api/progress"
+    },
+    {
+      "source": "/api/login.php",
+      "destination": "/api/login"
+    },
+    {
+      "source": "/api/logout.php",
+      "destination": "/api/logout"
+    },
+    {
+      "source": "/api/profile.php",
+      "destination": "/api/profile"
+    },
+    {
+      "source": "/api/upload-file.php",
+      "destination": "/api/upload-file"
+    },
+    {
+      "source": "/api/upload-video.php",
+      "destination": "/api/upload-video"
+    },
+    {
+      "source": "/api/video.php",
+      "destination": "/api/video"
+    },
+    {
+      "source": "/api/lynk-webhook.php",
+      "destination": "/api/lynk-webhook"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

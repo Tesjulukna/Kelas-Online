@@ -21,14 +21,14 @@ const sessionKey = 'ibnucreative.session.v1'
 const classesKey = 'ibnucreative.classes.v2'
 const classesSyncKey = 'ibnucreative.classes.sync.v1'
 const peopleSyncKey = 'ibnucreative.people.sync.v1'
-const classesApiPath = '/api/classes.php'
-const membersApiPath = '/api/members.php'
-const supportApiPath = '/api/support.php'
-const submissionsApiPath = '/api/submissions.php'
-const progressApiPath = '/api/progress.php'
-const loginApiPath = '/api/login.php'
-const logoutApiPath = '/api/logout.php'
-const profileApiPath = '/api/profile.php'
+const classesApiPath = '/api/classes'
+const membersApiPath = '/api/members'
+const supportApiPath = '/api/support'
+const submissionsApiPath = '/api/submissions'
+const progressApiPath = '/api/progress'
+const loginApiPath = '/api/login'
+const logoutApiPath = '/api/logout'
+const profileApiPath = '/api/profile'
 const allowedRoles = ['member', 'admin']
 const pagePaths = {
   home: '/',
@@ -145,7 +145,7 @@ function cleanLongText(value, maxLength = 260) {
 }
 
 function cleanPromptText(value) {
-  return String(value ?? '').replace(/\u0000/g, '')
+  return String(value ?? '').split(String.fromCharCode(0)).join('')
 }
 
 function cleanRichHtml(value, maxLength = 6000) {
@@ -222,6 +222,14 @@ function cleanAvatar(value) {
     return cleanLongText(value, 240)
   }
 
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      return new URL(value).href.slice(0, 600)
+    } catch {
+      return ''
+    }
+  }
+
   return value.startsWith('data:image/') && value.length <= 3_000_000 ? value : ''
 }
 
@@ -232,6 +240,14 @@ function cleanPdfFile(value) {
 
   if (value.startsWith('/uploads/dokumen/')) {
     return cleanLongText(value, 240)
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      return new URL(value).href.slice(0, 600)
+    } catch {
+      return ''
+    }
   }
 
   return value.startsWith('data:application/pdf') && value.length <= 8_000_000

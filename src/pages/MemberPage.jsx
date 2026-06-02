@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
 import { memberMenuItems } from '../data/platformData'
+import { uploadStorageFile } from '../lib/storageUpload'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
-const uploadFileApiPath = '/api/upload-file.php'
+const uploadFileApiPath = '/api/upload-file'
 
 function readSubmittedTasks() {
   if (typeof window === 'undefined') {
@@ -83,7 +84,7 @@ function getProtectedVideoUrl(material, sessionToken = '') {
     params.set('token', sessionToken)
   }
 
-  return `/api/video.php?${params.toString()}`
+  return `/api/video?${params.toString()}`
 }
 
 async function compressImageFile(file, { maxSize = 1800, quality = 0.9 } = {}) {
@@ -192,6 +193,13 @@ function MemberPage({
   const isTaskImageAllowed = activeMaterial?.allowTaskImage !== false
   const isTaskImageRequired = Boolean(activeMaterial?.requireTaskImage)
 
+  const rememberCoursePosition = useCallback((courseId, materialIndex) => {
+    setCourseProgress((current) => ({
+      ...current,
+      [courseId]: Math.max(Number(current[courseId]) || 0, materialIndex),
+    }))
+  }, [])
+
   useEffect(() => {
     window.sessionStorage.setItem(taskStorageKey, JSON.stringify(submittedTasks))
   }, [submittedTasks])
@@ -225,21 +233,14 @@ function MemberPage({
       materialIndex: currentMaterialIndex,
       materialCount: materials.length,
     })
-  }, [
-    selectedCourse?.id,
-    selectedCourse?.title,
-    activeMaterial?.id,
-    activeMaterial?.title,
-    currentMaterialIndex,
-    materials.length,
-  ])
+  }, [selectedCourse, activeMaterial, currentMaterialIndex, materials.length, onTrackProgress])
 
   useEffect(() => {
     if (!focusTarget?.classId || !focusTarget?.materialId || activeMenu !== 'my-courses') {
       return
     }
 
-    const targetCourse = courses.find((course) => course.id === focusTarget.classId)
+    const targetCourse = classes.find((course) => course.id === focusTarget.classId)
     const targetMaterialIndex = targetCourse?.materials?.findIndex(
       (material) => material.id === focusTarget.materialId,
     )
@@ -248,10 +249,14 @@ function MemberPage({
       return
     }
 
-    setSelectedCourseId(targetCourse.id)
-    setActiveMaterialIndex(targetMaterialIndex)
-    rememberCoursePosition(targetCourse.id, targetMaterialIndex)
-  }, [focusTarget, activeMenu, classes])
+    const frame = window.requestAnimationFrame(() => {
+      setSelectedCourseId(targetCourse.id)
+      setActiveMaterialIndex(targetMaterialIndex)
+      rememberCoursePosition(targetCourse.id, targetMaterialIndex)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusTarget, activeMenu, classes, rememberCoursePosition])
 
   function getCourseProgress(course) {
     const materialsCount = course.materials?.length ?? 0
@@ -284,13 +289,6 @@ function MemberPage({
     }
 
     return Math.min(100, Math.round((highestIndex / lastIndex) * 100))
-  }
-
-  function rememberCoursePosition(courseId, materialIndex) {
-    setCourseProgress((current) => ({
-      ...current,
-      [courseId]: Math.max(Number(current[courseId]) || 0, materialIndex),
-    }))
   }
 
   const handleDashboardMenuChange = (menuId) => {
@@ -427,19 +425,12 @@ function MemberPage({
 
     try {
       const compressedFile = await compressImageFile(file)
-      const formData = new FormData()
-      formData.append('type', 'task')
-      formData.append('file', compressedFile)
-      const response = await fetch(uploadFileApiPath, {
-        method: 'POST',
-        body: formData,
-        headers: sessionToken ? { 'X-Session-Token': sessionToken } : {},
+      const data = await uploadStorageFile({
+        endpoint: uploadFileApiPath,
+        file: compressedFile,
+        type: 'task',
+        sessionToken,
       })
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Gambar tugas tidak bisa diupload.')
-      }
 
       setTaskAttachment({
         url: data.url,
@@ -837,7 +828,7 @@ function MemberPage({
                                 {taskAttachment?.name || 'Belum ada gambar tugas'}
                               </strong>
                               <small>
-                                Gambar akan disimpan di folder uploads/tugas pada hosting.
+                                Gambar tugas akan tersimpan di Supabase Storage.
                               </small>
                             </div>
                             {taskAttachment && (
