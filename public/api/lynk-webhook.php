@@ -1,0 +1,621 @@
+<?php
+
+require __DIR__ . '/_bootstrap.php';
+
+ensure_method(['POST']);
+
+$config = api_config();
+$secret = (string) ($config['lynk_webhook_secret'] ?? '');
+$rawBody = file_get_contents('php://input') ?: '';
+$payload = json_decode($rawBody, true);
+$givenSecret = clean_text($_GET['secret'] ?? '', 240);
+$authHeader = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+
+if ($givenSecret === '') {
+    $givenSecret = clean_text($_SERVER['HTTP_X_LYNK_WEBHOOK_SECRET'] ?? '', 240);
+}
+
+if ($givenSecret === '') {
+    $givenSecret = clean_text($_SERVER['HTTP_X_WEBHOOK_SECRET'] ?? '', 240);
+}
+
+if ($givenSecret === '') {
+    $givenSecret = clean_text($_SERVER['HTTP_X_MERCHANT_KEY'] ?? '', 240);
+}
+
+if ($givenSecret === '') {
+    $givenSecret = clean_text($_SERVER['HTTP_MERCHANT_KEY'] ?? '', 240);
+}
+
+if ($givenSecret === '' && stripos($authHeader, 'Bearer ') === 0) {
+    $givenSecret = clean_text(substr($authHeader, 7), 240);
+}
+
+if (is_array($payload)) {
+    foreach (['merchant_key', 'merchantKey', 'merchantKeyId', 'merchant.key', 'data.merchant_key', 'data.merchantKey'] as $path) {
+        if ($givenSecret !== '') {
+            break;
+        }
+
+        $current = $payload;
+
+        foreach (explode('.', $path) as $segment) {
+            if (!is_array($current) || !array_key_exists($segment, $current)) {
+                $current = null;
+                break;
+            }
+
+            $current = $current[$segment];
+        }
+
+        if (is_scalar($current)) {
+            $givenSecret = clean_text($current, 240);
+        }
+    }
+}
+
+if (!is_array($payload)) {
+    send_json(400, ['message' => 'Payload webhook tidak valid.']);
+}
+
+function lynk_valid_signature(string $rawBody, string $secret): bool
+{
+    $headers = [
+        $_SERVER['HTTP_X_LYNK_SIGNATURE'] ?? '',
+        $_SERVER['HTTP_X_SIGNATURE'] ?? '',
+        $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? '',
+        $_SERVER['HTTP_SIGNATURE'] ?? '',
+    ];
+    $expectedHex = hash_hmac('sha256', $rawBody, $secret);
+    $expectedBase64 = base64_encode(hash_hmac('sha256', $rawBody, $secret, true));
+
+    foreach ($headers as $header) {
+        $signature = trim((string) $header);
+
+        if ($signature === '') {
+            continue;
+        }
+
+        $signature = preg_replace('/^sha256=/i', '', $signature) ?? $signature;
+
+        if (hash_equals($expectedHex, $signature) || hash_equals($expectedBase64, $signature)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+if ($secret === '') {
+    send_json(500, ['message' => 'Merchant Key Lynk.id belum diisi di config website.']);
+}
+
+if (!hash_equals($secret, $givenSecret) && !lynk_valid_signature($rawBody, $secret)) {
+    send_json(401, ['message' => 'Merchant Key webhook Lynk.id tidak valid.']);
+}
+
+$pdo = db();
+
+function lynk_normalize_key($value): string
+{
+    $key = strtolower(clean_text($value, 240));
+    $key = preg_replace('/[^a-z0-9]+/', '-', $key) ?? '';
+
+    return trim($key, '-');
+}
+
+function lynk_flatten_values($value): array
+{
+    if (!is_array($value)) {
+        return [$value];
+    }
+
+    $values = [];
+
+    foreach ($value as $item) {
+        $values = array_merge($values, lynk_flatten_values($item));
+    }
+
+    return $values;
+}
+
+function lynk_first_value(array $payload, array $paths): string
+{
+    foreach ($paths as $path) {
+        $current = $payload;
+
+        foreach (explode('.', $path) as $segment) {
+            if (!is_array($current) || !array_key_exists($segment, $current)) {
+                $current = null;
+                break;
+            }
+
+            $current = $current[$segment];
+        }
+
+        if (is_scalar($current) && trim((string) $current) !== '') {
+            return clean_text($current, 240);
+        }
+    }
+
+    return '';
+}
+
+function lynk_first_email($value): string
+{
+    foreach (lynk_flatten_values($value) as $item) {
+        $email = clean_email($item);
+
+        if ($email !== '') {
+            return $email;
+        }
+    }
+
+    return '';
+}
+
+function lynk_collect_product_candidates(array $payload): array
+{
+    $paths = [
+        'product.id',
+        'product.slug',
+        'product.name',
+        'product.title',
+        'product_id',
+        'product_slug',
+        'product_name',
+        'item.id',
+        'item.slug',
+        'item.name',
+        'item.title',
+        'item_id',
+        'item_name',
+        'name',
+        'title',
+    ];
+    $candidates = [];
+
+    foreach ($paths as $path) {
+        $value = lynk_first_value($payload, [$path]);
+
+        if ($value !== '') {
+            $candidates[] = $value;
+        }
+    }
+
+    foreach (['items', 'products', 'line_items', 'order_items'] as $listKey) {
+        if (empty($payload[$listKey]) || !is_array($payload[$listKey])) {
+            continue;
+        }
+
+        foreach ($payload[$listKey] as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            foreach (['id', 'product_id', 'slug', 'name', 'title', 'product_name'] as $key) {
+                if (!empty($item[$key])) {
+                    $candidates[] = clean_text($item[$key], 240);
+                }
+            }
+        }
+    }
+
+    return array_values(array_unique(array_filter($candidates)));
+}
+
+function lynk_is_paid_event(array $payload): bool
+{
+    $statusValues = [];
+
+    foreach (['event', 'type', 'status', 'payment_status', 'transaction_status', 'order_status'] as $key) {
+        if (!empty($payload[$key]) && is_scalar($payload[$key])) {
+            $statusValues[] = strtolower((string) $payload[$key]);
+        }
+    }
+
+    foreach (['data', 'order', 'transaction', 'payment'] as $key) {
+        if (!empty($payload[$key]) && is_array($payload[$key])) {
+            foreach (['event', 'type', 'status', 'payment_status', 'transaction_status', 'order_status'] as $nestedKey) {
+                if (!empty($payload[$key][$nestedKey]) && is_scalar($payload[$key][$nestedKey])) {
+                    $statusValues[] = strtolower((string) $payload[$key][$nestedKey]);
+                }
+            }
+        }
+    }
+
+    if (!$statusValues) {
+        return true;
+    }
+
+    foreach ($statusValues as $status) {
+        if (preg_match('/paid|success|settled|complete|berhasil|lunas|sukses/', $status)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function lynk_find_classes(PDO $pdo, array $payload, array $productCandidates, array $config): array
+{
+    $classes = $pdo
+        ->query('SELECT id, title, status, lynk_product_key FROM classes ORDER BY id ASC')
+        ->fetchAll();
+    $map = is_array($config['lynk_product_class_map'] ?? null)
+        ? $config['lynk_product_class_map']
+        : [];
+    $candidateKeys = array_values(array_unique(array_filter(array_map('lynk_normalize_key', $productCandidates))));
+    $classIds = [];
+
+    foreach ($map as $productKey => $mappedClassIds) {
+        if (!in_array(lynk_normalize_key($productKey), $candidateKeys, true)) {
+            continue;
+        }
+
+        foreach ((array) $mappedClassIds as $classId) {
+            $classIds[] = clean_text($classId, 120);
+        }
+    }
+
+    foreach ($classes as $class) {
+        $keys = [
+            lynk_normalize_key($class['id'] ?? ''),
+            lynk_normalize_key($class['title'] ?? ''),
+            lynk_normalize_key($class['lynk_product_key'] ?? ''),
+        ];
+
+        foreach ($candidateKeys as $candidateKey) {
+            if ($candidateKey === '') {
+                continue;
+            }
+
+            if (in_array($candidateKey, $keys, true)) {
+                $classIds[] = $class['id'];
+                continue 2;
+            }
+
+            foreach ($keys as $classKey) {
+                if ($classKey !== '' && (strpos($candidateKey, $classKey) !== false || strpos($classKey, $candidateKey) !== false)) {
+                    $classIds[] = $class['id'];
+                    continue 3;
+                }
+            }
+        }
+    }
+
+    return array_values(array_unique(array_filter($classIds)));
+}
+
+function lynk_unique_username(PDO $pdo, string $email, string $name): string
+{
+    $base = clean_username(strstr($email, '@', true) ?: $name);
+
+    if ($base === '') {
+        $base = 'member';
+    }
+
+    $username = $base;
+    $counter = 2;
+    $query = $pdo->prepare('SELECT id FROM accounts WHERE role = ? AND username = ? LIMIT 1');
+
+    while (true) {
+        $query->execute(['member', $username]);
+
+        if (!$query->fetch()) {
+            return $username;
+        }
+
+        $username = $base . $counter;
+        $counter++;
+    }
+}
+
+function lynk_generated_password(string $email, string $secret): string
+{
+    return 'IC-' . substr(hash_hmac('sha256', strtolower($email), $secret), 0, 10);
+}
+
+function lynk_login_url(array $config): string
+{
+    $configured = clean_external_url($config['site_login_url'] ?? '');
+
+    if ($configured !== '') {
+        return $configured;
+    }
+
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = clean_text($_SERVER['HTTP_HOST'] ?? '', 180);
+
+    return $host ? $scheme . '://' . $host . '/login' : '/login';
+}
+
+function lynk_send_credentials_email(string $email, string $name, array $account, array $config): bool
+{
+    if (empty($config['lynk_send_credentials_email'])) {
+        return false;
+    }
+
+    $host = clean_text($_SERVER['HTTP_HOST'] ?? 'ibnucreative.local', 180);
+    $from = clean_email($config['lynk_email_from'] ?? '');
+
+    if ($from === '' && $host !== '') {
+        $from = 'no-reply@' . preg_replace('/^www\./', '', $host);
+    }
+
+    $passwordLine = $account['password']
+        ? "Password: {$account['password']}\n"
+        : "Password: gunakan password akun yang sudah pernah dibuat.\n";
+    $message = "Halo {$name},\n\n"
+        . "Pembayaran kelas Anda melalui Lynk.id sudah berhasil dan akses belajar sudah aktif.\n\n"
+        . "Login: {$account['loginUrl']}\n"
+        . "Email: {$email}\n"
+        . "Username: {$account['username']}\n"
+        . $passwordLine
+        . "\nSilakan login dan buka menu Kelas Saya.\n\n"
+        . "IbnuCreative Academy";
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+    ];
+
+    if ($from !== '') {
+        $headers[] = 'From: IbnuCreative Academy <' . $from . '>';
+    }
+
+    return @mail($email, 'Akses kelas IbnuCreative Anda sudah aktif', $message, implode("\r\n", $headers));
+}
+
+function lynk_ensure_tables(PDO $pdo): void
+{
+    try {
+        $query = $pdo->prepare('SHOW COLUMNS FROM classes LIKE ?');
+        $query->execute(['lynk_product_key']);
+
+        if (!$query->fetch()) {
+            $pdo->exec("ALTER TABLE classes ADD lynk_product_key VARCHAR(180) NOT NULL DEFAULT '' AFTER revenue");
+        }
+    } catch (Throwable $error) {
+        // Installer can add this column if runtime ALTER is blocked.
+    }
+
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS lynk_orders (
+            id VARCHAR(120) PRIMARY KEY,
+            event_id VARCHAR(180) NOT NULL DEFAULT '',
+            order_id VARCHAR(180) NOT NULL DEFAULT '',
+            buyer_name VARCHAR(160) NOT NULL DEFAULT '',
+            buyer_email VARCHAR(180) NOT NULL DEFAULT '',
+            product_key VARCHAR(240) NOT NULL DEFAULT '',
+            product_name VARCHAR(240) NOT NULL DEFAULT '',
+            class_ids MEDIUMTEXT,
+            member_id VARCHAR(120) NOT NULL DEFAULT '',
+            username VARCHAR(80) NOT NULL DEFAULT '',
+            password_created TINYINT(1) NOT NULL DEFAULT 0,
+            status VARCHAR(40) NOT NULL DEFAULT 'processed',
+            payload MEDIUMTEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY lynk_order_unique (order_id),
+            INDEX lynk_order_email_index (buyer_email),
+            INDEX lynk_order_member_index (member_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    );
+}
+
+lynk_ensure_tables($pdo);
+
+$data = is_array($payload['data'] ?? null) ? $payload['data'] : $payload;
+$eventId = lynk_first_value($payload, ['id', 'event_id', 'webhook_id', 'data.id']);
+$orderId = lynk_first_value($payload, [
+    'order_id',
+    'order.id',
+    'transaction_id',
+    'transaction.id',
+    'invoice_id',
+    'invoice.id',
+    'payment_id',
+    'payment.id',
+    'data.order_id',
+    'data.transaction_id',
+    'data.invoice_id',
+]);
+$buyerEmail = lynk_first_email($payload);
+$buyerName = lynk_first_value($payload, [
+    'buyer.name',
+    'customer.name',
+    'user.name',
+    'order.customer_name',
+    'data.buyer.name',
+    'data.customer.name',
+    'buyer_name',
+    'customer_name',
+    'name',
+]);
+$productCandidates = array_values(array_unique(array_merge(
+    lynk_collect_product_candidates($payload),
+    lynk_collect_product_candidates($data),
+)));
+$productKey = clean_text($productCandidates[0] ?? '', 240);
+$classIds = lynk_find_classes($pdo, $payload, $productCandidates, $config);
+
+if ($orderId === '') {
+    $orderId = $eventId ?: hash('sha256', $rawBody);
+}
+
+if (!lynk_is_paid_event($payload)) {
+    send_json(200, [
+        'ok' => true,
+        'ignored' => true,
+        'message' => 'Webhook diterima, tetapi status pembayaran belum sukses.',
+    ]);
+}
+
+$existingOrder = $pdo->prepare('SELECT * FROM lynk_orders WHERE order_id = ? LIMIT 1');
+$existingOrder->execute([$orderId]);
+$savedOrder = $existingOrder->fetch();
+
+if ($savedOrder) {
+    $savedEmail = clean_email($savedOrder['buyer_email'] ?? '');
+    $password = !empty($savedOrder['password_created']) && $savedEmail
+        ? lynk_generated_password($savedEmail, $secret)
+        : null;
+
+    send_json(200, [
+        'ok' => true,
+        'duplicate' => true,
+        'message' => 'Order Lynk.id sudah pernah diproses.',
+        'account' => [
+            'name' => $savedOrder['buyer_name'],
+            'email' => $savedOrder['buyer_email'],
+            'username' => $savedOrder['username'],
+            'password' => $password,
+            'loginUrl' => lynk_login_url($config),
+        ],
+    ]);
+}
+
+if ($buyerEmail === '') {
+    send_json(422, ['message' => 'Email pembeli tidak ditemukan pada payload Lynk.id.']);
+}
+
+if (!$classIds) {
+    $insertOrder = $pdo->prepare(
+        'INSERT INTO lynk_orders
+        (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, status, payload)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    );
+    $insertOrder->execute([
+        make_id('lynk'),
+        $eventId,
+        $orderId,
+        $buyerName ?: 'Pembeli Lynk.id',
+        $buyerEmail,
+        $productKey,
+        $productKey,
+        json_encode([], JSON_UNESCAPED_UNICODE),
+        'unmapped',
+        $rawBody,
+    ]);
+
+    send_json(200, [
+        'ok' => true,
+        'ignored' => true,
+        'status' => 'unmapped',
+        'message' => 'Produk Lynk.id tidak dipetakan ke kelas website, jadi tidak dibuatkan akun member.',
+        'productCandidates' => $productCandidates,
+    ]);
+}
+
+$memberQuery = $pdo->prepare('SELECT * FROM accounts WHERE role = ? AND email = ? LIMIT 1');
+$memberQuery->execute(['member', $buyerEmail]);
+$member = $memberQuery->fetch();
+$password = lynk_generated_password($buyerEmail, $secret);
+$passwordCreated = false;
+$newAccessIds = [];
+
+if ($member) {
+    $currentClassIds = clean_allowed_class_ids($member['allowed_class_ids'] ?? null);
+    $currentClassIds = is_array($currentClassIds) ? $currentClassIds : [];
+    $mergedClassIds = array_values(array_unique(array_merge($currentClassIds, $classIds)));
+    $newAccessIds = array_values(array_diff($mergedClassIds, $currentClassIds));
+    $passwordHash = !empty($config['lynk_reset_existing_member_password'])
+        ? hash_password_value($password)
+        : $member['password_hash'];
+    $passwordCreated = !empty($config['lynk_reset_existing_member_password']);
+
+    $update = $pdo->prepare(
+        'UPDATE accounts
+        SET name = ?, status = ?, allowed_class_ids = ?, password_hash = ?
+        WHERE id = ? AND role = ?',
+    );
+    $update->execute([
+        $buyerName ?: $member['name'],
+        'Aktif',
+        json_encode($mergedClassIds, JSON_UNESCAPED_UNICODE),
+        $passwordHash,
+        $member['id'],
+        'member',
+    ]);
+} else {
+    $member = [
+        'id' => make_id('member'),
+        'username' => lynk_unique_username($pdo, $buyerEmail, $buyerName),
+    ];
+    $newAccessIds = $classIds;
+    $passwordCreated = true;
+    $insert = $pdo->prepare(
+        'INSERT INTO accounts
+        (id, role, name, username, email, status, avatar, allowed_class_ids, password_hash, joined_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    );
+    $insert->execute([
+        $member['id'],
+        'member',
+        $buyerName ?: 'Pembeli Lynk.id',
+        $member['username'],
+        $buyerEmail,
+        'Aktif',
+        '',
+        json_encode($classIds, JSON_UNESCAPED_UNICODE),
+        hash_password_value($password),
+        date('Y-m-d'),
+    ]);
+}
+
+if ($newAccessIds) {
+    $updateStudents = $pdo->prepare('UPDATE classes SET students = students + 1 WHERE id = ?');
+
+    foreach ($newAccessIds as $classId) {
+        $updateStudents->execute([$classId]);
+    }
+}
+
+$insertOrder = $pdo->prepare(
+    'INSERT INTO lynk_orders
+    (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, member_id, username, password_created, status, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+);
+$insertOrder->execute([
+    make_id('lynk'),
+    $eventId,
+    $orderId,
+    $buyerName ?: 'Pembeli Lynk.id',
+    $buyerEmail,
+    $productKey,
+    $productKey,
+    json_encode($classIds, JSON_UNESCAPED_UNICODE),
+    $member['id'],
+    $member['username'],
+    $passwordCreated ? 1 : 0,
+    'processed',
+    $rawBody,
+]);
+
+$account = [
+    'name' => $buyerName ?: 'Pembeli Lynk.id',
+    'email' => $buyerEmail,
+    'username' => $member['username'],
+    'password' => $passwordCreated ? $password : null,
+    'loginUrl' => lynk_login_url($config),
+    'classIds' => $classIds,
+];
+$emailSent = lynk_send_credentials_email(
+    $buyerEmail,
+    $buyerName ?: 'Pembeli Lynk.id',
+    $account,
+    $config,
+);
+
+send_json(200, [
+    'ok' => true,
+    'message' => 'Akun member berhasil dibuat atau diperbarui dari pembayaran Lynk.id.',
+    'emailSent' => $emailSent,
+    'fulfillmentMessage' => sprintf(
+        "Akses kelas aktif.\nLogin: %s\nUsername: %s%s",
+        $account['loginUrl'],
+        $account['username'],
+        $account['password'] ? "\nPassword: {$account['password']}" : "\nGunakan password akun yang sudah pernah dibuat."
+    ),
+    'account' => $account,
+]);
