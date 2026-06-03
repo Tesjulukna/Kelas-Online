@@ -475,6 +475,13 @@
   padding: 0 14px;
 }
 
+.profile-security-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 4px;
+}
+
 .crud-editor .crud-form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 0;
@@ -2669,6 +2676,7 @@ img {
   }
 
   .crud-editor .crud-form,
+  .profile-security-fields,
   .crud-form {
     grid-template-columns: 1fr;
   }

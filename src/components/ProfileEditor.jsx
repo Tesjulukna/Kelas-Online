@@ -50,8 +50,13 @@ async function compressImageFile(file, { maxSize = 1400, quality = 0.9 } = {}) {
 
 function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
   const [name, setName] = useState(session.name)
+  const [email, setEmail] = useState(session.email || '')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
   const [avatar, setAvatar] = useState(session.avatar || '')
   const [isUploading, setIsUploading] = useState(false)
+  const canEditCredentials = session.role === 'admin'
 
   const handleAvatarChange = async (event) => {
     const file = event.target.files?.[0]
@@ -88,7 +93,28 @@ function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    onSave({ name, avatar })
+
+    if (canEditCredentials) {
+      const changesEmail = email.trim().toLowerCase() !== String(session.email || '').toLowerCase()
+      const changesPassword = password.length > 0
+
+      if (changesPassword && password.length < 6) {
+        onNotify('Password baru minimal 6 karakter.')
+        return
+      }
+
+      if (changesPassword && password !== passwordConfirm) {
+        onNotify('Konfirmasi password baru belum sama.')
+        return
+      }
+
+      if ((changesEmail || changesPassword) && !currentPassword) {
+        onNotify('Isi password saat ini untuk mengubah email atau password.')
+        return
+      }
+    }
+
+    onSave({ name, avatar, email, currentPassword, password })
   }
 
   return (
@@ -130,6 +156,51 @@ function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
             required
           />
         </label>
+
+        {canEditCredentials && (
+          <div className="profile-security-fields">
+            <label>
+              Email admin
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="admin@email.com"
+                required
+              />
+            </label>
+            <label>
+              Password saat ini
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                placeholder="Isi jika ubah email/password"
+                autoComplete="current-password"
+              />
+            </label>
+            <label>
+              Password baru
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Kosongkan jika tidak diganti"
+                autoComplete="new-password"
+              />
+            </label>
+            <label>
+              Ulangi password baru
+              <input
+                type="password"
+                value={passwordConfirm}
+                onChange={(event) => setPasswordConfirm(event.target.value)}
+                placeholder="Ulangi password baru"
+                autoComplete="new-password"
+              />
+            </label>
+          </div>
+        )}
 
         <div className="modal-actions">
           <button className="btn btn-secondary" type="button" onClick={onClose}>

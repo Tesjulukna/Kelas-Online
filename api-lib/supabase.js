@@ -401,6 +401,7 @@ function sessionPayload(account, token = '') {
     userId: account.id,
     name: account.name,
     username: account.username,
+    email: account.email || '',
     role: account.role,
     avatar: account.avatar || '',
     allowedClassIds:
@@ -1173,14 +1174,6 @@ export async function logout(request) {
 }
 
 export async function updateProfile(user, payload) {
-  await rest(`accounts?id=eq.${eq(user.userId)}&role=eq.${eq(user.role)}`, {
-    method: 'PATCH',
-    headers: { Prefer: 'return=representation' },
-    body: {
-      name: cleanText(payload.name || user.name, 120),
-      avatar: cleanUrl(payload.avatar || ''),
-    },
-  })
   const rows = await rest(
     `accounts?select=*&id=eq.${eq(user.userId)}&role=eq.${eq(user.role)}&limit=1`,
   )
@@ -1190,7 +1183,65 @@ export async function updateProfile(user, payload) {
     throw new ApiError(404, 'Akun tidak ditemukan.')
   }
 
-  return { session: sessionPayload(account, user.token) }
+  const updates = {
+    name: cleanText(payload.name || user.name, 120),
+    avatar: cleanUrl(payload.avatar || ''),
+  }
+
+  if (user.role === 'admin') {
+    const hasEmailPayload = Object.prototype.hasOwnProperty.call(payload, 'email')
+    const nextEmail = hasEmailPayload ? cleanEmail(payload.email) : account.email || ''
+    const nextPassword = String(payload.password || '')
+    const changesEmail = hasEmailPayload && nextEmail !== (account.email || '')
+    const changesPassword = nextPassword.length > 0
+
+    if (hasEmailPayload && !nextEmail) {
+      throw new ApiError(400, 'Email admin tidak valid.')
+    }
+
+    if (changesPassword && nextPassword.length < 6) {
+      throw new ApiError(400, 'Password baru minimal 6 karakter.')
+    }
+
+    if (changesEmail || changesPassword) {
+      const currentPassword = String(payload.currentPassword || '')
+
+      if (!currentPassword || !(await verifyPasswordValue(currentPassword, account.password_hash))) {
+        throw new ApiError(400, 'Password saat ini tidak sesuai.')
+      }
+    }
+
+    if (changesEmail) {
+      const sameEmailRows = await rest(`accounts?select=id&email=eq.${eq(nextEmail)}&limit=2`)
+      const emailUsedByOtherAccount = (sameEmailRows || []).some((item) => item.id !== user.userId)
+
+      if (emailUsedByOtherAccount) {
+        throw new ApiError(400, 'Email sudah dipakai akun lain.')
+      }
+
+      updates.email = nextEmail
+    }
+
+    if (changesPassword) {
+      updates.password_hash = await hashPasswordValue(nextPassword)
+    }
+  }
+
+  await rest(`accounts?id=eq.${eq(user.userId)}&role=eq.${eq(user.role)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: updates,
+  })
+  const updatedRows = await rest(
+    `accounts?select=*&id=eq.${eq(user.userId)}&role=eq.${eq(user.role)}&limit=1`,
+  )
+  const updatedAccount = updatedRows?.[0]
+
+  if (!updatedAccount) {
+    throw new ApiError(404, 'Akun tidak ditemukan.')
+  }
+
+  return { session: sessionPayload(updatedAccount, user.token) }
 }
 
 function extensionFromName(name, fallback = 'file') {

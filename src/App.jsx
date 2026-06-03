@@ -135,6 +135,11 @@ function cleanUsername(value) {
   return cleanText(value).toLowerCase().replace(/[^a-z0-9._-]/g, '')
 }
 
+function cleanEmail(value) {
+  const email = cleanLongText(value, 120).toLowerCase()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ''
+}
+
 function cleanSessionToken(value) {
   return String(value ?? '').replace(/[^a-f0-9]/gi, '').slice(0, 128)
 }
@@ -398,6 +403,7 @@ function readSession() {
       userId: cleanText(saved.userId || ''),
       name: cleanText(saved.name) || 'Sahabat Kreatif',
       username: cleanUsername(saved.username || saved.name || ''),
+      email: cleanEmail(saved.email || ''),
       role: saved.role,
       avatar: cleanAvatar(saved.avatar),
       allowedClassIds: Array.isArray(saved.allowedClassIds)
@@ -1093,13 +1099,14 @@ function App() {
     navigateToDashboardMenu(session.role, notification.menuId)
   }
 
-  const handleSaveProfile = ({ name, avatar }) => {
+  const handleSaveProfile = ({ name, avatar, email, currentPassword, password }) => {
     if (!session) {
       return
     }
     const nextSession = {
       ...session,
       name: cleanText(name) || 'Sahabat Kreatif',
+      email: session.role === 'admin' ? cleanEmail(email || session.email || '') : session.email,
       avatar: cleanAvatar(avatar),
     }
 
@@ -1110,6 +1117,9 @@ function App() {
         role: session.role,
         username: session.username,
         name: nextSession.name,
+        email: nextSession.email,
+        currentPassword,
+        password,
         avatar: nextSession.avatar,
       }),
     })
@@ -1118,6 +1128,7 @@ function App() {
           ...nextSession,
           ...(data.session ?? {}),
           avatar: cleanAvatar(data.session?.avatar ?? nextSession.avatar),
+          email: cleanEmail(data.session?.email ?? nextSession.email ?? ''),
         }
 
         window.sessionStorage.setItem(sessionKey, JSON.stringify(savedSession))
