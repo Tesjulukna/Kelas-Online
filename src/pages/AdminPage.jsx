@@ -1723,7 +1723,7 @@ function AdminPage({
               const progressSummary = getMemberProgressSummary(member, classes, submissions)
 
               return (
-                <div className="table-row" role="row" key={member.id}>
+                <div className="table-row member-list-row" role="row" key={member.id}>
                   <span className="member-identity" data-label="Member" role="cell">
                     <span className="sidebar-avatar" aria-hidden="true">
                       {member.avatar ? <img src={member.avatar} alt="" /> : <Icon name="user" />}
@@ -1733,10 +1733,10 @@ function AdminPage({
                       <small>{member.email || 'Email belum diisi'}</small>
                     </span>
                   </span>
-                  <span data-label="Username" role="cell">
+                  <span className="member-username-cell" data-label="Username" role="cell">
                     {member.username}
                   </span>
-                  <span data-label="Status" role="cell">
+                  <span className="member-status-cell" data-label="Status" role="cell">
                     <mark>{member.status}</mark>
                   </span>
                   <span className="member-progress-cell" data-label="Progress" role="cell">
@@ -1770,7 +1770,7 @@ function AdminPage({
                       <small>Bergabung {member.joinedAt || '-'}</small>
                     </span>
                   </span>
-                  <span className="row-actions" data-label="Aksi" role="cell">
+                  <span className="row-actions member-actions-cell" data-label="Aksi" role="cell">
                     <button type="button" onClick={() => handleEditMember(member)}>
                       Edit
                     </button>
@@ -1874,7 +1874,7 @@ function AdminPage({
                       setSubmissionClassFilter('all')
                     }}
                   >
-                    Buka Tugas
+                    Lihat Tugas
                   </button>
                 </span>
               </div>
@@ -1887,104 +1887,6 @@ function AdminPage({
               </article>
             )}
           </div>
-          {selectedSubmissionMember && (
-            <div className="submission-member-detail">
-              <div className="panel-heading compact-heading">
-                <div>
-                  <p className="eyebrow">Tugas per materi</p>
-                  <h3>{selectedSubmissionMember.name}</h3>
-                </div>
-                <button
-                  className="btn btn-secondary"
-                  type="button"
-                  onClick={() => setSelectedSubmissionMemberId('')}
-                >
-                  <Icon name="x" />
-                  Tutup
-                </button>
-              </div>
-              <div className="submission-filter-bar">
-                <div className="filter-button-group" aria-label="Filter status tugas">
-                  {submissionStatusOptions.map((option) => (
-                    <button
-                      className={
-                        submissionStatusFilter === option.id ? 'active' : ''
-                      }
-                      type="button"
-                      key={option.id}
-                      onClick={() => setSubmissionStatusFilter(option.id)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                <label>
-                  Kelas
-                  <select
-                    value={submissionClassFilter}
-                    onChange={(event) => setSubmissionClassFilter(event.target.value)}
-                  >
-                    <option value="all">Semua kelas</option>
-                    {selectedMemberClassOptions.map(([classId, classTitle]) => (
-                      <option value={classId} key={classId}>
-                        {classTitle}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div
-                className="admin-table submission-table member-submission-table"
-                role="table"
-                aria-label="Tugas per materi"
-              >
-                <div className="table-row table-head" role="row">
-                  <span role="columnheader">Materi</span>
-                  <span role="columnheader">Status</span>
-                  <span role="columnheader">Dikirim</span>
-                  <span role="columnheader">Aksi</span>
-                </div>
-                {visibleMemberSubmissions.map((submission) => (
-                  <div className="table-row" role="row" key={submission.id}>
-                    <span className="support-message" data-label="Materi" role="cell">
-                      {submission.attachmentUrl && (
-                        <img
-                          className="submission-table-thumb"
-                          src={submission.attachmentUrl}
-                          alt=""
-                        />
-                      )}
-                      <strong>{submission.materialTitle}</strong>
-                      <small>{submission.classTitle}</small>
-                      {submission.attachmentUrl && (
-                        <small className="submission-image-note">Ada gambar tugas</small>
-                      )}
-                    </span>
-                    <span data-label="Status" role="cell">
-                      <mark>{submission.status}</mark>
-                    </span>
-                    <span data-label="Dikirim" role="cell">
-                      {submission.submittedAt
-                        ? new Date(submission.submittedAt).toLocaleDateString('id-ID')
-                        : '-'}
-                    </span>
-                    <span className="row-actions" data-label="Aksi" role="cell">
-                      <button type="button" onClick={() => openSubmissionReview(submission)}>
-                        Lihat Tugas
-                      </button>
-                    </span>
-                  </div>
-                ))}
-                {!visibleMemberSubmissions.length && (
-                  <article className="empty-state table-empty">
-                    <Icon name="fileText" />
-                    <h3>Tidak ada tugas sesuai filter</h3>
-                    <p>Pilih filter lain untuk melihat kiriman tugas member ini.</p>
-                  </article>
-                )}
-              </div>
-            </div>
-          )}
         </section>
       )}
 
@@ -2298,6 +2200,126 @@ function AdminPage({
               </button>
             </div>
           </form>
+        </div>
+      )}
+      {selectedSubmissionMember && (
+        <div className="modal-backdrop submission-member-backdrop" role="presentation">
+          <div
+            className="crud-editor submission-member-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="submission-member-title"
+          >
+            <div className="modal-heading">
+              <div>
+                <p className="eyebrow">Tugas per member</p>
+                <h2 id="submission-member-title">{selectedSubmissionMember.name}</h2>
+              </div>
+              <button
+                type="button"
+                aria-label="Tutup daftar tugas member"
+                onClick={() => setSelectedSubmissionMemberId('')}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="submission-member-summary">
+              <span>
+                <strong>{selectedSubmissionMember.submissionCount}</strong>
+                <small>Total tugas</small>
+              </span>
+              <span>
+                <strong>{selectedSubmissionMember.pendingSubmissionCount}</strong>
+                <small>Menunggu review</small>
+              </span>
+              <span>
+                <strong>
+                  {selectedSubmissionMember.latestSubmissionAt
+                    ? formatRelativeActivity(selectedSubmissionMember.latestSubmissionAt)
+                    : '-'}
+                </strong>
+                <small>Terakhir kirim</small>
+              </span>
+            </div>
+            <div className="submission-filter-bar">
+              <div className="filter-button-group" aria-label="Filter status tugas">
+                {submissionStatusOptions.map((option) => (
+                  <button
+                    className={submissionStatusFilter === option.id ? 'active' : ''}
+                    type="button"
+                    key={option.id}
+                    onClick={() => setSubmissionStatusFilter(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <label>
+                Kelas
+                <select
+                  value={submissionClassFilter}
+                  onChange={(event) => setSubmissionClassFilter(event.target.value)}
+                >
+                  <option value="all">Semua kelas</option>
+                  {selectedMemberClassOptions.map(([classId, classTitle]) => (
+                    <option value={classId} key={classId}>
+                      {classTitle}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div
+              className="admin-table submission-table member-submission-table"
+              role="table"
+              aria-label="Tugas per materi"
+            >
+              <div className="table-row table-head" role="row">
+                <span role="columnheader">Materi</span>
+                <span role="columnheader">Status</span>
+                <span role="columnheader">Dikirim</span>
+                <span role="columnheader">Aksi</span>
+              </div>
+              {visibleMemberSubmissions.map((submission) => (
+                <div className="table-row" role="row" key={submission.id}>
+                  <span className="support-message" data-label="Materi" role="cell">
+                    {submission.attachmentUrl && (
+                      <img
+                        className="submission-table-thumb"
+                        src={submission.attachmentUrl}
+                        alt=""
+                      />
+                    )}
+                    <strong>{submission.materialTitle}</strong>
+                    <small>{submission.classTitle}</small>
+                    {submission.attachmentUrl && (
+                      <small className="submission-image-note">Ada gambar tugas</small>
+                    )}
+                  </span>
+                  <span data-label="Status" role="cell">
+                    <mark>{submission.status}</mark>
+                  </span>
+                  <span data-label="Dikirim" role="cell">
+                    {submission.submittedAt
+                      ? new Date(submission.submittedAt).toLocaleDateString('id-ID')
+                      : '-'}
+                  </span>
+                  <span className="row-actions" data-label="Aksi" role="cell">
+                    <button type="button" onClick={() => openSubmissionReview(submission)}>
+                      Lihat Tugas
+                    </button>
+                  </span>
+                </div>
+              ))}
+              {!visibleMemberSubmissions.length && (
+                <article className="empty-state table-empty">
+                  <Icon name="fileText" />
+                  <h3>Tidak ada tugas sesuai filter</h3>
+                  <p>Pilih filter lain untuk melihat kiriman tugas member ini.</p>
+                </article>
+              )}
+            </div>
+          </div>
         </div>
       )}
       {viewingSubmission && (

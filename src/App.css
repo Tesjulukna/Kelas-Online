@@ -4146,6 +4146,43 @@ img {
     minmax(130px, 0.55fr);
 }
 
+.submission-member-modal {
+  width: min(980px, 100%);
+}
+
+.submission-member-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.submission-member-summary span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.submission-member-summary strong {
+  color: var(--color-heading);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.submission-member-summary small {
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.submission-member-modal .member-submission-table {
+  max-height: min(430px, 48svh);
+  overflow: auto;
+}
+
 .submission-review label,
 .ticket-form label {
   display: grid;
@@ -6475,6 +6512,155 @@ img {
   .submission-attachment-link {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 920px) {
+  .member-table {
+    gap: 12px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .member-table .table-head {
+    display: none;
+  }
+
+  .member-table .member-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .member-table .member-list-row:last-child {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .member-table .member-list-row > [role='cell'] {
+    min-width: 0;
+  }
+
+  .member-table .member-list-row > [role='cell']::before {
+    display: none;
+  }
+
+  .member-table .member-identity {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-right: 8px;
+  }
+
+  .member-table .member-identity .sidebar-avatar {
+    flex-basis: 42px;
+    width: 42px;
+    height: 42px;
+  }
+
+  .member-table .member-status-cell {
+    grid-column: 2;
+    justify-self: end;
+    align-self: start;
+  }
+
+  .member-table .member-username-cell,
+  .member-table .member-progress-cell,
+  .member-table .member-activity-cell,
+  .member-table .member-actions-cell {
+    grid-column: 1 / -1;
+  }
+
+  .member-table .member-username-cell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 7px;
+    color: var(--color-heading);
+    background: #fbfcfd;
+    font-weight: 800;
+  }
+
+  .member-table .member-username-cell::before {
+    content: 'Username';
+    display: block;
+    color: var(--color-muted);
+    font-size: 0.7rem;
+    font-weight: 850;
+    text-transform: uppercase;
+  }
+
+  .member-table .member-progress-content,
+  .member-table .member-activity-content {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: #fbfcfd;
+  }
+
+  .member-table .member-activity-content {
+    display: grid;
+    gap: 8px;
+  }
+
+  .member-table .member-actions-cell {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .member-table .member-actions-cell button {
+    width: 100%;
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 760px) {
+  .submission-member-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .submission-member-modal .member-submission-table {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .submission-filter-bar {
+    align-items: stretch;
+  }
+
+  .submission-filter-bar label,
+  .submission-filter-bar select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .member-table .member-list-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .member-table .member-status-cell {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .member-table .member-username-cell {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 }
 
