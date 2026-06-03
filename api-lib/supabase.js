@@ -1363,15 +1363,30 @@ function collectProductCandidates(payload) {
   ]
   const candidates = paths.map((path) => firstValue(payload, [path])).filter(Boolean)
 
-  for (const listKey of ['items', 'products', 'line_items', 'order_items']) {
-    const list = Array.isArray(payload?.[listKey]) ? payload[listKey] : []
+  const listPaths = [
+    'items',
+    'products',
+    'line_items',
+    'order_items',
+    'message_data.items',
+    'data.message_data.items',
+  ]
+
+  for (const listPath of listPaths) {
+    const list = listPath.split('.').reduce((current, segment) => {
+      if (!current || typeof current !== 'object') {
+        return []
+      }
+
+      return current[segment]
+    }, payload)
 
     for (const item of list) {
       if (!item || typeof item !== 'object') {
         continue
       }
 
-      for (const key of ['id', 'product_id', 'slug', 'name', 'title', 'product_name']) {
+      for (const key of ['id', 'uuid', 'product_id', 'slug', 'name', 'title', 'product_name']) {
         if (item[key]) {
           candidates.push(cleanText(item[key], 240))
         }
@@ -1384,21 +1399,32 @@ function collectProductCandidates(payload) {
 
 function isPaidEvent(payload) {
   const values = []
+  const statusKeys = [
+    'event',
+    'type',
+    'status',
+    'payment_status',
+    'transaction_status',
+    'order_status',
+    'message_action',
+    'message_title',
+    'message_code',
+  ]
 
-  for (const key of ['event', 'type', 'status', 'payment_status', 'transaction_status', 'order_status']) {
+  for (const key of statusKeys) {
     if (payload?.[key]) {
       values.push(String(payload[key]).toLowerCase())
     }
   }
 
-  for (const key of ['data', 'order', 'transaction', 'payment']) {
+  for (const key of ['data', 'message_data', 'order', 'transaction', 'payment']) {
     const nested = payload?.[key]
 
     if (!nested || typeof nested !== 'object') {
       continue
     }
 
-    for (const nestedKey of ['event', 'type', 'status', 'payment_status', 'transaction_status', 'order_status']) {
+    for (const nestedKey of statusKeys) {
       if (nested[nestedKey]) {
         values.push(String(nested[nestedKey]).toLowerCase())
       }
@@ -1409,7 +1435,7 @@ function isPaidEvent(payload) {
     return true
   }
 
-  return values.some((value) => /paid|success|settled|complete|berhasil|lunas|sukses/.test(value))
+  return values.some((value) => /paid|received|success|settled|complete|berhasil|lunas|sukses/.test(value))
 }
 
 function generatedLynkPassword(email, secret) {
@@ -1689,6 +1715,11 @@ export async function processLynkWebhook(request) {
       'data.order_id',
       'data.transaction_id',
       'data.invoice_id',
+      'data.message_id',
+      'data.message_data.refId',
+      'message_id',
+      'message_data.refId',
+      'refId',
     ]) || eventId || sha256(rawBody)
   const buyerEmail = firstEmail(payload)
   const buyerName =
@@ -1699,6 +1730,8 @@ export async function processLynkWebhook(request) {
       'order.customer_name',
       'data.buyer.name',
       'data.customer.name',
+      'data.message_data.customer.name',
+      'message_data.customer.name',
       'buyer_name',
       'customer_name',
       'name',
