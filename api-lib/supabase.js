@@ -1563,9 +1563,16 @@ Silakan login dan buka menu Kelas Saya.
 IbnuCreative Academy`
 }
 
+function cleanEmailHeader(value, maxLength = 240) {
+  return String(value ?? '')
+    .trim()
+    .replace(/[\r\n]/g, '')
+    .slice(0, maxLength)
+}
+
 async function sendResendEmail({ to, subject, text, html }) {
   const apiKey = cleanText(process.env.RESEND_API_KEY || '', 300)
-  const from = cleanText(
+  const from = cleanEmailHeader(
     process.env.RESEND_FROM_EMAIL || process.env.LYNK_EMAIL_FROM || '',
     240,
   )
