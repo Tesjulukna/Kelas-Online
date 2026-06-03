@@ -493,6 +493,8 @@ function AdminPage({
   const [editingMemberId, setEditingMemberId] = useState(null)
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false)
   const [pendingDeleteMember, setPendingDeleteMember] = useState(null)
+  const [memberPageSize, setMemberPageSize] = useState(10)
+  const [memberPage, setMemberPage] = useState(1)
   const [supportForm, setSupportForm] = useState(() => createEmptySupportForm())
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false)
   const [pendingDeleteSupport, setPendingDeleteSupport] = useState(null)
@@ -517,6 +519,17 @@ function AdminPage({
   const pendingSubmissions = submissions.filter(
     (item) => item.status === 'Menunggu Review',
   ).length
+  const memberPageCount = Math.max(1, Math.ceil(members.length / memberPageSize))
+  const safeMemberPage = Math.min(memberPage, memberPageCount)
+  const memberPageStart = members.length ? (safeMemberPage - 1) * memberPageSize : 0
+  const memberPageEnd = Math.min(members.length, memberPageStart + memberPageSize)
+  const visibleMembers = members.slice(memberPageStart, memberPageEnd)
+  const memberPageNumbers = Array.from({ length: memberPageCount }, (_, index) => index + 1).filter(
+    (pageNumber) =>
+      pageNumber === 1 ||
+      pageNumber === memberPageCount ||
+      Math.abs(pageNumber - safeMemberPage) <= 2,
+  )
   const activeMaterialEditor = classForm.materials.find(
     (material) => material.id === activeMaterialEditorId,
   )
@@ -1673,6 +1686,30 @@ function AdminPage({
               Tambah Member
             </button>
           </div>
+          <div className="member-pagination-bar">
+            <p>
+              Menampilkan{' '}
+              <strong>
+                {members.length ? memberPageStart + 1 : 0}-{memberPageEnd}
+              </strong>{' '}
+              dari <strong>{members.length}</strong> member
+            </p>
+            <label>
+              Tampil
+              <select
+                value={memberPageSize}
+                onChange={(event) => {
+                  setMemberPageSize(Number(event.target.value))
+                  setMemberPage(1)
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </label>
+          </div>
           <div className="admin-table member-table" role="table" aria-label="Data member">
             <div className="table-row table-head" role="row">
               <span role="columnheader">Member</span>
@@ -1682,7 +1719,7 @@ function AdminPage({
               <span role="columnheader">Aktivitas</span>
               <span role="columnheader">Aksi</span>
             </div>
-            {members.map((member) => {
+            {visibleMembers.map((member) => {
               const progressSummary = getMemberProgressSummary(member, classes, submissions)
 
               return (
@@ -1752,6 +1789,37 @@ function AdminPage({
               </article>
             )}
           </div>
+          {members.length > memberPageSize && (
+            <div className="pagination-controls" aria-label="Navigasi halaman member">
+              <button
+                type="button"
+                onClick={() => setMemberPage(Math.max(1, safeMemberPage - 1))}
+                disabled={safeMemberPage === 1}
+              >
+                Prev
+              </button>
+              <div className="pagination-pages">
+                {memberPageNumbers.map((pageNumber) => (
+                  <button
+                    className={safeMemberPage === pageNumber ? 'active' : ''}
+                    type="button"
+                    key={pageNumber}
+                    onClick={() => setMemberPage(pageNumber)}
+                    aria-current={safeMemberPage === pageNumber ? 'page' : undefined}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMemberPage(Math.min(memberPageCount, safeMemberPage + 1))}
+                disabled={safeMemberPage === memberPageCount}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </section>
       )}
 
