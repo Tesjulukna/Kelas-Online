@@ -969,6 +969,12 @@ export async function fetchSubmissions(user) {
 
 export async function createSubmission(user, payload) {
   const answer = cleanText(payload.answer, 1200)
+  const classId = cleanText(payload.classId || '', 120)
+  const classTitle = cleanText(payload.classTitle || 'Kelas', 160)
+  const materialId = cleanText(payload.materialId || '', 120)
+  const materialTitle = cleanText(payload.materialTitle || 'Materi', 160)
+  const materialIndex = cleanNumber(payload.materialIndex || 0, 0, 10000)
+  const materialCount = cleanNumber(payload.materialCount || 1, 1, 10000)
 
   if (!answer) {
     throw new ApiError(400, 'Isi tugas wajib dikirim.')
@@ -981,10 +987,10 @@ export async function createSubmission(user, payload) {
       id: makeId('submission'),
       member_id: user.userId,
       member_name: user.name,
-      class_id: cleanText(payload.classId || '', 120),
-      class_title: cleanText(payload.classTitle || 'Kelas', 160),
-      material_id: cleanText(payload.materialId || '', 120),
-      material_title: cleanText(payload.materialTitle || 'Materi', 160),
+      class_id: classId,
+      class_title: classTitle,
+      material_id: materialId,
+      material_title: materialTitle,
       answer,
       attachment_url: cleanUrl(payload.attachmentUrl || ''),
       attachment_name: cleanText(payload.attachmentName || '', 180),
@@ -994,6 +1000,44 @@ export async function createSubmission(user, payload) {
       submitted_at: new Date().toISOString(),
     },
   })
+
+  if (classId && materialId) {
+    const [materialRows, submissionRows] = await Promise.all([
+      rest(
+        `materials?select=id,sort_order,requires_task&class_id=eq.${eq(classId)}&order=sort_order.asc,id.asc`,
+      ),
+      rest(
+        `submissions?select=material_id&member_id=eq.${eq(user.userId)}&class_id=eq.${eq(classId)}`,
+      ),
+    ])
+    const requiredMaterialIds = (materialRows || [])
+      .filter((material) => material.requires_task)
+      .map((material) => material.id)
+    const submittedRequiredIds = new Set(
+      (submissionRows || [])
+        .map((submission) => submission.material_id)
+        .filter((submittedMaterialId) => requiredMaterialIds.includes(submittedMaterialId)),
+    )
+    const progressPercent = requiredMaterialIds.length
+      ? Math.min(100, Math.round((submittedRequiredIds.size / requiredMaterialIds.length) * 100))
+      : 0
+
+    await rest('member_progress?on_conflict=member_id,class_id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: {
+        member_id: user.userId,
+        class_id: classId,
+        class_title: classTitle,
+        material_id: materialId,
+        material_title: materialTitle,
+        material_index: materialIndex,
+        material_count: materialCount,
+        progress_percent: progressPercent,
+        last_activity_at: new Date().toISOString(),
+      },
+    })
+  }
 
   return fetchSubmissions(user)
 }
@@ -1048,7 +1092,7 @@ export async function trackProgress(user, payload) {
       material_title: cleanText(payload.materialTitle || 'Materi', 160),
       material_index: materialIndex,
       material_count: materialCount,
-      progress_percent: Math.min(100, Math.round(((materialIndex + 1) / materialCount) * 100)),
+      progress_percent: 0,
       last_activity_at: new Date().toISOString(),
     },
   })

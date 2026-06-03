@@ -25,7 +25,6 @@ const classesApiPath = '/api/classes'
 const membersApiPath = '/api/members'
 const supportApiPath = '/api/support'
 const submissionsApiPath = '/api/submissions'
-const progressApiPath = '/api/progress'
 const loginApiPath = '/api/login'
 const logoutApiPath = '/api/logout'
 const profileApiPath = '/api/profile'
@@ -1259,24 +1258,6 @@ function App() {
     return applySubmissionsResponse(data)
   }
 
-  const handleTrackProgress = async (progressData) => {
-    if (session?.role !== 'member') {
-      return null
-    }
-
-    try {
-      const data = await requestJson(progressApiPath, {
-        method: 'POST',
-        body: JSON.stringify(progressData),
-      })
-
-      announcePeopleSync()
-      return data
-    } catch {
-      return null
-    }
-  }
-
   const handleUpdateSubmission = async (submissionData) => {
     const data = await requestJson(submissionsApiPath, {
       method: 'PUT',
@@ -1359,6 +1340,8 @@ function App() {
         {page === 'member' &&
           (session?.role === 'member' ? (
             <MemberPage
+              key={session.userId}
+              userId={session.userId}
               loginName={session.name}
               avatar={session.avatar}
               sessionToken={session.token}
@@ -1374,7 +1357,6 @@ function App() {
               onCreateSupportTicket={handleCreateSupportTicket}
               onReplySupportTicket={handleReplySupportTicket}
               onCreateSubmission={handleCreateSubmission}
-              onTrackProgress={handleTrackProgress}
             />
           ) : (
             <LoginPage

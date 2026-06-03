@@ -3967,6 +3967,87 @@ img {
     minmax(130px, 0.6fr);
 }
 
+.submission-table .active-row {
+  border-color: rgba(14, 165, 164, 0.28);
+  background: #f1fcfb;
+}
+
+.submission-member-detail {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.compact-heading {
+  gap: 12px;
+}
+
+.compact-heading h3 {
+  margin: 2px 0 0;
+  color: var(--color-heading);
+  font-size: 1.15rem;
+}
+
+.submission-filter-bar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-button-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-button-group button {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-muted);
+  background: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filter-button-group button.active {
+  border-color: rgba(37, 99, 235, 0.32);
+  color: #1d4ed8;
+  background: #eef4ff;
+}
+
+.submission-filter-bar label {
+  display: grid;
+  gap: 6px;
+  min-width: 190px;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.submission-filter-bar select {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-heading);
+  background: #ffffff;
+  font: inherit;
+}
+
+.member-submission-table .table-row {
+  grid-template-columns:
+    minmax(240px, 1.35fr)
+    minmax(120px, 0.55fr)
+    minmax(120px, 0.55fr)
+    minmax(130px, 0.55fr);
+}
+
 .submission-review label,
 .ticket-form label {
   display: grid;

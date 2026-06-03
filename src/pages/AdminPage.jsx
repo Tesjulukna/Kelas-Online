@@ -357,10 +357,6 @@ function getMemberAccessibleClasses(member, classes) {
 
 function getMemberProgressSummary(member, classes, submissions) {
   const accessibleClasses = getMemberAccessibleClasses(member, classes)
-  const progressRows = Array.isArray(member.learningProgress)
-    ? member.learningProgress
-    : []
-  const progressByClass = new Map(progressRows.map((item) => [item.classId, item]))
   const memberSubmissions = submissions.filter((item) => item.memberId === member.id)
 
   if (!accessibleClasses.length) {
@@ -380,25 +376,28 @@ function getMemberProgressSummary(member, classes, submissions) {
 
   accessibleClasses.forEach((course) => {
     const materials = course.materials ?? []
-    const materialCount = materials.length
-    const record = progressByClass.get(course.id)
+    const requiredMaterials = materials.filter((material) => material.requiresTask)
+    const requiredCount = requiredMaterials.length
     const courseSubmissions = memberSubmissions.filter(
       (item) => item.classId === course.id,
     )
     const submittedMaterialIds = new Set(
       courseSubmissions.map((item) => item.materialId).filter(Boolean),
     )
-    let percent = Number(record?.progressPercent) || 0
-    let materialIndex = Number(record?.materialIndex)
-    let materialTitle = record?.materialTitle || ''
-    let activityAt = record?.lastActivityAt || ''
+    const submittedRequiredIds = new Set(
+      requiredMaterials
+        .map((material) => material.id)
+        .filter((materialId) => submittedMaterialIds.has(materialId)),
+    )
+    const percent = requiredCount
+      ? Math.round((submittedRequiredIds.size / requiredCount) * 100)
+      : 0
+    let materialIndex = -1
+    let materialTitle = ''
+    let activityAt = ''
 
     submittedTaskCount += submittedMaterialIds.size
-    requiredTaskCount += materials.filter((material) => material.requiresTask).length
-
-    if (!Number.isFinite(materialIndex)) {
-      materialIndex = -1
-    }
+    requiredTaskCount += requiredCount
 
     courseSubmissions.forEach((submission) => {
       const submissionIndex = materials.findIndex(
@@ -407,13 +406,6 @@ function getMemberProgressSummary(member, classes, submissions) {
 
       if (submissionIndex >= 0) {
         materialIndex = Math.max(materialIndex, submissionIndex)
-
-        if (materialCount > 0) {
-          percent = Math.max(
-            percent,
-            Math.round(((submissionIndex + 1) / materialCount) * 100),
-          )
-        }
       }
 
       if (getTimeValue(submission.submittedAt) > getTimeValue(activityAt)) {
@@ -431,7 +423,7 @@ function getMemberProgressSummary(member, classes, submissions) {
       classTitle: course.title,
       materialTitle,
       materialIndex,
-      materialCount,
+      materialCount: materials.length,
       lastActivityAt: activityAt,
     }
 
@@ -507,6 +499,9 @@ function AdminPage({
   const [viewingSubmission, setViewingSubmission] = useState(null)
   const [submissionFeedback, setSubmissionFeedback] = useState('')
   const [submissionRating, setSubmissionRating] = useState(0)
+  const [selectedSubmissionMemberId, setSelectedSubmissionMemberId] = useState('')
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState('all')
+  const [submissionClassFilter, setSubmissionClassFilter] = useState('all')
   const [actionStatus, setActionStatus] = useState('')
   const [videoUploads, setVideoUploads] = useState({})
   const [activeMaterialEditorId, setActiveMaterialEditorId] = useState(null)
@@ -528,6 +523,57 @@ function AdminPage({
   const activeMaterialEditorIndex = classForm.materials.findIndex(
     (material) => material.id === activeMaterialEditorId,
   )
+  const submissionMembers = members
+    .map((member) => {
+      const memberSubmissions = submissions.filter(
+        (submission) => submission.memberId === member.id,
+      )
+      const latestSubmission = memberSubmissions
+        .slice()
+        .sort((first, second) => getTimeValue(second.submittedAt) - getTimeValue(first.submittedAt))[0]
+
+      return {
+        ...member,
+        submissionCount: memberSubmissions.length,
+        pendingSubmissionCount: memberSubmissions.filter(
+          (submission) => submission.status === 'Menunggu Review',
+        ).length,
+        latestSubmissionAt: latestSubmission?.submittedAt || '',
+      }
+    })
+    .filter((member) => member.submissionCount > 0)
+    .sort((first, second) => getTimeValue(second.latestSubmissionAt) - getTimeValue(first.latestSubmissionAt))
+  const selectedSubmissionMember = selectedSubmissionMemberId
+    ? submissionMembers.find((member) => member.id === selectedSubmissionMemberId) || null
+    : null
+  const selectedMemberSubmissions = selectedSubmissionMember
+    ? submissions.filter((submission) => submission.memberId === selectedSubmissionMember.id)
+    : []
+  const visibleMemberSubmissions = selectedMemberSubmissions.filter((submission) => {
+    const statusMatches =
+      submissionStatusFilter === 'all' ||
+      submission.status === submissionStatusFilter
+    const classMatches =
+      submissionClassFilter === 'all' ||
+      submission.classId === submissionClassFilter
+
+    return statusMatches && classMatches
+  })
+  const selectedMemberClassOptions = [
+    ...new Map(
+      selectedMemberSubmissions.map((submission) => [
+        submission.classId,
+        submission.classTitle || 'Kelas',
+      ]),
+    ).entries(),
+  ].filter(([classId]) => classId)
+  const submissionStatusOptions = [
+    { id: 'all', label: 'Semua' },
+    { id: 'Menunggu Review', label: 'Menunggu' },
+    { id: 'Direview', label: 'Direview' },
+    { id: 'Disetujui', label: 'Disetujui' },
+    { id: 'Perlu Revisi', label: 'Revisi' },
+  ]
 
   useEffect(() => {
     if (materialDescriptionRef.current && activeMaterialEditor) {
@@ -1717,49 +1763,55 @@ function AdminPage({
               <h2>{pendingSubmissions} tugas menunggu feedback</h2>
             </div>
           </div>
-          <div className="admin-table submission-table" role="table" aria-label="Tugas peserta">
+          <div className="admin-table submission-table" role="table" aria-label="Member pengirim tugas">
             <div className="table-row table-head" role="row">
+              <span role="columnheader">Member</span>
               <span role="columnheader">Tugas</span>
-              <span role="columnheader">Peserta</span>
-              <span role="columnheader">Status</span>
-              <span role="columnheader">Dikirim</span>
+              <span role="columnheader">Menunggu</span>
+              <span role="columnheader">Terakhir kirim</span>
               <span role="columnheader">Aksi</span>
             </div>
-            {submissions.map((submission) => (
-              <div className="table-row" role="row" key={submission.id}>
-                <span className="support-message" data-label="Tugas" role="cell">
-                  {submission.attachmentUrl && (
-                    <img
-                      className="submission-table-thumb"
-                      src={submission.attachmentUrl}
-                      alt=""
-                    />
-                  )}
-                  <strong>{submission.materialTitle}</strong>
-                  <small>{submission.classTitle}</small>
-                  {submission.attachmentUrl && (
-                    <small className="submission-image-note">Ada gambar tugas</small>
-                  )}
+            {submissionMembers.map((member) => (
+              <div
+                className={`table-row ${selectedSubmissionMemberId === member.id ? 'active-row' : ''}`}
+                role="row"
+                key={member.id}
+              >
+                <span className="member-identity" data-label="Member" role="cell">
+                  <span className="sidebar-avatar" aria-hidden="true">
+                    {member.avatar ? <img src={member.avatar} alt="" /> : <Icon name="user" />}
+                  </span>
+                  <span>
+                    <strong>{member.name}</strong>
+                    <small>{member.email || member.username}</small>
+                  </span>
                 </span>
-                <span data-label="Peserta" role="cell">
-                  {submission.memberName}
+                <span data-label="Tugas" role="cell">
+                  {member.submissionCount} tugas
                 </span>
-                <span data-label="Status" role="cell">
-                  <mark>{submission.status}</mark>
+                <span data-label="Menunggu" role="cell">
+                  <mark>{member.pendingSubmissionCount}</mark>
                 </span>
-                <span data-label="Dikirim" role="cell">
-                  {submission.submittedAt
-                    ? new Date(submission.submittedAt).toLocaleDateString('id-ID')
+                <span data-label="Terakhir kirim" role="cell">
+                  {member.latestSubmissionAt
+                    ? formatRelativeActivity(member.latestSubmissionAt)
                     : '-'}
                 </span>
                 <span className="row-actions" data-label="Aksi" role="cell">
-                  <button type="button" onClick={() => openSubmissionReview(submission)}>
-                    Lihat Tugas
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSubmissionMemberId(member.id)
+                      setSubmissionStatusFilter('all')
+                      setSubmissionClassFilter('all')
+                    }}
+                  >
+                    Buka Tugas
                   </button>
                 </span>
               </div>
             ))}
-            {!submissions.length && (
+            {!submissionMembers.length && (
               <article className="empty-state table-empty">
                 <Icon name="fileText" />
                 <h3>Belum ada tugas</h3>
@@ -1767,6 +1819,104 @@ function AdminPage({
               </article>
             )}
           </div>
+          {selectedSubmissionMember && (
+            <div className="submission-member-detail">
+              <div className="panel-heading compact-heading">
+                <div>
+                  <p className="eyebrow">Tugas per materi</p>
+                  <h3>{selectedSubmissionMember.name}</h3>
+                </div>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => setSelectedSubmissionMemberId('')}
+                >
+                  <Icon name="x" />
+                  Tutup
+                </button>
+              </div>
+              <div className="submission-filter-bar">
+                <div className="filter-button-group" aria-label="Filter status tugas">
+                  {submissionStatusOptions.map((option) => (
+                    <button
+                      className={
+                        submissionStatusFilter === option.id ? 'active' : ''
+                      }
+                      type="button"
+                      key={option.id}
+                      onClick={() => setSubmissionStatusFilter(option.id)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <label>
+                  Kelas
+                  <select
+                    value={submissionClassFilter}
+                    onChange={(event) => setSubmissionClassFilter(event.target.value)}
+                  >
+                    <option value="all">Semua kelas</option>
+                    {selectedMemberClassOptions.map(([classId, classTitle]) => (
+                      <option value={classId} key={classId}>
+                        {classTitle}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div
+                className="admin-table submission-table member-submission-table"
+                role="table"
+                aria-label="Tugas per materi"
+              >
+                <div className="table-row table-head" role="row">
+                  <span role="columnheader">Materi</span>
+                  <span role="columnheader">Status</span>
+                  <span role="columnheader">Dikirim</span>
+                  <span role="columnheader">Aksi</span>
+                </div>
+                {visibleMemberSubmissions.map((submission) => (
+                  <div className="table-row" role="row" key={submission.id}>
+                    <span className="support-message" data-label="Materi" role="cell">
+                      {submission.attachmentUrl && (
+                        <img
+                          className="submission-table-thumb"
+                          src={submission.attachmentUrl}
+                          alt=""
+                        />
+                      )}
+                      <strong>{submission.materialTitle}</strong>
+                      <small>{submission.classTitle}</small>
+                      {submission.attachmentUrl && (
+                        <small className="submission-image-note">Ada gambar tugas</small>
+                      )}
+                    </span>
+                    <span data-label="Status" role="cell">
+                      <mark>{submission.status}</mark>
+                    </span>
+                    <span data-label="Dikirim" role="cell">
+                      {submission.submittedAt
+                        ? new Date(submission.submittedAt).toLocaleDateString('id-ID')
+                        : '-'}
+                    </span>
+                    <span className="row-actions" data-label="Aksi" role="cell">
+                      <button type="button" onClick={() => openSubmissionReview(submission)}>
+                        Lihat Tugas
+                      </button>
+                    </span>
+                  </div>
+                ))}
+                {!visibleMemberSubmissions.length && (
+                  <article className="empty-state table-empty">
+                    <Icon name="fileText" />
+                    <h3>Tidak ada tugas sesuai filter</h3>
+                    <p>Pilih filter lain untuk melihat kiriman tugas member ini.</p>
+                  </article>
+                )}
+              </div>
+            </div>
+          )}
         </section>
       )}
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
@@ -9,28 +9,36 @@ const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
 const uploadFileApiPath = '/api/upload-file'
 
-function readSubmittedTasks() {
+function scopedStorageKey(baseKey, userId = '') {
+  return userId ? `${baseKey}.${userId}` : baseKey
+}
+
+function readSubmittedTasks(userId = '') {
   if (typeof window === 'undefined') {
     return {}
   }
 
+  const storageKey = scopedStorageKey(taskStorageKey, userId)
+
   try {
-    return JSON.parse(window.sessionStorage.getItem(taskStorageKey)) ?? {}
+    return JSON.parse(window.sessionStorage.getItem(storageKey)) ?? {}
   } catch {
-    window.sessionStorage.removeItem(taskStorageKey)
+    window.sessionStorage.removeItem(storageKey)
     return {}
   }
 }
 
-function readCourseProgress() {
+function readCourseProgress(userId = '') {
   if (typeof window === 'undefined') {
     return {}
   }
 
+  const storageKey = scopedStorageKey(courseProgressStorageKey, userId)
+
   try {
-    return JSON.parse(window.localStorage.getItem(courseProgressStorageKey)) ?? {}
+    return JSON.parse(window.localStorage.getItem(storageKey)) ?? {}
   } catch {
-    window.localStorage.removeItem(courseProgressStorageKey)
+    window.localStorage.removeItem(storageKey)
     return {}
   }
 }
@@ -132,6 +140,7 @@ async function compressImageFile(file, { maxSize = 1800, quality = 0.9 } = {}) {
 }
 
 function MemberPage({
+  userId = '',
   loginName,
   avatar,
   sessionToken = '',
@@ -146,7 +155,6 @@ function MemberPage({
   onCreateSupportTicket = async () => {},
   onReplySupportTicket = async () => {},
   onCreateSubmission = async () => {},
-  onTrackProgress = async () => {},
   focusTarget = null,
 }) {
   const courses = classes.filter((course) => course.status === 'Aktif')
@@ -154,14 +162,13 @@ function MemberPage({
   const [activeMaterialIndex, setActiveMaterialIndex] = useState(0)
   const [taskDraft, setTaskDraft] = useState('')
   const [taskAttachment, setTaskAttachment] = useState(null)
-  const [submittedTasks, setSubmittedTasks] = useState(() => readSubmittedTasks())
-  const [courseProgress, setCourseProgress] = useState(() => readCourseProgress())
+  const [submittedTasks, setSubmittedTasks] = useState(() => readSubmittedTasks(userId))
+  const [courseProgress, setCourseProgress] = useState(() => readCourseProgress(userId))
   const [supportMessage, setSupportMessage] = useState('')
   const [supportSubject, setSupportSubject] = useState('')
   const [supportDraft, setSupportDraft] = useState('')
   const [supportReplyDrafts, setSupportReplyDrafts] = useState({})
   const [previewImage, setPreviewImage] = useState(null)
-  const lastTrackedProgressRef = useRef('')
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
   const materials = selectedCourse?.materials ?? []
@@ -201,39 +208,18 @@ function MemberPage({
   }, [])
 
   useEffect(() => {
-    window.sessionStorage.setItem(taskStorageKey, JSON.stringify(submittedTasks))
-  }, [submittedTasks])
+    window.sessionStorage.setItem(
+      scopedStorageKey(taskStorageKey, userId),
+      JSON.stringify(submittedTasks),
+    )
+  }, [submittedTasks, userId])
 
   useEffect(() => {
-    window.localStorage.setItem(courseProgressStorageKey, JSON.stringify(courseProgress))
-  }, [courseProgress])
-
-  useEffect(() => {
-    if (!selectedCourse || !activeMaterial) {
-      return
-    }
-
-    const progressKey = [
-      selectedCourse.id,
-      activeMaterial.id,
-      currentMaterialIndex,
-      materials.length,
-    ].join(':')
-
-    if (lastTrackedProgressRef.current === progressKey) {
-      return
-    }
-
-    lastTrackedProgressRef.current = progressKey
-    onTrackProgress({
-      classId: selectedCourse.id,
-      classTitle: selectedCourse.title,
-      materialId: activeMaterial.id,
-      materialTitle: activeMaterial.title,
-      materialIndex: currentMaterialIndex,
-      materialCount: materials.length,
-    })
-  }, [selectedCourse, activeMaterial, currentMaterialIndex, materials.length, onTrackProgress])
+    window.localStorage.setItem(
+      scopedStorageKey(courseProgressStorageKey, userId),
+      JSON.stringify(courseProgress),
+    )
+  }, [courseProgress, userId])
 
   useEffect(() => {
     if (!focusTarget?.classId || !focusTarget?.materialId || activeMenu !== 'my-courses') {
@@ -259,36 +245,25 @@ function MemberPage({
   }, [focusTarget, activeMenu, classes, rememberCoursePosition])
 
   function getCourseProgress(course) {
-    const materialsCount = course.materials?.length ?? 0
+    const requiredMaterials = (course.materials ?? []).filter(
+      (material) => material.requiresTask,
+    )
+    const requiredCount = requiredMaterials.length
 
-    if (!materialsCount) {
+    if (!requiredCount) {
       return 0
     }
 
-    const lastIndex = Math.max(0, materialsCount - 1)
-    let highestIndex = Math.min(lastIndex, Math.max(0, Number(courseProgress[course.id]) || 0))
-    let hasSubmittedLastMaterial = false
-
-    submissions
+    const submittedRequiredIds = new Set(
+      submissions
       .filter((submission) => submission.classId === course.id)
-      .forEach((submission) => {
-        const materialIndex = (course.materials ?? []).findIndex(
-          (material) => material.id === submission.materialId,
-        )
+      .map((submission) => submission.materialId)
+      .filter((materialId) =>
+        requiredMaterials.some((material) => material.id === materialId),
+      ),
+    )
 
-        if (materialIndex >= 0) {
-          if (materialIndex === lastIndex) {
-            hasSubmittedLastMaterial = true
-          }
-          highestIndex = Math.max(highestIndex, Math.min(lastIndex, materialIndex + 1))
-        }
-      })
-
-    if (materialsCount === 1) {
-      return hasSubmittedLastMaterial ? 100 : 0
-    }
-
-    return Math.min(100, Math.round((highestIndex / lastIndex) * 100))
+    return Math.min(100, Math.round((submittedRequiredIds.size / requiredCount) * 100))
   }
 
   const handleDashboardMenuChange = (menuId) => {
@@ -363,6 +338,8 @@ function MemberPage({
         classTitle: selectedCourse.title,
         materialId: activeMaterial.id,
         materialTitle: activeMaterial.title,
+        materialIndex: currentMaterialIndex,
+        materialCount: materials.length,
         answer: taskDraft.trim() || `Upload gambar tugas: ${taskAttachment.name}`,
         attachmentUrl: isTaskImageAllowed ? (taskAttachment?.url ?? '') : '',
         attachmentName: isTaskImageAllowed ? (taskAttachment?.name ?? '') : '',
