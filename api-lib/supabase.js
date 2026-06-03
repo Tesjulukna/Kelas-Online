@@ -2,7 +2,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 
-const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\/+$/, '')
+const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL || '')
 const serviceKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SERVICE_KEY ||
@@ -15,6 +15,23 @@ class ApiError extends Error {
   constructor(statusCode, message) {
     super(message)
     this.statusCode = statusCode
+  }
+}
+
+function normalizeSupabaseUrl(value) {
+  const rawUrl = String(value || '').trim()
+
+  if (!rawUrl) {
+    return ''
+  }
+
+  try {
+    return new URL(rawUrl).origin.replace(/\/+$/, '')
+  } catch {
+    return rawUrl
+      .replace(/\/rest\/v1\/?$/i, '')
+      .replace(/\/storage\/v1\/?$/i, '')
+      .replace(/\/+$/, '')
   }
 }
 
@@ -1488,6 +1505,115 @@ function loginUrlFromRequest(request) {
   return host ? `https://${host}/login` : '/login'
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function buildCredentialsMessage(account) {
+  return `Halo ${account.name},
+
+Pembayaran kelas Anda melalui Lynk.id sudah berhasil dan akses belajar sudah aktif.
+
+Login: ${account.loginUrl}
+Email: ${account.email}
+Username: ${account.username}
+${
+  account.password
+    ? `Password: ${account.password}`
+    : 'Password: gunakan password akun yang sudah pernah dibuat.'
+}
+
+Silakan login dan buka menu Kelas Saya.
+
+IbnuCreative Academy`
+}
+
+async function sendResendEmail({ to, subject, text, html }) {
+  const apiKey = cleanText(process.env.RESEND_API_KEY || '', 300)
+  const from = cleanText(
+    process.env.RESEND_FROM_EMAIL || process.env.LYNK_EMAIL_FROM || '',
+    240,
+  )
+  const replyTo = cleanEmail(process.env.RESEND_REPLY_TO || '')
+
+  if (!apiKey || !from) {
+    return {
+      sent: false,
+      message: 'RESEND_API_KEY atau RESEND_FROM_EMAIL belum diisi.',
+    }
+  }
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'ibnucreative-vercel-api',
+    },
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      text,
+      html,
+      ...(replyTo ? { reply_to: replyTo } : {}),
+    }),
+  })
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    return {
+      sent: false,
+      message: data.message || data.error || 'Email Resend gagal dikirim.',
+    }
+  }
+
+  return {
+    sent: true,
+    id: data.id || data.data?.id || '',
+  }
+}
+
+async function sendResendCredentialsEmail(account) {
+  if (process.env.LYNK_SEND_CREDENTIALS_EMAIL === 'false') {
+    return {
+      sent: false,
+      message: 'Pengiriman email kredensial dinonaktifkan.',
+    }
+  }
+
+  const text = buildCredentialsMessage(account)
+  const safeName = escapeHtml(account.name)
+  const passwordLine = account.password
+    ? `<p><strong>Password:</strong> ${escapeHtml(account.password)}</p>`
+    : '<p><strong>Password:</strong> gunakan password akun yang sudah pernah dibuat.</p>'
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+      <h2>Akses kelas IbnuCreative Anda sudah aktif</h2>
+      <p>Halo ${safeName},</p>
+      <p>Pembayaran kelas Anda melalui Lynk.id sudah berhasil dan akses belajar sudah aktif.</p>
+      <p><strong>Login:</strong> <a href="${escapeHtml(account.loginUrl)}">${escapeHtml(account.loginUrl)}</a></p>
+      <p><strong>Email:</strong> ${escapeHtml(account.email)}</p>
+      <p><strong>Username:</strong> ${escapeHtml(account.username)}</p>
+      ${passwordLine}
+      <p>Silakan login dan buka menu Kelas Saya.</p>
+      <p>IbnuCreative Academy</p>
+    </div>
+  `
+
+  return sendResendEmail({
+    to: account.email,
+    subject: 'Akses kelas IbnuCreative Anda sudah aktif',
+    text,
+    html,
+  })
+}
+
 function webhookSecretFromRequest(request, payload) {
   const authHeader = String(request.headers.authorization || '')
   const url = new URL(request.url || '/', 'http://localhost')
@@ -1733,18 +1859,16 @@ export async function processLynkWebhook(request) {
     loginUrl: loginUrlFromRequest(request),
     classIds,
   }
+  const emailResult = await sendResendCredentialsEmail(account)
+  const fulfillmentMessage = buildCredentialsMessage(account)
 
   return {
     ok: true,
     message: 'Akun member berhasil dibuat atau diperbarui dari pembayaran Lynk.id.',
-    emailSent: false,
-    fulfillmentMessage: `Akses kelas aktif.\nLogin: ${account.loginUrl}\nUsername: ${
-      account.username
-    }${
-      account.password
-        ? `\nPassword: ${account.password}`
-        : '\nGunakan password akun yang sudah pernah dibuat.'
-    }`,
+    emailSent: emailResult.sent,
+    emailMessageId: emailResult.id || '',
+    emailError: emailResult.sent ? '' : emailResult.message || '',
+    fulfillmentMessage,
     account,
   }
 }

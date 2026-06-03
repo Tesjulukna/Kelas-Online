@@ -25,6 +25,8 @@ SUPABASE_VIDEO_BUCKET=ibnu-videos
 MAX_VIDEO_UPLOAD_MB=50
 LYNK_WEBHOOK_SECRET=isi_merchant_key_lynk
 SITE_LOGIN_URL=https://domain-vercel-anda.vercel.app/login
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
+RESEND_FROM_EMAIL=IbnuCreative Academy <akses@domain-anda.com>
 ```
 
 Opsional:
@@ -32,6 +34,8 @@ Opsional:
 ```bash
 LYNK_RESET_EXISTING_MEMBER_PASSWORD=false
 LYNK_PRODUCT_CLASS_MAP={"kode-produk-lynk":["id-kelas"]}
+LYNK_SEND_CREDENTIALS_EMAIL=true
+RESEND_REPLY_TO=support@domain-anda.com
 ```
 
 ## 3. Deploy ke Vercel
@@ -68,3 +72,18 @@ https://domain-vercel-anda.vercel.app/api/lynk-webhook
 ```
 
 Endpoint ini akan membuat atau memperbarui member berdasarkan produk Lynk yang cocok dengan `Kode produk Lynk.id` di kelas.
+
+## 6. Email otomatis Resend
+
+1. Buat akun Resend dan verifikasi domain pengirim.
+2. Buat API key dengan akses sending.
+3. Isi `RESEND_API_KEY` dan `RESEND_FROM_EMAIL` di Vercel.
+4. Redeploy Vercel.
+
+`RESEND_FROM_EMAIL` harus memakai domain yang sudah terverifikasi di Resend, misalnya:
+
+```bash
+RESEND_FROM_EMAIL=IbnuCreative Academy <akses@domain-anda.com>
+```
+
+Kalau email gagal, webhook tetap membuat akun member dan response webhook akan berisi `emailError` untuk membantu debug.
