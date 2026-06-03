@@ -1375,11 +1375,15 @@ function collectProductCandidates(payload) {
   for (const listPath of listPaths) {
     const list = listPath.split('.').reduce((current, segment) => {
       if (!current || typeof current !== 'object') {
-        return []
+        return undefined
       }
 
       return current[segment]
     }, payload)
+
+    if (!Array.isArray(list)) {
+      continue
+    }
 
     for (const item of list) {
       if (!item || typeof item !== 'object') {
