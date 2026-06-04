@@ -1,5 +1,5 @@
 .app-shell {
-  min-height: 100svh;
+  min-height: 100vh;
   overflow-x: hidden;
   color: var(--color-text);
   background: var(--color-page);
@@ -46,12 +46,11 @@
   padding: 0;
   color: var(--color-heading);
   background: transparent;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .brand-static {
   cursor: default;
-  user-select: none;
 }
 
 .brand-mark {
@@ -107,7 +106,7 @@
   color: var(--color-muted);
   background: transparent;
   font-size: 0.94rem;
-  font-weight: 760;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -324,7 +323,7 @@
   color: var(--color-heading);
   background: transparent;
   font: inherit;
-  font-weight: 760;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -348,7 +347,7 @@
   display: grid;
   gap: 18px;
   width: min(520px, 100%);
-  max-height: min(720px, calc(100svh - 36px));
+  max-height: min(720px, calc(100vh - 36px));
   overflow-y: auto;
   padding: 24px;
   border: 1px solid var(--color-border);
@@ -453,7 +452,7 @@
   display: grid;
   gap: 8px;
   color: var(--color-heading);
-  font-weight: 790;
+  font-weight: 800;
 }
 
 .profile-editor input,
@@ -502,7 +501,7 @@
 }
 
 .home-hero {
-  min-height: 84svh;
+  min-height: 84vh;
   scroll-margin-top: 88px;
   background-position: center;
   background-size: cover;
@@ -511,7 +510,7 @@
 .home-hero__overlay {
   display: flex;
   align-items: center;
-  min-height: 84svh;
+  min-height: 84vh;
   padding: 72px 40px 88px;
   background:
     linear-gradient(90deg, rgba(12, 32, 38, 0.86), rgba(12, 32, 38, 0.42) 56%, rgba(12, 32, 38, 0.1)),
@@ -527,7 +526,7 @@
   margin: 0 0 12px;
   color: var(--color-teal-dark);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
@@ -547,7 +546,6 @@ h1,
 h2,
 h3 {
   color: var(--color-heading);
-  text-wrap: balance;
 }
 
 .home-hero h1,
@@ -560,7 +558,7 @@ h3 {
 .home-hero h1 {
   max-width: 620px;
   font-size: 4.1rem;
-  font-weight: 880;
+  font-weight: 900;
 }
 
 .hero-copy {
@@ -596,7 +594,7 @@ h3 {
   border: 1px solid transparent;
   border-radius: 8px;
   font: inherit;
-  font-weight: 820;
+  font-weight: 800;
   cursor: pointer;
   transition:
     transform 0.2s ease,
@@ -671,7 +669,7 @@ h3 {
 
 .stats-band span {
   color: var(--color-muted);
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .content-section,
@@ -787,7 +785,7 @@ h3 {
   color: var(--color-heading);
   background: #f2f4f7;
   font-size: 0.86rem;
-  font-weight: 780;
+  font-weight: 800;
 }
 
 .split-section,
@@ -834,7 +832,7 @@ h3 {
 
 .schedule-board span {
   color: var(--color-muted);
-  font-weight: 780;
+  font-weight: 800;
 }
 
 .schedule-board strong {
@@ -848,7 +846,7 @@ h3 {
 }
 
 .page-wrap {
-  min-height: calc(100svh - 72px);
+  min-height: calc(100vh - 72px);
   padding: 72px 0;
 }
 
@@ -866,7 +864,7 @@ h3 {
 .page-intro h1 {
   color: var(--color-heading);
   font-size: 3.1rem;
-  font-weight: 870;
+  font-weight: 900;
 }
 
 .page-intro p:not(.eyebrow) {
@@ -891,7 +889,7 @@ h3 {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
-  font-weight: 780;
+  font-weight: 800;
 }
 
 .auth-points .icon {
@@ -916,7 +914,7 @@ h3 {
 .login-panel label,
 .role-toggle legend {
   color: var(--color-heading);
-  font-weight: 790;
+  font-weight: 800;
 }
 
 .login-panel input[type='text'],
@@ -1007,7 +1005,7 @@ h3 {
 .dashboard-sidebar h1 {
   color: #ffffff;
   font-size: 1.35rem;
-  font-weight: 860;
+  font-weight: 900;
 }
 
 .sidebar-profile {
@@ -1050,7 +1048,7 @@ h3 {
   color: rgba(255, 255, 255, 0.74);
   background: transparent;
   font: inherit;
-  font-weight: 780;
+  font-weight: 800;
   cursor: pointer;
   text-align: left;
 }
@@ -1091,7 +1089,7 @@ h3 {
 .metric-card span:not(.metric-icon) {
   display: block;
   color: var(--color-muted);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .metric-card strong {
@@ -1123,7 +1121,7 @@ h3 {
   padding: 0;
   color: var(--color-teal-dark);
   background: transparent;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .learning-list {
@@ -1175,7 +1173,7 @@ h3 {
   justify-content: space-between;
   gap: 16px;
   font-size: 0.9rem;
-  font-weight: 740;
+  font-weight: 700;
 }
 
 .progress-track {
@@ -1233,7 +1231,7 @@ h3 {
   color: var(--color-muted);
   background: #fbfcfd;
   font-size: 0.84rem;
-  font-weight: 860;
+  font-weight: 900;
   text-transform: uppercase;
 }
 
@@ -1245,7 +1243,7 @@ mark {
   border-radius: 999px;
   color: #11615a;
   background: #d8fbf2;
-  font-weight: 850;
+  font-weight: 800;
 }
 
 .admin-actions {
@@ -1275,7 +1273,7 @@ mark {
   display: grid;
   gap: 7px;
   color: var(--color-heading);
-  font-weight: 790;
+  font-weight: 800;
 }
 
 .crud-form input,
@@ -1334,7 +1332,7 @@ mark {
   color: var(--color-heading);
   background: #ffffff;
   font: inherit;
-  font-weight: 780;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -1358,7 +1356,7 @@ mark {
   border-radius: 8px;
   color: var(--color-teal-dark);
   background: #ecfdf9;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 button:focus-visible,
@@ -1394,7 +1392,7 @@ textarea:focus-visible {
   .content-section,
   .page-wrap,
   .dashboard-layout {
-    width: min(100% - 40px, 1120px);
+    width: min(calc(100% - 40px), 1120px);
   }
 
   .auth-page,
@@ -1465,7 +1463,7 @@ textarea:focus-visible {
 
   .home-hero,
   .home-hero__overlay {
-    min-height: 76svh;
+    min-height: 76vh;
   }
 
   .home-hero__overlay {
@@ -1536,7 +1534,7 @@ textarea:focus-visible {
     left: 0;
     z-index: 60;
     width: min(326px, calc(100% - 42px));
-    height: 100svh;
+    height: 100vh;
     overflow-y: auto;
     border-radius: 0 8px 8px 0;
     transform: translateX(-104%);
@@ -1615,7 +1613,7 @@ textarea:focus-visible {
     flex: 0 0 auto;
     color: var(--color-muted);
     font-size: 0.82rem;
-    font-weight: 850;
+    font-weight: 800;
     text-transform: uppercase;
   }
 
@@ -1686,7 +1684,7 @@ textarea:focus-visible {
 
   .home-hero,
   .home-hero__overlay {
-    min-height: 72svh;
+    min-height: 72vh;
   }
 
   .home-hero h1 {
@@ -1703,7 +1701,7 @@ textarea:focus-visible {
   .content-section,
   .page-wrap,
   .dashboard-layout {
-    width: min(100% - 28px, 520px);
+    width: min(calc(100% - 28px), 520px);
   }
 
   .course-card,
@@ -1832,7 +1830,7 @@ textarea:focus-visible {
 
 .home-hero,
 .home-hero__overlay {
-  min-height: 76svh;
+  min-height: 76vh;
 }
 
 .home-hero__overlay {
@@ -1842,13 +1840,13 @@ textarea:focus-visible {
 .eyebrow {
   margin-bottom: 8px;
   font-size: 0.68rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .home-hero h1 {
   max-width: 560px;
   font-size: 3rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .hero-copy {
@@ -1868,7 +1866,7 @@ textarea:focus-visible {
   padding: 0 12px;
   border-radius: 7px;
   font-size: 0.84rem;
-  font-weight: 550;
+  font-weight: 500;
   box-shadow: none;
 }
 
@@ -1889,12 +1887,12 @@ textarea:focus-visible {
 
 .stats-band strong {
   font-size: 1.45rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .stats-band span {
   font-size: 0.84rem;
-  font-weight: 450;
+  font-weight: 500;
 }
 
 .content-section {
@@ -1975,7 +1973,7 @@ mark {
   min-height: 24px;
   padding: 0 8px;
   font-size: 0.76rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .split-section,
@@ -2014,7 +2012,7 @@ mark {
 
 .page-intro h1 {
   font-size: 2.25rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-intro p:not(.eyebrow) {
@@ -2054,7 +2052,7 @@ mark {
 .support-panel label,
 .crud-form label {
   font-size: 0.82rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .login-panel input[type='text'],
@@ -2123,7 +2121,7 @@ mark {
   border-radius: 7px;
   color: var(--color-text);
   font-size: 0.84rem;
-  font-weight: 450;
+  font-weight: 500;
 }
 
 .dashboard-menu button:hover,
@@ -2152,12 +2150,12 @@ mark {
 .metric-card strong {
   margin-top: 3px;
   font-size: 1.35rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .metric-card span:not(.metric-icon) {
   font-size: 0.78rem;
-  font-weight: 450;
+  font-weight: 500;
 }
 
 .panel {
@@ -2172,7 +2170,7 @@ mark {
 .text-button {
   min-height: 32px;
   font-size: 0.84rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .learning-list {
@@ -2189,7 +2187,7 @@ mark {
 .progress-meta {
   gap: 10px;
   font-size: 0.78rem;
-  font-weight: 450;
+  font-weight: 500;
 }
 
 .progress-track {
@@ -2671,7 +2669,7 @@ img {
   .profile-editor,
   .confirm-dialog {
     width: min(100%, calc(100vw - 24px));
-    max-height: calc(100svh - 24px);
+    max-height: calc(100vh - 24px);
     padding: 14px;
   }
 
@@ -2891,7 +2889,7 @@ img {
   color: var(--color-teal-dark);
   background: #f0f6ff;
   font-size: 0.8rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .material-editor-title strong {
@@ -3036,7 +3034,7 @@ img {
 .rich-text-field > span {
   color: var(--color-heading);
   font-size: 0.86rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .rich-text-toolbar {
@@ -3226,7 +3224,7 @@ img {
   justify-self: end;
   color: var(--color-teal-dark);
   font-size: 0.78rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .course-room-grid {
@@ -3241,7 +3239,7 @@ img {
   grid-template-columns: 1fr;
   align-content: start;
   gap: 8px;
-  max-height: min(560px, calc(100svh - 150px));
+  max-height: min(560px, calc(100vh - 150px));
   overflow-y: auto;
   padding: 10px;
   border: 1px solid var(--color-border);
@@ -3333,7 +3331,7 @@ img {
   color: rgb(255 255 255 / 70%);
   background: rgb(15 23 42 / 52%);
   font-size: 0.72rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .video-placeholder {
@@ -3400,7 +3398,7 @@ img {
   gap: 7px;
   color: var(--color-heading);
   font-size: 0.82rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .task-actions {
@@ -3528,7 +3526,7 @@ img {
   color: var(--color-teal-dark);
   background: #f0f6ff;
   font-size: 0.78rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .prompt-editor-title strong {
@@ -3667,7 +3665,7 @@ img {
   display: grid;
   gap: 14px;
   width: min(760px, calc(100vw - 28px));
-  max-height: calc(100svh - 28px);
+  max-height: calc(100vh - 28px);
   overflow-y: auto;
   padding: 16px;
   border: 1px solid var(--color-border);
@@ -3677,7 +3675,7 @@ img {
 }
 
 .image-preview-modal img {
-  max-height: 70svh;
+  max-height: 70vh;
   border-radius: 7px;
   object-fit: contain;
   background: #f0f6ff;
@@ -3906,7 +3904,7 @@ img {
   color: #52606f;
   background: #f8fbff;
   font-size: 0.74rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .presence-badge > span {
@@ -4053,7 +4051,7 @@ img {
   margin-top: 6px;
   color: var(--color-teal-dark);
   font-size: 0.78rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .submission-table .table-row {
@@ -4111,7 +4109,7 @@ img {
   gap: 7px;
   color: var(--color-heading);
   font-size: 0.82rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .ticket-form {
@@ -4256,7 +4254,7 @@ img {
 .ticket-bubble small {
   color: var(--color-muted);
   font-size: 0.7rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ticket-bubble p {
@@ -4300,7 +4298,7 @@ img {
   margin: 0;
   color: var(--color-muted);
   font-size: 0.76rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 @media (min-width: 921px) {
@@ -4506,7 +4504,7 @@ img {
 
 @media (max-width: 520px) {
   .auth-page {
-    width: min(100% - 28px, 520px);
+    width: min(calc(100% - 28px), 520px);
     gap: 18px;
     padding-top: 28px;
   }
@@ -4517,13 +4515,13 @@ img {
 }
 
 /* Modern animated login experience */
-.page-wrap:has(.auth-page) {
+.page-wrap.auth-page {
   position: relative;
   isolation: isolate;
   display: grid;
   place-items: center;
   width: 100%;
-  min-height: calc(100svh - 60px);
+  min-height: calc(100vh - 60px);
   padding: clamp(34px, 5vw, 68px) 18px;
   overflow: hidden;
   background:
@@ -4532,7 +4530,7 @@ img {
     url('./assets/online-class-hero.png') center / cover;
 }
 
-.page-wrap:has(.auth-page)::before {
+.page-wrap.auth-page::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -4541,11 +4539,10 @@ img {
     linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
   background-size: 42px 42px;
-  mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
   animation: loginGridDrift 14s linear infinite;
 }
 
-.page-wrap:has(.auth-page)::after {
+.page-wrap.auth-page::after {
   content: '';
   position: absolute;
   inset: auto 0 0;
@@ -4596,7 +4593,7 @@ img {
 .auth-page .page-intro h1 {
   color: #ffffff;
   font-size: clamp(2.4rem, 5vw, 4.7rem);
-  font-weight: 760;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -4770,8 +4767,8 @@ img {
 }
 
 @media (max-width: 520px) {
-  .page-wrap:has(.auth-page) {
-    min-height: calc(100svh - 56px);
+  .page-wrap.auth-page {
+    min-height: calc(100vh - 56px);
     padding: 28px 14px;
   }
 
@@ -4798,7 +4795,7 @@ img {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-wrap:has(.auth-page)::before,
+  .page-wrap.auth-page::before,
   .auth-page .page-intro,
   .auth-page .auth-points div,
   .auth-page .login-panel,
@@ -4865,7 +4862,7 @@ img {
 }
 
 /* Keep login form centered on every viewport */
-.page-wrap:has(.auth-page) {
+.page-wrap.auth-page {
   place-items: center;
 }
 
@@ -4927,8 +4924,8 @@ img {
 /* Modern animated homepage */
 .modern-hero {
   position: relative;
-  min-height: calc(100svh - 60px);
-  overflow: clip;
+  min-height: calc(100vh - 60px);
+  overflow: hidden;
   background-image: url('./assets/online-class-hero.png');
   background-position: center;
   background-size: cover;
@@ -4947,7 +4944,6 @@ img {
   opacity: 0.42;
   transform: translateZ(0);
   animation: heroGridSlide 18s linear infinite;
-  mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 76%, transparent 100%);
 }
 
 .modern-hero::after {
@@ -4966,7 +4962,7 @@ img {
   grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: clamp(22px, 5vw, 70px);
-  min-height: calc(100svh - 60px);
+  min-height: calc(100vh - 60px);
   padding: clamp(72px, 8vw, 112px) 40px clamp(92px, 10vw, 132px);
   background:
     linear-gradient(90deg, rgba(6, 18, 29, 0.94), rgba(9, 45, 60, 0.66) 58%, rgba(6, 18, 29, 0.2)),
@@ -5038,7 +5034,7 @@ img {
   margin-top: 18px;
   color: #ffffff;
   font-size: clamp(2.8rem, 7.2vw, 5.8rem);
-  font-weight: 860;
+  font-weight: 900;
   line-height: 0.98;
   letter-spacing: 0;
   text-shadow:
@@ -5067,7 +5063,7 @@ img {
   max-width: none;
   color: #ffffff;
   font-size: clamp(2.6rem, 7.4vw, 5.9rem);
-  font-weight: 860;
+  font-weight: 900;
   line-height: 0.97;
   letter-spacing: 0;
   text-shadow:
@@ -5173,8 +5169,6 @@ img {
 
 .reveal-panel {
   animation: sectionReveal 0.7s ease both;
-  animation-timeline: view();
-  animation-range: entry 8% cover 32%;
 }
 
 .animated-card {
@@ -5186,8 +5180,6 @@ img {
     box-shadow 0.28s ease;
   animation: cardReveal 0.7s ease both;
   animation-delay: var(--card-delay, 0s);
-  animation-timeline: view();
-  animation-range: entry 0% cover 26%;
 }
 
 .animated-card::before {
@@ -5319,7 +5311,7 @@ img {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   font-size: 0.9rem;
-  font-weight: 820;
+  font-weight: 800;
   box-shadow: 0 18px 38px rgba(0, 0, 0, 0.24);
 }
 
@@ -5350,7 +5342,7 @@ img {
   color: #11615a;
   background: #d8fbf2;
   font-size: 0.78rem;
-  font-weight: 720;
+  font-weight: 700;
 }
 
 .homepage-course-mentor .icon {
@@ -5384,7 +5376,7 @@ img {
 @media (max-width: 920px) {
   .modern-hero,
   .modern-hero__overlay {
-    min-height: 82svh;
+    min-height: 82vh;
   }
 
   .modern-hero__overlay {
@@ -5414,7 +5406,7 @@ img {
 @media (max-width: 620px) {
   .modern-hero,
   .modern-hero__overlay {
-    min-height: 78svh;
+    min-height: 78vh;
   }
 
   .modern-hero__overlay {
@@ -5457,13 +5449,6 @@ img {
 
   .homepage-course-card {
     min-height: 330px;
-  }
-}
-
-@supports not (animation-timeline: view()) {
-  .reveal-panel,
-  .animated-card {
-    animation: heroFadeUp 0.7s ease both;
   }
 }
 
@@ -5551,7 +5536,7 @@ img {
 
 /* GTA-style colorful hero with particle name */
 .gta-hero {
-  min-height: calc(100svh - 60px);
+  min-height: calc(100vh - 60px);
   background:
     linear-gradient(130deg, #0a1028 0%, #111342 32%, #34104a 66%, #0c0914 100%);
   background-image: none;
@@ -5567,7 +5552,7 @@ img {
 .gta-hero .modern-hero__overlay {
   display: grid;
   place-items: center;
-  min-height: calc(100svh - 60px);
+  min-height: calc(100vh - 60px);
   padding: clamp(72px, 8vw, 118px) 28px clamp(82px, 9vw, 128px);
   overflow: hidden;
   background:
@@ -5696,7 +5681,6 @@ img {
   min-height: clamp(160px, 21vw, 240px);
   color: #ffffff;
   text-align: center;
-  text-wrap: balance;
   perspective: 900px;
 }
 
@@ -5704,7 +5688,7 @@ img {
   display: block;
   width: 100%;
   font-size: clamp(2.75rem, 6.9vw, 6rem);
-  font-weight: 520;
+  font-weight: 500;
   line-height: 1.08;
   letter-spacing: 0;
   text-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
@@ -5724,7 +5708,7 @@ img {
 
 .phrase-variant-2 {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-weight: 760;
+  font-weight: 700;
   animation: phraseFlipIn 3.4s ease both;
 }
 
@@ -5776,7 +5760,7 @@ img {
 
 @media (max-width: 760px) {
   .gta-hero .modern-hero__overlay {
-    min-height: 82svh;
+    min-height: 82vh;
     padding: 64px 18px 74px;
   }
 
@@ -5803,7 +5787,7 @@ img {
 
 @media (max-width: 520px) {
   .gta-hero .modern-hero__overlay {
-    min-height: 78svh;
+    min-height: 78vh;
   }
 
   .gta-hero .hero-actions {
@@ -5935,7 +5919,7 @@ img {
 
 /* Image-first responsive homepage hero */
 .image-hero {
-  min-height: calc(100svh - 60px);
+  min-height: calc(100vh - 60px);
   background-image: url('./assets/online-class-hero.png');
   background-position: center;
   background-size: cover;
@@ -5949,7 +5933,7 @@ img {
 .image-hero .image-hero__overlay {
   display: flex;
   align-items: center;
-  min-height: calc(100svh - 60px);
+  min-height: calc(100vh - 60px);
   padding: clamp(72px, 8vw, 112px) clamp(20px, 5vw, 52px) clamp(72px, 8vw, 104px);
   background:
     linear-gradient(90deg, rgba(7, 18, 30, 0.9), rgba(7, 18, 30, 0.58) 56%, rgba(7, 18, 30, 0.18)),
@@ -5966,7 +5950,7 @@ img {
   margin-top: 16px;
   color: #ffffff;
   font-size: clamp(2.5rem, 6.4vw, 5.35rem);
-  font-weight: 840;
+  font-weight: 800;
   line-height: 1;
   text-shadow:
     0 2px 0 rgba(154, 245, 228, 0.28),
@@ -5985,7 +5969,7 @@ img {
 @media (max-width: 760px) {
   .image-hero,
   .image-hero .image-hero__overlay {
-    min-height: 78svh;
+    min-height: 78vh;
   }
 
   .image-hero .image-hero__overlay {
@@ -6066,7 +6050,7 @@ img {
   color: var(--color-heading);
   background: transparent;
   font: inherit;
-  font-weight: 760;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -6125,7 +6109,7 @@ img {
   color: var(--color-heading);
   background: transparent;
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -6170,7 +6154,7 @@ img {
 @media (max-width: 620px) {
   .site-footer-inner,
   .site-footer-bottom {
-    width: min(100% - 28px, 520px);
+    width: min(calc(100% - 28px), 520px);
   }
 
   .site-footer-inner {
@@ -6373,7 +6357,7 @@ img {
   gap: 8px;
   color: var(--color-heading);
   font-size: 0.82rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .star-rating {
@@ -6556,7 +6540,7 @@ img {
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   font-size: 0.74rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .member-class-body {
@@ -6778,7 +6762,7 @@ img {
 }
 
 .submission-member-modal .member-submission-table {
-  max-height: min(420px, 52svh);
+  max-height: min(420px, 52vh);
   overflow: auto;
 }
 
