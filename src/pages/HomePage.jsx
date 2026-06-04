@@ -98,7 +98,6 @@ function HomePage({ isLoggedIn, onLogin, onExplore, classes = [] }) {
               </div>
               <div className="course-meta">
                 <span>{course.level}</span>
-                <span>{course.lessons}</span>
                 <span>{course.price}</span>
               </div>
               <button
