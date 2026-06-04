@@ -10,6 +10,9 @@ const serviceKey =
 const publicBucket = process.env.SUPABASE_PUBLIC_BUCKET || 'ibnu-assets'
 const videoBucket = process.env.SUPABASE_VIDEO_BUCKET || 'ibnu-videos'
 const maxVideoUploadMb = Number(process.env.MAX_VIDEO_UPLOAD_MB || 80)
+const loginAttemptWindowMs = 15 * 60 * 1000
+const loginAttemptBlockMs = 15 * 60 * 1000
+const maxLoginAttempts = 5
 
 class ApiError extends Error {
   constructor(statusCode, message) {
@@ -36,6 +39,7 @@ function normalizeSupabaseUrl(value) {
 }
 
 export function sendJson(response, statusCode, payload) {
+  applySecurityHeaders(response)
   response.statusCode = statusCode
   response.setHeader('Cache-Control', 'no-store')
   response.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -44,6 +48,8 @@ export function sendJson(response, statusCode, payload) {
 
 export function apiHandler(handler, allowedMethods = []) {
   return async function handleApi(request, response) {
+    applySecurityHeaders(response)
+
     if (request.method === 'OPTIONS') {
       response.statusCode = 204
       response.end()
@@ -66,6 +72,30 @@ export function apiHandler(handler, allowedMethods = []) {
       })
     }
   }
+}
+
+function applySecurityHeaders(response) {
+  response.setHeader('X-Content-Type-Options', 'nosniff')
+  response.setHeader('X-Frame-Options', 'DENY')
+  response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
+  response.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "img-src 'self' data: blob: https:",
+      "media-src 'self' blob: data: https:",
+      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self'",
+      "connect-src 'self' https:",
+      'frame-src https://www.youtube.com https://youtube.com',
+      "form-action 'self'",
+      'upgrade-insecure-requests',
+    ].join('; '),
+  )
 }
 
 function assertConfig() {
@@ -415,11 +445,14 @@ function requestSessionToken(request) {
   const headerToken = cleanSessionToken(request.headers['x-session-token'])
   const authHeader = String(request.headers.authorization || '')
   const url = new URL(request.url || '/', 'http://localhost')
-  const queryToken = cleanSessionToken(url.searchParams.get('token') || '')
 
   if (headerToken) {
     return headerToken
   }
+
+  const queryToken = isQuerySessionTokenAllowed(url)
+    ? cleanSessionToken(url.searchParams.get('token') || '')
+    : ''
 
   if (queryToken) {
     return queryToken
@@ -430,6 +463,10 @@ function requestSessionToken(request) {
   }
 
   return ''
+}
+
+function isQuerySessionTokenAllowed(url) {
+  return /^\/api\/video(?:\.php)?$/i.test(url.pathname)
 }
 
 export async function currentUser(request) {
@@ -1101,15 +1138,95 @@ export async function trackProgress(user, payload) {
   return { ok: true, updatedAt: new Date().toISOString() }
 }
 
+function clientIpFromRequest(request) {
+  if (!request) {
+    return 'unknown'
+  }
+
+  const forwarded = String(request.headers?.['x-forwarded-for'] || '')
+    .split(',')[0]
+    .trim()
+
+  return forwarded || String(request.socket?.remoteAddress || 'unknown')
+}
+
+function loginAttemptKey(loginValue, request) {
+  return sha256(`${String(loginValue || '').toLowerCase()}|${clientIpFromRequest(request)}`)
+}
+
+async function readLoginAttempt(attemptKey) {
+  try {
+    const rows = await rest(
+      `login_attempts?select=*&attempt_key=eq.${eq(attemptKey)}&limit=1`,
+    )
+
+    return rows?.[0] || null
+  } catch {
+    return null
+  }
+}
+
+async function assertLoginAllowed(attemptKey) {
+  const row = await readLoginAttempt(attemptKey)
+  const blockedUntil = row?.blocked_until ? Date.parse(row.blocked_until) : 0
+
+  if (blockedUntil && blockedUntil > Date.now()) {
+    throw new ApiError(429, 'Terlalu banyak percobaan login. Coba lagi beberapa menit.')
+  }
+}
+
+async function recordLoginFailure(attemptKey) {
+  const row = await readLoginAttempt(attemptKey)
+  const lastAttemptAt = row?.last_attempt_at ? Date.parse(row.last_attempt_at) : 0
+  const recent = lastAttemptAt && lastAttemptAt >= Date.now() - loginAttemptWindowMs
+  const attempts = recent ? Number(row.attempts || 0) + 1 : 1
+  const now = new Date()
+  const blockedUntil =
+    attempts >= maxLoginAttempts
+      ? new Date(now.getTime() + loginAttemptBlockMs).toISOString()
+      : null
+
+  try {
+    await rest('login_attempts?on_conflict=attempt_key', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: {
+        attempt_key: attemptKey,
+        attempts,
+        last_attempt_at: now.toISOString(),
+        blocked_until: blockedUntil,
+      },
+    })
+  } catch {
+    // Best-effort protection when the optional table has not been installed yet.
+  }
+}
+
+async function clearLoginFailures(attemptKey) {
+  try {
+    await rest(`login_attempts?attempt_key=eq.${eq(attemptKey)}`, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=minimal' },
+    })
+  } catch {
+    // Best-effort cleanup.
+  }
+}
+
 export async function login(payload, userAgent = '') {
   const loginValue = cleanText(payload.username, 120)
   const username = cleanUsername(loginValue)
   const email = cleanEmail(loginValue)
   const password = String(payload.password ?? '')
+  const request = typeof userAgent === 'object' && userAgent ? userAgent : null
+  const loginUserAgent = request ? request.headers?.['user-agent'] || '' : userAgent
 
   if ((!username && !email) || !password) {
     throw new ApiError(400, 'Username/email dan password wajib diisi.')
   }
+
+  const attemptKey = loginAttemptKey(loginValue, request)
+  await assertLoginAllowed(attemptKey)
 
   const queries = []
 
@@ -1134,9 +1251,11 @@ export async function login(payload, userAgent = '') {
   }
 
   if (!account) {
+    await recordLoginFailure(attemptKey)
     throw new ApiError(401, 'Username atau password tidak sesuai.')
   }
 
+  await clearLoginFailures(attemptKey)
   const token = randomBytes(32).toString('hex')
 
   await rest(`auth_sessions?expires_at=lt.${eq(new Date().toISOString())}`, {
@@ -1151,7 +1270,7 @@ export async function login(payload, userAgent = '') {
       account_id: account.id,
       role: account.role,
       token_hash: tokenHash(token),
-      user_agent: cleanText(userAgent, 255),
+      user_agent: cleanText(loginUserAgent, 255),
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       last_seen_at: new Date().toISOString(),
     },
@@ -1244,9 +1363,21 @@ export async function updateProfile(user, payload) {
   return { session: sessionPayload(updatedAccount, user.token) }
 }
 
-function extensionFromName(name, fallback = 'file') {
-  const ext = cleanText(String(name || '').split('.').pop() || '', 12).toLowerCase()
-  return /^[a-z0-9]+$/.test(ext) ? ext : fallback
+function extensionFromContentType(contentType, fallback = 'file') {
+  const extensions = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'application/pdf': 'pdf',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/ogg': 'ogg',
+    'video/quicktime': 'mov',
+    'video/x-m4v': 'm4v',
+  }
+
+  return extensions[contentType] || fallback
 }
 
 function storagePath(folder, name, extension) {
@@ -1309,7 +1440,7 @@ export async function prepareFileUpload(request, payload) {
     throw new ApiError(400, 'Ukuran file melebihi batas upload.')
   }
 
-  const extension = extensionFromName(name, contentType === 'application/pdf' ? 'pdf' : 'jpg')
+  const extension = extensionFromContentType(contentType, 'file')
   const path = storagePath(config.folder, name, extension)
   const upload = await createSignedUploadUrl(publicBucket, path)
 
@@ -1344,7 +1475,7 @@ export async function prepareVideoUpload(request, payload) {
     throw new ApiError(400, `Ukuran video maksimal ${maxVideoUploadMb} MB.`)
   }
 
-  const extension = extensionFromName(name, 'mp4')
+  const extension = extensionFromContentType(contentType, 'mp4')
   const path = storagePath(`videos/${user.userId}`, name, extension)
   const upload = await createSignedUploadUrl(videoBucket, path)
 

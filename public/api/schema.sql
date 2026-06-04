@@ -100,6 +100,16 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   INDEX auth_session_expiry_index (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS login_attempts (
+  attempt_key VARCHAR(64) PRIMARY KEY,
+  attempts INT NOT NULL DEFAULT 0,
+  last_attempt_at DATETIME NOT NULL,
+  blocked_until DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX login_attempt_block_index (blocked_until)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS submissions (
   id VARCHAR(120) PRIMARY KEY,
   member_id VARCHAR(120) NOT NULL,

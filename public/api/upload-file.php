@@ -67,6 +67,44 @@ if ($size <= 0 || $size > $rule['max']) {
     send_json(400, ['message' => 'Ukuran file melebihi batas upload.']);
 }
 
+$tmpPath = (string) ($file['tmp_name'] ?? '');
+$finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : false;
+$detectedMime = $finfo ? (string) finfo_file($finfo, $tmpPath) : '';
+
+if ($finfo) {
+    finfo_close($finfo);
+}
+
+if ($type === 'document') {
+    $handle = @fopen($tmpPath, 'rb');
+    $signature = $handle ? (string) fread($handle, 5) : '';
+
+    if ($handle) {
+        fclose($handle);
+    }
+
+    if (
+        $signature !== '%PDF-' ||
+        ($detectedMime !== '' && !in_array($detectedMime, ['application/pdf', 'application/octet-stream'], true))
+    ) {
+        send_json(400, ['message' => 'Isi file PDF tidak valid.']);
+    }
+
+    $mime = 'application/pdf';
+} else {
+    $imageInfo = @getimagesize($tmpPath);
+
+    if (!$imageInfo || empty($imageInfo['mime']) || !in_array($imageInfo['mime'], $rule['mimes'], true)) {
+        send_json(400, ['message' => 'Isi file gambar tidak valid.']);
+    }
+
+    if ($detectedMime !== '' && !in_array($detectedMime, $rule['mimes'], true)) {
+        send_json(400, ['message' => 'MIME file gambar tidak valid.']);
+    }
+
+    $mime = $imageInfo['mime'];
+}
+
 $publicDir = dirname(__DIR__);
 $uploadsDir = $publicDir . DIRECTORY_SEPARATOR . 'uploads';
 $targetDir = $uploadsDir . DIRECTORY_SEPARATOR . $targetSubdir;

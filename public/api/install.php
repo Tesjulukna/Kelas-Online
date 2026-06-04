@@ -10,6 +10,21 @@ if (empty($config['allow_install'])) {
     send_json(403, ['message' => 'Installer dimatikan di config.php.']);
 }
 
+$installSecret = clean_text($config['install_secret'] ?? '', 240);
+
+if ($installSecret === '') {
+    send_json(403, ['message' => 'Secret installer wajib diisi sebelum install.']);
+}
+
+$givenSecret = clean_text(
+    $_SERVER['HTTP_X_INSTALL_SECRET'] ?? $_GET['secret'] ?? '',
+    240,
+);
+
+if (!hash_equals($installSecret, $givenSecret)) {
+    send_json(403, ['message' => 'Secret installer tidak valid.']);
+}
+
 $pdo = db();
 $videoUploadDir = ensure_video_upload_dir();
 
@@ -109,6 +124,15 @@ $statements = [
         UNIQUE KEY auth_session_token_unique (token_hash),
         INDEX auth_session_account_index (account_id, role),
         INDEX auth_session_expiry_index (expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    "CREATE TABLE IF NOT EXISTS login_attempts (
+        attempt_key VARCHAR(64) PRIMARY KEY,
+        attempts INT NOT NULL DEFAULT 0,
+        last_attempt_at DATETIME NOT NULL,
+        blocked_until DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX login_attempt_block_index (blocked_until)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
     "CREATE TABLE IF NOT EXISTS submissions (
         id VARCHAR(120) PRIMARY KEY,
@@ -213,6 +237,26 @@ ensure_column($pdo, 'lynk_orders', 'password_created', 'TINYINT(1) NOT NULL DEFA
 $defaultAdminUsername = clean_username($config['default_admin_username'] ?? 'admin');
 $defaultAdminPassword = (string) ($config['default_admin_password'] ?? 'admin123');
 $defaultAdminName = clean_text($config['default_admin_name'] ?? 'Admin IbnuCreative', 100);
+$defaultMemberPassword = (string) ($config['default_member_password'] ?? 'member123');
+
+if (
+    strlen($defaultAdminPassword) < 12 ||
+    hash_equals($defaultAdminPassword, 'admin123')
+) {
+    send_json(400, [
+        'message' => 'Password default admin wajib diganti dan minimal 12 karakter sebelum install.',
+    ]);
+}
+
+if (
+    strlen($defaultMemberPassword) < 8 ||
+    hash_equals($defaultMemberPassword, 'member123')
+) {
+    send_json(400, [
+        'message' => 'Password default member wajib diganti dan minimal 8 karakter sebelum install.',
+    ]);
+}
+
 $adminQuery = $pdo->prepare(
     'SELECT id FROM accounts WHERE role = ? AND username = ? LIMIT 1',
 );
@@ -220,18 +264,30 @@ $adminQuery->execute(['admin', $defaultAdminUsername]);
 $existingAdmin = $adminQuery->fetch();
 
 if ($existingAdmin) {
-    $updateAdmin = $pdo->prepare(
-        'UPDATE accounts
-        SET name = ?, status = ?, password_hash = ?
-        WHERE id = ? AND role = ?',
-    );
-    $updateAdmin->execute([
-        $defaultAdminName,
-        'Aktif',
-        hash_password_value($defaultAdminPassword),
-        $existingAdmin['id'],
-        'admin',
-    ]);
+    if (!empty($config['install_reset_admin_password'])) {
+        $updateAdmin = $pdo->prepare(
+            'UPDATE accounts
+            SET name = ?, status = ?, password_hash = ?
+            WHERE id = ? AND role = ?',
+        );
+        $updateAdmin->execute([
+            $defaultAdminName,
+            'Aktif',
+            hash_password_value($defaultAdminPassword),
+            $existingAdmin['id'],
+            'admin',
+        ]);
+    } else {
+        $updateAdmin = $pdo->prepare(
+            'UPDATE accounts SET name = ?, status = ? WHERE id = ? AND role = ?',
+        );
+        $updateAdmin->execute([
+            $defaultAdminName,
+            'Aktif',
+            $existingAdmin['id'],
+            'admin',
+        ]);
+    }
 } else {
     $insertAdmin = $pdo->prepare(
         'INSERT INTO accounts
@@ -267,7 +323,7 @@ if ($memberCount === 0) {
         clean_username($config['default_member_username'] ?? 'member'),
         'member@ibnucreative.local',
         'Aktif',
-        hash_password_value((string) ($config['default_member_password'] ?? 'member123')),
+        hash_password_value($defaultMemberPassword),
         date('Y-m-d'),
     ]);
 }

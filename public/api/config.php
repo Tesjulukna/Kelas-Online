@@ -13,7 +13,9 @@ return [
     'db_user' => config_env('IBNU_DB_USER', 'ISI_USER_DATABASE'),
     'db_pass' => config_env('IBNU_DB_PASS', 'ISI_PASSWORD_DATABASE'),
 
-    'allow_install' => config_env('IBNU_ALLOW_INSTALL', 'true') === 'true',
+    'allow_install' => config_env('IBNU_ALLOW_INSTALL', 'false') === 'true',
+    'install_secret' => config_env('IBNU_INSTALL_SECRET'),
+    'install_reset_admin_password' => config_env('IBNU_INSTALL_RESET_ADMIN_PASSWORD') === 'true',
     'max_video_upload_mb' => (int) config_env('IBNU_MAX_VIDEO_UPLOAD_MB', '80'),
     'default_admin_name' => config_env('IBNU_DEFAULT_ADMIN_NAME', 'Admin IbnuCreative'),
     'default_admin_username' => config_env('IBNU_DEFAULT_ADMIN_USERNAME', 'admin'),

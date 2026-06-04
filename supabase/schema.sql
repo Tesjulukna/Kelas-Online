@@ -86,6 +86,15 @@ create table if not exists public.auth_sessions (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.login_attempts (
+  attempt_key text primary key,
+  attempts integer not null default 0,
+  last_attempt_at timestamptz not null,
+  blocked_until timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.support_tickets (
   id text primary key,
   member_id text not null default '',
@@ -156,6 +165,7 @@ create index if not exists accounts_email_index on public.accounts(role, email);
 create index if not exists materials_class_index on public.materials(class_id);
 create index if not exists material_assets_material_index on public.material_assets(material_id);
 create index if not exists auth_session_expiry_index on public.auth_sessions(expires_at);
+create index if not exists login_attempt_block_index on public.login_attempts(blocked_until);
 create index if not exists support_member_index on public.support_tickets(member_id);
 create index if not exists submission_member_index on public.submissions(member_id);
 create index if not exists submission_material_index on public.submissions(material_id);
@@ -194,11 +204,16 @@ drop trigger if exists lynk_orders_updated_at on public.lynk_orders;
 create trigger lynk_orders_updated_at before update on public.lynk_orders
 for each row execute function public.set_updated_at();
 
+drop trigger if exists login_attempts_updated_at on public.login_attempts;
+create trigger login_attempts_updated_at before update on public.login_attempts
+for each row execute function public.set_updated_at();
+
 alter table public.accounts enable row level security;
 alter table public.classes enable row level security;
 alter table public.materials enable row level security;
 alter table public.material_assets enable row level security;
 alter table public.auth_sessions enable row level security;
+alter table public.login_attempts enable row level security;
 alter table public.support_tickets enable row level security;
 alter table public.submissions enable row level security;
 alter table public.member_progress enable row level security;

@@ -11,6 +11,28 @@ session_set_cookie_params([
 ]);
 session_start();
 
+function apply_security_headers(): void
+{
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()');
+    header(
+        "Content-Security-Policy: default-src 'self'; " .
+        "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " .
+        "img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; " .
+        "style-src 'self' 'unsafe-inline'; script-src 'self'; " .
+        "connect-src 'self' https:; frame-src https://www.youtube.com https://youtube.com; " .
+        "form-action 'self'; upgrade-insecure-requests"
+    );
+
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
+    }
+}
+
+apply_security_headers();
+
 function api_config(): array
 {
     static $config = null;
@@ -352,15 +374,18 @@ function session_payload_from_account(array $account, string $token = ''): array
 function request_session_token(): string
 {
     $headerToken = clean_session_token($_SERVER['HTTP_X_SESSION_TOKEN'] ?? '');
-    $queryToken = clean_session_token($_GET['token'] ?? '');
     $authHeader = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
 
     if ($headerToken !== '') {
         return $headerToken;
     }
 
-    if ($queryToken !== '') {
-        return $queryToken;
+    if (is_query_session_token_allowed()) {
+        $queryToken = clean_session_token($_GET['token'] ?? '');
+
+        if ($queryToken !== '') {
+            return $queryToken;
+        }
     }
 
     if (stripos($authHeader, 'Bearer ') === 0) {
@@ -368,6 +393,13 @@ function request_session_token(): string
     }
 
     return '';
+}
+
+function is_query_session_token_allowed(): bool
+{
+    $path = (string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
+
+    return preg_match('#/(api/)?video(?:\.php)?$#', $path) === 1;
 }
 
 function current_user(): ?array

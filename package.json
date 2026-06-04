@@ -8,7 +8,7 @@
     "dev:vite": "vite",
     "dev:full": "node scripts/dev-full.mjs",
     "api": "node server.mjs",
-    "build": "vite build",
+    "build": "vite build && node scripts/copy-security-files.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

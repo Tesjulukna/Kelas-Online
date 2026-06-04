@@ -7,6 +7,7 @@ Project ini sekarang bisa jalan di Vercel dengan API Node serverless dan data di
 1. Buka Supabase, buat project baru.
 2. Masuk ke SQL Editor.
 3. Jalankan isi file `supabase/schema.sql`.
+   Jalankan ulang file ini setiap ada update schema, misalnya untuk tabel keamanan `login_attempts`.
 4. Buka Storage dan pastikan bucket berikut ada:
    - `ibnu-assets` public untuk gambar dan PDF.
    - `ibnu-videos` private untuk video materi.
@@ -61,7 +62,8 @@ Setelah schema dijalankan:
 - Admin: `admin` / `admin123`
 - Member: `member` / `member123`
 
-Ganti password admin dari dashboard setelah deploy.
+Ganti password admin dari dashboard setelah deploy, minimal 12 karakter.
+Ganti atau nonaktifkan juga akun member contoh jika website sudah masuk production.
 
 ## 5. Webhook Lynk.id
 

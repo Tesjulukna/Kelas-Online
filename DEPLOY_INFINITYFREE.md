@@ -37,9 +37,15 @@ Data database ini bukan nama domain. Ambil nilainya dari panel InfinityFree di m
 Sebelum deploy pertama, ganti juga password awal admin:
 
 ```php
+'allow_install' => true,
+'install_secret' => 'isi-secret-install-yang-panjang',
 'default_admin_username' => 'admin',
 'default_admin_password' => 'ganti-password-kuat',
+'default_member_password' => 'ganti-password-member',
 ```
+
+Password admin minimal 12 karakter dan tidak boleh memakai `admin123`.
+Password member awal minimal 8 karakter dan tidak boleh memakai `member123`.
 
 ## 3. Build Website
 
@@ -61,7 +67,7 @@ Pastikan file `.htaccess` di dalam `dist/` juga ikut terupload. File ini yang me
 Buka di browser:
 
 ```text
-https://ibnucreative.rf.gd/api/install.php
+https://ibnucreative.rf.gd/api/install.php?secret=isi-secret-install-yang-panjang
 ```
 
 Jika berhasil, database akan membuat tabel:
@@ -71,10 +77,19 @@ Jika berhasil, database akan membuat tabel:
 - `material_assets`
 - `support_tickets`
 - `auth_sessions`
+- `login_attempts`
 
-Installer juga akan memastikan akun admin dari `default_admin_username` dan `default_admin_password` di `config.php` aktif. Jadi kalau kamu mengganti username/password admin setelah pernah install, jalankan URL installer ini sekali lagi.
-Kalau website sudah pernah diinstall, tetap jalankan installer sekali setelah upload versi ini karena installer akan menambahkan kolom `avatar`, kolom video upload pada `materials`, tabel `material_assets`, tabel `auth_sessions`, dan tabel `member_progress` tanpa menghapus data lama.
+Installer akan membuat akun admin dari `default_admin_username` dan `default_admin_password` jika akun itu belum ada.
+Kalau website sudah pernah diinstall, tetap jalankan installer sekali setelah upload versi ini karena installer akan menambahkan kolom `avatar`, kolom video upload pada `materials`, tabel `material_assets`, tabel `auth_sessions`, tabel `login_attempts`, dan tabel `member_progress` tanpa menghapus data lama.
 Installer juga membuat folder `htdocs/uploads/videos` dan file proteksi `.htaccess` untuk menyimpan video materi.
+
+Catatan keamanan: installer tidak akan mengganti password admin lama kecuali kamu mengaktifkan:
+
+```php
+'install_reset_admin_password' => true,
+```
+
+Nyalakan opsi ini hanya sebentar saat benar-benar perlu reset password admin, lalu matikan lagi.
 
 ## 6. Matikan Installer
 
@@ -82,6 +97,8 @@ Setelah install berhasil, buka lagi `public/api/config.php`, ubah:
 
 ```php
 'allow_install' => false,
+'install_secret' => '',
+'install_reset_admin_password' => false,
 ```
 
 Lalu upload ulang file hasil build atau minimal upload ulang `api/config.php` ke `htdocs/api/config.php`.

@@ -57,6 +57,13 @@ const paths = {
       <path d="M9 15.5h6" />
     </>
   ),
+  filter: (
+    <>
+      <path d="M4 6h16" />
+      <path d="M7 12h10" />
+      <path d="M10 18h4" />
+    </>
+  ),
   image: (
     <>
       <rect width="16" height="14" x="4" y="5" rx="2" />
