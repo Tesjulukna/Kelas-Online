@@ -673,19 +673,40 @@ function cleanClassesForDb(value) {
                 : []
               )
                 .filter((asset) => asset?.image || asset?.prompt || asset?.instruction)
-                .map((asset, assetIndex) => ({
-                  id: cleanText(asset.id || `${materialId}-asset-${assetIndex + 1}`, 120),
-                  material_id: materialId,
-                  sort_order: assetIndex + 1,
-                  title: cleanText(asset.title || `Prompt ${assetIndex + 1}`, 160),
-                  image: cleanUrl(asset.image || ''),
-                  instruction: cleanPromptText(asset.instruction || ''),
-                  prompt: cleanPromptText(asset.prompt || ''),
-                })),
+                .map((asset, assetIndex) => {
+                  const instruction = cleanPromptText(asset.instruction || '')
+                  const row = {
+                    id: cleanText(asset.id || `${materialId}-asset-${assetIndex + 1}`, 120),
+                    material_id: materialId,
+                    sort_order: assetIndex + 1,
+                    title: cleanText(asset.title || `Prompt ${assetIndex + 1}`, 160),
+                    image: cleanUrl(asset.image || ''),
+                    prompt: cleanPromptText(asset.prompt || ''),
+                  }
+
+                  if (instruction) {
+                    row.instruction = instruction
+                  }
+
+                  return row
+                }),
             }
           }),
       }
     })
+}
+
+async function hasMaterialAssetInstructionColumn() {
+  try {
+    await rest('material_assets?select=instruction&limit=1')
+    return true
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
+      return false
+    }
+
+    throw error
+  }
 }
 
 export async function replaceClasses(classes) {
@@ -693,6 +714,15 @@ export async function replaceClasses(classes) {
   const classRows = cleanClasses.map((item) => item.classRow)
   const materialRows = cleanClasses.flatMap((item) => item.materials.map((row) => row.materialRow))
   const assetRows = cleanClasses.flatMap((item) => item.materials.flatMap((row) => row.assets))
+  const hasInstructionData = assetRows.some((row) => row.instruction)
+  const safeAssetRows =
+    hasInstructionData && !(await hasMaterialAssetInstructionColumn())
+      ? assetRows.map((row) => {
+          const nextRow = { ...row }
+          delete nextRow.instruction
+          return nextRow
+        })
+      : assetRows
 
   await rest('classes?id=not.is.null', {
     method: 'DELETE',
@@ -715,11 +745,11 @@ export async function replaceClasses(classes) {
     })
   }
 
-  if (assetRows.length) {
+  if (safeAssetRows.length) {
     await rest('material_assets', {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
-      body: assetRows,
+      body: safeAssetRows,
     })
   }
 
