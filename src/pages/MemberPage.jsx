@@ -169,6 +169,7 @@ function MemberPage({
   const [supportDraft, setSupportDraft] = useState('')
   const [supportReplyDrafts, setSupportReplyDrafts] = useState({})
   const [previewImage, setPreviewImage] = useState(null)
+  const [activePromptInstruction, setActivePromptInstruction] = useState(null)
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
   const materials = selectedCourse?.materials ?? []
@@ -689,11 +690,8 @@ function MemberPage({
                             )}
                             <div className="prompt-card-body">
                               <h3>{item.title}</h3>
-                              {item.instruction && (
-                                <p className="prompt-card-instruction">{item.instruction}</p>
-                              )}
-                              {item.prompt && <p>{item.prompt}</p>}
-                              {(item.prompt || item.image) && (
+                              {item.prompt && <p className="prompt-card-text">{item.prompt}</p>}
+                              {(item.prompt || item.instruction || item.image) && (
                                 <div className="prompt-actions">
                                   {item.prompt && (
                                     <button
@@ -703,6 +701,16 @@ function MemberPage({
                                     >
                                       <Icon name="fileText" />
                                       Copy
+                                    </button>
+                                  )}
+                                  {item.instruction && (
+                                    <button
+                                      className="btn btn-secondary"
+                                      type="button"
+                                      onClick={() => setActivePromptInstruction(item)}
+                                    >
+                                      <Icon name="fileText" />
+                                      Petunjuk
                                     </button>
                                   )}
                                   {item.image && (
@@ -1167,6 +1175,33 @@ function MemberPage({
             </div>
             <img src={previewImage.image} alt={previewImage.title} />
           </div>
+        </div>
+      )}
+      {activePromptInstruction && (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            className="prompt-instruction-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="prompt-instruction-title"
+          >
+            <div className="modal-heading">
+              <div>
+                <p className="eyebrow">Petunjuk prompt</p>
+                <h2 id="prompt-instruction-title">{activePromptInstruction.title}</h2>
+              </div>
+              <button
+                type="button"
+                aria-label="Tutup petunjuk prompt"
+                onClick={() => setActivePromptInstruction(null)}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="prompt-instruction-content">
+              <p>{activePromptInstruction.instruction}</p>
+            </div>
+          </section>
         </div>
       )}
     </DashboardShell>
