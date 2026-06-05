@@ -71,9 +71,13 @@ create table if not exists public.material_assets (
   title text not null,
   image text not null default '',
   prompt text,
+  instruction text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.material_assets
+  add column if not exists instruction text not null default '';
 
 create table if not exists public.auth_sessions (
   id text primary key,

@@ -529,6 +529,7 @@ function fetch_classes(PDO $pdo): array
                             'id' => $asset['id'],
                             'title' => $asset['title'],
                             'image' => $asset['image'],
+                            'instruction' => $asset['instruction'] ?? '',
                             'prompt' => $asset['prompt'],
                         ];
                     }, $assets),

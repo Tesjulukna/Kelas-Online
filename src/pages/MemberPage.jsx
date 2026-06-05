@@ -689,7 +689,10 @@ function MemberPage({
                             )}
                             <div className="prompt-card-body">
                               <h3>{item.title}</h3>
-                              <p>{item.prompt}</p>
+                              {item.instruction && (
+                                <p className="prompt-card-instruction">{item.instruction}</p>
+                              )}
+                              {item.prompt && <p>{item.prompt}</p>}
                               {(item.prompt || item.image) && (
                                 <div className="prompt-actions">
                                   {item.prompt && (

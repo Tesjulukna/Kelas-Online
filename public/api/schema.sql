@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS material_assets (
   title VARCHAR(160) NOT NULL,
   image MEDIUMTEXT,
   prompt LONGTEXT,
+  instruction LONGTEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX material_asset_material_index (material_id),

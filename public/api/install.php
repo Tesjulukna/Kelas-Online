@@ -105,6 +105,7 @@ $statements = [
         title VARCHAR(160) NOT NULL,
         image MEDIUMTEXT,
         prompt LONGTEXT,
+        instruction LONGTEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX material_asset_material_index (material_id),
@@ -226,8 +227,10 @@ ensure_column($pdo, 'materials', 'pdf_name', "VARCHAR(180) NOT NULL DEFAULT '' A
 ensure_column($pdo, 'materials', 'resource_links', 'MEDIUMTEXT NULL AFTER pdf_name');
 ensure_column($pdo, 'materials', 'allow_task_image', 'TINYINT(1) NOT NULL DEFAULT 1 AFTER requires_task');
 ensure_column($pdo, 'materials', 'require_task_image', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER allow_task_image');
+ensure_column($pdo, 'material_assets', 'instruction', 'LONGTEXT NULL AFTER prompt');
 ensure_column_definition($pdo, 'materials', 'task_prompt LONGTEXT NULL');
 ensure_column_definition($pdo, 'material_assets', 'prompt LONGTEXT NULL');
+ensure_column_definition($pdo, 'material_assets', 'instruction LONGTEXT NULL');
 ensure_column($pdo, 'support_tickets', 'replies', 'MEDIUMTEXT NULL AFTER answer');
 ensure_column($pdo, 'submissions', 'attachment_url', "VARCHAR(240) NOT NULL DEFAULT '' AFTER answer");
 ensure_column($pdo, 'submissions', 'attachment_name', "VARCHAR(180) NOT NULL DEFAULT '' AFTER attachment_url");

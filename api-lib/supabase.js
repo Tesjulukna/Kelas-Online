@@ -559,6 +559,7 @@ function mapMaterial(row, assets) {
       id: asset.id,
       title: asset.title,
       image: asset.image || '',
+      instruction: asset.instruction || '',
       prompt: asset.prompt || '',
     })),
   }
@@ -671,13 +672,14 @@ function cleanClassesForDb(value) {
                 ? material.promptItems.slice(0, 80)
                 : []
               )
-                .filter((asset) => asset?.image || asset?.prompt)
+                .filter((asset) => asset?.image || asset?.prompt || asset?.instruction)
                 .map((asset, assetIndex) => ({
                   id: cleanText(asset.id || `${materialId}-asset-${assetIndex + 1}`, 120),
                   material_id: materialId,
                   sort_order: assetIndex + 1,
                   title: cleanText(asset.title || `Prompt ${assetIndex + 1}`, 160),
                   image: cleanUrl(asset.image || ''),
+                  instruction: cleanPromptText(asset.instruction || ''),
                   prompt: cleanPromptText(asset.prompt || ''),
                 })),
             }

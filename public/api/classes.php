@@ -36,6 +36,7 @@ function ensure_prompt_text_capacity(PDO $pdo): void
 {
     $columns = [
         ['material_assets', 'prompt', 'LONGTEXT NULL'],
+        ['material_assets', 'instruction', 'LONGTEXT NULL'],
         ['materials', 'task_prompt', 'LONGTEXT NULL'],
     ];
 
@@ -45,7 +46,9 @@ function ensure_prompt_text_capacity(PDO $pdo): void
             $query->execute([$column]);
             $current = $query->fetch();
 
-            if (!$current || stripos((string) ($current['Type'] ?? ''), 'longtext') === false) {
+            if (!$current) {
+                $pdo->exec("ALTER TABLE `$table` ADD `$column` $definition");
+            } elseif (stripos((string) ($current['Type'] ?? ''), 'longtext') === false) {
                 $pdo->exec("ALTER TABLE `$table` MODIFY `$column` $definition");
             }
         } catch (Throwable $error) {
@@ -97,8 +100,8 @@ $insertMaterial = $pdo->prepare(
 );
 $insertAsset = $pdo->prepare(
     'INSERT INTO material_assets
-    (id, material_id, sort_order, title, image, prompt)
-    VALUES (?, ?, ?, ?, ?, ?)',
+    (id, material_id, sort_order, title, image, instruction, prompt)
+    VALUES (?, ?, ?, ?, ?, ?, ?)',
 );
 
 try {
@@ -175,7 +178,7 @@ try {
                     continue;
                 }
 
-                if (empty($asset['image']) && empty($asset['prompt'])) {
+                if (empty($asset['image']) && empty($asset['prompt']) && empty($asset['instruction'])) {
                     continue;
                 }
 
@@ -185,6 +188,7 @@ try {
                     $assetIndex + 1,
                     clean_text($asset['title'] ?? 'Prompt ' . ($assetIndex + 1), 160),
                     clean_image($asset['image'] ?? ''),
+                    clean_prompt_text($asset['instruction'] ?? ''),
                     clean_prompt_text($asset['prompt'] ?? ''),
                 ]);
             }

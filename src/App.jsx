@@ -371,11 +371,12 @@ function cleanPromptItems(value, materialId = 'material') {
   const source = Array.isArray(value) ? value : []
 
   return source
-    .filter((item) => item?.image || item?.prompt)
+    .filter((item) => item?.image || item?.prompt || item?.instruction)
     .map((item, index) => ({
       id: cleanText(item.id || `${materialId}-prompt-${index + 1}`),
       title: cleanText(item.title || `Prompt ${index + 1}`),
       image: cleanAvatar(item.image),
+      instruction: cleanLongText(item.instruction || '', 1000),
       prompt: cleanPromptText(item.prompt),
     }))
 }

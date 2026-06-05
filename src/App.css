@@ -2840,6 +2840,9 @@ img {
   border-radius: 7px;
   color: var(--color-heading);
   background: #ffffff;
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
   font: inherit;
   resize: vertical;
 }
@@ -3626,6 +3629,17 @@ img {
   overflow-wrap: anywhere;
 }
 
+.prompt-card-body .prompt-card-instruction {
+  display: block;
+  padding: 8px 10px;
+  border-left: 3px solid #2f6df6;
+  border-radius: 6px;
+  background: #f8fbff;
+  color: #334155;
+  font-weight: 700;
+  -webkit-line-clamp: unset;
+}
+
 .prompt-actions {
   flex-wrap: wrap;
   gap: 6px;
@@ -3950,6 +3964,9 @@ img {
   border-radius: 7px;
   color: var(--color-heading);
   background: #ffffff;
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
   font: inherit;
   resize: vertical;
 }

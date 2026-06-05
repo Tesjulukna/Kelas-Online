@@ -232,6 +232,7 @@ function createEmptyPromptItem() {
     id: `prompt-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     title: '',
     image: '',
+    instruction: '',
     prompt: '',
   }
 }
@@ -515,6 +516,7 @@ function AdminPage({
   const [activeMaterialEditorId, setActiveMaterialEditorId] = useState(null)
   const [draggingMaterialId, setDraggingMaterialId] = useState(null)
   const materialDescriptionRef = useRef(null)
+  const materialDescriptionEditorMaterialIdRef = useRef(null)
   const descriptionSelectionRef = useRef(null)
   const lastMaterialDragTargetRef = useRef('')
 
@@ -656,10 +658,28 @@ function AdminPage({
   ]
 
   useEffect(() => {
-    if (materialDescriptionRef.current && activeMaterialEditor) {
-      materialDescriptionRef.current.innerHTML = activeMaterialEditor.description || ''
+    const editor = materialDescriptionRef.current
+
+    if (!editor || !activeMaterialEditor) {
+      materialDescriptionEditorMaterialIdRef.current = null
+      descriptionSelectionRef.current = null
+      return
     }
-  }, [activeMaterialEditor, activeMaterialEditorId])
+
+    const materialChanged =
+      materialDescriptionEditorMaterialIdRef.current !== activeMaterialEditor.id
+    const isEditing = document.activeElement === editor
+    const nextDescription = activeMaterialEditor.description || ''
+
+    if ((materialChanged || !isEditing) && editor.innerHTML !== nextDescription) {
+      editor.innerHTML = nextDescription
+    }
+
+    if (materialChanged) {
+      materialDescriptionEditorMaterialIdRef.current = activeMaterialEditor.id
+      descriptionSelectionRef.current = null
+    }
+  }, [activeMaterialEditor])
 
   const resetClassForm = () => {
     setClassForm(createEmptyClassForm())
@@ -1241,11 +1261,12 @@ function AdminPage({
           material.taskPrompt.trim() ||
           'Kirim link tugas atau catatan praktik materi ini.',
         promptItems: (material.promptItems ?? [])
-          .filter((item) => item.image || item.prompt)
+          .filter((item) => item.image || item.prompt || item.instruction)
           .map((item, promptIndex) => ({
             id: item.id || `prompt-${Date.now()}-${index}-${promptIndex}`,
             title: item.title.trim() || `Prompt ${promptIndex + 1}`,
             image: item.image,
+            instruction: item.instruction?.trim() || '',
             prompt: item.prompt,
           })),
         resourceLinks: (material.resourceLinks ?? [])
@@ -3238,6 +3259,22 @@ function AdminPage({
                             }
                             placeholder="Tulis prompt yang bisa disalin member..."
                             rows="4"
+                          ></textarea>
+                        </label>
+                        <label>
+                          Petunjuk pemakaian prompt
+                          <textarea
+                            value={promptItem.instruction ?? ''}
+                            onChange={(event) =>
+                              handlePromptItemChange(
+                                activeMaterialEditor.id,
+                                promptItem.id,
+                                'instruction',
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Contoh: ganti bagian [produk] dengan nama produk sendiri sebelum disalin."
+                            rows="3"
                           ></textarea>
                         </label>
                         {promptItem.prompt && (
