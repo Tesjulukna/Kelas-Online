@@ -53,6 +53,8 @@ create table if not exists public.materials (
   video_file text not null default '',
   video_name text not null default '',
   video_type text not null default '',
+  image_file text not null default '',
+  image_name text not null default '',
   pdf_file text not null default '',
   pdf_name text not null default '',
   resource_links jsonb,
@@ -63,6 +65,12 @@ create table if not exists public.materials (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.materials
+  add column if not exists image_file text not null default '';
+
+alter table public.materials
+  add column if not exists image_name text not null default '';
 
 create table if not exists public.material_assets (
   id text primary key,

@@ -196,6 +196,9 @@ function MemberPage({
     (!activeMaterial.requiresTask || isActiveTaskSubmitted)
   const activeEmbedUrl = getYoutubeEmbedUrl(activeMaterial?.videoUrl)
   const activeProtectedVideoUrl = getProtectedVideoUrl(activeMaterial, sessionToken)
+  const activeMaterialImageUrl = activeMaterial?.imageFile || ''
+  const hasActiveMaterialMedia =
+    Boolean(activeProtectedVideoUrl) || Boolean(activeEmbedUrl) || Boolean(activeMaterialImageUrl)
   const promptItems = activeMaterial?.promptItems ?? []
   const resourceLinks = (activeMaterial?.resourceLinks ?? []).filter((link) => link.url)
   const isTaskImageAllowed = activeMaterial?.allowTaskImage !== false
@@ -581,36 +584,45 @@ function MemberPage({
           {materials.length ? (
             <div className="course-room-grid">
               <article className="material-viewer">
-                <div className="video-frame">
-                  {activeProtectedVideoUrl ? (
-                    <>
-                      <video
-                        src={activeProtectedVideoUrl}
-                        title={activeMaterial.title}
-                        controls
-                        controlsList="nodownload noplaybackrate"
-                        disablePictureInPicture
-                        onContextMenu={(event) => event.preventDefault()}
-                        preload="metadata"
-                      >
-                        Browser Anda belum mendukung pemutar video.
-                      </video>
-                      <span className="video-watermark">{loginName}</span>
-                    </>
-                  ) : activeEmbedUrl ? (
-                    <iframe
-                      src={activeEmbedUrl}
-                      title={activeMaterial.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                    ></iframe>
-                  ) : (
-                    <div className="video-placeholder">
-                      <Icon name="video" />
-                      <p>Video belum disiapkan admin.</p>
-                    </div>
-                  )}
-                </div>
+                {hasActiveMaterialMedia && (
+                  <div className="material-media-stack">
+                    {(activeProtectedVideoUrl || activeEmbedUrl) && (
+                      <div className="video-frame">
+                        {activeProtectedVideoUrl ? (
+                          <>
+                            <video
+                              src={activeProtectedVideoUrl}
+                              title={activeMaterial.title}
+                              controls
+                              controlsList="nodownload noplaybackrate"
+                              disablePictureInPicture
+                              onContextMenu={(event) => event.preventDefault()}
+                              preload="metadata"
+                            >
+                              Browser Anda belum mendukung pemutar video.
+                            </video>
+                            <span className="video-watermark">{loginName}</span>
+                          </>
+                        ) : (
+                          <iframe
+                            src={activeEmbedUrl}
+                            title={activeMaterial.title}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                          ></iframe>
+                        )}
+                      </div>
+                    )}
+                    {activeMaterialImageUrl && (
+                      <figure className="material-image-frame">
+                        <img
+                          src={activeMaterialImageUrl}
+                          alt={activeMaterial.imageName || activeMaterial.title}
+                        />
+                      </figure>
+                    )}
+                  </div>
+                )}
 
                 {activeMaterial.description && (
                   <section className="material-description-section">

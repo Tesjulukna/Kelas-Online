@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS materials (
   video_file VARCHAR(180) NOT NULL DEFAULT '',
   video_name VARCHAR(180) NOT NULL DEFAULT '',
   video_type VARCHAR(80) NOT NULL DEFAULT '',
+  image_file MEDIUMTEXT,
+  image_name VARCHAR(180) NOT NULL DEFAULT '',
   pdf_file MEDIUMTEXT,
   pdf_name VARCHAR(180) NOT NULL DEFAULT '',
   resource_links MEDIUMTEXT,

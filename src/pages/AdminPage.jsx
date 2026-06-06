@@ -19,6 +19,8 @@ function createEmptyMaterial() {
     videoFile: '',
     videoName: '',
     videoType: '',
+    imageFile: '',
+    imageName: '',
     pdfFile: '',
     pdfName: '',
     requiresTask: false,
@@ -514,6 +516,7 @@ function AdminPage({
   const [actionStatus, setActionStatus] = useState('')
   const [videoUploads, setVideoUploads] = useState({})
   const [activeMaterialEditorId, setActiveMaterialEditorId] = useState(null)
+  const [promptEditorState, setPromptEditorState] = useState(null)
   const [draggingMaterialId, setDraggingMaterialId] = useState(null)
   const materialDescriptionRef = useRef(null)
   const materialDescriptionEditorMaterialIdRef = useRef(null)
@@ -685,6 +688,7 @@ function AdminPage({
     setClassForm(createEmptyClassForm())
     setEditingClassId(null)
     setActiveMaterialEditorId(null)
+    setPromptEditorState(null)
     setDraggingMaterialId(null)
     lastMaterialDragTargetRef.current = ''
   }
@@ -822,34 +826,82 @@ function AdminPage({
     }
   }
 
-  const handlePromptItemChange = (materialId, promptId, field, value) => {
-    setClassForm((current) => ({
-      ...current,
-      materials: current.materials.map((material) =>
-        material.id === materialId
-          ? {
-              ...material,
-              promptItems: (material.promptItems ?? []).map((item) =>
-                item.id === promptId ? { ...item, [field]: value } : item,
-              ),
-            }
-          : material,
-      ),
-    }))
+  const openPromptEditor = (materialId, promptItem = null) => {
+    setPromptEditorState({
+      materialId,
+      promptId: promptItem?.id || null,
+      draft: promptItem ? { ...createEmptyPromptItem(), ...promptItem } : createEmptyPromptItem(),
+    })
   }
 
-  const addPromptItem = (materialId) => {
+  const closePromptEditor = () => {
+    setPromptEditorState(null)
+  }
+
+  const handlePromptDraftChange = (field, value) => {
+    setPromptEditorState((current) =>
+      current
+        ? {
+            ...current,
+            draft: {
+              ...current.draft,
+              [field]: value,
+            },
+          }
+        : current,
+    )
+  }
+
+  const savePromptEditor = () => {
+    if (!promptEditorState) {
+      return
+    }
+
+    const draft = {
+      ...promptEditorState.draft,
+      title: promptEditorState.draft.title.trim(),
+      instruction: promptEditorState.draft.instruction?.trim() || '',
+      prompt: promptEditorState.draft.prompt?.trim() || '',
+    }
+
+    if (!draft.image && !draft.prompt && !draft.instruction) {
+      onNotify('Isi prompt, gambar, atau petunjuk dulu sebelum menyimpan.')
+      return
+    }
+
     setClassForm((current) => ({
       ...current,
-      materials: current.materials.map((material) =>
-        material.id === materialId
-          ? {
-              ...material,
-              promptItems: [...(material.promptItems ?? []), createEmptyPromptItem()],
-            }
-          : material,
-      ),
+      materials: current.materials.map((material) => {
+        if (material.id !== promptEditorState.materialId) {
+          return material
+        }
+
+        const promptItems = material.promptItems ?? []
+        const promptIndex = promptItems.findIndex(
+          (item) => item.id === promptEditorState.promptId,
+        )
+        const nextPrompt = {
+          ...draft,
+          title:
+            draft.title ||
+            `Prompt ${
+              promptIndex >= 0 ? promptIndex + 1 : promptItems.length + 1
+            }`,
+        }
+
+        return {
+          ...material,
+          promptItems:
+            promptIndex >= 0
+              ? promptItems.map((item) =>
+                  item.id === promptEditorState.promptId ? nextPrompt : item,
+                )
+              : [...promptItems, nextPrompt],
+        }
+      }),
     }))
+    setPromptEditorState(null)
+    onNotify(promptEditorState.promptId ? 'Prompt diperbarui.' : 'Prompt ditambahkan.')
   }
 
   const removePromptItem = (materialId, promptId) => {
@@ -866,6 +918,9 @@ function AdminPage({
           : material,
       ),
     }))
+    if (promptEditorState?.promptId === promptId) {
+      setPromptEditorState(null)
+    }
   }
 
   const handleResourceLinkChange = (materialId, linkId, field, value) => {
@@ -917,7 +972,7 @@ function AdminPage({
     }))
   }
 
-  const handlePromptImageChange = async (materialId, promptId, event) => {
+  const handlePromptDraftImageChange = async (event) => {
     const file = event.target.files?.[0]
 
     if (!file) {
@@ -933,10 +988,46 @@ function AdminPage({
     try {
       onNotify('Mengupload dan mengompres gambar prompt...')
       const imageUrl = await uploadClassImage(file, sessionToken)
-      handlePromptItemChange(materialId, promptId, 'image', imageUrl)
+      handlePromptDraftChange('image', imageUrl)
       onNotify('Gambar prompt berhasil diupload.')
     } catch (error) {
       onNotify(error.message || 'Gambar prompt tidak bisa diupload.')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const handleMaterialImageChange = async (materialId, event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      onNotify('Foto materi harus berupa file gambar.')
+      event.target.value = ''
+      return
+    }
+
+    try {
+      onNotify('Mengupload dan mengompres foto materi...')
+      const imageUrl = await uploadClassImage(file, sessionToken)
+      setClassForm((current) => ({
+        ...current,
+        materials: current.materials.map((material) =>
+          material.id === materialId
+            ? {
+                ...material,
+                imageFile: imageUrl,
+                imageName: file.name,
+              }
+            : material,
+        ),
+      }))
+      onNotify('Foto materi berhasil diupload. Klik Simpan Kelas agar muncul di materi.')
+    } catch (error) {
+      onNotify(error.message || 'Foto materi tidak bisa diupload.')
     } finally {
       event.target.value = ''
     }
@@ -1252,6 +1343,8 @@ function AdminPage({
         videoFile: material.videoFile ?? '',
         videoName: material.videoName ?? '',
         videoType: material.videoType ?? '',
+        imageFile: material.imageFile ?? '',
+        imageName: material.imageName ?? '',
         pdfFile: material.pdfFile ?? '',
         pdfName: material.pdfName ?? '',
         requiresTask: Boolean(material.requiresTask),
@@ -1350,6 +1443,8 @@ function AdminPage({
             videoFile: material.videoFile ?? '',
             videoName: material.videoName ?? '',
             videoType: material.videoType ?? '',
+            imageFile: material.imageFile ?? '',
+            imageName: material.imageName ?? '',
             pdfFile: material.pdfFile ?? '',
             pdfName: material.pdfName ?? '',
             allowTaskImage: material.allowTaskImage !== false,
@@ -2806,7 +2901,9 @@ function AdminPage({
                       <div>
                         <strong>{material.title || `Materi ${index + 1}`}</strong>
                         <small>
-                          {material.videoFile || material.videoUrl ? 'Video siap' : 'Video belum diisi'} / {(material.promptItems ?? []).length} prompt / {(material.resourceLinks ?? []).length} link
+                          {material.videoFile || material.videoUrl || material.imageFile
+                            ? 'Media siap'
+                            : 'Media belum diisi'} / {(material.promptItems ?? []).length} prompt / {(material.resourceLinks ?? []).length} link
                         </small>
                       </div>
                       <button
@@ -2859,7 +2956,10 @@ function AdminPage({
               <button
                 type="button"
                 aria-label="Tutup editor materi"
-                onClick={() => setActiveMaterialEditorId(null)}
+                onClick={() => {
+                  setPromptEditorState(null)
+                  setActiveMaterialEditorId(null)
+                }}
               >
                 <Icon name="x" />
               </button>
@@ -3020,6 +3120,40 @@ function AdminPage({
                   >
                     <Icon name="x" />
                     Lepas Video
+                  </button>
+                )}
+              </div>
+              <div className="video-upload-field material-image-upload-field">
+                <label className="upload-control">
+                  <Icon name="image" />
+                  Upload foto
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) =>
+                      handleMaterialImageChange(activeMaterialEditor.id, event)
+                    }
+                  />
+                </label>
+                <div className="video-file-meta">
+                  <strong>{activeMaterialEditor.imageName || 'Belum ada foto materi'}</strong>
+                  <small>
+                    {activeMaterialEditor.imageFile
+                      ? 'Foto akan tampil di ruang belajar member.'
+                      : 'Opsional, boleh dikosongkan jika materi hanya berisi teks atau prompt.'}
+                  </small>
+                </div>
+                {activeMaterialEditor.imageFile && (
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={() => {
+                      handleMaterialChange(activeMaterialEditor.id, 'imageFile', '')
+                      handleMaterialChange(activeMaterialEditor.id, 'imageName', '')
+                    }}
+                  >
+                    <Icon name="x" />
+                    Lepas Foto
                   </button>
                 )}
               </div>
@@ -3188,19 +3322,28 @@ function AdminPage({
                   <button
                     className="btn btn-secondary"
                     type="button"
-                    onClick={() => addPromptItem(activeMaterialEditor.id)}
+                    onClick={() => openPromptEditor(activeMaterialEditor.id)}
                   >
                     <Icon name="image" />
                     Tambah Prompt
                   </button>
                 </div>
-                <div className="prompt-editor-track">
-                  {(activeMaterialEditor.promptItems ?? []).map((promptItem, promptIndex) => (
-                    <article className="prompt-editor-card" key={promptItem.id}>
-                      <div className="prompt-editor-title">
+                {(activeMaterialEditor.promptItems ?? []).length ? (
+                  <div className="prompt-list-editor">
+                    {(activeMaterialEditor.promptItems ?? []).map((promptItem, promptIndex) => (
+                      <article className="prompt-list-row" key={promptItem.id}>
                         <span>{promptIndex + 1}</span>
                         <strong>{promptItem.title || `Prompt ${promptIndex + 1}`}</strong>
                         <button
+                          className="btn btn-secondary"
+                          type="button"
+                          onClick={() => openPromptEditor(activeMaterialEditor.id, promptItem)}
+                        >
+                          <Icon name="fileText" />
+                          Edit
+                        </button>
+                        <button
+                          className="prompt-delete-button"
                           type="button"
                           aria-label={`Hapus prompt ${promptIndex + 1}`}
                           onClick={() =>
@@ -3209,90 +3352,15 @@ function AdminPage({
                         >
                           <Icon name="x" />
                         </button>
-                      </div>
-                      <span className="prompt-image-preview" aria-hidden="true">
-                        {promptItem.image ? <img src={promptItem.image} alt="" /> : <Icon name="fileText" />}
-                      </span>
-                      <div className="prompt-editor-fields">
-                        <label>
-                          Judul
-                          <input
-                            type="text"
-                            value={promptItem.title}
-                            onChange={(event) =>
-                              handlePromptItemChange(
-                                activeMaterialEditor.id,
-                                promptItem.id,
-                                'title',
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Contoh: Poster cyberpunk"
-                          />
-                        </label>
-                        <label className="upload-control prompt-upload">
-                          <Icon name="image" />
-                          Upload gambar
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(event) =>
-                              handlePromptImageChange(
-                                activeMaterialEditor.id,
-                                promptItem.id,
-                                event,
-                              )
-                            }
-                          />
-                        </label>
-                        <label>
-                          Prompt
-                          <textarea
-                            value={promptItem.prompt}
-                            onChange={(event) =>
-                              handlePromptItemChange(
-                                activeMaterialEditor.id,
-                                promptItem.id,
-                                'prompt',
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Tulis prompt yang bisa disalin member..."
-                            rows="4"
-                          ></textarea>
-                        </label>
-                        <label>
-                          Petunjuk pemakaian prompt
-                          <textarea
-                            value={promptItem.instruction ?? ''}
-                            onChange={(event) =>
-                              handlePromptItemChange(
-                                activeMaterialEditor.id,
-                                promptItem.id,
-                                'instruction',
-                                event.target.value,
-                              )
-                            }
-                            placeholder="Contoh: ganti bagian [produk] dengan nama produk sendiri sebelum disalin."
-                            rows="3"
-                          ></textarea>
-                        </label>
-                        {promptItem.prompt && (
-                          <div className="prompt-actions">
-                            <button
-                              className="btn btn-secondary"
-                              type="button"
-                              onClick={() => handleCopyPrompt(promptItem.prompt)}
-                            >
-                              <Icon name="fileText" />
-                              Copy
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="prompt-list-empty">
+                    <Icon name="fileText" />
+                    <p>Belum ada prompt. Klik Tambah Prompt untuk membuat asset baru.</p>
+                  </div>
+                )}
               </div>
             </div>
             <div className="modal-actions">
@@ -3301,6 +3369,7 @@ function AdminPage({
                 type="button"
                 onClick={() => {
                   syncActiveMaterialDescription()
+                  setPromptEditorState(null)
                   setActiveMaterialEditorId(null)
                 }}
               >
@@ -3308,6 +3377,114 @@ function AdminPage({
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {promptEditorState && (
+        <div className="modal-backdrop prompt-modal-backdrop" role="presentation">
+          <form
+            className="crud-editor prompt-modal-editor"
+            onSubmit={(event) => {
+              event.preventDefault()
+              savePromptEditor()
+            }}
+          >
+            <div className="modal-heading">
+              <div>
+                <p className="eyebrow">Asset prompt</p>
+                <h2>{promptEditorState.promptId ? 'Edit prompt' : 'Tambah prompt'}</h2>
+              </div>
+              <button
+                type="button"
+                aria-label="Tutup editor prompt"
+                onClick={closePromptEditor}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="prompt-modal-grid">
+              <span className="prompt-image-preview prompt-modal-image" aria-hidden="true">
+                {promptEditorState.draft.image ? (
+                  <img src={promptEditorState.draft.image} alt="" />
+                ) : (
+                  <Icon name="fileText" />
+                )}
+              </span>
+              <div className="prompt-editor-fields">
+                <label>
+                  Judul
+                  <input
+                    type="text"
+                    value={promptEditorState.draft.title}
+                    onChange={(event) =>
+                      handlePromptDraftChange('title', event.target.value)
+                    }
+                    placeholder="Contoh: Storyboard UGC 30 Detik"
+                  />
+                </label>
+                <label className="upload-control prompt-upload">
+                  <Icon name="image" />
+                  Upload gambar
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePromptDraftImageChange}
+                  />
+                </label>
+                {promptEditorState.draft.image && (
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={() => handlePromptDraftChange('image', '')}
+                  >
+                    <Icon name="x" />
+                    Lepas Gambar
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="prompt-modal-fields">
+              <label>
+                Prompt
+                <textarea
+                  value={promptEditorState.draft.prompt}
+                  onChange={(event) =>
+                    handlePromptDraftChange('prompt', event.target.value)
+                  }
+                  placeholder="Tulis prompt yang bisa disalin member..."
+                  rows="7"
+                ></textarea>
+              </label>
+              <label>
+                Petunjuk pemakaian prompt
+                <textarea
+                  value={promptEditorState.draft.instruction ?? ''}
+                  onChange={(event) =>
+                    handlePromptDraftChange('instruction', event.target.value)
+                  }
+                  placeholder="Contoh: ganti bagian [produk] dengan nama produk sendiri sebelum disalin."
+                  rows="4"
+                ></textarea>
+              </label>
+            </div>
+            <div className="modal-actions">
+              {promptEditorState.draft.prompt && (
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => handleCopyPrompt(promptEditorState.draft.prompt)}
+                >
+                  <Icon name="fileText" />
+                  Copy
+                </button>
+              )}
+              <button className="btn btn-secondary" type="button" onClick={closePromptEditor}>
+                Batal
+              </button>
+              <button className="btn btn-primary" type="submit">
+                Simpan Prompt
+              </button>
+            </div>
+          </form>
         </div>
       )}
       {pendingDeleteClass && (

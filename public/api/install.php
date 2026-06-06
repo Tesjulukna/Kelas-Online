@@ -70,6 +70,8 @@ $statements = [
         video_file VARCHAR(180) NOT NULL DEFAULT '',
         video_name VARCHAR(180) NOT NULL DEFAULT '',
         video_type VARCHAR(80) NOT NULL DEFAULT '',
+        image_file MEDIUMTEXT,
+        image_name VARCHAR(180) NOT NULL DEFAULT '',
         pdf_file MEDIUMTEXT,
         pdf_name VARCHAR(180) NOT NULL DEFAULT '',
         resource_links MEDIUMTEXT,
@@ -222,7 +224,9 @@ ensure_column($pdo, 'materials', 'video_file', "VARCHAR(180) NOT NULL DEFAULT ''
 ensure_column($pdo, 'materials', 'description', 'MEDIUMTEXT NULL AFTER title');
 ensure_column($pdo, 'materials', 'video_name', "VARCHAR(180) NOT NULL DEFAULT '' AFTER video_file");
 ensure_column($pdo, 'materials', 'video_type', "VARCHAR(80) NOT NULL DEFAULT '' AFTER video_name");
-ensure_column($pdo, 'materials', 'pdf_file', 'MEDIUMTEXT NULL AFTER video_type');
+ensure_column($pdo, 'materials', 'image_file', 'MEDIUMTEXT NULL AFTER video_type');
+ensure_column($pdo, 'materials', 'image_name', "VARCHAR(180) NOT NULL DEFAULT '' AFTER image_file");
+ensure_column($pdo, 'materials', 'pdf_file', 'MEDIUMTEXT NULL AFTER image_name');
 ensure_column($pdo, 'materials', 'pdf_name', "VARCHAR(180) NOT NULL DEFAULT '' AFTER pdf_file");
 ensure_column($pdo, 'materials', 'resource_links', 'MEDIUMTEXT NULL AFTER pdf_name');
 ensure_column($pdo, 'materials', 'allow_task_image', 'TINYINT(1) NOT NULL DEFAULT 1 AFTER requires_task');

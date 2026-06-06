@@ -515,6 +515,8 @@ function fetch_classes(PDO $pdo): array
                     'videoFile' => $material['video_file'] ?? '',
                     'videoName' => $material['video_name'] ?? '',
                     'videoType' => $material['video_type'] ?? '',
+                    'imageFile' => $material['image_file'] ?? '',
+                    'imageName' => $material['image_name'] ?? '',
                     'pdfFile' => $material['pdf_file'] ?? '',
                     'pdfName' => $material['pdf_name'] ?? '',
                     'resourceLinks' => json_decode((string) ($material['resource_links'] ?? '[]'), true) ?: [],

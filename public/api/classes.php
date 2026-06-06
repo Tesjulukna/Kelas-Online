@@ -10,7 +10,9 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 function ensure_material_support_columns(PDO $pdo): void
 {
     $columns = [
-        'pdf_file' => 'MEDIUMTEXT NULL AFTER video_type',
+        'image_file' => 'MEDIUMTEXT NULL AFTER video_type',
+        'image_name' => "VARCHAR(180) NOT NULL DEFAULT '' AFTER image_file",
+        'pdf_file' => 'MEDIUMTEXT NULL AFTER image_name',
         'pdf_name' => "VARCHAR(180) NOT NULL DEFAULT '' AFTER pdf_file",
         'resource_links' => 'MEDIUMTEXT NULL AFTER pdf_name',
         'description' => 'MEDIUMTEXT NULL AFTER title',
@@ -95,8 +97,8 @@ $insertClass = $pdo->prepare(
 );
 $insertMaterial = $pdo->prepare(
     'INSERT INTO materials
-    (id, class_id, sort_order, title, description, video_url, video_file, video_name, video_type, pdf_file, pdf_name, resource_links, requires_task, allow_task_image, require_task_image, task_prompt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    (id, class_id, sort_order, title, description, video_url, video_file, video_name, video_type, image_file, image_name, pdf_file, pdf_name, resource_links, requires_task, allow_task_image, require_task_image, task_prompt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 $insertAsset = $pdo->prepare(
     'INSERT INTO material_assets
@@ -157,6 +159,8 @@ try {
                 clean_video_file($material['videoFile'] ?? ''),
                 clean_text($material['videoName'] ?? '', 180),
                 clean_video_type($material['videoType'] ?? ''),
+                clean_image($material['imageFile'] ?? ''),
+                clean_text($material['imageName'] ?? '', 180),
                 clean_pdf_file($material['pdfFile'] ?? ''),
                 clean_text($material['pdfName'] ?? '', 180),
                 json_encode(clean_resource_links($material['resourceLinks'] ?? []), JSON_UNESCAPED_UNICODE),

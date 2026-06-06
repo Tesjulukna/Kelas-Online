@@ -95,6 +95,14 @@ function cleanImage(value) {
     return cleanText(value, 240)
   }
 
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      return new URL(value).href.slice(0, 600)
+    } catch {
+      return ''
+    }
+  }
+
   return value.startsWith('data:image/') && value.length <= 3_000_000 ? value : ''
 }
 
@@ -172,6 +180,8 @@ function fallbackMaterials(classId, title) {
       videoFile: '',
       videoName: '',
       videoType: '',
+      imageFile: '',
+      imageName: '',
       pdfFile: '',
       pdfName: '',
       requiresTask: false,
@@ -189,6 +199,8 @@ function fallbackMaterials(classId, title) {
       videoFile: '',
       videoName: '',
       videoType: '',
+      imageFile: '',
+      imageName: '',
       pdfFile: '',
       pdfName: '',
       requiresTask: true,
@@ -218,7 +230,7 @@ function cleanPromptItems(value, materialId = 'material') {
 function cleanMaterials(value, classId, title) {
   const source = Array.isArray(value) ? value.slice(0, 80) : []
   const materials = source
-    .filter((item) => item?.title || item?.videoUrl || item?.videoFile)
+    .filter((item) => item?.title || item?.videoUrl || item?.videoFile || item?.imageFile)
     .map((item, index) => {
       const id = cleanText(item.id || `${classId}-material-${index + 1}`, 90)
 
@@ -230,6 +242,8 @@ function cleanMaterials(value, classId, title) {
         videoFile: cleanText(item.videoFile || '', 180),
         videoName: cleanText(item.videoName || '', 160),
         videoType: cleanText(item.videoType || '', 80),
+        imageFile: cleanImage(item.imageFile || ''),
+        imageName: cleanText(item.imageName || '', 160),
         pdfFile: cleanPdfFile(item.pdfFile || ''),
         pdfName: cleanText(item.pdfName || '', 180),
         requiresTask: Boolean(item.requiresTask),

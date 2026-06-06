@@ -303,6 +303,8 @@ function createSeedMaterials(item, index) {
       videoFile: '',
       videoName: '',
       videoType: '',
+      imageFile: '',
+      imageName: '',
       pdfFile: '',
       pdfName: '',
       requiresTask: false,
@@ -320,6 +322,8 @@ function createSeedMaterials(item, index) {
       videoFile: '',
       videoName: '',
       videoType: '',
+      imageFile: '',
+      imageName: '',
       pdfFile: '',
       pdfName: '',
       requiresTask: true,
@@ -335,7 +339,7 @@ function createSeedMaterials(item, index) {
 function cleanMaterials(value, classId, fallbackTitle = 'Kelas') {
   const source = Array.isArray(value) ? value : []
   const materials = source
-    .filter((item) => item?.title || item?.videoUrl || item?.videoFile)
+    .filter((item) => item?.title || item?.videoUrl || item?.videoFile || item?.imageFile)
     .map((item, index) => ({
       id: cleanText(item.id || `${classId}-material-${index + 1}`),
       title: cleanText(item.title || `Materi ${index + 1}`),
@@ -344,6 +348,8 @@ function cleanMaterials(value, classId, fallbackTitle = 'Kelas') {
       videoFile: cleanLongText(item.videoFile || '', 180),
       videoName: cleanLongText(item.videoName || '', 160),
       videoType: cleanLongText(item.videoType || '', 80),
+      imageFile: cleanAvatar(item.imageFile || ''),
+      imageName: cleanLongText(item.imageName || '', 160),
       pdfFile: cleanPdfFile(item.pdfFile || ''),
       pdfName: cleanLongText(item.pdfName || '', 180),
       requiresTask: Boolean(item.requiresTask),

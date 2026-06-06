@@ -548,6 +548,8 @@ function mapMaterial(row, assets) {
     videoFile: row.video_file || '',
     videoName: row.video_name || '',
     videoType: row.video_type || '',
+    imageFile: row.image_file || '',
+    imageName: row.image_name || '',
     pdfFile: row.pdf_file || '',
     pdfName: row.pdf_name || '',
     resourceLinks: parseJson(row.resource_links, []),
@@ -639,35 +641,46 @@ function cleanClassesForDb(value) {
           lessons: cleanText(item.lessons || `${materials.length} materi`, 80),
         },
         materials: materials
-          .filter((material) => material?.title || material?.videoUrl || material?.videoFile)
+          .filter(
+            (material) =>
+              material?.title || material?.videoUrl || material?.videoFile || material?.imageFile,
+          )
           .map((material, materialIndex) => {
             const materialId = cleanText(
               material.id || `${classId}-material-${materialIndex + 1}`,
               120,
             )
+            const imageFile = cleanUrl(material.imageFile || '')
+            const imageName = cleanText(material.imageName || '', 180)
+            const materialRow = {
+              id: materialId,
+              class_id: classId,
+              sort_order: materialIndex + 1,
+              title: cleanText(material.title || `Materi ${materialIndex + 1}`, 160),
+              description: cleanRichHtml(material.description || ''),
+              video_url: cleanYoutubeUrl(material.videoUrl || ''),
+              video_file: cleanText(material.videoFile || '', 240),
+              video_name: cleanText(material.videoName || '', 180),
+              video_type: cleanText(material.videoType || '', 100),
+              pdf_file: cleanUrl(material.pdfFile || ''),
+              pdf_name: cleanText(material.pdfName || '', 180),
+              resource_links: JSON.stringify(cleanResourceLinks(material.resourceLinks)),
+              requires_task: Boolean(material.requiresTask),
+              allow_task_image: cleanBoolean(material.allowTaskImage, true),
+              require_task_image: Boolean(material.requireTaskImage),
+              task_prompt: cleanText(
+                material.taskPrompt || 'Kirim link tugas atau catatan praktik materi ini.',
+                500,
+              ),
+            }
+
+            if (imageFile || imageName) {
+              materialRow.image_file = imageFile
+              materialRow.image_name = imageName
+            }
 
             return {
-              materialRow: {
-                id: materialId,
-                class_id: classId,
-                sort_order: materialIndex + 1,
-                title: cleanText(material.title || `Materi ${materialIndex + 1}`, 160),
-                description: cleanRichHtml(material.description || ''),
-                video_url: cleanYoutubeUrl(material.videoUrl || ''),
-                video_file: cleanText(material.videoFile || '', 240),
-                video_name: cleanText(material.videoName || '', 180),
-                video_type: cleanText(material.videoType || '', 100),
-                pdf_file: cleanUrl(material.pdfFile || ''),
-                pdf_name: cleanText(material.pdfName || '', 180),
-                resource_links: JSON.stringify(cleanResourceLinks(material.resourceLinks)),
-                requires_task: Boolean(material.requiresTask),
-                allow_task_image: cleanBoolean(material.allowTaskImage, true),
-                require_task_image: Boolean(material.requireTaskImage),
-                task_prompt: cleanText(
-                  material.taskPrompt || 'Kirim link tugas atau catatan praktik materi ini.',
-                  500,
-                ),
-              },
+              materialRow,
               assets: (Array.isArray(material.promptItems)
                 ? material.promptItems.slice(0, 80)
                 : []
@@ -709,11 +722,33 @@ async function hasMaterialAssetInstructionColumn() {
   }
 }
 
+async function hasMaterialImageColumns() {
+  try {
+    await rest('materials?select=image_file,image_name&limit=1')
+    return true
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
+      return false
+    }
+
+    throw error
+  }
+}
+
 export async function replaceClasses(classes) {
   const cleanClasses = cleanClassesForDb(classes)
   const classRows = cleanClasses.map((item) => item.classRow)
   const materialRows = cleanClasses.flatMap((item) => item.materials.map((row) => row.materialRow))
   const assetRows = cleanClasses.flatMap((item) => item.materials.flatMap((row) => row.assets))
+  const hasMaterialImageData = materialRows.some((row) => row.image_file || row.image_name)
+
+  if (hasMaterialImageData && !(await hasMaterialImageColumns())) {
+    throw new ApiError(
+      400,
+      'Tambahkan kolom image_file dan image_name di tabel materials Supabase dulu.',
+    )
+  }
+
   const hasInstructionData = assetRows.some((row) => row.instruction)
   const safeAssetRows =
     hasInstructionData && !(await hasMaterialAssetInstructionColumn())
