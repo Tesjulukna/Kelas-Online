@@ -8,23 +8,21 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import MemberPage from './pages/MemberPage'
 import { adminClasses as adminClassSeed } from './data/platformData'
+import { cleanWebsiteSettings, defaultWebsiteSettings } from './data/websiteSettings'
 import './App.css'
-
-const navItems = [
-  { id: 'home', label: 'Beranda', sectionId: 'home' },
-  { id: 'courses', label: 'Kelas', sectionId: 'courses' },
-  { id: 'benefits', label: 'Benefit', sectionId: 'benefits' },
-  { id: 'schedule', label: 'Jadwal', sectionId: 'schedule' },
-]
 
 const sessionKey = 'ibnucreative.session.v1'
 const classesKey = 'ibnucreative.classes.v2'
+const websiteSettingsKey = 'ibnucreative.website-settings.v1'
 const classesSyncKey = 'ibnucreative.classes.sync.v1'
 const peopleSyncKey = 'ibnucreative.people.sync.v1'
+const websiteSettingsSyncKey = 'ibnucreative.website-settings.sync.v1'
 const classesApiPath = '/api/classes'
 const membersApiPath = '/api/members'
 const supportApiPath = '/api/support'
 const submissionsApiPath = '/api/submissions'
+const settingsApiPath = '/api/settings'
+const backupApiPath = '/api/backup'
 const loginApiPath = '/api/login'
 const logoutApiPath = '/api/logout'
 const profileApiPath = '/api/profile'
@@ -78,7 +76,15 @@ function getDashboardMenuFromUrl(role) {
 
   const menuId = new URLSearchParams(window.location.search).get('menu')
   const allowedMenus = role === 'admin'
-    ? ['overview', 'manage-classes', 'students', 'submissions', 'certificates', 'support']
+    ? [
+        'overview',
+        'manage-classes',
+        'students',
+        'submissions',
+        'certificates',
+        'support',
+        'website-settings',
+      ]
     : ['overview', 'my-courses', 'certificates', 'support']
 
   return allowedMenus.includes(menuId) ? menuId : 'overview'
@@ -613,6 +619,21 @@ function readClasses() {
   }
 }
 
+function readWebsiteSettings() {
+  if (typeof window === 'undefined') {
+    return defaultWebsiteSettings
+  }
+
+  try {
+    const savedSettings = JSON.parse(window.sessionStorage.getItem(websiteSettingsKey))
+
+    return cleanWebsiteSettings(savedSettings)
+  } catch {
+    window.sessionStorage.removeItem(websiteSettingsKey)
+    return defaultWebsiteSettings
+  }
+}
+
 function mergeClasses(remoteClasses, localClasses) {
   const classesById = new Map()
 
@@ -658,6 +679,14 @@ function announcePeopleSync() {
   }
 }
 
+function announceWebsiteSettingsSync() {
+  try {
+    window.localStorage.setItem(websiteSettingsSyncKey, String(Date.now()))
+  } catch {
+    // Cross-tab sync is best-effort. Settings remain available in this tab.
+  }
+}
+
 async function requestJson(path, options = {}) {
   const sessionToken = readSession()?.token
   const response = await fetch(path, {
@@ -691,6 +720,18 @@ async function fetchStoredClasses({ mergeLocal = false } = {}) {
   return data.updatedAt || !mergeLocal
     ? remoteClasses
     : mergeClasses(remoteClasses, readClasses())
+}
+
+async function fetchStoredWebsiteSettings() {
+  const response = await fetch(settingsApiPath, { cache: 'no-store' })
+
+  if (!response.ok) {
+    throw new Error('Pengaturan website tidak tersedia.')
+  }
+
+  const data = await response.json()
+
+  return cleanWebsiteSettings(data.settings)
 }
 
 async function fetchStoredMembers() {
@@ -754,10 +795,12 @@ function App() {
     getDashboardMenuFromUrl('admin'),
   )
   const [classes, setClasses] = useState(() => readClasses())
+  const [websiteSettings, setWebsiteSettings] = useState(() => readWebsiteSettings())
   const [members, setMembers] = useState([])
   const [supportTickets, setSupportTickets] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [isClassesLoaded, setIsClassesLoaded] = useState(false)
+  const [isWebsiteSettingsLoaded, setIsWebsiteSettingsLoaded] = useState(false)
   const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(false)
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false)
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
@@ -829,6 +872,58 @@ function App() {
   }, [])
 
   useEffect(() => {
+    let isCurrent = true
+
+    fetchStoredWebsiteSettings()
+      .then((nextSettings) => {
+        if (!isCurrent) {
+          return
+        }
+
+        setWebsiteSettings(nextSettings)
+        window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(nextSettings))
+      })
+      .catch(() => {
+        // Default settings keep the public website usable if the API is not installed yet.
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsWebsiteSettingsLoaded(true)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  useEffect(() => {
+    const safeSettings = cleanWebsiteSettings(websiteSettings)
+
+    document.title = safeSettings.siteTitle || safeSettings.siteName
+
+    let favicon = document.querySelector("link[rel='icon']")
+
+    if (!favicon) {
+      favicon = document.createElement('link')
+      favicon.rel = 'icon'
+      document.head.append(favicon)
+    }
+
+    favicon.href = safeSettings.faviconUrl || '/favicon.svg'
+
+    let description = document.querySelector("meta[name='description']")
+
+    if (!description) {
+      description = document.createElement('meta')
+      description.name = 'description'
+      document.head.append(description)
+    }
+
+    description.content = safeSettings.siteDescription
+  }, [websiteSettings])
+
+  useEffect(() => {
     if (!isClassesLoaded) {
       return undefined
     }
@@ -840,6 +935,19 @@ function App() {
 
     return undefined
   }, [classes, isClassesLoaded])
+
+  useEffect(() => {
+    if (!isWebsiteSettingsLoaded) {
+      return undefined
+    }
+
+    window.sessionStorage.setItem(
+      websiteSettingsKey,
+      JSON.stringify(cleanWebsiteSettings(websiteSettings)),
+    )
+
+    return undefined
+  }, [websiteSettings, isWebsiteSettingsLoaded])
 
   useEffect(() => {
     if (!isClassesLoaded) {
@@ -898,6 +1006,58 @@ function App() {
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [isClassesLoaded])
+
+  useEffect(() => {
+    if (!isWebsiteSettingsLoaded) {
+      return undefined
+    }
+
+    let isCurrent = true
+
+    const syncWebsiteSettings = () => {
+      fetchStoredWebsiteSettings()
+        .then((nextSettings) => {
+          if (!isCurrent) {
+            return
+          }
+
+          setWebsiteSettings((current) => {
+            if (JSON.stringify(cleanWebsiteSettings(current)) === JSON.stringify(nextSettings)) {
+              return current
+            }
+
+            window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(nextSettings))
+            return nextSettings
+          })
+        })
+        .catch(() => {
+          // Keep the latest in-memory settings if the remote store is unavailable.
+        })
+    }
+
+    const handleStorage = (event) => {
+      if (event.key === websiteSettingsSyncKey) {
+        syncWebsiteSettings()
+      }
+    }
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        syncWebsiteSettings()
+      }
+    }
+
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener('focus', syncWebsiteSettings)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      isCurrent = false
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('focus', syncWebsiteSettings)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [isWebsiteSettingsLoaded])
 
   useEffect(() => {
     if (!session) {
@@ -1192,6 +1352,102 @@ function App() {
     return nextClasses
   }
 
+  const handleWebsiteSettingsChange = async (nextSettings) => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk menyimpan pengaturan.')
+    }
+
+    const safeSettings = cleanWebsiteSettings(nextSettings)
+    const data = await requestJson(settingsApiPath, {
+      method: 'PUT',
+      body: JSON.stringify({ settings: safeSettings }),
+    })
+    const savedSettings = cleanWebsiteSettings(data.settings || safeSettings)
+
+    setWebsiteSettings(savedSettings)
+    window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(savedSettings))
+    announceWebsiteSettingsSync()
+
+    return savedSettings
+  }
+
+  const refreshDataAfterRestore = async () => {
+    const [
+      nextClasses,
+      nextMembers,
+      nextSupportTickets,
+      nextSubmissions,
+      nextSettings,
+    ] = await Promise.all([
+      fetchStoredClasses(),
+      fetchStoredMembers(),
+      fetchStoredSupportTickets(session),
+      fetchStoredSubmissions(session),
+      fetchStoredWebsiteSettings(),
+    ])
+
+    setClasses(nextClasses)
+    setMembers(nextMembers)
+    setSupportTickets(nextSupportTickets)
+    setSubmissions(nextSubmissions)
+    setWebsiteSettings(nextSettings)
+    window.sessionStorage.setItem(classesKey, JSON.stringify(nextClasses))
+    window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(nextSettings))
+    announceClassesSync()
+    announcePeopleSync()
+    announceWebsiteSettingsSync()
+
+    return nextSettings
+  }
+
+  const handleDownloadBackup = async () => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk backup data.')
+    }
+
+    const response = await fetch(backupApiPath, {
+      cache: 'no-store',
+      headers: {
+        ...(session.token ? { 'X-Session-Token': session.token } : {}),
+      },
+    })
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.message || 'Backup tidak bisa dibuat.')
+    }
+
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const fallbackName = `backup-ibnucreative-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`
+    const disposition = response.headers.get('Content-Disposition') || ''
+    const fileNameMatch = disposition.match(/filename="?([^"]+)"?/i)
+
+    link.href = url
+    link.download = fileNameMatch?.[1] || fallbackName
+    document.body.append(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+    showNotice('Backup data berhasil didownload.')
+  }
+
+  const handleRestoreBackup = async (backupData) => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk restore data.')
+    }
+
+    await requestJson(backupApiPath, {
+      method: 'POST',
+      body: JSON.stringify({ backup: backupData }),
+    })
+
+    return refreshDataAfterRestore()
+  }
+
   const handleCreateMember = async (memberData) => {
     const data = await requestJson(membersApiPath, {
       method: 'POST',
@@ -1327,6 +1583,7 @@ function App() {
         activePage={page}
         activeSection={activeSection}
         session={session}
+        settings={websiteSettings}
         showDashboardMenu={Boolean(session && page === session.role)}
         onToggleDashboardMenu={() => setIsDashboardMenuOpen(true)}
         onHomeSection={goToHomeSection}
@@ -1344,6 +1601,7 @@ function App() {
             onLogin={goToDashboard}
             onExplore={goToHomeSection}
             classes={classes}
+            settings={websiteSettings}
           />
         )}
         {page === 'login' && (
@@ -1395,7 +1653,11 @@ function App() {
               members={members}
               supportTickets={supportTickets}
               submissions={submissions}
+              websiteSettings={websiteSettings}
               onClassesChange={handleClassesChange}
+              onWebsiteSettingsChange={handleWebsiteSettingsChange}
+              onDownloadBackup={handleDownloadBackup}
+              onRestoreBackup={handleRestoreBackup}
               onCreateMember={handleCreateMember}
               onUpdateMember={handleUpdateMember}
               onDeleteMember={handleDeleteMember}
@@ -1423,6 +1685,7 @@ function App() {
           onHomeSection={goToHomeSection}
           onLogin={session ? goToDashboard : goToLogin}
           isLoggedIn={Boolean(session)}
+          settings={websiteSettings}
         />
       )}
       {notice && (
@@ -1452,8 +1715,23 @@ function App() {
   )
 }
 
-function SiteFooter({ onHomeSection, onLogin, isLoggedIn }) {
+function BrandMark({ settings }) {
+  const safeSettings = cleanWebsiteSettings(settings)
+
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      {safeSettings.brandLogo ? (
+        <img src={safeSettings.brandLogo} alt="" />
+      ) : (
+        <Icon name={safeSettings.brandIcon} />
+      )}
+    </span>
+  )
+}
+
+function SiteFooter({ onHomeSection, onLogin, isLoggedIn, settings }) {
   const year = new Date().getFullYear()
+  const safeSettings = cleanWebsiteSettings(settings)
 
   return (
     <footer className="site-footer">
@@ -1463,65 +1741,58 @@ function SiteFooter({ onHomeSection, onLogin, isLoggedIn }) {
             className="footer-brand"
             type="button"
             onClick={() => onHomeSection('home')}
-            aria-label="IbnuCreative Academy beranda"
+            aria-label={`${safeSettings.siteTitle} beranda`}
           >
-            <span className="brand-mark" aria-hidden="true">
-              <Icon name="spark" />
-            </span>
-            <span>IbnuCreative</span>
+            <BrandMark settings={safeSettings} />
+            <span>{safeSettings.siteName}</span>
           </button>
-          <p>
-            Platform kelas online kreatif untuk belajar desain, video, konten
-            digital, dan strategi jualan dengan materi praktik serta feedback mentor.
-          </p>
-          <div className="footer-socials" aria-label="Sosial media IbnuCreative">
-            <a href="https://instagram.com/" target="_blank" rel="noreferrer" aria-label="Instagram">
-              <Icon name="instagram" />
-            </a>
-            <a href="https://youtube.com/" target="_blank" rel="noreferrer" aria-label="YouTube">
-              <Icon name="youtube" />
-            </a>
-            <a href="https://tiktok.com/" target="_blank" rel="noreferrer" aria-label="TikTok">
-              <Icon name="video" />
-            </a>
-            <a href="https://wa.me/" target="_blank" rel="noreferrer" aria-label="WhatsApp">
-              <Icon name="message" />
-            </a>
-            <a href="https://t.me/" target="_blank" rel="noreferrer" aria-label="Telegram">
-              <Icon name="send" />
-            </a>
+          <p>{safeSettings.footer.description}</p>
+          <div className="footer-socials" aria-label={`Sosial media ${safeSettings.siteName}`}>
+            {safeSettings.footer.socialLinks
+              .filter((item) => item.url)
+              .map((item) => (
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={item.label}
+                  key={item.id}
+                >
+                  <Icon name={item.icon} />
+                </a>
+              ))}
           </div>
         </div>
 
         <nav className="footer-links" aria-label="Navigasi footer">
-          <button type="button" onClick={() => onHomeSection('courses')}>
-            Kelas
-          </button>
-          <button type="button" onClick={() => onHomeSection('benefits')}>
-            Benefit
-          </button>
-          <button type="button" onClick={() => onHomeSection('schedule')}>
-            Alur belajar
-          </button>
+          {safeSettings.footer.links.map((item) => (
+            <button
+              type="button"
+              onClick={() => onHomeSection(item.sectionId)}
+              key={item.sectionId}
+            >
+              {item.label}
+            </button>
+          ))}
           <button type="button" onClick={onLogin}>
-            {isLoggedIn ? 'Dashboard' : 'Login'}
+            {isLoggedIn
+              ? safeSettings.header.dashboardLabel
+              : safeSettings.header.loginLabel}
           </button>
         </nav>
 
         <div className="footer-contact">
-          <span>
-            <Icon name="message" />
-            Bantuan mentor tersedia dari dashboard member.
-          </span>
-          <span>
-            <Icon name="shield" />
-            Materi dan progres belajar tersimpan aman.
-          </span>
+          {safeSettings.footer.contactItems.map((item, index) => (
+            <span key={`${item.text}-${index}`}>
+              <Icon name={item.icon} />
+              {item.text}
+            </span>
+          ))}
         </div>
       </div>
       <div className="site-footer-bottom">
-        <span>© {year} IbnuCreative Academy</span>
-        <span>Kelas online kreatif untuk skill yang langsung dipraktikkan.</span>
+        <span>© {year} {safeSettings.footer.copyright}</span>
+        <span>{safeSettings.footer.bottomText}</span>
       </div>
     </footer>
   )
@@ -1581,6 +1852,7 @@ function Header({
   activePage,
   activeSection,
   session,
+  settings,
   showDashboardMenu,
   onToggleDashboardMenu,
   onHomeSection,
@@ -1592,6 +1864,7 @@ function Header({
   onOpenNotification,
 }) {
   const [isPublicMenuOpen, setIsPublicMenuOpen] = useState(false)
+  const safeSettings = cleanWebsiteSettings(settings)
 
   const handlePublicNavClick = (sectionId) => {
     setIsPublicMenuOpen(false)
@@ -1618,23 +1891,19 @@ function Header({
       )}
 
       {session ? (
-        <div className="brand brand-static" aria-label="IbnuCreative Academy">
-          <span className="brand-mark" aria-hidden="true">
-            <Icon name="spark" />
-          </span>
-          <span>IbnuCreative</span>
+        <div className="brand brand-static" aria-label={safeSettings.siteTitle}>
+          <BrandMark settings={safeSettings} />
+          <span>{safeSettings.siteName}</span>
         </div>
       ) : (
         <button
           className="brand"
           type="button"
           onClick={() => onHomeSection('home')}
-          aria-label="IbnuCreative Academy beranda"
+          aria-label={`${safeSettings.siteTitle} beranda`}
         >
-          <span className="brand-mark" aria-hidden="true">
-            <Icon name="spark" />
-          </span>
-          <span>IbnuCreative</span>
+          <BrandMark settings={safeSettings} />
+          <span>{safeSettings.siteName}</span>
         </button>
       )}
 
@@ -1667,7 +1936,7 @@ function Header({
             className={isPublicMenuOpen ? 'site-nav open' : 'site-nav'}
             aria-label="Navigasi utama"
           >
-            {navItems.map((item) => (
+            {safeSettings.header.navItems.map((item) => (
               <button
                 key={item.id}
                 className={
@@ -1690,7 +1959,7 @@ function Header({
               }}
             >
               <Icon name="logIn" />
-              Login
+              {safeSettings.header.loginLabel}
             </button>
           </nav>
         </>

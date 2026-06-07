@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { cleanWebsiteSettings, defaultWebsiteSettings } from './src/data/websiteSettings.js'
 
 const dataDir = path.resolve('data')
 const dataFile = path.join(dataDir, 'data.json')
@@ -19,6 +20,23 @@ function cleanText(value, maxLength = 80) {
 
 function cleanPromptText(value) {
   return String(value ?? '').split(String.fromCharCode(0)).join('')
+}
+
+function cleanRichHtml(value, maxLength = 6000) {
+  return String(value ?? '')
+    .slice(0, maxLength)
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/\son\w+="[^"]*"/gi, '')
+    .replace(/\son\w+='[^']*'/gi, '')
+    .replace(/<(?!\/?(p|br|strong|b|em|i|ul|ol|li|span|div)\b)[^>]*>/gi, '')
+    .replace(/style="([^"]*)"/gi, (_, styleValue) => {
+      const allowed = String(styleValue)
+        .split(';')
+        .map((item) => item.trim())
+        .filter((item) => /^(color|text-align)\s*:/i.test(item))
+
+      return allowed.length ? `style="${allowed.join('; ')}"` : ''
+    })
 }
 
 function cleanUsername(value) {
@@ -54,11 +72,80 @@ function cleanNumber(value, min = 0, max = 1000000) {
 }
 
 function cleanImage(value) {
-  return typeof value === 'string' &&
-    value.startsWith('data:image/') &&
-    value.length <= 3_000_000
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  if (
+    value.startsWith('/uploads/profiles/') ||
+    value.startsWith('/uploads/tugas/') ||
+    value.startsWith('/uploads/gambar/')
+  ) {
+    return cleanText(value, 240)
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      return new URL(value).href.slice(0, 600)
+    } catch {
+      return ''
+    }
+  }
+
+  return value.startsWith('data:image/') && value.length <= 3_000_000 ? value : ''
+}
+
+function cleanPdfFile(value) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  if (value.startsWith('/uploads/dokumen/')) {
+    return cleanText(value, 240)
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      return new URL(value).href.slice(0, 600)
+    } catch {
+      return ''
+    }
+  }
+
+  return value.startsWith('data:application/pdf') && value.length <= 8_000_000
     ? value
     : ''
+}
+
+function cleanExternalUrl(value) {
+  const safeValue = cleanText(value, 360)
+
+  if (!safeValue) {
+    return ''
+  }
+
+  try {
+    const url = new URL(
+      /^https?:\/\//i.test(safeValue) ? safeValue : `https://${safeValue}`,
+    )
+
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : ''
+  } catch {
+    return ''
+  }
+}
+
+function cleanResourceLinks(value, materialId = 'material') {
+  const source = Array.isArray(value) ? value.slice(0, 40) : []
+
+  return source
+    .filter((item) => item?.url || item?.title)
+    .map((item, index) => ({
+      id: cleanText(item.id || `${materialId}-link-${index + 1}`, 90),
+      title: cleanText(item.title || `Link ${index + 1}`, 120),
+      url: cleanExternalUrl(item.url || ''),
+    }))
+    .filter((item) => item.url)
 }
 
 function cleanYoutubeUrl(value) {
@@ -85,24 +172,40 @@ function fallbackMaterials(classId, title) {
     {
       id: `${classId}-material-1`,
       title: `Pengenalan ${title}`,
+      description: '',
       videoUrl: 'https://www.youtube.com/watch?v=ysz5S6PUM-U',
       videoFile: '',
       videoName: '',
       videoType: '',
+      imageFile: '',
+      imageName: '',
+      pdfFile: '',
+      pdfName: '',
       requiresTask: false,
+      allowTaskImage: true,
+      requireTaskImage: false,
       taskPrompt: '',
       promptItems: [],
+      resourceLinks: [],
     },
     {
       id: `${classId}-material-2`,
       title: `Praktik ${title}`,
+      description: '',
       videoUrl: 'https://www.youtube.com/shorts/aqz-KE-bpKQ',
       videoFile: '',
       videoName: '',
       videoType: '',
+      imageFile: '',
+      imageName: '',
+      pdfFile: '',
+      pdfName: '',
       requiresTask: true,
+      allowTaskImage: true,
+      requireTaskImage: false,
       taskPrompt: 'Kirim link hasil praktik atau catatan tugas dari materi ini.',
       promptItems: [],
+      resourceLinks: [],
     },
   ]
 }
@@ -111,11 +214,12 @@ function cleanPromptItems(value, materialId = 'material') {
   const source = Array.isArray(value) ? value.slice(0, 80) : []
 
   return source
-    .filter((item) => item?.image || item?.prompt)
+    .filter((item) => item?.image || item?.prompt || item?.instruction)
     .map((item, index) => ({
       id: cleanText(item.id || `${materialId}-prompt-${index + 1}`, 90),
       title: cleanText(item.title || `Prompt ${index + 1}`, 100),
       image: cleanImage(item.image),
+      instruction: cleanPromptText(item.instruction),
       prompt: cleanPromptText(item.prompt),
     }))
 }
@@ -123,23 +227,31 @@ function cleanPromptItems(value, materialId = 'material') {
 function cleanMaterials(value, classId, title) {
   const source = Array.isArray(value) ? value.slice(0, 80) : []
   const materials = source
-    .filter((item) => item?.title || item?.videoUrl || item?.videoFile)
+    .filter((item) => item?.title || item?.videoUrl || item?.videoFile || item?.imageFile)
     .map((item, index) => {
       const id = cleanText(item.id || `${classId}-material-${index + 1}`, 90)
 
       return {
         id,
         title: cleanText(item.title || `Materi ${index + 1}`, 100),
+        description: cleanRichHtml(item.description || ''),
         videoUrl: cleanYoutubeUrl(item.videoUrl),
         videoFile: cleanText(item.videoFile || '', 180),
         videoName: cleanText(item.videoName || '', 160),
         videoType: cleanText(item.videoType || '', 80),
+        imageFile: cleanImage(item.imageFile || ''),
+        imageName: cleanText(item.imageName || '', 160),
+        pdfFile: cleanPdfFile(item.pdfFile || ''),
+        pdfName: cleanText(item.pdfName || '', 180),
         requiresTask: Boolean(item.requiresTask),
+        allowTaskImage: item.allowTaskImage !== false,
+        requireTaskImage: Boolean(item.requireTaskImage),
         taskPrompt: cleanText(
           item.taskPrompt || 'Kirim link tugas atau catatan praktik materi ini.',
           260,
         ),
         promptItems: cleanPromptItems(item.promptItems, id),
+        resourceLinks: cleanResourceLinks(item.resourceLinks, id),
       }
     })
 
@@ -164,6 +276,7 @@ function cleanClasses(value) {
         students: cleanNumber(item.students, 0, 1000000),
         status: cleanText(item.status || 'Aktif', 40),
         revenue: cleanText(item.revenue || 'Rp 0', 60),
+        lynkProductKey: cleanText(item.lynkProductKey || '', 180),
         thumbnail: cleanImage(item.thumbnail),
         mentor: cleanText(item.mentor || 'Ibnu Creative', 80),
         progress: cleanNumber(item.progress, 0, 100),
@@ -222,6 +335,9 @@ function cleanAccounts(value) {
         email: cleanEmail(item.email),
         status: cleanText(item.status || 'Aktif', 40),
         avatar: cleanImage(item.avatar),
+        allowedClassIds: Array.isArray(item.allowedClassIds)
+          ? item.allowedClassIds.map((classId) => cleanText(classId, 90)).filter(Boolean)
+          : null,
         passwordHash:
           cleanPasswordHash(item.passwordHash) || hashPassword(item.password || 'member123'),
         joinedAt: cleanText(item.joinedAt || new Date().toISOString().slice(0, 10), 40),
@@ -263,8 +379,53 @@ function cleanSupportTickets(value) {
       status: cleanText(item.status || 'Menunggu', 40),
       priority: cleanText(item.priority || 'Normal', 40),
       answer: cleanText(item.answer || '', 600),
+      replies: cleanSupportReplies(item.replies, item),
       createdAt: cleanText(item.createdAt || new Date().toISOString(), 40),
     }))
+}
+
+function cleanSupportReplies(value, ticket = {}) {
+  const replies = Array.isArray(value) ? value.slice(0, 200) : []
+  const cleanedReplies = replies
+    .filter((item) => item?.message)
+    .map((item, index) => ({
+      id: cleanText(item.id || `reply-${Date.now()}-${index}`, 90),
+      senderRole: item.senderRole === 'admin' ? 'admin' : 'member',
+      senderName: cleanText(
+        item.senderName || (item.senderRole === 'admin' ? 'Admin' : ticket.memberName || 'Member'),
+        100,
+      ),
+      message: cleanText(item.message, 600),
+      createdAt: cleanText(item.createdAt || new Date().toISOString(), 40),
+    }))
+
+  if (cleanedReplies.length) {
+    return cleanedReplies
+  }
+
+  const fallbackReplies = []
+
+  if (ticket.message) {
+    fallbackReplies.push({
+      id: `${cleanText(ticket.id || 'ticket', 80)}-question`,
+      senderRole: 'member',
+      senderName: cleanText(ticket.memberName || 'Member', 100),
+      message: cleanText(ticket.message, 600),
+      createdAt: cleanText(ticket.createdAt || new Date().toISOString(), 40),
+    })
+  }
+
+  if (ticket.answer) {
+    fallbackReplies.push({
+      id: `${cleanText(ticket.id || 'ticket', 80)}-answer`,
+      senderRole: 'admin',
+      senderName: 'Admin',
+      message: cleanText(ticket.answer, 600),
+      createdAt: cleanText(ticket.createdAt || new Date().toISOString(), 40),
+    })
+  }
+
+  return fallbackReplies
 }
 
 function cleanSubmissions(value) {
@@ -284,8 +445,11 @@ function cleanSubmissions(value) {
       materialId: cleanText(item.materialId || '', 90),
       materialTitle: cleanText(item.materialTitle || 'Materi', 140),
       answer: cleanText(item.answer || '', 1200),
+      attachmentUrl: cleanImage(item.attachmentUrl || ''),
+      attachmentName: cleanText(item.attachmentName || '', 180),
       status: cleanText(item.status || 'Menunggu Review', 40),
       feedback: cleanText(item.feedback || '', 1200),
+      rating: Math.round(cleanNumber(item.rating || 0, 0, 5)),
       submittedAt: cleanText(item.submittedAt || new Date().toISOString(), 40),
     }))
 }
@@ -305,6 +469,7 @@ async function ensureDataFile() {
           members: createDefaultMembers(),
           supportTickets: [],
           submissions: [],
+          websiteSettings: defaultWebsiteSettings,
           updatedAt: new Date().toISOString(),
         },
         null,
@@ -330,6 +495,7 @@ async function readData() {
         : createDefaultMembers(),
       supportTickets: cleanSupportTickets(data.supportTickets),
       submissions: cleanSubmissions(data.submissions),
+      websiteSettings: cleanWebsiteSettings(data.websiteSettings),
       updatedAt: cleanText(data.updatedAt, 40),
     }
   } catch {
@@ -339,6 +505,7 @@ async function readData() {
       members: createDefaultMembers(),
       supportTickets: [],
       submissions: [],
+      websiteSettings: defaultWebsiteSettings,
       updatedAt: '',
     }
   }
@@ -366,6 +533,9 @@ async function writeData(nextData) {
           nextData.supportTickets ?? currentData.supportTickets,
         ),
         submissions: cleanSubmissions(nextData.submissions ?? currentData.submissions),
+        websiteSettings: cleanWebsiteSettings(
+          nextData.websiteSettings ?? currentData.websiteSettings,
+        ),
         updatedAt: new Date().toISOString(),
       },
       null,
@@ -405,6 +575,16 @@ function sendPublicData(response, statusCode, data) {
     admins: undefined,
     members: data.members ? redactAccounts(data.members) : undefined,
   })
+}
+
+function sendBackupJson(response, data) {
+  const fileName = `backup-ibnucreative-${new Date().toISOString().slice(0, 10)}.json`
+
+  response.statusCode = 200
+  response.setHeader('Cache-Control', 'no-store')
+  response.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+  response.setHeader('Content-Type', 'application/json; charset=utf-8')
+  response.end(JSON.stringify(data, null, 2))
 }
 
 function getRequestId(request) {
@@ -452,6 +632,87 @@ function localDataPlugin() {
     }
   }
 
+  const handleSettingsRequest = async (request, response) => {
+    try {
+      if (request.method === 'GET') {
+        const data = await readData()
+
+        sendJson(response, 200, {
+          settings: data.websiteSettings,
+          updatedAt: data.updatedAt,
+        })
+        return
+      }
+
+      if (request.method === 'PUT') {
+        const payload = JSON.parse((await readRequestBody(request)) || '{}')
+
+        await writeData({
+          websiteSettings: cleanWebsiteSettings(payload.settings || payload),
+        })
+        const data = await readData()
+
+        sendJson(response, 200, {
+          settings: data.websiteSettings,
+          updatedAt: data.updatedAt,
+        })
+        return
+      }
+
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+    } catch (error) {
+      sendJson(response, 400, {
+        message: error.message || 'Pengaturan website tidak bisa diproses.',
+      })
+    }
+  }
+
+  const handleBackupRequest = async (request, response) => {
+    try {
+      if (request.method === 'GET') {
+        const data = await readData()
+
+        sendBackupJson(response, {
+          type: 'ibnucreative-full-backup',
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          ...data,
+        })
+        return
+      }
+
+      if (request.method === 'POST') {
+        const payload = JSON.parse((await readRequestBody(request)) || '{}')
+        const backup = payload.backup && typeof payload.backup === 'object'
+          ? payload.backup
+          : payload
+
+        await writeData({
+          classes: backup.classes,
+          admins: backup.admins,
+          members: backup.members,
+          supportTickets: backup.supportTickets,
+          submissions: backup.submissions,
+          websiteSettings: backup.websiteSettings || backup.settings,
+        })
+        const data = await readData()
+
+        sendJson(response, 200, {
+          message: 'Backup berhasil dipulihkan.',
+          settings: data.websiteSettings,
+          updatedAt: data.updatedAt,
+        })
+        return
+      }
+
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+    } catch (error) {
+      sendJson(response, 400, {
+        message: error.message || 'Backup tidak bisa diproses.',
+      })
+    }
+  }
+
   const handleMembersRequest = async (request, response) => {
     try {
       if (request.method === 'GET') {
@@ -482,6 +743,9 @@ function localDataPlugin() {
           email: cleanEmail(payload.email),
           status: cleanText(payload.status || 'Aktif', 40),
           avatar: cleanImage(payload.avatar),
+          allowedClassIds: Array.isArray(payload.allowedClassIds)
+            ? payload.allowedClassIds.map((classId) => cleanText(classId, 90)).filter(Boolean)
+            : null,
           passwordHash: hashPassword(password),
           joinedAt: new Date().toISOString().slice(0, 10),
         }
@@ -521,6 +785,9 @@ function localDataPlugin() {
                 email: cleanEmail(payload.email),
                 status: cleanText(payload.status || 'Aktif', 40),
                 avatar: cleanImage(payload.avatar) || item.avatar,
+                allowedClassIds: Array.isArray(payload.allowedClassIds)
+                  ? payload.allowedClassIds.map((classId) => cleanText(classId, 90)).filter(Boolean)
+                  : null,
                 passwordHash: payload.password
                   ? hashPassword(payload.password)
                   : item.passwordHash,
@@ -602,6 +869,15 @@ function localDataPlugin() {
           status: 'Menunggu',
           priority: cleanText(payload.priority || 'Normal', 40),
           answer: '',
+          replies: [
+            {
+              id: `reply-${Date.now()}`,
+              senderRole: 'member',
+              senderName: cleanText(payload.memberName || 'Member', 100),
+              message,
+              createdAt: new Date().toISOString(),
+            },
+          ],
           createdAt: new Date().toISOString(),
         }
 
@@ -623,6 +899,12 @@ function localDataPlugin() {
       if (request.method === 'PUT') {
         const payload = JSON.parse((await readRequestBody(request)) || '{}')
         const ticketId = cleanText(payload.id, 90)
+        const replyMessage = cleanText(payload.message ?? payload.answer ?? '', 600)
+        const senderRole = payload.senderRole === 'admin' ? 'admin' : 'member'
+        const senderName = cleanText(
+          payload.senderName || (senderRole === 'admin' ? 'Admin' : 'Member'),
+          100,
+        )
         const data = await readData()
 
         await writeData({
@@ -631,7 +913,19 @@ function localDataPlugin() {
               ? {
                   ...ticket,
                   status: cleanText(payload.status || ticket.status, 40),
-                  answer: cleanText(payload.answer ?? ticket.answer, 600),
+                  answer: senderRole === 'admin' && replyMessage ? replyMessage : ticket.answer,
+                  replies: replyMessage
+                    ? [
+                        ...(ticket.replies ?? []),
+                        {
+                          id: `reply-${Date.now()}`,
+                          senderRole,
+                          senderName,
+                          message: replyMessage,
+                          createdAt: new Date().toISOString(),
+                        },
+                      ]
+                    : ticket.replies,
                 }
               : ticket,
           ),
@@ -704,8 +998,11 @@ function localDataPlugin() {
           materialId: cleanText(payload.materialId || '', 90),
           materialTitle: cleanText(payload.materialTitle || 'Materi', 140),
           answer,
+          attachmentUrl: cleanImage(payload.attachmentUrl || ''),
+          attachmentName: cleanText(payload.attachmentName || '', 180),
           status: 'Menunggu Review',
           feedback: '',
+          rating: 0,
           submittedAt: new Date().toISOString(),
         }
 
@@ -736,6 +1033,7 @@ function localDataPlugin() {
                   ...item,
                   status: cleanText(payload.status || item.status, 40),
                   feedback: cleanText(payload.feedback ?? item.feedback, 1200),
+                  rating: Math.round(cleanNumber(payload.rating ?? item.rating ?? 0, 0, 5)),
                 }
               : item,
           ),
@@ -803,6 +1101,10 @@ function localDataPlugin() {
             username: account.username,
             role,
             avatar: account.avatar || '',
+            allowedClassIds:
+              role === 'member' && Array.isArray(account.allowedClassIds)
+                ? account.allowedClassIds
+                : null,
             signedInAt: new Date().toISOString(),
           },
         })
@@ -830,6 +1132,10 @@ function localDataPlugin() {
           username: nextAccount.username,
           role,
           avatar: nextAccount.avatar || '',
+          allowedClassIds:
+            role === 'member' && Array.isArray(nextAccount.allowedClassIds)
+              ? nextAccount.allowedClassIds
+              : null,
           signedInAt: new Date().toISOString(),
         },
       })
@@ -878,6 +1184,10 @@ function localDataPlugin() {
           username: account.username,
           role: account.role,
           avatar: account.avatar || '',
+          allowedClassIds:
+            account.role === 'member' && Array.isArray(account.allowedClassIds)
+              ? account.allowedClassIds
+              : null,
           signedInAt: new Date().toISOString(),
         },
       })
@@ -900,6 +1210,10 @@ function localDataPlugin() {
   const registerRoutes = (server) => {
     server.middlewares.use('/api/classes', handleClassesRequest)
     server.middlewares.use('/api/classes.php', handleClassesRequest)
+    server.middlewares.use('/api/settings', handleSettingsRequest)
+    server.middlewares.use('/api/settings.php', handleSettingsRequest)
+    server.middlewares.use('/api/backup', handleBackupRequest)
+    server.middlewares.use('/api/backup.php', handleBackupRequest)
     server.middlewares.use('/api/members', handleMembersRequest)
     server.middlewares.use('/api/members.php', handleMembersRequest)
     server.middlewares.use('/api/support', handleSupportRequest)

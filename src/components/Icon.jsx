@@ -49,6 +49,13 @@ const paths = {
       <path d="M12 7.5v5l3.4 2" />
     </>
   ),
+  download: (
+    <>
+      <path d="M12 4v10" />
+      <path d="m8 10 4 4 4-4" />
+      <path d="M5 19h14" />
+    </>
+  ),
   fileText: (
     <>
       <path d="M6.5 3.5h7L18 8v12.5H6.5z" />
@@ -134,6 +141,17 @@ const paths = {
       <path d="m10.3 13.7 4.4-4.4" />
     </>
   ),
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.5v2.2" />
+      <path d="M12 18.3v2.2" />
+      <path d="M4.6 7.8 6.5 9" />
+      <path d="m17.5 15 1.9 1.2" />
+      <path d="m4.6 16.2 1.9-1.2" />
+      <path d="m17.5 9 1.9-1.2" />
+    </>
+  ),
   shield: (
     <>
       <path d="M12 3.5 19 6v5.5c0 4.5-2.7 7.8-7 9-4.3-1.2-7-4.5-7-9V6z" />
@@ -145,6 +163,13 @@ const paths = {
       <path d="M12 3.5 14.4 9l5.6 3-5.6 3L12 20.5 9.6 15 4 12l5.6-3z" />
       <path d="M19.5 4.5v4" />
       <path d="M21.5 6.5h-4" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M12 20V10" />
+      <path d="m8 14 4-4 4 4" />
+      <path d="M5 5h14" />
     </>
   ),
   user: (

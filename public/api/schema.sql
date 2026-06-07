@@ -170,3 +170,9 @@ CREATE TABLE IF NOT EXISTS lynk_orders (
   INDEX lynk_order_email_index (buyer_email),
   INDEX lynk_order_member_index (member_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS site_settings (
+  id VARCHAR(60) PRIMARY KEY,
+  payload LONGTEXT,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

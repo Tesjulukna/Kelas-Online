@@ -1,6 +1,7 @@
 /* global Buffer, process */
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import bcrypt from 'bcryptjs'
+import { cleanWebsiteSettings, defaultWebsiteSettings } from '../src/data/websiteSettings.js'
 
 const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL || '')
 const serviceKey =
@@ -601,6 +602,163 @@ export async function fetchClasses() {
       mapClass(row, materialsByClass.get(row.id) || []),
     ),
     updatedAt: updatedCandidates.sort().at(-1) || new Date().toISOString(),
+  }
+}
+
+export async function fetchWebsiteSettings() {
+  try {
+    const rows = await rest('site_settings?select=*&id=eq.main&limit=1')
+    const payload = rows?.[0]?.payload
+
+    return {
+      settings: cleanWebsiteSettings(payload || defaultWebsiteSettings),
+      updatedAt: rows?.[0]?.updated_at || new Date().toISOString(),
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
+      return {
+        settings: defaultWebsiteSettings,
+        updatedAt: new Date().toISOString(),
+      }
+    }
+
+    throw error
+  }
+}
+
+export async function replaceWebsiteSettings(settings) {
+  const cleanSettings = cleanWebsiteSettings(settings)
+
+  await rest('site_settings?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: {
+      id: 'main',
+      payload: cleanSettings,
+    },
+  })
+
+  return fetchWebsiteSettings()
+}
+
+const backupTables = [
+  'accounts',
+  'classes',
+  'materials',
+  'material_assets',
+  'support_tickets',
+  'submissions',
+  'member_progress',
+  'lynk_orders',
+  'site_settings',
+]
+
+async function fetchBackupTable(table) {
+  try {
+    return await rest(`${table}?select=*`)
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
+      return []
+    }
+
+    throw error
+  }
+}
+
+export async function createBackup() {
+  const tables = {}
+
+  for (const table of backupTables) {
+    tables[table] = await fetchBackupTable(table)
+  }
+
+  return {
+    type: 'ibnucreative-full-backup',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    websiteSettings: (await fetchWebsiteSettings()).settings,
+    tables,
+  }
+}
+
+async function deleteBackupTable(table, filter) {
+  try {
+    await rest(`${table}?${filter}`, {
+      method: 'DELETE',
+      headers: { Prefer: 'return=minimal' },
+    })
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
+      return
+    }
+
+    throw error
+  }
+}
+
+async function insertBackupRows(table, rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    return
+  }
+
+  await rest(table, {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: rows,
+  })
+}
+
+export async function restoreBackup(payload) {
+  const backup = payload?.backup && typeof payload.backup === 'object'
+    ? payload.backup
+    : payload
+  const tables = backup?.tables && typeof backup.tables === 'object' ? backup.tables : null
+
+  if (!tables) {
+    throw new ApiError(400, 'File backup tidak memuat data tabel.')
+  }
+
+  const deleteOrder = [
+    ['material_assets', 'id=not.is.null'],
+    ['materials', 'id=not.is.null'],
+    ['submissions', 'id=not.is.null'],
+    ['support_tickets', 'id=not.is.null'],
+    ['member_progress', 'member_id=not.is.null'],
+    ['lynk_orders', 'id=not.is.null'],
+    ['classes', 'id=not.is.null'],
+    ['accounts', 'id=not.is.null'],
+    ['site_settings', 'id=not.is.null'],
+  ]
+  const insertOrder = [
+    'accounts',
+    'classes',
+    'materials',
+    'material_assets',
+    'support_tickets',
+    'submissions',
+    'member_progress',
+    'lynk_orders',
+    'site_settings',
+  ]
+
+  for (const [table, filter] of deleteOrder) {
+    await deleteBackupTable(table, filter)
+  }
+
+  for (const table of insertOrder) {
+    await insertBackupRows(table, tables[table])
+  }
+
+  if (
+    (!Array.isArray(tables.site_settings) || !tables.site_settings.length) &&
+    backup.websiteSettings
+  ) {
+    await replaceWebsiteSettings(backup.websiteSettings)
+  }
+
+  return {
+    message: 'Backup berhasil dipulihkan.',
+    ...(await fetchWebsiteSettings()),
   }
 }
 

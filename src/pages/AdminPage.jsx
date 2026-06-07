@@ -3,6 +3,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
+import WebsiteSettingsPanel from '../components/WebsiteSettingsPanel'
 import { adminMenuItems } from '../data/platformData'
 import {
   buildSignedUploadBody,
@@ -475,7 +476,11 @@ function AdminPage({
   members = [],
   supportTickets = [],
   submissions = [],
+  websiteSettings,
   onClassesChange,
+  onWebsiteSettingsChange = async () => {},
+  onDownloadBackup = async () => {},
+  onRestoreBackup = async () => {},
   onCreateMember = async () => {},
   onUpdateMember = async () => {},
   onDeleteMember = async () => {},
@@ -498,6 +503,11 @@ function AdminPage({
   const [pendingDeleteMember, setPendingDeleteMember] = useState(null)
   const [memberPageSize, setMemberPageSize] = useState(10)
   const [memberPage, setMemberPage] = useState(1)
+  const [memberSearchTerm, setMemberSearchTerm] = useState('')
+  const [memberStatusFilter, setMemberStatusFilter] = useState('all')
+  const [memberClassFilter, setMemberClassFilter] = useState('all')
+  const [memberActivityFilter, setMemberActivityFilter] = useState('all')
+  const [isMemberFilterOpen, setIsMemberFilterOpen] = useState(false)
   const [submissionPageSize, setSubmissionPageSize] = useState(10)
   const [submissionPage, setSubmissionPage] = useState(1)
   const [submissionSearchTerm, setSubmissionSearchTerm] = useState('')
@@ -530,11 +540,42 @@ function AdminPage({
   const pendingSubmissions = submissions.filter(
     (item) => item.status === 'Menunggu Review',
   ).length
-  const memberPageCount = Math.max(1, Math.ceil(members.length / memberPageSize))
+  const memberSearchQuery = memberSearchTerm.trim().toLowerCase()
+  const memberStatusOptions = [
+    ...new Set(members.map((member) => member.status).filter(Boolean)),
+  ]
+  const memberClassOptions = classes.filter((course) => course.status === 'Aktif')
+  const filteredMembers = members.filter((member) => {
+    const searchMatches =
+      !memberSearchQuery ||
+      [member.name, member.email, member.username]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(memberSearchQuery))
+    const statusMatches =
+      memberStatusFilter === 'all' || member.status === memberStatusFilter
+    const activityMatches =
+      memberActivityFilter === 'all' ||
+      (memberActivityFilter === 'online' && member.isOnline) ||
+      (memberActivityFilter === 'offline' && !member.isOnline)
+    const accessibleClasses = getMemberAccessibleClasses(member, classes)
+    const classMatches =
+      memberClassFilter === 'all' ||
+      (memberClassFilter === 'all-access' && !Array.isArray(member.allowedClassIds)) ||
+      (memberClassFilter === 'no-access' && !accessibleClasses.length) ||
+      accessibleClasses.some((course) => course.id === memberClassFilter)
+
+    return searchMatches && statusMatches && activityMatches && classMatches
+  })
+  const hasMemberFilter =
+    Boolean(memberSearchQuery) ||
+    memberStatusFilter !== 'all' ||
+    memberClassFilter !== 'all' ||
+    memberActivityFilter !== 'all'
+  const memberPageCount = Math.max(1, Math.ceil(filteredMembers.length / memberPageSize))
   const safeMemberPage = Math.min(memberPage, memberPageCount)
-  const memberPageStart = members.length ? (safeMemberPage - 1) * memberPageSize : 0
-  const memberPageEnd = Math.min(members.length, memberPageStart + memberPageSize)
-  const visibleMembers = members.slice(memberPageStart, memberPageEnd)
+  const memberPageStart = filteredMembers.length ? (safeMemberPage - 1) * memberPageSize : 0
+  const memberPageEnd = Math.min(filteredMembers.length, memberPageStart + memberPageSize)
+  const visibleMembers = filteredMembers.slice(memberPageStart, memberPageEnd)
   const memberPageNumbers = Array.from({ length: memberPageCount }, (_, index) => index + 1).filter(
     (pageNumber) =>
       pageNumber === 1 ||
@@ -1704,6 +1745,8 @@ function AdminPage({
     onNotify('File CSV data kelas dibuat.')
   }
 
+  const handleWebsiteImageUpload = (file) => uploadClassImage(file, sessionToken)
+
   const openSubmissionReview = (submission) => {
     setViewingSubmission(submission)
     setSubmissionFeedback(submission.feedback ?? '')
@@ -1864,18 +1907,110 @@ function AdminPage({
               <p className="eyebrow">Peserta</p>
               <h2>Kelola member</h2>
             </div>
-            <button className="btn btn-primary" type="button" onClick={openCreateMember}>
-              <Icon name="users" />
-              Tambah Member
+            <div className="member-heading-actions">
+              <button
+                className={`mobile-member-filter-toggle ${
+                  hasMemberFilter ? 'active' : ''
+                }`}
+                type="button"
+                aria-label="Tampilkan pencarian dan filter member"
+                aria-expanded={isMemberFilterOpen}
+                onClick={() => setIsMemberFilterOpen((current) => !current)}
+              >
+                <Icon name="filter" />
+              </button>
+              <button className="btn btn-primary" type="button" onClick={openCreateMember}>
+                <Icon name="users" />
+                Tambah Member
+              </button>
+            </div>
+          </div>
+          <div className={`member-filter-bar ${isMemberFilterOpen ? 'is-open' : ''}`}>
+            <label className="member-search-field">
+              Cari member
+              <input
+                type="search"
+                value={memberSearchTerm}
+                onChange={(event) => {
+                  setMemberSearchTerm(event.target.value)
+                  setMemberPage(1)
+                }}
+                placeholder="Nama, email, atau username"
+              />
+            </label>
+            <label>
+              Status akun
+              <select
+                value={memberStatusFilter}
+                onChange={(event) => {
+                  setMemberStatusFilter(event.target.value)
+                  setMemberPage(1)
+                }}
+              >
+                <option value="all">Semua status</option>
+                {memberStatusOptions.map((status) => (
+                  <option value={status} key={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Kelas
+              <select
+                value={memberClassFilter}
+                onChange={(event) => {
+                  setMemberClassFilter(event.target.value)
+                  setMemberPage(1)
+                }}
+              >
+                <option value="all">Semua kelas</option>
+                <option value="all-access">Akses semua kelas</option>
+                <option value="no-access">Belum ada akses kelas</option>
+                {memberClassOptions.map((course) => (
+                  <option value={course.id} key={course.id}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Aktivitas
+              <select
+                value={memberActivityFilter}
+                onChange={(event) => {
+                  setMemberActivityFilter(event.target.value)
+                  setMemberPage(1)
+                }}
+              >
+                <option value="all">Semua aktivitas</option>
+                <option value="online">Sedang aktif</option>
+                <option value="offline">Tidak aktif</option>
+              </select>
+            </label>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              disabled={!hasMemberFilter}
+              onClick={() => {
+                setMemberSearchTerm('')
+                setMemberStatusFilter('all')
+                setMemberClassFilter('all')
+                setMemberActivityFilter('all')
+                setMemberPage(1)
+              }}
+            >
+              <Icon name="x" />
+              Reset
             </button>
           </div>
           <div className="member-pagination-bar">
             <p>
               Menampilkan{' '}
               <strong>
-                {members.length ? memberPageStart + 1 : 0}-{memberPageEnd}
+                {filteredMembers.length ? memberPageStart + 1 : 0}-{memberPageEnd}
               </strong>{' '}
-              dari <strong>{members.length}</strong> member
+              dari <strong>{filteredMembers.length}</strong> member
             </p>
             <label>
               Tampil
@@ -1967,15 +2102,19 @@ function AdminPage({
                 </div>
               )
             })}
-            {!members.length && (
+            {!filteredMembers.length && (
               <article className="empty-state table-empty">
                 <Icon name="users" />
-                <h3>Belum ada member</h3>
-                <p>Tambahkan member pertama agar bisa login ke dashboard member.</p>
+                <h3>{members.length ? 'Tidak ada member sesuai filter' : 'Belum ada member'}</h3>
+                <p>
+                  {members.length
+                    ? 'Ubah kata kunci atau filter untuk melihat member lain.'
+                    : 'Tambahkan member pertama agar bisa login ke dashboard member.'}
+                </p>
               </article>
             )}
           </div>
-          {members.length > memberPageSize && (
+          {filteredMembers.length > memberPageSize && (
             <div className="pagination-controls" aria-label="Navigasi halaman member">
               <button
                 type="button"
@@ -2295,6 +2434,18 @@ function AdminPage({
             )}
           </div>
         </section>
+      )}
+
+      {activeMenu === 'website-settings' && (
+        <WebsiteSettingsPanel
+          key={JSON.stringify(websiteSettings)}
+          settings={websiteSettings}
+          onSave={onWebsiteSettingsChange}
+          onDownloadBackup={onDownloadBackup}
+          onRestoreBackup={onRestoreBackup}
+          onUploadImage={handleWebsiteImageUpload}
+          onNotify={onNotify}
+        />
       )}
 
       {actionStatus && (

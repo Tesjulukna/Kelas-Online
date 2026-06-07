@@ -1,7 +1,18 @@
 import Icon from '../components/Icon'
 import { benefits, courseHighlights } from '../data/platformData'
+import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 
-function HomePage({ isLoggedIn, onLogin, onExplore, classes = [] }) {
+function HomePage({
+  isLoggedIn,
+  onLogin,
+  onExplore,
+  classes = [],
+  settings = defaultWebsiteSettings,
+}) {
+  const websiteSettings = cleanWebsiteSettings(settings)
+  const heroStyle = websiteSettings.hero.backgroundImage
+    ? { backgroundImage: `url(${JSON.stringify(websiteSettings.hero.backgroundImage)})` }
+    : undefined
   const publicCourses = classes.length
     ? classes.slice(0, 3).map((course) => ({
         title: course.title,
@@ -10,34 +21,30 @@ function HomePage({ isLoggedIn, onLogin, onExplore, classes = [] }) {
         icon: 'bookOpen',
         thumbnail: course.thumbnail,
         mentor: course.mentor,
-        price: course.price || course.revenue || 'Harga tersedia di dashboard',
+        price: course.price || course.revenue || websiteSettings.courses.emptyPrice,
         description: `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`,
       }))
     : courseHighlights.map((course) => ({
         ...course,
         thumbnail: '',
-        mentor: 'Ibnu Creative',
-        price: 'Mulai dari kelas pilihan',
+        mentor: websiteSettings.courses.fallbackMentor,
+        price: websiteSettings.courses.fallbackPrice,
       }))
 
   return (
     <>
-      <section className="home-hero modern-hero image-hero" id="home">
+      <section className="home-hero modern-hero image-hero" id="home" style={heroStyle}>
         <div className="home-hero__overlay modern-hero__overlay image-hero__overlay">
           <div className="home-hero__content modern-hero__content image-hero__content">
-            <p className="eyebrow">Platform kelas online kreatif</p>
-            <h1 className="hero-title-modern">
-              Kelas online untuk menaikkan skillmu.
-            </h1>
-            <p className="hero-copy">
-              Belajar desain, video editing, konten digital, hingga strategi jualan
-              online lewat materi yang rapi, tugas praktik, feedback mentor, dan
-              dashboard belajar yang nyaman dipakai di semua perangkat.
-            </p>
+            <p className="eyebrow">{websiteSettings.hero.eyebrow}</p>
+            <h1 className="hero-title-modern">{websiteSettings.hero.title}</h1>
+            <p className="hero-copy">{websiteSettings.hero.description}</p>
             <div className="hero-actions">
               <button className="btn btn-primary" type="button" onClick={onLogin}>
                 <Icon name="layoutDashboard" />
-                {isLoggedIn ? 'Buka Dashboard' : 'Mulai Belajar'}
+                {isLoggedIn
+                  ? websiteSettings.hero.dashboardButton
+                  : websiteSettings.hero.primaryButton}
               </button>
               <button
                 className="btn btn-ghost"
@@ -45,7 +52,7 @@ function HomePage({ isLoggedIn, onLogin, onExplore, classes = [] }) {
                 onClick={() => onExplore('courses')}
               >
                 <Icon name="play" />
-                Lihat Kelas
+                {websiteSettings.hero.secondaryButton}
               </button>
             </div>
           </div>
@@ -53,27 +60,19 @@ function HomePage({ isLoggedIn, onLogin, onExplore, classes = [] }) {
       </section>
 
       <section className="stats-band modern-stats" aria-label="Statistik kelas">
-        <div>
-          <Icon name="users" />
-          <strong>3.200+</strong>
-          <span>member aktif</span>
-        </div>
-        <div>
-          <Icon name="bookOpen" />
-          <strong>{Math.max(classes.length, 12)}</strong>
-          <span>kelas dan workshop</span>
-        </div>
-        <div>
-          <Icon name="checkCircle" />
-          <strong>92%</strong>
-          <span>praktik sampai selesai</span>
-        </div>
+        {websiteSettings.stats.map((stat, index) => (
+          <div key={`${stat.label}-${index}`}>
+            <Icon name={stat.icon} />
+            <strong>{index === 1 && classes.length ? Math.max(classes.length, Number(stat.value) || 0) : stat.value}</strong>
+            <span>{stat.label}</span>
+          </div>
+        ))}
       </section>
 
       <section className="content-section modern-section" id="courses">
         <div className="section-heading reveal-panel">
-          <p className="eyebrow">Pilihan kelas</p>
-          <h2>Daftar Kelas</h2>
+          <p className="eyebrow">{websiteSettings.courses.eyebrow}</p>
+          <h2>{websiteSettings.courses.title}</h2>
         </div>
         <div className="course-grid">
           {publicCourses.map((course, index) => (
@@ -116,11 +115,14 @@ function HomePage({ isLoggedIn, onLogin, onExplore, classes = [] }) {
 
       <section className="content-section split-section modern-section" id="benefits">
         <div className="section-heading reveal-panel">
-          <p className="eyebrow">Benefit</p>
-          <h2>Belajar lebih terarah dengan materi, tugas, dan feedback mentor.</h2>
+          <p className="eyebrow">{websiteSettings.benefits.eyebrow}</p>
+          <h2>{websiteSettings.benefits.title}</h2>
         </div>
         <div className="benefit-list">
-          {benefits.map((benefit) => (
+          {(websiteSettings.benefits.items.length
+            ? websiteSettings.benefits.items
+            : benefits
+          ).map((benefit) => (
             <article className="benefit-item animated-card" key={benefit.title}>
               <Icon name={benefit.icon} />
               <div>
@@ -134,33 +136,23 @@ function HomePage({ isLoggedIn, onLogin, onExplore, classes = [] }) {
 
       <section className="content-section schedule-section modern-section" id="schedule">
         <div className="schedule-copy reveal-panel">
-          <p className="eyebrow">Alur belajar</p>
-          <h2>Pilih kelas, ikuti materi, kirim tugas, lalu dapatkan arahan.</h2>
-          <p>
-            Semua proses belajar bisa dipantau dari dashboard member. Admin dan
-            mentor dapat mengelola materi, tugas, serta balasan bantuan dari
-            dashboard yang sama.
-          </p>
+          <p className="eyebrow">{websiteSettings.schedule.eyebrow}</p>
+          <h2>{websiteSettings.schedule.title}</h2>
+          <p>{websiteSettings.schedule.description}</p>
         </div>
         <article className="schedule-board animated-card">
-          <div>
-            <Icon name="play" />
-            <span>Langkah 01</span>
-            <strong>Pilih kelas favorit</strong>
-          </div>
-          <div>
-            <Icon name="fileText" />
-            <span>Langkah 02</span>
-            <strong>Kerjakan tugas praktik</strong>
-          </div>
-          <div>
-            <Icon name="message" />
-            <span>Langkah 03</span>
-            <strong>Terima feedback mentor</strong>
-          </div>
+          {websiteSettings.schedule.steps.map((step, index) => (
+            <div key={`${step.title}-${index}`}>
+              <Icon name={step.icon} />
+              <span>{step.label}</span>
+              <strong>{step.title}</strong>
+            </div>
+          ))}
           <button className="btn btn-primary" type="button" onClick={onLogin}>
             <Icon name="layoutDashboard" />
-            {isLoggedIn ? 'Masuk Dashboard' : 'Login Member'}
+            {isLoggedIn
+              ? websiteSettings.schedule.dashboardButton
+              : websiteSettings.schedule.loginButton}
           </button>
         </article>
       </section>

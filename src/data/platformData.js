@@ -96,4 +96,5 @@ export const adminMenuItems = [
   { id: 'submissions', label: 'Tugas Member', icon: 'message' },
   { id: 'certificates', label: 'Sertifikat', icon: 'certificate' },
   { id: 'support', label: 'Bantuan Mentor', icon: 'message' },
+  { id: 'website-settings', label: 'Pengaturan Website', icon: 'settings' },
 ]

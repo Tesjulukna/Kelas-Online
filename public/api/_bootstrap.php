@@ -204,6 +204,309 @@ function clean_resource_links($value): array
     return $cleanLinks;
 }
 
+function clean_asset_url($value, int $maxLength = 2000): string
+{
+    $url = clean_text($value, $maxLength);
+
+    if ($url === '') {
+        return '';
+    }
+
+    if (
+        strpos($url, '/') === 0 &&
+        strpos($url, '//') !== 0
+    ) {
+        return $url;
+    }
+
+    if (substr($url, 0, 11) === 'data:image/' && strlen($url) <= 3000000) {
+        return $url;
+    }
+
+    $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+
+    return in_array($scheme, ['http', 'https'], true) ? $url : '';
+}
+
+function default_website_settings(): array
+{
+    return [
+        'siteName' => 'IbnuCreative',
+        'siteTitle' => 'IbnuCreative Academy',
+        'siteDescription' => 'Platform kelas online kreatif untuk belajar desain, video, konten digital, dan strategi jualan dengan materi praktik serta feedback mentor.',
+        'faviconUrl' => '/favicon.svg',
+        'brandIcon' => 'spark',
+        'brandLogo' => '',
+        'header' => [
+            'loginLabel' => 'Login',
+            'dashboardLabel' => 'Dashboard',
+            'navItems' => [
+                ['id' => 'home', 'label' => 'Beranda', 'sectionId' => 'home'],
+                ['id' => 'courses', 'label' => 'Kelas', 'sectionId' => 'courses'],
+                ['id' => 'benefits', 'label' => 'Benefit', 'sectionId' => 'benefits'],
+                ['id' => 'schedule', 'label' => 'Jadwal', 'sectionId' => 'schedule'],
+            ],
+        ],
+        'hero' => [
+            'eyebrow' => 'Platform kelas online kreatif',
+            'title' => 'Kelas online untuk menaikkan skillmu.',
+            'description' => 'Belajar desain, video editing, konten digital, hingga strategi jualan online lewat materi yang rapi, tugas praktik, feedback mentor, dan dashboard belajar yang nyaman dipakai di semua perangkat.',
+            'primaryButton' => 'Mulai Belajar',
+            'dashboardButton' => 'Buka Dashboard',
+            'secondaryButton' => 'Lihat Kelas',
+            'backgroundImage' => '',
+        ],
+        'stats' => [
+            ['icon' => 'users', 'value' => '3.200+', 'label' => 'member aktif'],
+            ['icon' => 'bookOpen', 'value' => '12', 'label' => 'kelas dan workshop'],
+            ['icon' => 'checkCircle', 'value' => '92%', 'label' => 'praktik sampai selesai'],
+        ],
+        'courses' => [
+            'eyebrow' => 'Pilihan kelas',
+            'title' => 'Daftar Kelas',
+            'fallbackMentor' => 'Ibnu Creative',
+            'fallbackPrice' => 'Mulai dari kelas pilihan',
+            'emptyPrice' => 'Harga tersedia di dashboard',
+        ],
+        'benefits' => [
+            'eyebrow' => 'Benefit',
+            'title' => 'Belajar lebih terarah dengan materi, tugas, dan feedback mentor.',
+            'items' => [
+                [
+                    'title' => 'Materi pendek dan fokus',
+                    'description' => 'Setiap modul dibuat ringkas agar mudah dipraktikkan.',
+                    'icon' => 'target',
+                ],
+                [
+                    'title' => 'Feedback mentor',
+                    'description' => 'Tugas member direview supaya hasilnya naik bertahap.',
+                    'icon' => 'message',
+                ],
+                [
+                    'title' => 'Sertifikat proyek',
+                    'description' => 'Kumpulkan portofolio yang bisa dipakai untuk klien.',
+                    'icon' => 'certificate',
+                ],
+            ],
+        ],
+        'schedule' => [
+            'eyebrow' => 'Alur belajar',
+            'title' => 'Pilih kelas, ikuti materi, kirim tugas, lalu dapatkan arahan.',
+            'description' => 'Semua proses belajar bisa dipantau dari dashboard member. Admin dan mentor dapat mengelola materi, tugas, serta balasan bantuan dari dashboard yang sama.',
+            'dashboardButton' => 'Masuk Dashboard',
+            'loginButton' => 'Login Member',
+            'steps' => [
+                ['icon' => 'play', 'label' => 'Langkah 01', 'title' => 'Pilih kelas favorit'],
+                ['icon' => 'fileText', 'label' => 'Langkah 02', 'title' => 'Kerjakan tugas praktik'],
+                ['icon' => 'message', 'label' => 'Langkah 03', 'title' => 'Terima feedback mentor'],
+            ],
+        ],
+        'footer' => [
+            'description' => 'Platform kelas online kreatif untuk belajar desain, video, konten digital, dan strategi jualan dengan materi praktik serta feedback mentor.',
+            'copyright' => 'IbnuCreative Academy',
+            'bottomText' => 'Kelas online kreatif untuk skill yang langsung dipraktikkan.',
+            'socialLinks' => [
+                ['id' => 'instagram', 'label' => 'Instagram', 'icon' => 'instagram', 'url' => 'https://instagram.com/'],
+                ['id' => 'youtube', 'label' => 'YouTube', 'icon' => 'youtube', 'url' => 'https://youtube.com/'],
+                ['id' => 'tiktok', 'label' => 'TikTok', 'icon' => 'video', 'url' => 'https://tiktok.com/'],
+                ['id' => 'whatsapp', 'label' => 'WhatsApp', 'icon' => 'message', 'url' => 'https://wa.me/'],
+                ['id' => 'telegram', 'label' => 'Telegram', 'icon' => 'send', 'url' => 'https://t.me/'],
+            ],
+            'contactItems' => [
+                ['icon' => 'message', 'text' => 'Bantuan mentor tersedia dari dashboard member.'],
+                ['icon' => 'shield', 'text' => 'Materi dan progres belajar tersimpan aman.'],
+            ],
+            'links' => [
+                ['label' => 'Kelas', 'sectionId' => 'courses'],
+                ['label' => 'Benefit', 'sectionId' => 'benefits'],
+                ['label' => 'Alur belajar', 'sectionId' => 'schedule'],
+            ],
+        ],
+    ];
+}
+
+function clean_website_icon($value, string $fallback = 'spark'): string
+{
+    $icon = clean_text($value, 40);
+    $allowed = [
+        'spark',
+        'bookOpen',
+        'video',
+        'layoutDashboard',
+        'megaphone',
+        'target',
+        'certificate',
+        'message',
+        'shield',
+        'users',
+        'wallet',
+        'trendingUp',
+        'play',
+        'fileText',
+        'instagram',
+        'youtube',
+        'send',
+        'checkCircle',
+    ];
+
+    return in_array($icon, $allowed, true) ? $icon : $fallback;
+}
+
+function clean_website_settings($value): array
+{
+    $source = is_array($value) ? $value : [];
+    $defaults = default_website_settings();
+    $header = is_array($source['header'] ?? null) ? $source['header'] : [];
+    $hero = is_array($source['hero'] ?? null) ? $source['hero'] : [];
+    $courses = is_array($source['courses'] ?? null) ? $source['courses'] : [];
+    $benefits = is_array($source['benefits'] ?? null) ? $source['benefits'] : [];
+    $schedule = is_array($source['schedule'] ?? null) ? $source['schedule'] : [];
+    $footer = is_array($source['footer'] ?? null) ? $source['footer'] : [];
+
+    $navItems = [];
+    $sourceNavItems = is_array($header['navItems'] ?? null) ? $header['navItems'] : [];
+
+    foreach ($defaults['header']['navItems'] as $index => $item) {
+        $sourceItem = $sourceNavItems[$index] ?? [];
+        $navItems[] = [
+            'id' => $item['id'],
+            'label' => clean_text($sourceItem['label'] ?? $item['label'], 40),
+            'sectionId' => $item['sectionId'],
+        ];
+    }
+
+    $stats = [];
+    $sourceStats = is_array($source['stats'] ?? null) ? $source['stats'] : $defaults['stats'];
+
+    foreach (array_slice($sourceStats, 0, 6) as $index => $item) {
+        $fallback = $defaults['stats'][$index] ?? $defaults['stats'][0];
+        $stats[] = [
+            'icon' => clean_website_icon($item['icon'] ?? '', $fallback['icon']),
+            'value' => clean_text($item['value'] ?? $fallback['value'], 30),
+            'label' => clean_text($item['label'] ?? $fallback['label'], 60),
+        ];
+    }
+
+    $benefitItems = [];
+    $sourceBenefitItems = is_array($benefits['items'] ?? null)
+        ? $benefits['items']
+        : $defaults['benefits']['items'];
+
+    foreach (array_slice($sourceBenefitItems, 0, 8) as $index => $item) {
+        $fallback = $defaults['benefits']['items'][$index] ?? $defaults['benefits']['items'][0];
+        $benefitItems[] = [
+            'title' => clean_text($item['title'] ?? $fallback['title'], 90),
+            'description' => clean_text($item['description'] ?? $fallback['description'], 220),
+            'icon' => clean_website_icon($item['icon'] ?? '', $fallback['icon']),
+        ];
+    }
+
+    $steps = [];
+    $sourceSteps = is_array($schedule['steps'] ?? null)
+        ? $schedule['steps']
+        : $defaults['schedule']['steps'];
+
+    foreach (array_slice($sourceSteps, 0, 6) as $index => $item) {
+        $fallback = $defaults['schedule']['steps'][$index] ?? $defaults['schedule']['steps'][0];
+        $steps[] = [
+            'icon' => clean_website_icon($item['icon'] ?? '', $fallback['icon']),
+            'label' => clean_text($item['label'] ?? $fallback['label'], 40),
+            'title' => clean_text($item['title'] ?? $fallback['title'], 90),
+        ];
+    }
+
+    $socialLinks = [];
+    $sourceSocialLinks = is_array($footer['socialLinks'] ?? null)
+        ? $footer['socialLinks']
+        : $defaults['footer']['socialLinks'];
+
+    foreach (array_slice($sourceSocialLinks, 0, 8) as $index => $item) {
+        $fallback = $defaults['footer']['socialLinks'][$index] ?? $defaults['footer']['socialLinks'][0];
+        $socialLinks[] = [
+            'id' => clean_text($item['id'] ?? $fallback['id'], 40),
+            'label' => clean_text($item['label'] ?? $fallback['label'], 50),
+            'icon' => clean_website_icon($item['icon'] ?? '', $fallback['icon']),
+            'url' => clean_asset_url($item['url'] ?? $fallback['url'], 360),
+        ];
+    }
+
+    $contactItems = [];
+    $sourceContactItems = is_array($footer['contactItems'] ?? null)
+        ? $footer['contactItems']
+        : $defaults['footer']['contactItems'];
+
+    foreach (array_slice($sourceContactItems, 0, 6) as $index => $item) {
+        $fallback = $defaults['footer']['contactItems'][$index] ?? $defaults['footer']['contactItems'][0];
+        $contactItems[] = [
+            'icon' => clean_website_icon($item['icon'] ?? '', $fallback['icon']),
+            'text' => clean_text($item['text'] ?? $fallback['text'], 180),
+        ];
+    }
+
+    $footerLinks = [];
+    $sourceFooterLinks = is_array($footer['links'] ?? null) ? $footer['links'] : [];
+
+    foreach ($defaults['footer']['links'] as $index => $item) {
+        $sourceItem = $sourceFooterLinks[$index] ?? [];
+        $footerLinks[] = [
+            'label' => clean_text($sourceItem['label'] ?? $item['label'], 40),
+            'sectionId' => $item['sectionId'],
+        ];
+    }
+
+    return [
+        'siteName' => clean_text($source['siteName'] ?? $defaults['siteName'], 60),
+        'siteTitle' => clean_text($source['siteTitle'] ?? $defaults['siteTitle'], 90),
+        'siteDescription' => clean_text($source['siteDescription'] ?? $defaults['siteDescription'], 220),
+        'faviconUrl' => clean_asset_url($source['faviconUrl'] ?? $defaults['faviconUrl']),
+        'brandIcon' => clean_website_icon($source['brandIcon'] ?? '', $defaults['brandIcon']),
+        'brandLogo' => clean_asset_url($source['brandLogo'] ?? ''),
+        'header' => [
+            'loginLabel' => clean_text($header['loginLabel'] ?? $defaults['header']['loginLabel'], 30),
+            'dashboardLabel' => clean_text($header['dashboardLabel'] ?? $defaults['header']['dashboardLabel'], 30),
+            'navItems' => $navItems,
+        ],
+        'hero' => [
+            'eyebrow' => clean_text($hero['eyebrow'] ?? $defaults['hero']['eyebrow'], 80),
+            'title' => clean_text($hero['title'] ?? $defaults['hero']['title'], 120),
+            'description' => clean_text($hero['description'] ?? $defaults['hero']['description'], 320),
+            'primaryButton' => clean_text($hero['primaryButton'] ?? $defaults['hero']['primaryButton'], 40),
+            'dashboardButton' => clean_text($hero['dashboardButton'] ?? $defaults['hero']['dashboardButton'], 40),
+            'secondaryButton' => clean_text($hero['secondaryButton'] ?? $defaults['hero']['secondaryButton'], 40),
+            'backgroundImage' => clean_asset_url($hero['backgroundImage'] ?? ''),
+        ],
+        'stats' => $stats,
+        'courses' => [
+            'eyebrow' => clean_text($courses['eyebrow'] ?? $defaults['courses']['eyebrow'], 60),
+            'title' => clean_text($courses['title'] ?? $defaults['courses']['title'], 90),
+            'fallbackMentor' => clean_text($courses['fallbackMentor'] ?? $defaults['courses']['fallbackMentor'], 80),
+            'fallbackPrice' => clean_text($courses['fallbackPrice'] ?? $defaults['courses']['fallbackPrice'], 90),
+            'emptyPrice' => clean_text($courses['emptyPrice'] ?? $defaults['courses']['emptyPrice'], 90),
+        ],
+        'benefits' => [
+            'eyebrow' => clean_text($benefits['eyebrow'] ?? $defaults['benefits']['eyebrow'], 60),
+            'title' => clean_text($benefits['title'] ?? $defaults['benefits']['title'], 140),
+            'items' => $benefitItems,
+        ],
+        'schedule' => [
+            'eyebrow' => clean_text($schedule['eyebrow'] ?? $defaults['schedule']['eyebrow'], 60),
+            'title' => clean_text($schedule['title'] ?? $defaults['schedule']['title'], 140),
+            'description' => clean_text($schedule['description'] ?? $defaults['schedule']['description'], 280),
+            'dashboardButton' => clean_text($schedule['dashboardButton'] ?? $defaults['schedule']['dashboardButton'], 40),
+            'loginButton' => clean_text($schedule['loginButton'] ?? $defaults['schedule']['loginButton'], 40),
+            'steps' => $steps,
+        ],
+        'footer' => [
+            'description' => clean_text($footer['description'] ?? $defaults['footer']['description'], 260),
+            'copyright' => clean_text($footer['copyright'] ?? $defaults['footer']['copyright'], 80),
+            'bottomText' => clean_text($footer['bottomText'] ?? $defaults['footer']['bottomText'], 120),
+            'socialLinks' => $socialLinks,
+            'contactItems' => $contactItems,
+            'links' => $footerLinks,
+        ],
+    ];
+}
+
 function clean_allowed_class_ids($value): ?array
 {
     if ($value === null || $value === '') {
@@ -541,6 +844,53 @@ function fetch_classes(PDO $pdo): array
     }, $classes);
 }
 
+function ensure_site_settings_table(PDO $pdo): void
+{
+    try {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS site_settings (
+                id VARCHAR(60) PRIMARY KEY,
+                payload LONGTEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+        );
+    } catch (Throwable $error) {
+        // Installer can create the table if runtime CREATE is blocked.
+    }
+}
+
+function fetch_website_settings(PDO $pdo): array
+{
+    ensure_site_settings_table($pdo);
+
+    try {
+        $query = $pdo->prepare('SELECT payload FROM site_settings WHERE id = ? LIMIT 1');
+        $query->execute(['main']);
+        $payload = $query->fetchColumn();
+        $settings = $payload ? json_decode((string) $payload, true) : [];
+
+        return clean_website_settings(is_array($settings) ? $settings : []);
+    } catch (Throwable $error) {
+        return default_website_settings();
+    }
+}
+
+function save_website_settings(PDO $pdo, array $settings): array
+{
+    ensure_site_settings_table($pdo);
+
+    $cleanSettings = clean_website_settings($settings);
+    $payload = json_encode($cleanSettings, JSON_UNESCAPED_UNICODE);
+    $query = $pdo->prepare(
+        'INSERT INTO site_settings (id, payload)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE payload = VALUES(payload)',
+    );
+    $query->execute(['main', $payload]);
+
+    return $cleanSettings;
+}
+
 function updated_at(PDO $pdo): string
 {
     $queries = [
@@ -552,6 +902,7 @@ function updated_at(PDO $pdo): string
         'SELECT MAX(updated_at) FROM submissions',
         'SELECT MAX(updated_at) FROM member_progress',
         'SELECT MAX(last_seen_at) FROM auth_sessions',
+        'SELECT MAX(updated_at) FROM site_settings',
     ];
     $times = [];
 

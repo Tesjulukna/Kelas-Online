@@ -44,6 +44,14 @@
       "destination": "/api/submissions"
     },
     {
+      "source": "/api/settings.php",
+      "destination": "/api/settings"
+    },
+    {
+      "source": "/api/backup.php",
+      "destination": "/api/backup"
+    },
+    {
       "source": "/api/progress.php",
       "destination": "/api/progress"
     },

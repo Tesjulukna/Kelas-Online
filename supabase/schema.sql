@@ -172,6 +172,12 @@ create table if not exists public.lynk_orders (
   unique (order_id)
 );
 
+create table if not exists public.site_settings (
+  id text primary key,
+  payload jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists accounts_role_index on public.accounts(role);
 create index if not exists accounts_email_index on public.accounts(role, email);
 create index if not exists materials_class_index on public.materials(class_id);
@@ -220,6 +226,10 @@ drop trigger if exists login_attempts_updated_at on public.login_attempts;
 create trigger login_attempts_updated_at before update on public.login_attempts
 for each row execute function public.set_updated_at();
 
+drop trigger if exists site_settings_updated_at on public.site_settings;
+create trigger site_settings_updated_at before update on public.site_settings
+for each row execute function public.set_updated_at();
+
 alter table public.accounts enable row level security;
 alter table public.classes enable row level security;
 alter table public.materials enable row level security;
@@ -230,6 +240,7 @@ alter table public.support_tickets enable row level security;
 alter table public.submissions enable row level security;
 alter table public.member_progress enable row level security;
 alter table public.lynk_orders enable row level security;
+alter table public.site_settings enable row level security;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values

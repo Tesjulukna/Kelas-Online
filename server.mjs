@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { cleanWebsiteSettings, defaultWebsiteSettings } from './src/data/websiteSettings.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dataDir = path.join(__dirname, 'data')
@@ -472,6 +473,7 @@ async function ensureDataFile() {
           members: createDefaultMembers(),
           supportTickets: [],
           submissions: [],
+          websiteSettings: defaultWebsiteSettings,
           updatedAt: new Date().toISOString(),
         },
         null,
@@ -496,6 +498,7 @@ async function readData() {
         : createDefaultMembers(),
       supportTickets: cleanSupportTickets(data.supportTickets),
       submissions: cleanSubmissions(data.submissions),
+      websiteSettings: cleanWebsiteSettings(data.websiteSettings),
       updatedAt: cleanText(data.updatedAt, 40),
     }
   } catch {
@@ -505,6 +508,7 @@ async function readData() {
       members: createDefaultMembers(),
       supportTickets: [],
       submissions: [],
+      websiteSettings: defaultWebsiteSettings,
       updatedAt: '',
     }
   }
@@ -530,6 +534,9 @@ async function writeData(nextData) {
         nextData.supportTickets ?? currentData.supportTickets,
       ),
       submissions: cleanSubmissions(nextData.submissions ?? currentData.submissions),
+      websiteSettings: cleanWebsiteSettings(
+        nextData.websiteSettings ?? currentData.websiteSettings,
+      ),
       updatedAt: new Date().toISOString(),
     },
     null,
@@ -562,6 +569,21 @@ function sendPublicData(response, statusCode, data, origin) {
     },
     origin,
   )
+}
+
+function sendBackupJson(response, data, origin) {
+  const fileName = `backup-ibnucreative-${new Date().toISOString().slice(0, 10)}.json`
+
+  response.writeHead(200, {
+    'Access-Control-Allow-Origin': localOrigins.has(origin) ? origin : 'null',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Expose-Headers': 'Content-Disposition',
+    'Cache-Control': 'no-store',
+    'Content-Disposition': `attachment; filename="${fileName}"`,
+    'Content-Type': 'application/json; charset=utf-8',
+  })
+  response.end(JSON.stringify(data, null, 2))
 }
 
 function assertUniqueUsername(accounts, username, ignoredId = '') {
@@ -627,6 +649,95 @@ const server = createServer(async (request, response) => {
           200,
           {
             classes: data.classes,
+            updatedAt: data.updatedAt,
+          },
+          origin,
+        )
+        return
+      }
+
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' }, origin)
+      return
+    }
+
+    if (pathname === '/api/settings' || pathname === '/api/settings.php') {
+      if (request.method === 'GET') {
+        const data = await readData()
+
+        sendJson(
+          response,
+          200,
+          {
+            settings: data.websiteSettings,
+            updatedAt: data.updatedAt,
+          },
+          origin,
+        )
+        return
+      }
+
+      if (request.method === 'PUT') {
+        const payload = JSON.parse((await readBody(request)) || '{}')
+
+        await writeData({
+          websiteSettings: cleanWebsiteSettings(payload.settings || payload),
+        })
+        const data = await readData()
+        sendJson(
+          response,
+          200,
+          {
+            settings: data.websiteSettings,
+            updatedAt: data.updatedAt,
+          },
+          origin,
+        )
+        return
+      }
+
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' }, origin)
+      return
+    }
+
+    if (pathname === '/api/backup' || pathname === '/api/backup.php') {
+      if (request.method === 'GET') {
+        const data = await readData()
+
+        sendBackupJson(
+          response,
+          {
+            type: 'ibnucreative-full-backup',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            ...data,
+          },
+          origin,
+        )
+        return
+      }
+
+      if (request.method === 'POST') {
+        const payload = JSON.parse((await readBody(request)) || '{}')
+        const backup = payload.backup && typeof payload.backup === 'object'
+          ? payload.backup
+          : payload
+
+        await writeData({
+          classes: backup.classes,
+          admins: backup.admins,
+          members: backup.members,
+          supportTickets: backup.supportTickets,
+          submissions: backup.submissions,
+          websiteSettings: backup.websiteSettings || backup.settings,
+        })
+        const data = await readData()
+
+        sendJson(
+          response,
+          200,
+          {
+            message: 'Backup berhasil dipulihkan.',
+            settings: data.websiteSettings,
             updatedAt: data.updatedAt,
           },
           origin,
