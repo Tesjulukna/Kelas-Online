@@ -58,7 +58,14 @@ function getInitialPage(session) {
     return session?.role ?? 'home'
   }
 
-  return getPageFromPath(window.location.pathname)
+  const page = getPageFromPath(window.location.pathname)
+
+  if (session?.role && (page === 'login' || (page !== 'home' && page !== session.role))) {
+    window.history.replaceState({}, '', pagePaths[session.role] ?? pagePaths.home)
+    return session.role
+  }
+
+  return page
 }
 
 function getInitialSection() {
@@ -821,7 +828,16 @@ function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      const nextPage = getPageFromPath(window.location.pathname)
+      const currentSession = readSession()
+      let nextPage = getPageFromPath(window.location.pathname)
+
+      if (
+        currentSession?.role &&
+        (nextPage === 'login' || (nextPage !== 'home' && nextPage !== currentSession.role))
+      ) {
+        nextPage = currentSession.role
+        window.history.replaceState({}, '', pagePaths[currentSession.role] ?? pagePaths.home)
+      }
 
       setPage(nextPage)
       setActiveSection(nextPage === 'home' ? getInitialSection() : 'home')
