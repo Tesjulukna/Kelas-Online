@@ -353,12 +353,12 @@
     }
   ],
   "websiteSettings": {
-    "siteName": "IbnuCreative",
+    "siteName": "Ibnu Creative",
     "siteTitle": "IbnuCreative Academy",
     "siteDescription": "Platform kelas online kreatif untuk belajar desain, video, konten digital, dan strategi jualan dengan materi praktik serta feedback mentor.",
-    "faviconUrl": "/favicon.svg",
+    "faviconUrl": "https://soyyadunnahwi.com/uploads/profile/1766288009_cropped.jpg",
     "brandIcon": "spark",
-    "brandLogo": "",
+    "brandLogo": "https://soyyadunnahwi.com/uploads/profile/1766288009_cropped.jpg",
     "header": {
       "loginLabel": "Login",
       "dashboardLabel": "Dashboard",
@@ -525,5 +525,5 @@
       ]
     }
   },
-  "updatedAt": "2026-06-07T03:08:22.800Z"
+  "updatedAt": "2026-06-07T22:15:30.726Z"
 }
