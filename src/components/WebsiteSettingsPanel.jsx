@@ -98,7 +98,7 @@ function ImageField({ label, value, onChange, onUploadImage, onNotify }) {
     <div className="settings-image-field">
       <TextField
         label={label}
-        type="url"
+        type="text"
         value={value}
         onChange={onChange}
         placeholder="/uploads/gambar/... atau https://..."
@@ -295,7 +295,7 @@ function WebsiteSettingsPanel({
 
   return (
     <section className="panel website-settings-panel">
-      <form className="website-settings-form" onSubmit={handleSubmit}>
+      <form className="website-settings-form" onSubmit={handleSubmit} noValidate>
         <div className="panel-heading settings-panel-heading">
           <div className="settings-title-block">
             <span className="settings-title-icon" aria-hidden="true">
@@ -396,10 +396,10 @@ function WebsiteSettingsPanel({
             />
             <TextField
               label="URL favicon"
-              type="url"
+              type="text"
               value={draft.faviconUrl}
               onChange={(value) => updateValue(['faviconUrl'], value)}
-              placeholder="/favicon.svg"
+              placeholder="Kosongkan, /favicon.svg, atau https://..."
             />
             <IconSelect
               label="Icon brand"
@@ -711,7 +711,7 @@ function WebsiteSettingsPanel({
                 />
                 <TextField
                   label="URL"
-                  type="url"
+                  type="text"
                   value={item.url}
                   onChange={(value) =>
                     updateArrayItem(['footer', 'socialLinks'], index, 'url', value)
