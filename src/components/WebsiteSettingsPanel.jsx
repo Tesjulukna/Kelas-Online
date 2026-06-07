@@ -776,7 +776,7 @@ function WebsiteSettingsPanel({
                   type="button"
                   onClick={() => setActiveSectionId('')}
                 >
-                  Batal
+                  Tutup
                 </button>
                 <button className="btn btn-primary" type="submit" disabled={isSaving}>
                   <Icon name="settings" />

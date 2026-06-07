@@ -7436,9 +7436,6 @@ img {
 }
 
 .settings-modal {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 0;
   width: min(980px, calc(100vw - 32px));
   max-height: min(840px, calc(100vh - 32px));
   padding: 0;
@@ -7472,9 +7469,8 @@ img {
 }
 
 .settings-modal-body {
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  max-height: calc(min(840px, calc(100vh - 32px)) - 132px);
+  overflow: auto;
   padding: 16px;
   background: #f8fafc;
 }
@@ -7490,10 +7486,7 @@ img {
 }
 
 .settings-modal-actions {
-  position: relative;
-  z-index: 2;
   border-top: 1px solid rgba(205, 217, 232, 0.86);
-  box-shadow: 0 -10px 24px rgba(15, 23, 42, 0.06);
 }
 
 .website-settings-form input,
@@ -7803,7 +7796,6 @@ img {
   .settings-modal {
     width: min(100%, calc(100vw - 20px));
     max-height: calc(100vh - 20px);
-    max-height: calc(100dvh - 20px);
     border-radius: 12px;
   }
 
@@ -7811,6 +7803,10 @@ img {
   .settings-modal-actions,
   .settings-modal-body {
     padding: 12px;
+  }
+
+  .settings-modal-body {
+    max-height: calc(100vh - 146px);
   }
 
   .settings-section-heading {
