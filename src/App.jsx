@@ -60,7 +60,7 @@ function getInitialPage(session) {
 
   const page = getPageFromPath(window.location.pathname)
 
-  if (session?.role && (page === 'login' || (page !== 'home' && page !== session.role))) {
+  if (session?.role && page !== session.role) {
     window.history.replaceState({}, '', pagePaths[session.role] ?? pagePaths.home)
     return session.role
   }
@@ -833,7 +833,7 @@ function App() {
 
       if (
         currentSession?.role &&
-        (nextPage === 'login' || (nextPage !== 'home' && nextPage !== currentSession.role))
+        nextPage !== currentSession.role
       ) {
         nextPage = currentSession.role
         window.history.replaceState({}, '', pagePaths[currentSession.role] ?? pagePaths.home)
@@ -1226,11 +1226,10 @@ function App() {
       setSeenNotificationIds(readSeenNotifications(nextSession.userId))
       setLoginUsername(nextSession.username)
       setLoginPassword('')
-      setActiveMemberMenu('overview')
-      setActiveAdminMenu('overview')
-      navigateToPage(nextSession.role, { replace: true })
+      setActiveSection('home')
+      setIsDashboardMenuOpen(false)
+      navigateToDashboardMenu(nextSession.role, 'overview', { replace: true })
       showNotice(`Berhasil masuk sebagai ${nextSession.role}.`)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
       showNotice(error.message || 'Login gagal.')
     }
