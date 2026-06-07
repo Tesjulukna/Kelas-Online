@@ -45,11 +45,19 @@
     },
     {
       "source": "/api/settings.php",
-      "destination": "/api/settings"
+      "destination": "/api/classes?resource=settings"
     },
     {
       "source": "/api/backup.php",
-      "destination": "/api/backup"
+      "destination": "/api/classes?resource=backup"
+    },
+    {
+      "source": "/api/settings",
+      "destination": "/api/classes?resource=settings"
+    },
+    {
+      "source": "/api/backup",
+      "destination": "/api/classes?resource=backup"
     },
     {
       "source": "/api/progress.php",
