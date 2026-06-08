@@ -14,7 +14,8 @@ function HomePage({
     ? { backgroundImage: `url(${JSON.stringify(websiteSettings.hero.backgroundImage)})` }
     : undefined
   const publicCourses = classes.length
-    ? classes.slice(0, 3).map((course) => ({
+    ? classes.map((course) => ({
+        id: course.id,
         title: course.title,
         level: course.status,
         lessons: course.lessons,
@@ -78,7 +79,7 @@ function HomePage({
           {publicCourses.map((course, index) => (
             <article
               className="course-card homepage-course-card animated-card"
-              key={course.title}
+              key={course.id || course.title}
             >
               <div className="homepage-course-visual">
                 {course.thumbnail ? (
