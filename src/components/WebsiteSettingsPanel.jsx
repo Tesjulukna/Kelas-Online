@@ -244,16 +244,16 @@ function WebsiteSettingsPanel({
     {
       id: 'identity',
       eyebrow: 'Identitas',
-      title: 'Nama, title, icon, favicon',
+      title: 'Nama header, title, icon, favicon',
       icon: 'spark',
-      description: 'Atur brand, judul browser, deskripsi SEO, favicon, dan logo.',
+      description: 'Atur nama brand yang tampil di header/footer, judul browser, favicon, dan logo.',
     },
     {
       id: 'header',
       eyebrow: 'Header',
-      title: 'Menu dan tombol login',
+      title: 'Navigasi header',
       icon: 'layoutDashboard',
-      description: 'Ubah label navigasi, login, dan dashboard pada header.',
+      description: 'Ubah label menu navigasi, tombol login, dan dashboard.',
     },
     {
       id: 'hero',
@@ -379,7 +379,7 @@ function WebsiteSettingsPanel({
           />
           <div className="settings-grid">
             <TextField
-              label="Nama brand"
+              label="Nama brand di header"
               value={draft.siteName}
               onChange={(value) => updateValue(['siteName'], value)}
             />
@@ -417,7 +417,7 @@ function WebsiteSettingsPanel({
         </div>
 
         <div className={`settings-section ${activeSectionId === 'header' ? 'is-active' : ''}`}>
-          <SectionHeader eyebrow="Header" title="Menu dan tombol login" icon="layoutDashboard" />
+          <SectionHeader eyebrow="Header" title="Menu header dan tombol login" icon="layoutDashboard" />
           <div className="settings-list">
             {draft.header.navItems.map((item, index) => (
               <article className="settings-row" key={item.id}>

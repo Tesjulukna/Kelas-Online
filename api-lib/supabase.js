@@ -626,17 +626,41 @@ export async function fetchWebsiteSettings() {
   }
 }
 
+function isMissingSiteSettingsTableError(error) {
+  if (!(error instanceof ApiError)) {
+    return false
+  }
+
+  const message = String(error.message || '').toLowerCase()
+
+  return (
+    (error.statusCode === 400 || error.statusCode === 404) &&
+    (message.includes('site_settings') || message.includes('schema cache'))
+  )
+}
+
 export async function replaceWebsiteSettings(settings) {
   const cleanSettings = cleanWebsiteSettings(settings)
 
-  await rest('site_settings?on_conflict=id', {
-    method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: {
-      id: 'main',
-      payload: cleanSettings,
-    },
-  })
+  try {
+    await rest('site_settings?on_conflict=id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: {
+        id: 'main',
+        payload: cleanSettings,
+      },
+    })
+  } catch (error) {
+    if (isMissingSiteSettingsTableError(error)) {
+      throw new ApiError(
+        500,
+        'Tabel site_settings belum siap di Supabase. Jalankan supabase/schema.sql, lalu coba simpan lagi.',
+      )
+    }
+
+    throw error
+  }
 
   return fetchWebsiteSettings()
 }
