@@ -6890,7 +6890,6 @@ img {
 
 .member-class-button {
   min-width: 126px;
-  pointer-events: none;
   white-space: nowrap;
 }
 
