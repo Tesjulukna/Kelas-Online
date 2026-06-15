@@ -95,6 +95,16 @@ function getProtectedVideoUrl(material, sessionToken = '') {
   return `/api/video?${params.toString()}`
 }
 
+function formatRupiah(value) {
+  const amount = Math.max(0, Math.round(Number(value) || 0))
+
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
 async function compressImageFile(file, { maxSize = 1800, quality = 0.9 } = {}) {
   if (!file.type.startsWith('image/')) {
     return file
@@ -144,7 +154,9 @@ function MemberPage({
   loginName,
   avatar,
   sessionToken = '',
-  classes,
+  classes = [],
+  allClasses = classes,
+  allowedClassIds = null,
   supportTickets = [],
   submissions = [],
   activeMenu,
@@ -155,9 +167,15 @@ function MemberPage({
   onCreateSupportTicket = async () => {},
   onReplySupportTicket = async () => {},
   onCreateSubmission = async () => {},
+  onCreateTripayCheckout = async () => {},
   focusTarget = null,
 }) {
   const courses = classes.filter((course) => course.status === 'Aktif')
+  const allActiveCourses = allClasses.filter((course) => course.status === 'Aktif')
+  const accessibleClassIds = Array.isArray(allowedClassIds)
+    ? new Set(allowedClassIds)
+    : new Set(allActiveCourses.map((course) => course.id))
+  const availableCourses = allActiveCourses.filter((course) => !accessibleClassIds.has(course.id))
   const [selectedCourseId, setSelectedCourseId] = useState(null)
   const [activeMaterialIndex, setActiveMaterialIndex] = useState(0)
   const [taskDraft, setTaskDraft] = useState('')
@@ -170,6 +188,7 @@ function MemberPage({
   const [supportReplyDrafts, setSupportReplyDrafts] = useState({})
   const [previewImage, setPreviewImage] = useState(null)
   const [activePromptInstruction, setActivePromptInstruction] = useState(null)
+  const [checkoutClassId, setCheckoutClassId] = useState('')
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
   const materials = selectedCourse?.materials ?? []
@@ -429,6 +448,36 @@ function MemberPage({
     onNotify('Sertifikat demo siap diunduh dari backend produksi.')
   }
 
+  const handleStartCheckout = async (course) => {
+    const price = Math.max(0, Math.round(Number(course.price) || 0))
+
+    setCheckoutClassId(course.id)
+
+    try {
+      const data = await onCreateTripayCheckout(course)
+
+      if (data.freeAccessGranted) {
+        onNotify('Akses kelas gratis sudah aktif. Silakan buka Kelas Saya.')
+        handleDashboardMenuChange('my-courses')
+        return
+      }
+
+      if (data.alreadyHasAccess) {
+        onNotify('Akses kelas sudah aktif. Silakan buka Kelas Saya.')
+        handleDashboardMenuChange('my-courses')
+        return
+      }
+
+      if (price) {
+        onNotify('Checkout Tripay dibuka. Akses kelas aktif otomatis setelah pembayaran sukses.')
+      }
+    } catch (error) {
+      onNotify(error.message || 'Checkout Tripay tidak bisa dibuat.')
+    } finally {
+      setCheckoutClassId('')
+    }
+  }
+
   const handleSendSupport = async () => {
     if (!supportDraft.trim()) {
       onNotify('Tulis pertanyaan dulu sebelum dikirim.')
@@ -520,6 +569,11 @@ function MemberPage({
                   Math.max(1, courses.length),
               )}%`}
             />
+            <MetricCard
+              icon="wallet"
+              label="Kelas tersedia"
+              value={availableCourses.length}
+            />
           </section>
           <section className="panel member-quick-actions">
             <div className="panel-heading">
@@ -537,6 +591,15 @@ function MemberPage({
                 <Icon name="bookOpen" />
                 <h3>Kelas Saya</h3>
                 <p>Lanjutkan materi dan pantau progress kelas.</p>
+              </button>
+              <button
+                className="action-card"
+                type="button"
+                onClick={() => handleDashboardMenuChange('available-classes')}
+              >
+                <Icon name="wallet" />
+                <h3>Kelas Tersedia</h3>
+                <p>Pilih kelas baru dan lanjutkan pembayaran Tripay.</p>
               </button>
               <button
                 className="action-card"
@@ -1024,6 +1087,71 @@ function MemberPage({
                 <Icon name="bookOpen" />
                 <h3>Belum ada akses kelas</h3>
                 <p>Kelas akan muncul di sini setelah admin memberikan akses belajar.</p>
+              </article>
+            )}
+          </div>
+        </section>
+      )}
+
+      {activeMenu === 'available-classes' && (
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Katalog member</p>
+              <h2>Kelas tersedia</h2>
+            </div>
+          </div>
+          <div className="learning-list">
+            {availableCourses.map((course) => {
+              const price = Math.max(0, Math.round(Number(course.price) || 0))
+              const isCheckingOut = checkoutClassId === course.id
+              const accessNote = price
+                ? 'Akses materi dibuka otomatis setelah pembayaran sukses.'
+                : 'Kelas gratis bisa langsung dibuka dari akun member.'
+              let checkoutButtonLabel = price ? 'Bayar & Buka Akses' : 'Masuk Gratis'
+
+              if (isCheckingOut) {
+                checkoutButtonLabel = price ? 'Membuat invoice...' : 'Membuka akses...'
+              }
+
+              return (
+                <article className="member-class-card available-class-card" key={course.id}>
+                  <span className="member-class-visual">
+                    {course.thumbnail ? (
+                      <img src={course.thumbnail} alt="" />
+                    ) : (
+                      <Icon name="bookOpen" />
+                    )}
+                    <span>{course.status}</span>
+                  </span>
+                  <span className="member-class-body">
+                    <h3>{course.title}</h3>
+                    <p>
+                      {course.mentor} / {course.lessons}
+                    </p>
+                    <span className="member-class-next">{accessNote}</span>
+                  </span>
+                  <span className="available-class-price">
+                    <small>{price ? 'Harga kelas' : 'Kelas gratis'}</small>
+                    <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
+                  </span>
+                  <button
+                    className="btn btn-primary member-class-button"
+                    type="button"
+                    disabled={isCheckingOut}
+                    onClick={() => handleStartCheckout(course)}
+                  >
+                    <Icon name="wallet" />
+                    {checkoutButtonLabel}
+                  </button>
+                </article>
+              )
+            })}
+            {!availableCourses.length && (
+              <article className="empty-state">
+                <Icon name="checkCircle" />
+                <h3>Semua kelas aktif sudah terbuka</h3>
+                <p>Kelas baru akan muncul di sini saat admin menambah kelas aktif.</p>
               </article>
             )}
           </div>

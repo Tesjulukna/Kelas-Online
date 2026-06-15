@@ -37,4 +37,16 @@ return [
     // 2. mapping manual di bawah ini.
     // Produk Lynk lain seperti sepatu, merchandise, jasa, dll akan diabaikan.
     'lynk_product_class_map' => [],
+
+    // Tripay dipakai untuk checkout dari menu Kelas Tersedia member.
+    // Isi dari dashboard Tripay: Merchant Code, API Key, dan Private Key.
+    'tripay_merchant_code' => config_env('TRIPAY_MERCHANT_CODE'),
+    'tripay_api_key' => config_env('TRIPAY_API_KEY'),
+    'tripay_private_key' => config_env('TRIPAY_PRIVATE_KEY'),
+    'tripay_is_production' => config_env('TRIPAY_IS_PRODUCTION') === 'true',
+    'tripay_default_method' => config_env('TRIPAY_DEFAULT_METHOD', 'QRIS'),
+    'tripay_default_customer_phone' => config_env('TRIPAY_DEFAULT_CUSTOMER_PHONE', '081234567890'),
+    'tripay_expired_minutes' => (int) config_env('TRIPAY_EXPIRED_MINUTES', '1440'),
+    'tripay_callback_url' => config_env('TRIPAY_CALLBACK_URL'),
+    'tripay_return_url' => config_env('TRIPAY_RETURN_URL'),
 ];

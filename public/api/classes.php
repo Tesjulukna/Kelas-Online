@@ -74,6 +74,18 @@ try {
     if (!$query->fetch()) {
         $pdo->exec("ALTER TABLE classes ADD lynk_product_key VARCHAR(180) NOT NULL DEFAULT '' AFTER revenue");
     }
+
+    $query->execute(['price']);
+
+    if (!$query->fetch()) {
+        $pdo->exec("ALTER TABLE classes ADD price INT NOT NULL DEFAULT 0 AFTER revenue");
+    }
+
+    $query->execute(['tripay_product_key']);
+
+    if (!$query->fetch()) {
+        $pdo->exec("ALTER TABLE classes ADD tripay_product_key VARCHAR(180) NOT NULL DEFAULT '' AFTER lynk_product_key");
+    }
 } catch (Throwable $error) {
     // Installer can add the column if runtime ALTER is blocked.
 }
@@ -92,8 +104,8 @@ $classes = is_array($payload['classes'] ?? null) ? $payload['classes'] : [];
 
 $insertClass = $pdo->prepare(
     'INSERT INTO classes
-    (id, title, students, status, revenue, lynk_product_key, thumbnail, mentor, progress, next_label, live_at, lessons)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    (id, title, students, status, revenue, price, lynk_product_key, tripay_product_key, thumbnail, mentor, progress, next_label, live_at, lessons)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 $insertMaterial = $pdo->prepare(
     'INSERT INTO materials
@@ -129,7 +141,9 @@ try {
             clean_number($class['students'] ?? 0, 0, 1000000),
             clean_text($class['status'] ?? 'Aktif', 40),
             clean_text($class['revenue'] ?? 'Rp 0', 80),
+            clean_number($class['price'] ?? 0, 0, 1000000000),
             clean_text($class['lynkProductKey'] ?? '', 180),
+            clean_text($class['tripayProductKey'] ?? '', 180),
             clean_image($class['thumbnail'] ?? ''),
             clean_text($class['mentor'] ?? 'Ibnu Creative', 120),
             clean_number($class['progress'] ?? 0, 0, 100),

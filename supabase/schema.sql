@@ -32,7 +32,9 @@ create table if not exists public.classes (
   students integer not null default 0,
   status text not null default 'Aktif',
   revenue text not null default 'Rp 0',
+  price integer not null default 0,
   lynk_product_key text not null default '',
+  tripay_product_key text not null default '',
   thumbnail text not null default '',
   mentor text not null default 'Ibnu Creative',
   progress integer not null default 0,
@@ -172,6 +174,25 @@ create table if not exists public.lynk_orders (
   unique (order_id)
 );
 
+create table if not exists public.tripay_orders (
+  id text primary key,
+  merchant_ref text not null default '',
+  reference text not null default '',
+  member_id text not null default '',
+  buyer_name text not null default '',
+  buyer_email text not null default '',
+  class_id text not null default '',
+  class_title text not null default '',
+  amount integer not null default 0,
+  status text not null default 'pending',
+  checkout_url text not null default '',
+  access_granted boolean not null default false,
+  payload text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (merchant_ref)
+);
+
 create table if not exists public.site_settings (
   id text primary key,
   payload jsonb not null default '{}'::jsonb,
@@ -189,6 +210,12 @@ create index if not exists submission_member_index on public.submissions(member_
 create index if not exists submission_material_index on public.submissions(material_id);
 create index if not exists member_progress_activity_index on public.member_progress(last_activity_at);
 create index if not exists lynk_order_email_index on public.lynk_orders(buyer_email);
+create index if not exists tripay_order_reference_index on public.tripay_orders(reference);
+create index if not exists tripay_order_member_index on public.tripay_orders(member_id);
+create index if not exists tripay_order_class_index on public.tripay_orders(class_id);
+
+alter table public.classes add column if not exists price integer not null default 0;
+alter table public.classes add column if not exists tripay_product_key text not null default '';
 
 drop trigger if exists accounts_updated_at on public.accounts;
 create trigger accounts_updated_at before update on public.accounts
@@ -222,6 +249,10 @@ drop trigger if exists lynk_orders_updated_at on public.lynk_orders;
 create trigger lynk_orders_updated_at before update on public.lynk_orders
 for each row execute function public.set_updated_at();
 
+drop trigger if exists tripay_orders_updated_at on public.tripay_orders;
+create trigger tripay_orders_updated_at before update on public.tripay_orders
+for each row execute function public.set_updated_at();
+
 drop trigger if exists login_attempts_updated_at on public.login_attempts;
 create trigger login_attempts_updated_at before update on public.login_attempts
 for each row execute function public.set_updated_at();
@@ -240,6 +271,7 @@ alter table public.support_tickets enable row level security;
 alter table public.submissions enable row level security;
 alter table public.member_progress enable row level security;
 alter table public.lynk_orders enable row level security;
+alter table public.tripay_orders enable row level security;
 alter table public.site_settings enable row level security;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -301,4 +333,4 @@ values
     encode(digest('ibnucreative:member123', 'sha256'), 'hex'),
     '2026-05-29'
   )
-on conflict (role, username) do nothing;
+on conflict do nothing;

@@ -78,6 +78,8 @@ Jika berhasil, database akan membuat tabel:
 - `support_tickets`
 - `auth_sessions`
 - `login_attempts`
+- `lynk_orders`
+- `tripay_orders`
 
 Installer akan membuat akun admin dari `default_admin_username` dan `default_admin_password` jika akun itu belum ada.
 Kalau website sudah pernah diinstall, tetap jalankan installer sekali setelah upload versi ini karena installer akan menambahkan kolom `avatar`, kolom video upload pada `materials`, tabel `material_assets`, tabel `auth_sessions`, tabel `login_attempts`, dan tabel `member_progress` tanpa menghapus data lama.
@@ -144,6 +146,29 @@ Isi Merchant Key yang sama di `public/api/config.php`:
 Di dashboard admin, isi `Kode produk Lynk.id` pada kelas. Nilainya dicocokkan dengan ID, slug, atau nama produk dari payload Lynk.id. Jika cocok, webhook akan membuat atau memperbarui akun member, memberi akses kelas, dan mengirim email login memakai fungsi `mail()` bawaan hosting.
 
 Jika hosting belum mendukung `mail()`, akun dan akses tetap dibuat, tetapi `emailSent` pada respons webhook akan bernilai `false`.
+
+## 9. Checkout dan Webhook Tripay
+
+Isi konfigurasi Tripay di `public/api/config.php` atau lewat environment hosting jika tersedia:
+
+```php
+'tripay_merchant_code' => 'MERCHANT_CODE_TRIPAY',
+'tripay_api_key' => 'API_KEY_TRIPAY',
+'tripay_private_key' => 'PRIVATE_KEY_TRIPAY',
+'tripay_is_production' => false,
+'tripay_default_method' => 'QRIS',
+'tripay_default_customer_phone' => '081234567890',
+'tripay_callback_url' => 'https://domain-anda.com/api/tripay-webhook.php',
+'tripay_return_url' => 'https://domain-anda.com/member?menu=my-courses',
+```
+
+Set callback Tripay ke:
+
+```text
+https://domain-anda.com/api/tripay-webhook.php
+```
+
+Di dashboard admin, isi `Harga kelas`. Member akan melihat kelas yang belum mereka akses di menu `Kelas Tersedia`. Kelas berbayar akan checkout via Tripay, sedangkan harga kosong atau `0` langsung gratis dan masuk ke `Kelas Saya`. Setelah callback Tripay berstatus `PAID`, akses kelas berbayar ditambahkan otomatis ke akun member.
 
 Jika upload video gagal, biasanya penyebabnya batas upload hosting. Coba pakai MP4 H.264 yang sudah dikompres, lalu sesuaikan `max_video_upload_mb` di `api/config.php` agar tidak lebih besar dari limit `upload_max_filesize` dan `post_max_size` hosting.
 

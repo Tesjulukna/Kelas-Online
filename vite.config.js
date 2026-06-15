@@ -276,7 +276,9 @@ function cleanClasses(value) {
         students: cleanNumber(item.students, 0, 1000000),
         status: cleanText(item.status || 'Aktif', 40),
         revenue: cleanText(item.revenue || 'Rp 0', 60),
+        price: cleanNumber(item.price, 0, 1000000000),
         lynkProductKey: cleanText(item.lynkProductKey || '', 180),
+        tripayProductKey: cleanText(item.tripayProductKey || '', 180),
         thumbnail: cleanImage(item.thumbnail),
         mentor: cleanText(item.mentor || 'Ibnu Creative', 80),
         progress: cleanNumber(item.progress, 0, 100),
@@ -1207,6 +1209,92 @@ function localDataPlugin() {
     sendJson(response, 200, { message: 'Logout berhasil.' })
   }
 
+  const handleTripayCheckoutRequest = async (request, response) => {
+    try {
+      if (request.method !== 'POST') {
+        sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+        return
+      }
+
+      const payload = JSON.parse((await readRequestBody(request)) || '{}')
+      const classId = cleanText(payload.classId, 90)
+      const memberId = cleanText(payload.memberId, 90)
+
+      if (!classId || !memberId) {
+        throw new Error('ID kelas dan member wajib dikirim.')
+      }
+
+      const data = await readData()
+      const course = data.classes.find((item) => item.id === classId && item.status === 'Aktif')
+      const member = data.members.find((item) => item.id === memberId)
+
+      if (!course) {
+        sendJson(response, 404, { message: 'Kelas aktif tidak ditemukan.' })
+        return
+      }
+
+      if (!member) {
+        sendJson(response, 404, { message: 'Akun member tidak ditemukan.' })
+        return
+      }
+
+      const currentClassIds = Array.isArray(member.allowedClassIds)
+        ? member.allowedClassIds
+        : null
+
+      if (currentClassIds === null || currentClassIds.includes(classId)) {
+        sendJson(response, 200, {
+          ok: true,
+          alreadyHasAccess: true,
+          message: 'Akses kelas sudah aktif.',
+        })
+        return
+      }
+
+      const amount = Math.round(cleanNumber(course.price, 0, 1000000000))
+
+      if (amount > 0) {
+        sendJson(response, 501, {
+          message: 'Checkout Tripay berbayar aktif setelah deploy ke backend PHP atau Vercel dengan konfigurasi Tripay.',
+        })
+        return
+      }
+
+      const mergedClassIds = [...new Set([...currentClassIds, classId])]
+      const nextMembers = data.members.map((item) =>
+        item.id === member.id
+          ? { ...item, status: 'Aktif', allowedClassIds: mergedClassIds }
+          : item,
+      )
+      const nextClasses = data.classes.map((item) =>
+        item.id === course.id
+          ? {
+              ...item,
+              students: Math.round(cleanNumber(item.students, 0, 1000000)) + 1,
+            }
+          : item,
+      )
+
+      await writeData({ classes: nextClasses, members: nextMembers })
+
+      sendJson(response, 200, {
+        ok: true,
+        freeAccessGranted: true,
+        message: 'Akses kelas gratis sudah aktif.',
+      })
+    } catch (error) {
+      sendJson(response, 400, {
+        message: error.message || 'Checkout kelas tidak bisa diproses.',
+      })
+    }
+  }
+
+  const handleTripayWebhookRequest = async (_request, response) => {
+    sendJson(response, 501, {
+      message: 'Webhook Tripay aktif setelah deploy ke backend PHP atau Vercel dengan konfigurasi Tripay.',
+    })
+  }
+
   const registerRoutes = (server) => {
     server.middlewares.use('/api/classes', handleClassesRequest)
     server.middlewares.use('/api/classes.php', handleClassesRequest)
@@ -1226,6 +1314,10 @@ function localDataPlugin() {
     server.middlewares.use('/api/profile.php', handleProfileRequest)
     server.middlewares.use('/api/logout', handleLogoutRequest)
     server.middlewares.use('/api/logout.php', handleLogoutRequest)
+    server.middlewares.use('/api/tripay-checkout', handleTripayCheckoutRequest)
+    server.middlewares.use('/api/tripay-checkout.php', handleTripayCheckoutRequest)
+    server.middlewares.use('/api/tripay-webhook', handleTripayWebhookRequest)
+    server.middlewares.use('/api/tripay-webhook.php', handleTripayWebhookRequest)
   }
 
   return {

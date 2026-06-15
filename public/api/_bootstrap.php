@@ -664,6 +664,7 @@ function session_payload_from_account(array $account, string $token = ''): array
         'userId' => $account['id'],
         'name' => $account['name'],
         'username' => $account['username'],
+        'email' => $account['email'] ?? '',
         'role' => $account['role'],
         'avatar' => $account['avatar'] ?? '',
         'allowedClassIds' => ($account['role'] ?? '') === 'member'
@@ -799,7 +800,9 @@ function fetch_classes(PDO $pdo): array
             'students' => (int) $class['students'],
             'status' => $class['status'],
             'revenue' => $class['revenue'],
+            'price' => (int) ($class['price'] ?? 0),
             'lynkProductKey' => $class['lynk_product_key'] ?? '',
+            'tripayProductKey' => $class['tripay_product_key'] ?? '',
             'thumbnail' => $class['thumbnail'],
             'mentor' => $class['mentor'],
             'progress' => (int) $class['progress'],

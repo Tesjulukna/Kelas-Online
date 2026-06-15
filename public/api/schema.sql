@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS classes (
   students INT NOT NULL DEFAULT 0,
   status VARCHAR(40) NOT NULL DEFAULT 'Aktif',
   revenue VARCHAR(80) NOT NULL DEFAULT 'Rp 0',
+  price INT NOT NULL DEFAULT 0,
   lynk_product_key VARCHAR(180) NOT NULL DEFAULT '',
+  tripay_product_key VARCHAR(180) NOT NULL DEFAULT '',
   thumbnail MEDIUMTEXT,
   mentor VARCHAR(120) NOT NULL DEFAULT 'Ibnu Creative',
   progress INT NOT NULL DEFAULT 0,
@@ -169,6 +171,28 @@ CREATE TABLE IF NOT EXISTS lynk_orders (
   UNIQUE KEY lynk_order_unique (order_id),
   INDEX lynk_order_email_index (buyer_email),
   INDEX lynk_order_member_index (member_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tripay_orders (
+  id VARCHAR(120) PRIMARY KEY,
+  merchant_ref VARCHAR(180) NOT NULL DEFAULT '',
+  reference VARCHAR(180) NOT NULL DEFAULT '',
+  member_id VARCHAR(120) NOT NULL DEFAULT '',
+  buyer_name VARCHAR(160) NOT NULL DEFAULT '',
+  buyer_email VARCHAR(180) NOT NULL DEFAULT '',
+  class_id VARCHAR(120) NOT NULL DEFAULT '',
+  class_title VARCHAR(160) NOT NULL DEFAULT '',
+  amount INT NOT NULL DEFAULT 0,
+  status VARCHAR(40) NOT NULL DEFAULT 'pending',
+  checkout_url MEDIUMTEXT,
+  access_granted TINYINT(1) NOT NULL DEFAULT 0,
+  payload MEDIUMTEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY tripay_merchant_ref_unique (merchant_ref),
+  INDEX tripay_reference_index (reference),
+  INDEX tripay_member_index (member_id),
+  INDEX tripay_class_index (class_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS site_settings (

@@ -529,7 +529,9 @@ function mapClass(row, materials) {
     students: Number(row.students) || 0,
     status: row.status,
     revenue: row.revenue,
+    price: Number(row.price) || 0,
     lynkProductKey: row.lynk_product_key || '',
+    tripayProductKey: row.tripay_product_key || '',
     thumbnail: row.thumbnail || '',
     mentor: row.mentor,
     progress: Number(row.progress) || 0,
@@ -674,6 +676,7 @@ const backupTables = [
   'submissions',
   'member_progress',
   'lynk_orders',
+  'tripay_orders',
   'site_settings',
 ]
 
@@ -748,6 +751,7 @@ export async function restoreBackup(payload) {
     ['submissions', 'id=not.is.null'],
     ['support_tickets', 'id=not.is.null'],
     ['member_progress', 'member_id=not.is.null'],
+    ['tripay_orders', 'id=not.is.null'],
     ['lynk_orders', 'id=not.is.null'],
     ['classes', 'id=not.is.null'],
     ['accounts', 'id=not.is.null'],
@@ -762,6 +766,7 @@ export async function restoreBackup(payload) {
     'submissions',
     'member_progress',
     'lynk_orders',
+    'tripay_orders',
     'site_settings',
   ]
 
@@ -814,7 +819,9 @@ function cleanClassesForDb(value) {
           students: cleanNumber(item.students, 0, 1000000),
           status: cleanText(item.status || 'Aktif', 40),
           revenue: cleanText(item.revenue || 'Rp 0', 80),
+          price: cleanNumber(item.price, 0, 1000000000),
           lynk_product_key: cleanText(item.lynkProductKey || '', 180),
+          tripay_product_key: cleanText(item.tripayProductKey || '', 180),
           thumbnail: cleanUrl(item.thumbnail || ''),
           mentor: cleanText(item.mentor || 'Ibnu Creative', 120),
           progress: cleanNumber(item.progress, 0, 100),
@@ -2165,6 +2172,434 @@ function validLynkSignature(request, rawBody, secret) {
 
     return timingSafeSame(cleanSignature, expectedHex) || timingSafeSame(cleanSignature, expectedBase64)
   })
+}
+
+function requestOrigin(request) {
+  const host = cleanText(
+    request.headers['x-forwarded-host'] ||
+      request.headers.host ||
+      '',
+    180,
+  )
+  const forwardedProto = cleanText(request.headers['x-forwarded-proto'] || '', 40)
+    .split(',')[0]
+    .trim()
+  const proto = forwardedProto || (host.includes('localhost') ? 'http' : 'https')
+
+  return host ? `${proto}://${host}` : ''
+}
+
+function absoluteRequestUrl(request, path) {
+  const origin = requestOrigin(request)
+
+  return origin ? `${origin}${path}` : ''
+}
+
+function tripayApiBaseUrl() {
+  const configured = cleanExternalUrl(process.env.TRIPAY_API_BASE_URL || '')
+
+  if (configured) {
+    return configured.replace(/\/+$/, '')
+  }
+
+  return process.env.TRIPAY_IS_PRODUCTION === 'true'
+    ? 'https://tripay.co.id/api'
+    : 'https://tripay.co.id/api-sandbox'
+}
+
+function tripayConfig(request) {
+  const merchantCode = cleanText(process.env.TRIPAY_MERCHANT_CODE || '', 80)
+  const apiKey = cleanText(process.env.TRIPAY_API_KEY || '', 300)
+  const privateKey = cleanText(process.env.TRIPAY_PRIVATE_KEY || '', 300)
+  const method = cleanText(process.env.TRIPAY_DEFAULT_METHOD || 'QRIS', 40)
+  const callbackUrl =
+    cleanExternalUrl(process.env.TRIPAY_CALLBACK_URL || '') ||
+    absoluteRequestUrl(request, '/api/tripay-webhook')
+  const returnUrl =
+    cleanExternalUrl(process.env.TRIPAY_RETURN_URL || '') ||
+    absoluteRequestUrl(request, '/member?menu=my-courses')
+  const expiredMinutes = cleanNumber(process.env.TRIPAY_EXPIRED_MINUTES || 1440, 5, 10080)
+  const customerPhone = cleanText(
+    process.env.TRIPAY_DEFAULT_CUSTOMER_PHONE || '081234567890',
+    30,
+  )
+
+  if (!merchantCode || !apiKey || !privateKey) {
+    throw new ApiError(500, 'Konfigurasi Tripay belum lengkap di environment.')
+  }
+
+  if (!callbackUrl || !returnUrl) {
+    throw new ApiError(500, 'URL callback/return Tripay belum bisa dibuat.')
+  }
+
+  return {
+    merchantCode,
+    apiKey,
+    privateKey,
+    method,
+    callbackUrl,
+    returnUrl,
+    expiredMinutes,
+    customerPhone,
+  }
+}
+
+function appendFormValue(params, key, value) {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => appendFormValue(params, `${key}[${index}]`, item))
+    return
+  }
+
+  if (value && typeof value === 'object') {
+    Object.entries(value).forEach(([childKey, childValue]) =>
+      appendFormValue(params, `${key}[${childKey}]`, childValue),
+    )
+    return
+  }
+
+  if (value !== undefined && value !== null) {
+    params.append(key, String(value))
+  }
+}
+
+function encodeTripayForm(payload) {
+  const params = new URLSearchParams()
+
+  Object.entries(payload).forEach(([key, value]) => appendFormValue(params, key, value))
+
+  return params.toString()
+}
+
+function tripayCheckoutSignature({ merchantCode, merchantRef, amount, privateKey }) {
+  return createHmac('sha256', privateKey)
+    .update(`${merchantCode}${merchantRef}${amount}`)
+    .digest('hex')
+}
+
+function validTripaySignature(request, rawBody, privateKey) {
+  const signatures = [
+    request.headers['x-callback-signature'],
+    request.headers['x-tripay-signature'],
+    request.headers['x-signature'],
+    request.headers.signature,
+  ].filter(Boolean)
+  const expected = createHmac('sha256', privateKey).update(rawBody).digest('hex')
+
+  return signatures.some((signature) =>
+    timingSafeSame(String(signature).trim().replace(/^sha256=/i, ''), expected),
+  )
+}
+
+function isTripayPaid(payload) {
+  const status = firstValue(payload, ['status', 'data.status']).toUpperCase()
+
+  return status === 'PAID' || Boolean(firstValue(payload, ['paid_at', 'data.paid_at']))
+}
+
+async function grantMemberClassAccess(memberId, classId) {
+  const memberRows = await rest(
+    `accounts?select=*&id=eq.${eq(memberId)}&role=eq.member&limit=1`,
+  )
+  const member = memberRows?.[0]
+
+  if (!member) {
+    throw new ApiError(404, 'Member pembeli tidak ditemukan.')
+  }
+
+  const currentClassIds = parseJson(member.allowed_class_ids, null)
+
+  if (currentClassIds === null) {
+    return { member, granted: false, alreadyHasAccess: true }
+  }
+
+  const safeClassIds = Array.isArray(currentClassIds)
+    ? currentClassIds.map((id) => cleanText(id, 120)).filter(Boolean)
+    : []
+
+  if (safeClassIds.includes(classId)) {
+    return { member, granted: false, alreadyHasAccess: true }
+  }
+
+  const mergedClassIds = [...new Set([...safeClassIds, classId])]
+
+  await rest(`accounts?id=eq.${eq(member.id)}&role=eq.member`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      status: 'Aktif',
+      allowed_class_ids: JSON.stringify(mergedClassIds),
+    },
+  })
+  await incrementClassStudents([classId])
+
+  return {
+    member: {
+      ...member,
+      allowed_class_ids: JSON.stringify(mergedClassIds),
+    },
+    granted: true,
+    alreadyHasAccess: false,
+  }
+}
+
+export async function createTripayCheckout(request) {
+  const user = await requireUser(request, 'member')
+  const payload = await readJson(request)
+  const classId = cleanText(payload.classId, 120)
+
+  if (!classId) {
+    throw new ApiError(400, 'ID kelas wajib dikirim.')
+  }
+
+  const [classRows, memberRows] = await Promise.all([
+    rest(`classes?select=*&id=eq.${eq(classId)}&status=eq.Aktif&limit=1`),
+    rest(`accounts?select=*&id=eq.${eq(user.userId)}&role=eq.member&limit=1`),
+  ])
+  const course = classRows?.[0]
+  const member = memberRows?.[0]
+
+  if (!course) {
+    throw new ApiError(404, 'Kelas aktif tidak ditemukan.')
+  }
+
+  if (!member) {
+    throw new ApiError(404, 'Akun member tidak ditemukan.')
+  }
+
+  const currentClassIds = parseJson(member.allowed_class_ids, null)
+
+  if (currentClassIds === null || (Array.isArray(currentClassIds) && currentClassIds.includes(classId))) {
+    return {
+      ok: true,
+      alreadyHasAccess: true,
+      message: 'Akses kelas sudah aktif.',
+    }
+  }
+
+  const amount = cleanNumber(course.price, 0, 1000000000)
+
+  if (amount <= 0) {
+    const accessResult = await grantMemberClassAccess(member.id, course.id)
+
+    return {
+      ok: true,
+      freeAccessGranted: accessResult.granted,
+      alreadyHasAccess: accessResult.alreadyHasAccess,
+      message: accessResult.granted
+        ? 'Akses kelas gratis sudah aktif.'
+        : 'Akses kelas sudah aktif.',
+    }
+  }
+
+  const buyerEmail = cleanEmail(member.email || user.email || '')
+
+  if (!buyerEmail) {
+    throw new ApiError(422, 'Email member wajib diisi sebelum checkout Tripay.')
+  }
+
+  const config = tripayConfig(request)
+  const merchantRef = `IC${Date.now()}${randomBytes(3).toString('hex').toUpperCase()}`
+  const itemSku = cleanText(course.tripay_product_key || course.id, 80)
+  const checkoutPayload = {
+    method: config.method,
+    merchant_ref: merchantRef,
+    amount,
+    customer_name: cleanText(member.name || user.name || 'Member', 120),
+    customer_email: buyerEmail,
+    customer_phone: config.customerPhone,
+    order_items: [
+      {
+        sku: itemSku,
+        name: cleanText(course.title || 'Kelas IbnuCreative', 160),
+        price: amount,
+        quantity: 1,
+      },
+    ],
+    callback_url: config.callbackUrl,
+    return_url: config.returnUrl,
+    expired_time: Math.floor(Date.now() / 1000) + config.expiredMinutes * 60,
+    signature: tripayCheckoutSignature({
+      merchantCode: config.merchantCode,
+      merchantRef,
+      amount,
+      privateKey: config.privateKey,
+    }),
+  }
+  const response = await fetch(`${tripayApiBaseUrl()}/transaction/create`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
+      'User-Agent': 'ibnucreative-tripay-checkout',
+    },
+    body: encodeTripayForm(checkoutPayload),
+  })
+  const responseText = await response.text()
+  const responseData = parseJson(responseText, {})
+
+  if (!response.ok || responseData.success === false) {
+    throw new ApiError(
+      response.status || 502,
+      responseData.message || responseData.error || 'Checkout Tripay gagal dibuat.',
+    )
+  }
+
+  const tripayData = responseData.data || responseData
+  const checkoutUrl =
+    cleanExternalUrl(tripayData.checkout_url || '') ||
+    cleanExternalUrl(tripayData.pay_url || '') ||
+    cleanExternalUrl(tripayData.payment_url || '')
+  const reference = cleanText(tripayData.reference || '', 180)
+
+  if (!checkoutUrl) {
+    throw new ApiError(502, 'Tripay tidak mengembalikan URL checkout.')
+  }
+
+  await rest('tripay_orders', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      id: makeId('tripay'),
+      merchant_ref: merchantRef,
+      reference,
+      member_id: member.id,
+      buyer_name: cleanText(member.name || user.name || 'Member', 160),
+      buyer_email: buyerEmail,
+      class_id: course.id,
+      class_title: course.title,
+      amount,
+      status: 'pending',
+      checkout_url: checkoutUrl,
+      payload: responseText,
+    },
+  })
+
+  return {
+    ok: true,
+    checkoutUrl,
+    merchantRef,
+    reference,
+    message: 'Checkout Tripay berhasil dibuat.',
+  }
+}
+
+export async function processTripayWebhook(request) {
+  const privateKey = cleanText(process.env.TRIPAY_PRIVATE_KEY || '', 300)
+  const rawBody = await readRawBody(request)
+  const payload = parseJson(rawBody, null)
+
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new ApiError(400, 'Payload webhook Tripay tidak valid.')
+  }
+
+  if (!privateKey) {
+    throw new ApiError(500, 'Private key Tripay belum diisi di environment.')
+  }
+
+  if (!validTripaySignature(request, rawBody, privateKey)) {
+    throw new ApiError(401, 'Signature webhook Tripay tidak valid.')
+  }
+
+  const event = cleanText(request.headers['x-callback-event'] || '', 80).toLowerCase()
+  const data = payload.data && typeof payload.data === 'object' ? payload.data : payload
+  const merchantRef = firstValue(data, ['merchant_ref', 'merchantRef'])
+  const reference = firstValue(data, ['reference'])
+  const status = cleanText(firstValue(data, ['status']) || 'callback', 40).toLowerCase()
+
+  if (event && event !== 'payment_status') {
+    return {
+      ok: true,
+      ignored: true,
+      message: 'Event Tripay diterima tetapi bukan payment_status.',
+    }
+  }
+
+  if (!merchantRef && !reference) {
+    throw new ApiError(422, 'Merchant reference Tripay tidak ditemukan.')
+  }
+
+  let orderRows = merchantRef
+    ? await rest(`tripay_orders?select=*&merchant_ref=eq.${eq(merchantRef)}&limit=1`)
+    : []
+
+  if (!orderRows?.[0] && reference) {
+    orderRows = await rest(`tripay_orders?select=*&reference=eq.${eq(reference)}&limit=1`)
+  }
+
+  const order = orderRows?.[0]
+
+  if (!order) {
+    return {
+      ok: true,
+      ignored: true,
+      message: 'Order Tripay tidak ditemukan di website.',
+      merchantRef,
+      reference,
+    }
+  }
+
+  if (!isTripayPaid(data)) {
+    await rest(`tripay_orders?id=eq.${eq(order.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: {
+        reference: reference || order.reference || '',
+        status,
+        payload: rawBody,
+      },
+    })
+
+    return {
+      ok: true,
+      ignored: true,
+      status,
+      message: 'Webhook Tripay diterima, tetapi pembayaran belum sukses.',
+    }
+  }
+
+  const paidAmount = cleanNumber(
+    firstValue(data, ['amount', 'total_amount', 'data.amount', 'data.total_amount']),
+    0,
+    1000000000,
+  )
+
+  if (paidAmount && paidAmount < Number(order.amount || 0)) {
+    throw new ApiError(422, 'Nominal pembayaran Tripay lebih kecil dari harga order.')
+  }
+
+  if (order.status === 'processed' || order.status === 'paid') {
+    return {
+      ok: true,
+      duplicate: true,
+      message: 'Order Tripay sudah pernah diproses.',
+    }
+  }
+
+  const accessResult = await grantMemberClassAccess(order.member_id, order.class_id)
+
+  await rest(`tripay_orders?id=eq.${eq(order.id)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      reference: reference || order.reference || '',
+      status: 'processed',
+      access_granted: accessResult.granted,
+      payload: rawBody,
+    },
+  })
+
+  return {
+    ok: true,
+    message: accessResult.granted
+      ? 'Pembayaran Tripay sukses dan akses kelas sudah aktif.'
+      : 'Pembayaran Tripay sukses. Member sudah memiliki akses kelas.',
+    merchantRef: order.merchant_ref,
+    reference: reference || order.reference || '',
+    classId: order.class_id,
+    memberId: order.member_id,
+    accessGranted: accessResult.granted,
+  }
 }
 
 export async function processLynkWebhook(request) {

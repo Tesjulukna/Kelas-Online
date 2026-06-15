@@ -26,6 +26,14 @@ SUPABASE_VIDEO_BUCKET=ibnu-videos
 MAX_VIDEO_UPLOAD_MB=50
 LYNK_WEBHOOK_SECRET=isi_merchant_key_lynk
 SITE_LOGIN_URL=https://domain-vercel-anda.vercel.app/login
+TRIPAY_MERCHANT_CODE=isi_merchant_code_tripay
+TRIPAY_API_KEY=isi_api_key_tripay
+TRIPAY_PRIVATE_KEY=isi_private_key_tripay
+TRIPAY_IS_PRODUCTION=false
+TRIPAY_DEFAULT_METHOD=QRIS
+TRIPAY_DEFAULT_CUSTOMER_PHONE=081234567890
+TRIPAY_CALLBACK_URL=https://domain-vercel-anda.vercel.app/api/tripay-webhook
+TRIPAY_RETURN_URL=https://domain-vercel-anda.vercel.app/member?menu=my-courses
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 RESEND_FROM_EMAIL=IbnuCreative Academy <akses@domain-anda.com>
 ```
@@ -36,6 +44,7 @@ Opsional:
 LYNK_RESET_EXISTING_MEMBER_PASSWORD=false
 LYNK_PRODUCT_CLASS_MAP={"kode-produk-lynk":["id-kelas"]}
 LYNK_SEND_CREDENTIALS_EMAIL=true
+TRIPAY_EXPIRED_MINUTES=1440
 RESEND_REPLY_TO=support@domain-anda.com
 ```
 
@@ -75,7 +84,20 @@ https://domain-vercel-anda.vercel.app/api/lynk-webhook
 
 Endpoint ini akan membuat atau memperbarui member berdasarkan produk Lynk yang cocok dengan `Kode produk Lynk.id` di kelas.
 
-## 6. Email otomatis Resend
+## 6. Checkout dan Webhook Tripay
+
+1. Jalankan ulang `supabase/schema.sql` di Supabase SQL Editor agar kolom `price`, `tripay_product_key`, dan tabel `tripay_orders` tersedia.
+2. Isi `Harga kelas` di dashboard admin. Harga kosong atau `0` akan dianggap gratis dan akses langsung aktif tanpa Tripay.
+3. Isi environment Tripay di Vercel.
+4. Set callback Tripay ke:
+
+```text
+https://domain-vercel-anda.vercel.app/api/tripay-webhook
+```
+
+Member bisa membuka menu `Kelas Tersedia` dan memilih kelas yang belum mereka akses. Kelas berbayar akan checkout via Tripay, sedangkan kelas gratis langsung masuk ke `Kelas Saya`. Akses kelas berbayar akan aktif otomatis setelah callback Tripay berstatus `PAID`.
+
+## 7. Email otomatis Resend
 
 1. Buat akun Resend dan verifikasi domain pengirim.
 2. Buat API key dengan akses sending.

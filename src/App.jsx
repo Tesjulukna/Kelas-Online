@@ -23,6 +23,7 @@ const supportApiPath = '/api/support'
 const submissionsApiPath = '/api/submissions'
 const settingsApiPath = '/api/settings'
 const backupApiPath = '/api/backup'
+const tripayCheckoutApiPath = '/api/tripay-checkout'
 const loginApiPath = '/api/login'
 const logoutApiPath = '/api/logout'
 const profileApiPath = '/api/profile'
@@ -92,7 +93,7 @@ function getDashboardMenuFromUrl(role) {
         'support',
         'website-settings',
       ]
-    : ['overview', 'my-courses', 'certificates', 'support']
+    : ['overview', 'my-courses', 'available-classes', 'certificates', 'support']
 
   return allowedMenus.includes(menuId) ? menuId : 'overview'
 }
@@ -468,7 +469,9 @@ function cleanClasses(value) {
         students: Math.max(0, Number(item.students) || 0),
         status: cleanText(item.status || 'Draft'),
         revenue: cleanText(item.revenue || 'Rp 0'),
+        price: Math.max(0, Math.round(Number(item.price) || 0)),
         lynkProductKey: cleanLongText(item.lynkProductKey || '', 160),
+        tripayProductKey: cleanLongText(item.tripayProductKey || '', 160),
         thumbnail: cleanAvatar(item.thumbnail),
         mentor: cleanText(item.mentor || 'Ibnu Creative'),
         progress: Math.min(100, Math.max(0, Number(item.progress) || 0)),
@@ -663,6 +666,7 @@ function syncSessionWithMemberAccount(currentSession, memberAccount) {
     ...currentSession,
     name: cleanText(memberAccount.name) || currentSession.name,
     username: cleanText(memberAccount.username) || currentSession.username,
+    email: cleanEmail(memberAccount.email || currentSession.email || ''),
     avatar: cleanAvatar(memberAccount.avatar ?? currentSession.avatar),
     allowedClassIds: Array.isArray(memberAccount.allowedClassIds)
       ? memberAccount.allowedClassIds
@@ -1580,6 +1584,37 @@ function App() {
     return applySupportResponse(data)
   }
 
+  const handleCreateTripayCheckout = async (course) => {
+    if (session?.role !== 'member') {
+      throw new Error('Silakan login member untuk membeli kelas.')
+    }
+
+    const data = await requestJson(tripayCheckoutApiPath, {
+      method: 'POST',
+      body: JSON.stringify({ classId: course.id, memberId: session.userId }),
+    })
+
+    if (data.alreadyHasAccess || data.freeAccessGranted) {
+      const nextMembers = await fetchStoredMembers()
+
+      setMembers(nextMembers)
+      announcePeopleSync()
+      return data
+    }
+
+    if (!data.checkoutUrl) {
+      throw new Error('Link pembayaran Tripay belum tersedia.')
+    }
+
+    const checkoutWindow = window.open(data.checkoutUrl, '_blank', 'noopener,noreferrer')
+
+    if (!checkoutWindow) {
+      window.location.assign(data.checkoutUrl)
+    }
+
+    return data
+  }
+
   const currentMember = session?.role === 'member'
     ? members.find((member) => member.id === session.userId)
     : null
@@ -1637,6 +1672,8 @@ function App() {
               avatar={session.avatar}
               sessionToken={session.token}
               classes={memberClasses}
+              allClasses={classes}
+              allowedClassIds={currentMemberAccess}
               supportTickets={supportTickets}
               submissions={submissions}
               focusTarget={memberFocusTarget}
@@ -1648,6 +1685,7 @@ function App() {
               onCreateSupportTicket={handleCreateSupportTicket}
               onReplySupportTicket={handleReplySupportTicket}
               onCreateSubmission={handleCreateSubmission}
+              onCreateTripayCheckout={handleCreateTripayCheckout}
             />
           ) : (
             <LoginPage

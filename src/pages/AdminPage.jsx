@@ -209,6 +209,12 @@ function formatRupiah(value) {
   }).format(number)
 }
 
+function formatClassPrice(value) {
+  const number = Math.max(0, Number(String(value ?? '').replace(/[^\d]/g, '')) || 0)
+
+  return number > 0 ? formatRupiah(number) : 'Gratis'
+}
+
 function parseRupiahValue(value) {
   const text = String(value ?? '').trim().toLowerCase()
 
@@ -254,8 +260,9 @@ function createEmptyClassForm() {
     title: '',
     students: 0,
     status: 'Aktif',
-    revenue: '0',
+    price: '0',
     lynkProductKey: '',
+    tripayProductKey: '',
     thumbnail: '',
     mentor: '',
     progress: 0,
@@ -747,7 +754,7 @@ function AdminPage({
       [name]:
         name === 'students' || name === 'progress'
           ? Number(value)
-          : name === 'revenue'
+          : name === 'price'
             ? parseRupiahValue(value)
             : value,
     }))
@@ -1428,8 +1435,9 @@ function AdminPage({
       title: classForm.title.trim(),
       students: existingClass?.students ?? 0,
       status: classForm.status,
-      revenue: formatRupiah(classForm.revenue),
+      price: Math.max(0, Number(classForm.price) || 0),
       lynkProductKey: classForm.lynkProductKey.trim(),
+      tripayProductKey: classForm.tripayProductKey.trim(),
       thumbnail: classForm.thumbnail,
       mentor: classForm.mentor.trim() || 'Ibnu Creative',
       progress: existingClass?.progress ?? 0,
@@ -1469,8 +1477,9 @@ function AdminPage({
       title: item.title,
       students: item.students,
       status: item.status,
-      revenue: parseRupiahValue(item.revenue),
+      price: parseRupiahValue(item.price),
       lynkProductKey: item.lynkProductKey ?? '',
+      tripayProductKey: item.tripayProductKey ?? '',
       thumbnail: item.thumbnail ?? '',
       mentor: item.mentor ?? '',
       progress: item.progress ?? 0,
@@ -1708,7 +1717,7 @@ function AdminPage({
         'Kelas',
         'Peserta',
         'Status',
-        'Revenue',
+        'Harga',
         'Mentor',
         'Jadwal Live',
         'Jumlah Materi',
@@ -1721,7 +1730,7 @@ function AdminPage({
           item.title,
           item.students,
           item.status,
-          item.revenue,
+          formatClassPrice(item.price),
           item.mentor,
           item.liveAt,
           item.materials?.length ?? 0,
@@ -1857,7 +1866,7 @@ function AdminPage({
               <span role="columnheader">Kelas</span>
               <span role="columnheader">Peserta</span>
               <span role="columnheader">Status</span>
-              <span role="columnheader">Revenue</span>
+              <span role="columnheader">Harga</span>
               <span role="columnheader">Aksi</span>
             </div>
             {classes.map((item) => (
@@ -1883,8 +1892,8 @@ function AdminPage({
                 <span data-label="Status" role="cell">
                   <mark>{item.status}</mark>
                 </span>
-                <span data-label="Revenue" role="cell">
-                  {item.revenue}
+                <span data-label="Harga" role="cell">
+                  {formatClassPrice(item.price)}
                 </span>
                 <span className="row-actions" data-label="Aksi" role="cell">
                   <button type="button" onClick={() => handleEditClass(item)}>
@@ -2964,18 +2973,22 @@ function AdminPage({
                   <option>Arsip</option>
                 </select>
               </label>
-              <label className="revenue-field">
-                Revenue
+              <label className="price-field">
+                Harga kelas
                 <input
-                  name="revenue"
+                  name="price"
                   type="number"
                   min="0"
                   step="1000"
-                  value={classForm.revenue}
+                  value={classForm.price}
                   onChange={handleClassFormChange}
                   placeholder="0"
                 />
-                <span>{formatRupiah(classForm.revenue)}</span>
+                <span>
+                  {Number(classForm.price) > 0
+                    ? formatRupiah(classForm.price)
+                    : 'Kosong atau 0 = kelas gratis'}
+                </span>
               </label>
               <label>
                 Mentor
@@ -2997,6 +3010,17 @@ function AdminPage({
                   placeholder="Product ID / slug / nama produk Lynk"
                 />
                 <span>Isi sama dengan ID, slug, atau nama produk di Lynk.id.</span>
+              </label>
+              <label>
+                Kode produk Tripay
+                <input
+                  name="tripayProductKey"
+                  type="text"
+                  value={classForm.tripayProductKey}
+                  onChange={handleClassFormChange}
+                  placeholder="SKU / kode produk Tripay"
+                />
+                <span>Opsional. Dipakai sebagai SKU item pada invoice Tripay.</span>
               </label>
               <div className="materials-editor">
                 <div className="materials-editor-heading">

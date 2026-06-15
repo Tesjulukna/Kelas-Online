@@ -2,6 +2,16 @@ import Icon from '../components/Icon'
 import { benefits, courseHighlights } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 
+function formatRupiah(value) {
+  const amount = Math.max(0, Math.round(Number(value) || 0))
+
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
 function HomePage({
   isLoggedIn,
   onLogin,
@@ -22,7 +32,7 @@ function HomePage({
         icon: 'bookOpen',
         thumbnail: course.thumbnail,
         mentor: course.mentor,
-        price: course.price || course.revenue || websiteSettings.courses.emptyPrice,
+        price: course.price ? formatRupiah(course.price) : 'Gratis',
         description: `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`,
       }))
     : courseHighlights.map((course) => ({

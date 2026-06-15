@@ -15,6 +15,7 @@ Fitur utama:
 - Admin CRUD kelas, materi YouTube/Shorts atau upload video, member, dan tiket bantuan mentor.
 - Admin bisa menambahkan gambar referensi dan prompt pada materi.
 - Member bisa membuka kelas, mengirim tugas, copy prompt, preview/download gambar, dan melihat balasan mentor.
+- Member bisa melihat `Kelas Tersedia` untuk kelas yang belum diakses; kelas gratis langsung terbuka, kelas berbayar checkout via Tripay.
 - Webhook Lynk.id siap membuat akun member otomatis setelah pembayaran sukses.
 - Backend lokal untuk development memakai Vite middleware.
 - Backend production untuk Vercel memakai Node serverless functions di `api/` dan Supabase.

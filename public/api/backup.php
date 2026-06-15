@@ -20,6 +20,7 @@ function backup_tables(): array
         'submissions',
         'member_progress',
         'lynk_orders',
+        'tripay_orders',
         'site_settings',
     ];
 }
@@ -123,6 +124,7 @@ $deleteOrder = [
     'submissions',
     'support_tickets',
     'member_progress',
+    'tripay_orders',
     'lynk_orders',
     'classes',
     'accounts',
@@ -137,6 +139,7 @@ $insertOrder = [
     'submissions',
     'member_progress',
     'lynk_orders',
+    'tripay_orders',
     'site_settings',
 ];
 

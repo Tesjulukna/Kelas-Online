@@ -92,6 +92,14 @@
       "destination": "/api/lynk-webhook"
     },
     {
+      "source": "/api/tripay-checkout.php",
+      "destination": "/api/tripay-checkout"
+    },
+    {
+      "source": "/api/tripay-webhook.php",
+      "destination": "/api/tripay-webhook"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

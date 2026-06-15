@@ -50,7 +50,9 @@ $statements = [
         students INT NOT NULL DEFAULT 0,
         status VARCHAR(40) NOT NULL DEFAULT 'Aktif',
         revenue VARCHAR(80) NOT NULL DEFAULT 'Rp 0',
+        price INT NOT NULL DEFAULT 0,
         lynk_product_key VARCHAR(180) NOT NULL DEFAULT '',
+        tripay_product_key VARCHAR(180) NOT NULL DEFAULT '',
         thumbnail MEDIUMTEXT,
         mentor VARCHAR(120) NOT NULL DEFAULT 'Ibnu Creative',
         progress INT NOT NULL DEFAULT 0,
@@ -192,6 +194,27 @@ $statements = [
         INDEX lynk_order_email_index (buyer_email),
         INDEX lynk_order_member_index (member_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    "CREATE TABLE IF NOT EXISTS tripay_orders (
+        id VARCHAR(120) PRIMARY KEY,
+        merchant_ref VARCHAR(180) NOT NULL DEFAULT '',
+        reference VARCHAR(180) NOT NULL DEFAULT '',
+        member_id VARCHAR(120) NOT NULL DEFAULT '',
+        buyer_name VARCHAR(160) NOT NULL DEFAULT '',
+        buyer_email VARCHAR(180) NOT NULL DEFAULT '',
+        class_id VARCHAR(120) NOT NULL DEFAULT '',
+        class_title VARCHAR(160) NOT NULL DEFAULT '',
+        amount INT NOT NULL DEFAULT 0,
+        status VARCHAR(40) NOT NULL DEFAULT 'pending',
+        checkout_url MEDIUMTEXT,
+        access_granted TINYINT(1) NOT NULL DEFAULT 0,
+        payload MEDIUMTEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY tripay_merchant_ref_unique (merchant_ref),
+        INDEX tripay_reference_index (reference),
+        INDEX tripay_member_index (member_id),
+        INDEX tripay_class_index (class_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
     "CREATE TABLE IF NOT EXISTS site_settings (
         id VARCHAR(60) PRIMARY KEY,
         payload LONGTEXT,
@@ -224,7 +247,9 @@ function ensure_column_definition(PDO $pdo, string $table, string $definition): 
 
 ensure_column($pdo, 'accounts', 'avatar', 'MEDIUMTEXT NULL AFTER status');
 ensure_column($pdo, 'accounts', 'allowed_class_ids', 'MEDIUMTEXT NULL AFTER avatar');
+ensure_column($pdo, 'classes', 'price', 'INT NOT NULL DEFAULT 0 AFTER revenue');
 ensure_column($pdo, 'classes', 'lynk_product_key', "VARCHAR(180) NOT NULL DEFAULT '' AFTER revenue");
+ensure_column($pdo, 'classes', 'tripay_product_key', "VARCHAR(180) NOT NULL DEFAULT '' AFTER lynk_product_key");
 ensure_column($pdo, 'materials', 'video_file', "VARCHAR(180) NOT NULL DEFAULT '' AFTER video_url");
 ensure_column($pdo, 'materials', 'description', 'MEDIUMTEXT NULL AFTER title');
 ensure_column($pdo, 'materials', 'video_name', "VARCHAR(180) NOT NULL DEFAULT '' AFTER video_file");
@@ -374,8 +399,8 @@ if ($classCount === 0) {
     ];
     $insertClass = $pdo->prepare(
         'INSERT INTO classes
-        (id, title, students, status, revenue, thumbnail, mentor, progress, next_label, live_at, lessons)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (id, title, students, status, revenue, price, lynk_product_key, tripay_product_key, thumbnail, mentor, progress, next_label, live_at, lessons)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     );
     $insertMaterial = $pdo->prepare(
         'INSERT INTO materials
@@ -390,6 +415,9 @@ if ($classCount === 0) {
             $class['students'],
             $class['status'],
             $class['revenue'],
+            0,
+            '',
+            '',
             '',
             'Ibnu Creative',
             $class['progress'],

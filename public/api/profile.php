@@ -14,6 +14,7 @@ function profile_session_from_account(array $account, string $token = ''): array
         'userId' => $account['id'],
         'name' => $account['name'],
         'username' => $account['username'],
+        'email' => $account['email'] ?? '',
         'role' => $account['role'],
         'avatar' => $account['avatar'] ?? '',
         'allowedClassIds' => ($account['role'] ?? '') === 'member'
