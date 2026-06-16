@@ -286,6 +286,53 @@ function createEmptyMemberForm() {
   }
 }
 
+function createEmptyDigitalProductForm() {
+  return {
+    id: '',
+    title: '',
+    description: '',
+    price: '0',
+    status: 'Aktif',
+    thumbnail: '',
+    addVideo: false,
+    videoUrl: '',
+    fileUrl: '',
+    fileName: '',
+    deliveryNote: '',
+    platformType: 'upload',
+    payWhatYouWant: false,
+    salePrice: '0',
+    itemQuantityEnabled: false,
+    itemQuantity: '0',
+    limitQtyPerCheckout: false,
+    purchaseButtonLabel: 'Buy Now',
+    releaseTimeEnabled: false,
+    releaseTime: '',
+    whatsappNotification: false,
+    customMessageEnabled: false,
+    customMessage: '',
+    blockLayout: 'default',
+    requireCustomerName: false,
+    requireCustomerPhone: false,
+    lynkProductKey: '',
+    tripayProductKey: '',
+  }
+}
+
+const digitalProductPlatformOptions = [
+  { id: 'upload', label: 'Upload' },
+  { id: 'dropbox', label: 'Dropbox' },
+  { id: 'gdrive', label: 'Gdrive' },
+  { id: 'other', label: 'Other' },
+]
+
+const digitalProductLayoutOptions = [
+  { id: 'default', label: 'Default' },
+  { id: 'grid', label: 'Grid' },
+  { id: 'large', label: 'Large Image' },
+  { id: 'compact', label: 'Compact' },
+]
+
 function createEmptySupportForm() {
   return {
     id: '',
@@ -481,12 +528,15 @@ function AdminPage({
   avatar,
   sessionToken = '',
   classes,
+  digitalProducts = [],
+  digitalProductAccess = [],
   members = [],
   supportTickets = [],
   submissions = [],
   payments = [],
   websiteSettings,
   onClassesChange,
+  onDigitalProductsChange = async () => {},
   onWebsiteSettingsChange = async () => {},
   onSyncTripayPaymentMethods = async () => [],
   onDownloadBackup = async () => {},
@@ -507,6 +557,11 @@ function AdminPage({
   const [editingClassId, setEditingClassId] = useState(null)
   const [isClassModalOpen, setIsClassModalOpen] = useState(false)
   const [pendingDeleteClass, setPendingDeleteClass] = useState(null)
+  const [digitalProductForm, setDigitalProductForm] = useState(() =>
+    createEmptyDigitalProductForm(),
+  )
+  const [editingDigitalProductId, setEditingDigitalProductId] = useState(null)
+  const [isDigitalProductBuilderOpen, setIsDigitalProductBuilderOpen] = useState(false)
   const [memberForm, setMemberForm] = useState(() => createEmptyMemberForm())
   const [editingMemberId, setEditingMemberId] = useState(null)
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false)
@@ -851,6 +906,143 @@ function AdminPage({
     setPromptEditorState(null)
     setDraggingMaterialId(null)
     lastMaterialDragTargetRef.current = ''
+  }
+
+  const resetDigitalProductForm = () => {
+    setDigitalProductForm(createEmptyDigitalProductForm())
+    setEditingDigitalProductId(null)
+  }
+
+  const handleDigitalProductFormChange = (event) => {
+    const { name, type, checked, value } = event.target
+    const nextValue = type === 'checkbox' ? checked : value
+
+    setDigitalProductForm((current) => ({
+      ...current,
+      [name]: ['price', 'salePrice', 'itemQuantity'].includes(name)
+        ? parseRupiahValue(nextValue)
+        : nextValue,
+    }))
+  }
+
+  const handleDigitalProductThumbnailChange = async (event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      onNotify('Thumbnail produk harus berupa gambar.')
+      event.target.value = ''
+      return
+    }
+
+    try {
+      onNotify('Mengupload thumbnail produk...')
+      const imageUrl = await uploadClassImage(file, sessionToken)
+      setDigitalProductForm((current) => ({ ...current, thumbnail: imageUrl }))
+      onNotify('Thumbnail produk berhasil diupload.')
+    } catch (error) {
+      onNotify(error.message || 'Thumbnail produk tidak bisa diupload.')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const handleSubmitDigitalProduct = async (event) => {
+    event.preventDefault()
+
+    const payload = {
+      ...digitalProductForm,
+      id:
+        editingDigitalProductId ||
+        digitalProductForm.id ||
+        `digital-product-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      title: digitalProductForm.title.trim(),
+      price: Math.max(0, Math.round(Number(digitalProductForm.price) || 0)),
+      salePrice: Math.max(0, Math.round(Number(digitalProductForm.salePrice) || 0)),
+      itemQuantity: Math.max(0, Math.round(Number(digitalProductForm.itemQuantity) || 0)),
+    }
+
+    if (!payload.title) {
+      onNotify('Nama produk digital wajib diisi.')
+      return
+    }
+
+    try {
+      await onDigitalProductsChange((current) => {
+        const existing = current.some((item) => item.id === payload.id)
+
+        return existing
+          ? current.map((item) => (item.id === payload.id ? payload : item))
+          : [payload, ...current]
+      })
+      resetDigitalProductForm()
+      setIsDigitalProductBuilderOpen(false)
+      onNotify(editingDigitalProductId ? 'Produk digital diperbarui.' : 'Produk digital ditambahkan.')
+    } catch (error) {
+      onNotify(error.message || 'Produk digital tidak bisa disimpan.')
+    }
+  }
+
+  const handleEditDigitalProduct = (product) => {
+    setDigitalProductForm({
+      id: product.id,
+      title: product.title,
+      description: product.description || '',
+      price: product.price || '0',
+      status: product.status || 'Aktif',
+      thumbnail: product.thumbnail || '',
+      addVideo: product.addVideo === true,
+      videoUrl: product.videoUrl || '',
+      fileUrl: product.fileUrl || '',
+      fileName: product.fileName || '',
+      deliveryNote: product.deliveryNote || '',
+      platformType: product.platformType || 'upload',
+      payWhatYouWant: product.payWhatYouWant === true,
+      salePrice: product.salePrice || '0',
+      itemQuantityEnabled: product.itemQuantityEnabled === true,
+      itemQuantity: product.itemQuantity || '0',
+      limitQtyPerCheckout: product.limitQtyPerCheckout === true,
+      purchaseButtonLabel: product.purchaseButtonLabel || 'Buy Now',
+      releaseTimeEnabled: product.releaseTimeEnabled === true,
+      releaseTime: product.releaseTime || '',
+      whatsappNotification: product.whatsappNotification === true,
+      customMessageEnabled: product.customMessageEnabled === true,
+      customMessage: product.customMessage || '',
+      blockLayout: product.blockLayout || 'default',
+      requireCustomerName: product.requireCustomerName === true,
+      requireCustomerPhone: product.requireCustomerPhone === true,
+      lynkProductKey: product.lynkProductKey || '',
+      tripayProductKey: product.tripayProductKey || '',
+    })
+    setEditingDigitalProductId(product.id)
+    setIsDigitalProductBuilderOpen(true)
+    onMenuChange('digital-products')
+  }
+
+  const openCreateDigitalProduct = () => {
+    resetDigitalProductForm()
+    setIsDigitalProductBuilderOpen(true)
+    onMenuChange('digital-products')
+  }
+
+  const closeDigitalProductBuilder = () => {
+    resetDigitalProductForm()
+    setIsDigitalProductBuilderOpen(false)
+  }
+
+  const handleDeleteDigitalProduct = async (productId) => {
+    try {
+      await onDigitalProductsChange((current) => current.filter((item) => item.id !== productId))
+      if (editingDigitalProductId === productId) {
+        resetDigitalProductForm()
+      }
+      onNotify('Produk digital dihapus.')
+    } catch (error) {
+      onNotify(error.message || 'Produk digital tidak bisa dihapus.')
+    }
   }
 
   const openCreateClass = () => {
@@ -2022,6 +2214,513 @@ function AdminPage({
             ))}
           </div>
         </section>
+      )}
+
+      {activeMenu === 'digital-products' && (
+        isDigitalProductBuilderOpen ? (
+          <form className="digital-product-builder-page" onSubmit={handleSubmitDigitalProduct}>
+            <div className="digital-builder-topbar">
+              <div>
+                <p className="eyebrow">Produk digital</p>
+                <h2>{editingDigitalProductId ? 'Edit produk digital' : 'Tambah produk digital'}</h2>
+                <small>Atur detail produk, harga, link delivery, checkout, dan pertanyaan pembeli dalam satu halaman.</small>
+              </div>
+              <div className="button-row">
+                <button className="btn btn-secondary" type="button" onClick={closeDigitalProductBuilder}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" type="submit">
+                  <Icon name="download" />
+                  {editingDigitalProductId ? 'Save Digital' : 'Add Digital'}
+                </button>
+              </div>
+            </div>
+
+            <div className="digital-builder-grid">
+              <div className="digital-builder-column">
+                <section className="digital-builder-card">
+                  <div className="digital-builder-card-heading">
+                    <h3>Details</h3>
+                  </div>
+
+                  <label className="digital-upload-field">
+                    Image
+                    <span className="digital-image-upload">
+                      {digitalProductForm.thumbnail ? (
+                        <img src={digitalProductForm.thumbnail} alt="" />
+                      ) : (
+                        <>
+                          <Icon name="image" />
+                          <small>Add Image</small>
+                        </>
+                      )}
+                      <input type="file" accept="image/*" onChange={handleDigitalProductThumbnailChange} />
+                    </span>
+                  </label>
+                  {digitalProductForm.thumbnail && (
+                    <button
+                      className="text-action"
+                      type="button"
+                      onClick={() => setDigitalProductForm((current) => ({ ...current, thumbnail: '' }))}
+                    >
+                      Hapus gambar
+                    </button>
+                  )}
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Add video
+                      <small>Tambahkan video preview produk.</small>
+                    </span>
+                    <input
+                      name="addVideo"
+                      type="checkbox"
+                      checked={digitalProductForm.addVideo}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+                  {digitalProductForm.addVideo && (
+                    <label>
+                      Link video
+                      <input
+                        name="videoUrl"
+                        type="url"
+                        value={digitalProductForm.videoUrl}
+                        onChange={handleDigitalProductFormChange}
+                        placeholder="https://youtube.com/..."
+                      />
+                    </label>
+                  )}
+
+                  <label>
+                    Title
+                    <input
+                      name="title"
+                      type="text"
+                      value={digitalProductForm.title}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="Title"
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Description
+                    <span className="digital-rich-toolbar" aria-hidden="true">
+                      <button type="button">B</button>
+                      <button type="button">U</button>
+                      <button type="button">A</button>
+                      <button type="button"><Icon name="image" /></button>
+                      <button type="button"><Icon name="menu" /></button>
+                      <button type="button"><Icon name="link" /></button>
+                    </span>
+                    <textarea
+                      className="digital-description-editor"
+                      name="description"
+                      value={digitalProductForm.description}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="Jelaskan isi produk, manfaat, bonus, dan cara aksesnya."
+                      rows={9}
+                    />
+                  </label>
+
+                  <div className="digital-platform-box">
+                    <div className="digital-builder-card-heading compact">
+                      <h3>Platform</h3>
+                      <small>Tempat file atau akses produk disimpan.</small>
+                    </div>
+                    <div className="platform-pill-row" role="group" aria-label="Platform produk">
+                      {digitalProductPlatformOptions.map((option) => (
+                        <button
+                          className={`platform-pill ${digitalProductForm.platformType === option.id ? 'active' : ''}`}
+                          key={option.id}
+                          type="button"
+                          onClick={() => setDigitalProductForm((current) => ({ ...current, platformType: option.id }))}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      className="digital-platform-url"
+                      name="fileUrl"
+                      type="url"
+                      value={digitalProductForm.fileUrl}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="drive.google.com/file/..."
+                    />
+                    <input
+                      name="fileName"
+                      type="text"
+                      value={digitalProductForm.fileName}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="Nama file, contoh: template-canva.zip"
+                    />
+                  </div>
+                </section>
+
+                <section className="digital-builder-card">
+                  <div className="digital-builder-card-heading">
+                    <h3>Pricing</h3>
+                  </div>
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Allow customer to pay what they want
+                      <small>Pembeli bisa menambah nominal sendiri.</small>
+                    </span>
+                    <input
+                      name="payWhatYouWant"
+                      type="checkbox"
+                      checked={digitalProductForm.payWhatYouWant}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+
+                  <div className="digital-price-row">
+                    <label>
+                      Price
+                      <input
+                        name="price"
+                        type="text"
+                        inputMode="numeric"
+                        value={digitalProductForm.price}
+                        onChange={handleDigitalProductFormChange}
+                        placeholder="0"
+                      />
+                    </label>
+                    <label>
+                      Currency
+                      <select defaultValue="IDR" disabled>
+                        <option>IDR</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <label>
+                    Sale Price (Optional)
+                    <input
+                      name="salePrice"
+                      type="text"
+                      inputMode="numeric"
+                      value={digitalProductForm.salePrice}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="0"
+                    />
+                  </label>
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Item Quantity
+                      <small>{digitalProductForm.itemQuantityEnabled ? 'Jumlah stok dibatasi.' : 'Unlimited'}</small>
+                    </span>
+                    <input
+                      name="itemQuantityEnabled"
+                      type="checkbox"
+                      checked={digitalProductForm.itemQuantityEnabled}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+                  {digitalProductForm.itemQuantityEnabled && (
+                    <label>
+                      Jumlah stok
+                      <input
+                        name="itemQuantity"
+                        type="text"
+                        inputMode="numeric"
+                        value={digitalProductForm.itemQuantity}
+                        onChange={handleDigitalProductFormChange}
+                        placeholder="100"
+                      />
+                    </label>
+                  )}
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Limit qty per checkout
+                      <small>Batasi pembelian dalam satu transaksi.</small>
+                    </span>
+                    <input
+                      name="limitQtyPerCheckout"
+                      type="checkbox"
+                      checked={digitalProductForm.limitQtyPerCheckout}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+
+                  <label>
+                    Purchase Button
+                    <select
+                      name="purchaseButtonLabel"
+                      value={digitalProductForm.purchaseButtonLabel}
+                      onChange={handleDigitalProductFormChange}
+                    >
+                      <option>Buy Now</option>
+                      <option>Beli Sekarang</option>
+                      <option>Dapatkan Akses</option>
+                      <option>Download Sekarang</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Status
+                    <select name="status" value={digitalProductForm.status} onChange={handleDigitalProductFormChange}>
+                      <option>Aktif</option>
+                      <option>Draft</option>
+                      <option>Nonaktif</option>
+                    </select>
+                  </label>
+                </section>
+
+                <section className="digital-builder-card">
+                  <div className="digital-builder-card-heading compact">
+                    <h3>Add On</h3>
+                    <button type="button" disabled>+ Add New</button>
+                  </div>
+                </section>
+              </div>
+
+              <div className="digital-builder-column">
+                <section className="digital-builder-card">
+                  <div className="digital-builder-card-heading compact">
+                    <h3>Review (0/10)</h3>
+                    <button type="button" disabled>+ Add Review</button>
+                  </div>
+                </section>
+
+                <section className="digital-builder-card">
+                  <div className="digital-builder-card-heading">
+                    <h3>Advance Option</h3>
+                  </div>
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Release Time
+                      <small>Set Release Time</small>
+                    </span>
+                    <input
+                      name="releaseTimeEnabled"
+                      type="checkbox"
+                      checked={digitalProductForm.releaseTimeEnabled}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+                  {digitalProductForm.releaseTimeEnabled && (
+                    <label>
+                      Jadwal rilis
+                      <input
+                        name="releaseTime"
+                        type="datetime-local"
+                        value={digitalProductForm.releaseTime}
+                        onChange={handleDigitalProductFormChange}
+                      />
+                    </label>
+                  )}
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Free Rp. 600/transaction
+                      <small>Enable Whatsapp notification</small>
+                    </span>
+                    <input
+                      name="whatsappNotification"
+                      type="checkbox"
+                      checked={digitalProductForm.whatsappNotification}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Custom Message
+                      <small>Custom message on customer email</small>
+                    </span>
+                    <input
+                      name="customMessageEnabled"
+                      type="checkbox"
+                      checked={digitalProductForm.customMessageEnabled}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+                  {digitalProductForm.customMessageEnabled && (
+                    <label>
+                      Pesan custom email
+                      <textarea
+                        name="customMessage"
+                        value={digitalProductForm.customMessage}
+                        onChange={handleDigitalProductFormChange}
+                        placeholder="Pesan tambahan yang dikirim ke email pembeli."
+                        rows={4}
+                      />
+                    </label>
+                  )}
+
+                  <label>
+                    Catatan delivery
+                    <textarea
+                      name="deliveryNote"
+                      value={digitalProductForm.deliveryNote}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="Instruksi khusus, password file, atau panduan akses."
+                      rows={4}
+                    />
+                  </label>
+
+                  <div className="digital-layout-section">
+                    <strong>Block Layout</strong>
+                    <div className="digital-layout-options">
+                      {digitalProductLayoutOptions.map((option) => (
+                        <button
+                          className={`digital-layout-option ${digitalProductForm.blockLayout === option.id ? 'active' : ''}`}
+                          key={option.id}
+                          type="button"
+                          onClick={() => setDigitalProductForm((current) => ({ ...current, blockLayout: option.id }))}
+                        >
+                          <span className={`layout-preview ${option.id}`} aria-hidden="true">
+                            <i />
+                            <i />
+                            <i />
+                            <i />
+                          </span>
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="digital-builder-card">
+                  <div className="digital-builder-card-heading">
+                    <h3>Question for Customer</h3>
+                  </div>
+                  <small>Custom field for your customer to fill in during checkout.</small>
+
+                  <div className="digital-question-row heading">
+                    <span>Main Question</span>
+                    <span>Required</span>
+                  </div>
+                  <label className="digital-question-row">
+                    <span>
+                      <input
+                        name="requireCustomerName"
+                        type="checkbox"
+                        checked={digitalProductForm.requireCustomerName}
+                        onChange={handleDigitalProductFormChange}
+                      />
+                      Name
+                    </span>
+                    <input
+                      name="requireCustomerName"
+                      type="checkbox"
+                      checked={digitalProductForm.requireCustomerName}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+                  <label className="digital-question-row">
+                    <span>
+                      <input
+                        name="requireCustomerPhone"
+                        type="checkbox"
+                        checked={digitalProductForm.requireCustomerPhone}
+                        onChange={handleDigitalProductFormChange}
+                      />
+                      Phone
+                    </span>
+                    <input
+                      name="requireCustomerPhone"
+                      type="checkbox"
+                      checked={digitalProductForm.requireCustomerPhone}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+
+                  <button className="text-action centered" type="button" disabled>
+                    + Add Another Question
+                  </button>
+                </section>
+
+                <section className="digital-builder-card">
+                  <div className="digital-builder-card-heading">
+                    <h3>Kode produk</h3>
+                  </div>
+                  <label>
+                    Kode produk Lynk.id
+                    <input
+                      name="lynkProductKey"
+                      type="text"
+                      value={digitalProductForm.lynkProductKey}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="ID / slug / nama produk Lynk"
+                    />
+                  </label>
+                  <label>
+                    Kode produk Tripay
+                    <input
+                      name="tripayProductKey"
+                      type="text"
+                      value={digitalProductForm.tripayProductKey}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="SKU produk"
+                    />
+                  </label>
+                </section>
+              </div>
+            </div>
+          </form>
+        ) : (
+          <section className="panel digital-products-admin-panel">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Produk digital</p>
+                <h2>Kelola produk digital</h2>
+                <small>Jual file, template, preset, ebook, atau link akses otomatis lewat Tripay dan Lynk.id.</small>
+              </div>
+              <button className="btn btn-primary" type="button" onClick={openCreateDigitalProduct}>
+                <Icon name="download" />
+                Tambahkan Produk Digital
+              </button>
+            </div>
+
+            <div className="admin-table compact-list-table digital-product-table" role="table" aria-label="Produk digital">
+              <div className="table-row table-head" role="row">
+                <span role="columnheader">Produk</span>
+                <span role="columnheader">Harga</span>
+                <span role="columnheader">Status</span>
+                <span role="columnheader">Terjual</span>
+                <span role="columnheader">Aksi</span>
+              </div>
+              {digitalProducts.map((product) => {
+                const accessCount = digitalProductAccess.filter((access) => access.productId === product.id).length
+
+                return (
+                  <div className="table-row" role="row" key={product.id}>
+                    <span className="payment-identity" data-label="Produk" role="cell">
+                      <strong>{product.title}</strong>
+                      <small>{product.fileName || product.fileUrl || 'Link produk belum diisi'}</small>
+                    </span>
+                    <span data-label="Harga" role="cell">{product.price ? formatRupiah(product.price) : 'Gratis'}</span>
+                    <span data-label="Status" role="cell"><mark>{product.status}</mark></span>
+                    <span data-label="Terjual" role="cell">{accessCount} pembeli</span>
+                    <span className="row-actions" data-label="Aksi" role="cell">
+                      <button type="button" onClick={() => handleEditDigitalProduct(product)}>Edit</button>
+                      <button type="button" onClick={() => handleDeleteDigitalProduct(product.id)}>Hapus</button>
+                    </span>
+                  </div>
+                )
+              })}
+              {!digitalProducts.length && (
+                <article className="empty-state">
+                  <Icon name="download" />
+                  <h3>Belum ada produk digital</h3>
+                  <p>Tambahkan produk pertama untuk mulai menjual file, template, atau akses digital.</p>
+                  <button className="btn btn-primary" type="button" onClick={openCreateDigitalProduct}>
+                    Tambahkan Produk Digital
+                  </button>
+                </article>
+              )}
+            </div>
+          </section>
+        )
       )}
 
       {activeMenu === 'students' && (

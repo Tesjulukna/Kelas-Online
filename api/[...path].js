@@ -10,6 +10,7 @@ import {
   deleteSubmission,
   deleteSupportTicket,
   fetchClasses,
+  fetchDigitalProducts,
   fetchMembers,
   fetchMemberPayments,
   fetchPayments,
@@ -27,6 +28,7 @@ import {
   readJson,
   redirectProtectedVideo,
   replaceClasses,
+  replaceDigitalProducts,
   replaceWebsiteSettings,
   requireUser,
   restoreBackup,
@@ -186,6 +188,21 @@ async function routeRequest(request, response) {
 
   if (route === 'classes') {
     await handleClasses(request, response, url)
+    return
+  }
+
+  if (route === 'digital-products') {
+    if (request.method === 'GET') {
+      sendJson(response, 200, await fetchDigitalProducts(request))
+      return
+    }
+
+    if (request.method === 'PUT') {
+      sendJson(response, 200, await replaceDigitalProducts(request, (await readJson(request)).digitalProducts || []))
+      return
+    }
+
+    sendJson(response, 405, { message: 'Method tidak diizinkan.' })
     return
   }
 

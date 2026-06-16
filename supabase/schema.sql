@@ -46,6 +46,72 @@ create table if not exists public.classes (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.digital_products (
+  id text primary key,
+  title text not null,
+  description text not null default '',
+  price integer not null default 0,
+  status text not null default 'Draft',
+  thumbnail text not null default '',
+  add_video boolean not null default false,
+  video_url text not null default '',
+  file_url text not null default '',
+  file_name text not null default '',
+  delivery_note text not null default '',
+  platform_type text not null default 'upload',
+  pay_what_you_want boolean not null default false,
+  sale_price integer not null default 0,
+  item_quantity_enabled boolean not null default false,
+  item_quantity integer not null default 0,
+  limit_qty_per_checkout boolean not null default false,
+  purchase_button_label text not null default 'Buy Now',
+  release_time_enabled boolean not null default false,
+  release_time text not null default '',
+  whatsapp_notification boolean not null default false,
+  custom_message_enabled boolean not null default false,
+  custom_message text not null default '',
+  block_layout text not null default 'default',
+  require_customer_name boolean not null default false,
+  require_customer_phone boolean not null default false,
+  lynk_product_key text not null default '',
+  tripay_product_key text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.digital_product_access (
+  id text primary key,
+  product_id text not null,
+  product_title text not null default '',
+  member_id text not null default '',
+  buyer_name text not null default '',
+  buyer_email text not null default '',
+  source text not null default '',
+  order_id text not null default '',
+  status text not null default 'active',
+  download_url text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.digital_products add column if not exists add_video boolean not null default false;
+alter table public.digital_products add column if not exists video_url text not null default '';
+alter table public.digital_products add column if not exists platform_type text not null default 'upload';
+alter table public.digital_products add column if not exists pay_what_you_want boolean not null default false;
+alter table public.digital_products add column if not exists sale_price integer not null default 0;
+alter table public.digital_products add column if not exists item_quantity_enabled boolean not null default false;
+alter table public.digital_products add column if not exists item_quantity integer not null default 0;
+alter table public.digital_products add column if not exists limit_qty_per_checkout boolean not null default false;
+alter table public.digital_products add column if not exists purchase_button_label text not null default 'Buy Now';
+alter table public.digital_products add column if not exists release_time_enabled boolean not null default false;
+alter table public.digital_products add column if not exists release_time text not null default '';
+alter table public.digital_products add column if not exists whatsapp_notification boolean not null default false;
+alter table public.digital_products add column if not exists custom_message_enabled boolean not null default false;
+alter table public.digital_products add column if not exists custom_message text not null default '';
+alter table public.digital_products add column if not exists block_layout text not null default 'default';
+alter table public.digital_products add column if not exists require_customer_name boolean not null default false;
+alter table public.digital_products add column if not exists require_customer_phone boolean not null default false;
+
 create table if not exists public.materials (
   id text primary key,
   class_id text not null references public.classes(id) on delete cascade,
@@ -217,6 +283,9 @@ create index if not exists lynk_order_email_index on public.lynk_orders(buyer_em
 create index if not exists tripay_order_reference_index on public.tripay_orders(reference);
 create index if not exists tripay_order_member_index on public.tripay_orders(member_id);
 create index if not exists tripay_order_class_index on public.tripay_orders(class_id);
+create index if not exists digital_product_access_member_index on public.digital_product_access(member_id);
+create index if not exists digital_product_access_email_index on public.digital_product_access(buyer_email);
+create index if not exists digital_product_access_product_index on public.digital_product_access(product_id);
 
 alter table public.classes add column if not exists price integer not null default 0;
 alter table public.classes add column if not exists tripay_product_key text not null default '';
@@ -227,6 +296,14 @@ for each row execute function public.set_updated_at();
 
 drop trigger if exists classes_updated_at on public.classes;
 create trigger classes_updated_at before update on public.classes
+for each row execute function public.set_updated_at();
+
+drop trigger if exists digital_products_updated_at on public.digital_products;
+create trigger digital_products_updated_at before update on public.digital_products
+for each row execute function public.set_updated_at();
+
+drop trigger if exists digital_product_access_updated_at on public.digital_product_access;
+create trigger digital_product_access_updated_at before update on public.digital_product_access
 for each row execute function public.set_updated_at();
 
 drop trigger if exists materials_updated_at on public.materials;
@@ -267,6 +344,8 @@ for each row execute function public.set_updated_at();
 
 alter table public.accounts enable row level security;
 alter table public.classes enable row level security;
+alter table public.digital_products enable row level security;
+alter table public.digital_product_access enable row level security;
 alter table public.materials enable row level security;
 alter table public.material_assets enable row level security;
 alter table public.auth_sessions enable row level security;

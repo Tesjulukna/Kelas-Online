@@ -244,6 +244,8 @@ function MemberPage({
   sessionToken = '',
   classes = [],
   allClasses = classes,
+  digitalProducts = [],
+  digitalProductAccess = [],
   allowedClassIds = null,
   supportTickets = [],
   submissions = [],
@@ -264,6 +266,8 @@ function MemberPage({
   const tripayPaymentMethods = safeWebsiteSettings.paymentMethods
   const courses = classes.filter((course) => course.status === 'Aktif')
   const allActiveCourses = allClasses.filter((course) => course.status === 'Aktif')
+  const activeDigitalProducts = digitalProducts.filter((product) => product.status === 'Aktif')
+  const ownedDigitalProductIds = new Set(digitalProductAccess.map((access) => access.productId))
   const accessibleClassIds = Array.isArray(allowedClassIds)
     ? new Set(allowedClassIds)
     : new Set(allActiveCourses.map((course) => course.id))
@@ -321,21 +325,38 @@ function MemberPage({
   const resourceLinks = (activeMaterial?.resourceLinks ?? []).filter((link) => link.url)
   const isTaskImageAllowed = activeMaterial?.allowTaskImage !== false
   const isTaskImageRequired = Boolean(activeMaterial?.requireTaskImage)
+  const getCheckoutAmount = (item) => {
+    if (!item) {
+      return 0
+    }
+
+    const normalPrice = Math.max(0, Math.round(Number(item.price) || 0))
+    const salePrice = Math.max(0, Math.round(Number(item.salePrice) || 0))
+
+    return item.itemType === 'digital_product' && salePrice > 0 ? salePrice : normalPrice
+  }
   const selectedPaymentMethod = tripayPaymentMethods.find(
     (method) => method.code === selectedPaymentMethodCode,
   )
-  const paymentModalAmount = Math.max(0, Math.round(Number(paymentMethodCourse?.price) || 0))
+  const paymentModalAmount = getCheckoutAmount(paymentMethodCourse)
   const paymentModalFee = getPaymentMethodFee(selectedPaymentMethod, paymentModalAmount)
   const paymentModalTotal = paymentModalAmount + paymentModalFee
   const activePaymentsByClass = new Map()
   const expiredPaymentsByClass = new Map()
+  const activePaymentsByProduct = new Map()
+  const expiredPaymentsByProduct = new Map()
 
   payments
     .filter((payment) => payment.source === 'tripay')
     .forEach((payment) => {
       const status = String(payment.status || '').toLowerCase()
-      const currentPending = activePaymentsByClass.get(payment.classId)
-      const currentExpired = expiredPaymentsByClass.get(payment.classId)
+      const isProductPayment = payment.itemType === 'digital_product' || Boolean(payment.productId)
+      const productId = payment.productId || String(payment.classId || '').replace(/^product:/, '')
+      const pendingMap = isProductPayment ? activePaymentsByProduct : activePaymentsByClass
+      const expiredMap = isProductPayment ? expiredPaymentsByProduct : expiredPaymentsByClass
+      const key = isProductPayment ? productId : payment.classId
+      const currentPending = pendingMap.get(key)
+      const currentExpired = expiredMap.get(key)
 
       if (
         ['pending', 'unpaid', 'waiting', 'callback'].includes(status) &&
@@ -346,7 +367,7 @@ function MemberPage({
           !currentPending ||
           Date.parse(payment.createdAt || '') > Date.parse(currentPending.createdAt || '')
         ) {
-          activePaymentsByClass.set(payment.classId, payment)
+          pendingMap.set(key, payment)
         }
       }
 
@@ -355,7 +376,7 @@ function MemberPage({
           !currentExpired ||
           Date.parse(payment.createdAt || '') > Date.parse(currentExpired.createdAt || '')
         ) {
-          expiredPaymentsByClass.set(payment.classId, payment)
+          expiredMap.set(key, payment)
         }
       }
     })
@@ -585,25 +606,30 @@ function MemberPage({
     onNotify('Sertifikat demo siap diunduh dari backend produksi.')
   }
 
-  const handleStartCheckout = async (course, paymentMethod = '', { forceNewPayment = false } = {}) => {
-    const price = Math.max(0, Math.round(Number(course.price) || 0))
+  const handleStartCheckout = async (item, paymentMethod = '', { forceNewPayment = false, itemType = 'class' } = {}) => {
+    const price = getCheckoutAmount({ ...item, itemType })
 
-    setCheckoutClassId(course.id)
+    setCheckoutClassId(`${itemType}:${item.id}`)
 
     try {
-      const data = await onCreateTripayCheckout(course, price ? paymentMethod : '', {
+      const data = await onCreateTripayCheckout(item, price ? paymentMethod : '', {
         forceNewPayment,
+        itemType,
       })
 
       if (data.freeAccessGranted) {
-        onNotify('Akses kelas gratis sudah aktif. Silakan buka Kelas Saya.')
-        handleDashboardMenuChange('my-courses')
+        onNotify(itemType === 'digital_product'
+          ? 'Produk digital gratis sudah aktif.'
+          : 'Akses kelas gratis sudah aktif. Silakan buka Kelas Saya.')
+        handleDashboardMenuChange(itemType === 'digital_product' ? 'digital-products' : 'my-courses')
         return
       }
 
       if (data.alreadyHasAccess) {
-        onNotify('Akses kelas sudah aktif. Silakan buka Kelas Saya.')
-        handleDashboardMenuChange('my-courses')
+        onNotify(itemType === 'digital_product'
+          ? 'Produk digital sudah dimiliki.'
+          : 'Akses kelas sudah aktif. Silakan buka Kelas Saya.')
+        handleDashboardMenuChange(itemType === 'digital_product' ? 'digital-products' : 'my-courses')
         return
       }
 
@@ -627,12 +653,14 @@ function MemberPage({
     }
   }
 
-  const openPaymentMethodPopup = (course, { forceNewPayment = false } = {}) => {
-    const price = Math.max(0, Math.round(Number(course.price) || 0))
-    const pendingPayment = activePaymentsByClass.get(course.id)
+  const openPaymentMethodPopup = (item, { forceNewPayment = false, itemType = 'class' } = {}) => {
+    const price = getCheckoutAmount({ ...item, itemType })
+    const pendingPayment = itemType === 'digital_product'
+      ? activePaymentsByProduct.get(item.id)
+      : activePaymentsByClass.get(item.id)
 
     if (!price) {
-      handleStartCheckout(course)
+      handleStartCheckout(item, '', { itemType })
       return
     }
 
@@ -641,7 +669,7 @@ function MemberPage({
       return
     }
 
-    setPaymentMethodCourse(course)
+    setPaymentMethodCourse({ ...item, itemType })
     setSelectedPaymentMethodCode('')
     setIsPaymentTermsAccepted(false)
     setIsChangingPaymentMethod(forceNewPayment)
@@ -669,14 +697,16 @@ function MemberPage({
       return
     }
 
-    const course = paymentMethodCourse
+    const item = paymentMethodCourse
+    const itemType = paymentMethodCourse.itemType || 'class'
 
     setPaymentMethodCourse(null)
     setSelectedPaymentMethodCode('')
     setIsPaymentTermsAccepted(false)
     setIsChangingPaymentMethod(false)
-    handleStartCheckout(course, selectedPaymentMethod.code, {
+    handleStartCheckout(item, selectedPaymentMethod.code, {
       forceNewPayment: isChangingPaymentMethod,
+      itemType,
     })
   }
 
@@ -1447,7 +1477,7 @@ function MemberPage({
             )}
             <div className="payment-breakdown" aria-live="polite">
               <span>
-                <small>Harga kelas</small>
+                <small>{paymentMethodCourse.itemType === 'digital_product' ? 'Harga produk' : 'Harga kelas'}</small>
                 <strong>{formatRupiah(paymentModalAmount)}</strong>
               </span>
               <span>
@@ -1466,7 +1496,7 @@ function MemberPage({
                 onChange={(event) => setIsPaymentTermsAccepted(event.target.checked)}
               />
               <span>
-                Saya menyetujui ketentuan penggunaan dan memahami akses kelas aktif otomatis setelah pembayaran sukses.
+                Saya menyetujui ketentuan penggunaan dan memahami akses aktif otomatis setelah pembayaran sukses.
               </span>
             </label>
             <div className="payment-method-modal-actions">
@@ -1494,6 +1524,117 @@ function MemberPage({
             </div>
           </section>
         </div>
+      )}
+
+      {activeMenu === 'digital-products' && (
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Produk digital</p>
+              <h2>Produk digital</h2>
+            </div>
+          </div>
+          <div className="learning-list">
+            {activeDigitalProducts.map((product) => {
+              const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
+              const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
+              const price = salePrice || normalPrice
+              const isOwned = ownedDigitalProductIds.has(product.id)
+              const pendingPayment = activePaymentsByProduct.get(product.id)
+              const expiredPayment = expiredPaymentsByProduct.get(product.id)
+              const showExpiredNotice =
+                expiredPayment && !dismissedExpiredPayments.includes(expiredPayment.id)
+              const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
+              let buttonLabel = isOwned
+                ? 'Akses Produk'
+                : pendingPayment
+                  ? 'Selesaikan Pembayaran'
+                  : price
+                    ? product.purchaseButtonLabel || 'Beli Produk'
+                    : 'Ambil Gratis'
+
+              if (isCheckingOut) {
+                buttonLabel = price ? 'Membuat invoice...' : 'Membuka akses...'
+              }
+
+              return (
+                <article className="member-class-card available-class-card" key={product.id}>
+                  <span className="member-class-visual">
+                    {product.thumbnail ? (
+                      <img src={product.thumbnail} alt="" />
+                    ) : (
+                      <Icon name="download" />
+                    )}
+                    <span>{product.status}</span>
+                  </span>
+                  <span className="member-class-body">
+                    <h3>{product.title}</h3>
+                    <p>{product.fileName || 'Produk digital'}</p>
+                    <span className="member-class-next">
+                      {product.description || 'Akses produk dikirim otomatis setelah pembayaran sukses.'}
+                    </span>
+                  </span>
+                  <span className="available-class-price">
+                    <small>{price ? 'Harga produk' : 'Produk gratis'}</small>
+                    <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
+                    {salePrice > 0 && normalPrice > salePrice && (
+                      <small className="struck-price">{formatRupiah(normalPrice)}</small>
+                    )}
+                  </span>
+                  <span className="available-payment-action">
+                    {showExpiredNotice && (
+                      <span className="expired-payment-notice">
+                        <span>Pembayaran sebelumnya expired.</span>
+                        <button
+                          type="button"
+                          aria-label="Tutup pemberitahuan pembayaran expired"
+                          onClick={() => dismissExpiredPaymentNotice(expiredPayment.id)}
+                        >
+                          <Icon name="x" />
+                        </button>
+                      </span>
+                    )}
+                    <button
+                      className="btn btn-primary member-class-button"
+                      type="button"
+                      disabled={isCheckingOut}
+                      onClick={() => {
+                        if (isOwned && product.fileUrl) {
+                          window.open(product.fileUrl, '_blank', 'noopener,noreferrer')
+                          return
+                        }
+
+                        openPaymentMethodPopup(product, { itemType: 'digital_product' })
+                      }}
+                    >
+                      <Icon name={isOwned ? 'download' : 'wallet'} />
+                      {buttonLabel}
+                    </button>
+                    {pendingPayment && !isOwned && (
+                      <button
+                        className="btn btn-secondary member-class-button change-payment-method-button"
+                        type="button"
+                        onClick={() => openPaymentMethodPopup(product, {
+                          forceNewPayment: true,
+                          itemType: 'digital_product',
+                        })}
+                      >
+                        Ganti metode
+                      </button>
+                    )}
+                  </span>
+                </article>
+              )
+            })}
+            {!activeDigitalProducts.length && (
+              <article className="empty-state">
+                <Icon name="download" />
+                <h3>Belum ada produk digital</h3>
+                <p>Produk digital akan muncul setelah admin mengaktifkannya.</p>
+              </article>
+            )}
+          </div>
+        </section>
       )}
 
       {activeMenu === 'certificates' && (

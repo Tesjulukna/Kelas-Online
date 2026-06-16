@@ -18,6 +18,7 @@ const classesSyncKey = 'ibnucreative.classes.sync.v1'
 const peopleSyncKey = 'ibnucreative.people.sync.v1'
 const websiteSettingsSyncKey = 'ibnucreative.website-settings.sync.v1'
 const classesApiPath = '/api/classes'
+const digitalProductsApiPath = '/api/digital-products'
 const membersApiPath = '/api/members'
 const supportApiPath = '/api/support'
 const submissionsApiPath = '/api/submissions'
@@ -116,6 +117,7 @@ function getDashboardMenuFromUrl(role) {
     ? [
         'overview',
         'manage-classes',
+        'digital-products',
         'students',
         'payments',
         'submissions',
@@ -123,7 +125,7 @@ function getDashboardMenuFromUrl(role) {
         'support',
         'website-settings',
       ]
-    : ['overview', 'my-courses', 'available-classes', 'certificates', 'support']
+    : ['overview', 'my-courses', 'available-classes', 'digital-products', 'certificates', 'support']
 
   return allowedMenus.includes(menuId) ? menuId : 'overview'
 }
@@ -554,6 +556,69 @@ function cleanClasses(value) {
     })
 }
 
+function cleanDigitalProducts(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((item) => item?.id && item?.title)
+    .map((item) => ({
+      id: cleanText(item.id),
+      title: cleanLongText(item.title, 160),
+      description: cleanLongText(item.description || '', 600),
+      price: Math.max(0, Math.round(Number(item.price) || 0)),
+      status: cleanText(item.status || 'Draft'),
+      thumbnail: cleanAvatar(item.thumbnail || ''),
+      addVideo: item.addVideo === true,
+      videoUrl: cleanLongText(item.videoUrl || '', 1000),
+      fileUrl: cleanLongText(item.fileUrl || '', 1000),
+      fileName: cleanLongText(item.fileName || '', 180),
+      deliveryNote: cleanLongText(item.deliveryNote || '', 800),
+      platformType: cleanText(item.platformType || 'upload'),
+      payWhatYouWant: item.payWhatYouWant === true,
+      salePrice: Math.max(0, Math.round(Number(item.salePrice) || 0)),
+      itemQuantityEnabled: item.itemQuantityEnabled === true,
+      itemQuantity: Math.max(0, Math.round(Number(item.itemQuantity) || 0)),
+      limitQtyPerCheckout: item.limitQtyPerCheckout === true,
+      purchaseButtonLabel: cleanText(item.purchaseButtonLabel || 'Buy Now'),
+      releaseTimeEnabled: item.releaseTimeEnabled === true,
+      releaseTime: cleanText(item.releaseTime || ''),
+      whatsappNotification: item.whatsappNotification === true,
+      customMessageEnabled: item.customMessageEnabled === true,
+      customMessage: cleanLongText(item.customMessage || '', 800),
+      blockLayout: cleanText(item.blockLayout || 'default'),
+      requireCustomerName: item.requireCustomerName === true,
+      requireCustomerPhone: item.requireCustomerPhone === true,
+      lynkProductKey: cleanLongText(item.lynkProductKey || '', 160),
+      tripayProductKey: cleanLongText(item.tripayProductKey || '', 160),
+      createdAt: cleanText(item.createdAt || ''),
+      updatedAt: cleanText(item.updatedAt || ''),
+    }))
+}
+
+function cleanDigitalProductAccess(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((item) => item?.id && item?.productId)
+    .map((item) => ({
+      id: cleanText(item.id),
+      productId: cleanText(item.productId),
+      productTitle: cleanLongText(item.productTitle || '', 160),
+      memberId: cleanText(item.memberId || ''),
+      buyerName: cleanText(item.buyerName || ''),
+      buyerEmail: cleanEmail(item.buyerEmail || ''),
+      source: cleanText(item.source || ''),
+      orderId: cleanLongText(item.orderId || '', 180),
+      status: cleanText(item.status || 'active'),
+      downloadUrl: cleanLongText(item.downloadUrl || '', 1000),
+      createdAt: cleanText(item.createdAt || ''),
+    }))
+}
+
 function cleanLearningProgress(value) {
   if (!Array.isArray(value)) {
     return []
@@ -706,6 +771,9 @@ function cleanPayments(value) {
       buyerEmail: cleanEmail(item.buyerEmail || ''),
       memberId: cleanText(item.memberId || ''),
       classId: cleanText(item.classId || ''),
+      itemType: cleanText(item.itemType || 'class'),
+      productId: cleanText(item.productId || ''),
+      productTitle: cleanLongText(item.productTitle || '', 180),
       classTitle: cleanLongText(item.classTitle || 'Kelas', 180),
       amount: Math.max(0, Math.round(Number(item.amount) || 0)),
       status: cleanText(item.status || 'pending'),
@@ -854,6 +922,19 @@ async function fetchStoredMembers() {
   return cleanMembers(data.members)
 }
 
+async function fetchStoredDigitalProducts(currentSession) {
+  if (!currentSession || !['admin', 'member'].includes(currentSession.role)) {
+    return { digitalProducts: [], digitalProductAccess: [] }
+  }
+
+  const data = await requestJson(digitalProductsApiPath)
+
+  return {
+    digitalProducts: cleanDigitalProducts(data.digitalProducts),
+    digitalProductAccess: cleanDigitalProductAccess(data.digitalProductAccess),
+  }
+}
+
 async function fetchStoredSupportTickets(currentSession) {
   const params = new URLSearchParams()
 
@@ -922,6 +1003,8 @@ function App() {
   const [classes, setClasses] = useState(() => readClasses())
   const [websiteSettings, setWebsiteSettings] = useState(() => readWebsiteSettings())
   const [members, setMembers] = useState([])
+  const [digitalProducts, setDigitalProducts] = useState([])
+  const [digitalProductAccess, setDigitalProductAccess] = useState([])
   const [supportTickets, setSupportTickets] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [payments, setPayments] = useState([])
@@ -1205,18 +1288,21 @@ function App() {
     const syncPeopleData = () => {
       const requests = Promise.all([
         fetchStoredMembers(),
+        fetchStoredDigitalProducts(session),
         fetchStoredSupportTickets(session),
         fetchStoredSubmissions(session),
         fetchStoredPayments(session),
       ])
 
       requests
-        .then(([nextMembers, nextSupportTickets, nextSubmissions, nextPayments]) => {
+        .then(([nextMembers, productData, nextSupportTickets, nextSubmissions, nextPayments]) => {
           if (!isCurrent) {
             return
           }
 
           setMembers(nextMembers)
+          setDigitalProducts(productData.digitalProducts)
+          setDigitalProductAccess(productData.digitalProductAccess)
           if (session.role === 'member') {
             const memberAccount = nextMembers.find((member) => member.id === session.userId)
             const nextSession = syncSessionWithMemberAccount(session, memberAccount)
@@ -1233,6 +1319,8 @@ function App() {
         .catch(() => {
           if (isCurrent) {
             setMembers((current) => current)
+            setDigitalProducts((current) => current)
+            setDigitalProductAccess((current) => current)
             setSupportTickets((current) => current)
             setSubmissions((current) => current)
             setPayments((current) => current)
@@ -1600,6 +1688,15 @@ function App() {
     return nextMembers
   }
 
+  const applyDigitalProductsResponse = (data) => {
+    const nextProducts = cleanDigitalProducts(data.digitalProducts)
+    const nextAccess = cleanDigitalProductAccess(data.digitalProductAccess)
+
+    setDigitalProducts(nextProducts)
+    setDigitalProductAccess(nextAccess)
+    return nextProducts
+  }
+
   const applySupportResponse = (data) => {
     const nextSupportTickets = cleanSupportTickets(data.supportTickets)
 
@@ -1633,6 +1730,21 @@ function App() {
     window.sessionStorage.setItem(classesKey, JSON.stringify(nextClasses))
     announceClassesSync()
     return nextClasses
+  }
+
+  const handleDigitalProductsChange = async (updater) => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk menyimpan produk digital.')
+    }
+
+    const rawProducts = typeof updater === 'function' ? updater(digitalProducts) : updater
+    const safeProducts = cleanDigitalProducts(rawProducts)
+    const data = await requestJson(digitalProductsApiPath, {
+      method: 'PUT',
+      body: JSON.stringify({ digitalProducts: safeProducts }),
+    })
+
+    return applyDigitalProductsResponse(data)
   }
 
   const handleWebsiteSettingsChange = async (nextSettings) => {
@@ -1682,6 +1794,7 @@ function App() {
     const [
       nextClasses,
       nextMembers,
+      productData,
       nextSupportTickets,
       nextSubmissions,
       nextPayments,
@@ -1689,6 +1802,7 @@ function App() {
     ] = await Promise.all([
       fetchStoredClasses(),
       fetchStoredMembers(),
+      fetchStoredDigitalProducts(session),
       fetchStoredSupportTickets(session),
       fetchStoredSubmissions(session),
       fetchStoredPayments(session),
@@ -1697,6 +1811,8 @@ function App() {
 
     setClasses(nextClasses)
     setMembers(nextMembers)
+    setDigitalProducts(productData.digitalProducts)
+    setDigitalProductAccess(productData.digitalProductAccess)
     setSupportTickets(nextSupportTickets)
     setSubmissions(nextSubmissions)
     setPayments(nextPayments)
@@ -1875,15 +1991,16 @@ function App() {
     return applySupportResponse(data)
   }
 
-  const handleCreateTripayCheckout = async (course, paymentMethod = '', options = {}) => {
+  const handleCreateTripayCheckout = async (item, paymentMethod = '', options = {}) => {
     if (session?.role !== 'member') {
-      throw new Error('Silakan login member untuk membeli kelas.')
+      throw new Error('Silakan login member untuk membeli.')
     }
 
     const data = await requestJson(tripayCheckoutApiPath, {
       method: 'POST',
       body: JSON.stringify({
-        classId: course.id,
+        classId: options.itemType === 'digital_product' ? '' : item.id,
+        productId: options.itemType === 'digital_product' ? item.id : '',
         memberId: session.userId,
         paymentMethod,
         forceNewPayment: options.forceNewPayment === true,
@@ -1891,9 +2008,14 @@ function App() {
     })
 
     if (data.alreadyHasAccess || data.freeAccessGranted) {
-      const nextMembers = await fetchStoredMembers()
+      const [nextMembers, productData] = await Promise.all([
+        fetchStoredMembers(),
+        fetchStoredDigitalProducts(session),
+      ])
 
       setMembers(nextMembers)
+      setDigitalProducts(productData.digitalProducts)
+      setDigitalProductAccess(productData.digitalProductAccess)
       announcePeopleSync()
       return data
     }
@@ -1970,6 +2092,8 @@ function App() {
               sessionToken={session.token}
               classes={memberClasses}
               allClasses={classes}
+              digitalProducts={digitalProducts}
+              digitalProductAccess={digitalProductAccess}
               allowedClassIds={currentMemberAccess}
               supportTickets={supportTickets}
               submissions={submissions}
@@ -2004,12 +2128,15 @@ function App() {
               avatar={session.avatar}
               sessionToken={session.token}
               classes={classes}
+              digitalProducts={digitalProducts}
+              digitalProductAccess={digitalProductAccess}
               members={members}
               supportTickets={supportTickets}
               submissions={submissions}
               payments={payments}
               websiteSettings={websiteSettings}
               onClassesChange={handleClassesChange}
+              onDigitalProductsChange={handleDigitalProductsChange}
               onWebsiteSettingsChange={handleWebsiteSettingsChange}
               onSyncTripayPaymentMethods={handleSyncTripayPaymentMethods}
               onDownloadBackup={handleDownloadBackup}

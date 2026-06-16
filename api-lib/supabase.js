@@ -721,6 +721,57 @@ function mapMaterial(row, assets) {
   }
 }
 
+function mapDigitalProduct(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description || '',
+    price: Number(row.price) || 0,
+    status: row.status || 'Draft',
+    thumbnail: row.thumbnail || '',
+    addVideo: Boolean(row.add_video),
+    videoUrl: row.video_url || '',
+    fileUrl: row.file_url || '',
+    fileName: row.file_name || '',
+    deliveryNote: row.delivery_note || '',
+    platformType: row.platform_type || 'upload',
+    payWhatYouWant: Boolean(row.pay_what_you_want),
+    salePrice: Number(row.sale_price) || 0,
+    itemQuantityEnabled: Boolean(row.item_quantity_enabled),
+    itemQuantity: Number(row.item_quantity) || 0,
+    limitQtyPerCheckout: Boolean(row.limit_qty_per_checkout),
+    purchaseButtonLabel: row.purchase_button_label || 'Buy Now',
+    releaseTimeEnabled: Boolean(row.release_time_enabled),
+    releaseTime: row.release_time || '',
+    whatsappNotification: Boolean(row.whatsapp_notification),
+    customMessageEnabled: Boolean(row.custom_message_enabled),
+    customMessage: row.custom_message || '',
+    blockLayout: row.block_layout || 'default',
+    requireCustomerName: Boolean(row.require_customer_name),
+    requireCustomerPhone: Boolean(row.require_customer_phone),
+    lynkProductKey: row.lynk_product_key || '',
+    tripayProductKey: row.tripay_product_key || '',
+    createdAt: row.created_at || '',
+    updatedAt: row.updated_at || '',
+  }
+}
+
+function mapDigitalProductAccess(row) {
+  return {
+    id: row.id,
+    productId: row.product_id || '',
+    productTitle: row.product_title || '',
+    memberId: row.member_id || '',
+    buyerName: row.buyer_name || '',
+    buyerEmail: row.buyer_email || '',
+    source: row.source || '',
+    orderId: row.order_id || '',
+    status: row.status || 'active',
+    downloadUrl: row.download_url || '',
+    createdAt: row.created_at || '',
+  }
+}
+
 export async function fetchClasses() {
   const [classRows, materialRows, assetRows] = await Promise.all([
     rest('classes?select=*&order=updated_at.desc,id.asc'),
@@ -755,6 +806,29 @@ export async function fetchClasses() {
       mapClass(row, materialsByClass.get(row.id) || []),
     ),
     updatedAt: updatedCandidates.sort().at(-1) || new Date().toISOString(),
+  }
+}
+
+export async function fetchDigitalProducts(request = null) {
+  const user = request ? await requireUser(request) : null
+  const path = user?.role === 'admin'
+    ? 'digital_products?select=*&order=updated_at.desc,id.asc'
+    : `digital_products?select=*&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`
+  const [rows, accessRows] = await Promise.all([
+    rest(path),
+    user?.role === 'admin'
+      ? rest('digital_product_access?select=*&order=created_at.desc&limit=500').catch(() => [])
+      : user?.role === 'member'
+        ? rest(
+            `digital_product_access?select=*&member_id=eq.${eq(user.userId)}&order=created_at.desc&limit=200`,
+          ).catch(() => [])
+        : [],
+  ])
+
+  return {
+    digitalProducts: (rows || []).map(mapDigitalProduct),
+    digitalProductAccess: (accessRows || []).map(mapDigitalProductAccess),
+    updatedAt: new Date().toISOString(),
   }
 }
 
@@ -840,6 +914,7 @@ export async function replaceWebsiteSettings(settings) {
 const backupTables = [
   'accounts',
   'classes',
+  'digital_products',
   'materials',
   'material_assets',
   'support_tickets',
@@ -923,6 +998,7 @@ export async function restoreBackup(payload) {
     ['member_progress', 'member_id=not.is.null'],
     ['tripay_orders', 'id=not.is.null'],
     ['lynk_orders', 'id=not.is.null'],
+    ['digital_products', 'id=not.is.null'],
     ['classes', 'id=not.is.null'],
     ['accounts', 'id=not.is.null'],
     ['site_settings', 'id=not.is.null'],
@@ -930,6 +1006,7 @@ export async function restoreBackup(payload) {
   const insertOrder = [
     'accounts',
     'classes',
+    'digital_products',
     'materials',
     'material_assets',
     'support_tickets',
@@ -1068,6 +1145,43 @@ function cleanClassesForDb(value) {
     })
 }
 
+function cleanDigitalProductsForDb(value) {
+  const source = Array.isArray(value) ? value.slice(0, 300) : []
+
+  return source
+    .filter((item) => item?.id && item?.title)
+    .map((item, index) => ({
+      id: cleanText(item.id || makeId('product'), 120),
+      title: cleanText(item.title || `Produk Digital ${index + 1}`, 160),
+      description: cleanText(item.description || '', 600),
+      price: cleanNumber(item.price, 0, 1000000000),
+      status: cleanText(item.status || 'Draft', 40),
+      thumbnail: cleanUrl(item.thumbnail || ''),
+      add_video: Boolean(item.addVideo),
+      video_url: cleanExternalUrl(item.videoUrl || ''),
+      file_url: cleanExternalUrl(item.fileUrl || ''),
+      file_name: cleanText(item.fileName || '', 180),
+      delivery_note: cleanText(item.deliveryNote || '', 800),
+      platform_type: cleanText(item.platformType || 'upload', 40),
+      pay_what_you_want: Boolean(item.payWhatYouWant),
+      sale_price: cleanNumber(item.salePrice, 0, 1000000000),
+      item_quantity_enabled: Boolean(item.itemQuantityEnabled),
+      item_quantity: cleanNumber(item.itemQuantity, 0, 1000000),
+      limit_qty_per_checkout: Boolean(item.limitQtyPerCheckout),
+      purchase_button_label: cleanText(item.purchaseButtonLabel || 'Buy Now', 80),
+      release_time_enabled: Boolean(item.releaseTimeEnabled),
+      release_time: cleanText(item.releaseTime || '', 80),
+      whatsapp_notification: Boolean(item.whatsappNotification),
+      custom_message_enabled: Boolean(item.customMessageEnabled),
+      custom_message: cleanText(item.customMessage || '', 800),
+      block_layout: cleanText(item.blockLayout || 'default', 40),
+      require_customer_name: Boolean(item.requireCustomerName),
+      require_customer_phone: Boolean(item.requireCustomerPhone),
+      lynk_product_key: cleanText(item.lynkProductKey || '', 180),
+      tripay_product_key: cleanText(item.tripayProductKey || '', 180),
+    }))
+}
+
 async function hasMaterialAssetInstructionColumn() {
   try {
     await rest('material_assets?select=instruction&limit=1')
@@ -1150,6 +1264,26 @@ export async function replaceClasses(classes) {
   return fetchClasses()
 }
 
+export async function replaceDigitalProducts(request, products) {
+  await requireUser(request, 'admin')
+  const rows = cleanDigitalProductsForDb(products)
+
+  await rest('digital_products?id=not.is.null', {
+    method: 'DELETE',
+    headers: { Prefer: 'return=minimal' },
+  })
+
+  if (rows.length) {
+    await rest('digital_products', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: rows,
+    })
+  }
+
+  return fetchDigitalProducts(request)
+}
+
 export async function fetchMembers() {
   const now = new Date().toISOString()
   const [members, sessionRows, progressRows] = await Promise.all([
@@ -1204,6 +1338,15 @@ function paymentPublic(row, source) {
   const orderCode = source === 'tripay'
     ? cleanText(row.reference || row.merchant_ref || row.id, 180)
     : cleanText(row.order_id || row.event_id || row.id, 180)
+  const orderType = cleanText(
+    firstPayloadValue(payload, ['order_type', 'data.order_type']) || 'class',
+    60,
+  )
+  const productId = cleanText(firstPayloadValue(payload, ['product_id', 'data.product_id']), 120)
+  const productTitle = cleanText(
+    firstPayloadValue(payload, ['product_title', 'data.product_title']),
+    180,
+  )
 
   return {
     id: `${source}:${row.id}`,
@@ -1216,8 +1359,11 @@ function paymentPublic(row, source) {
     buyerEmail: cleanEmail(row.buyer_email || ''),
     memberId: cleanText(row.member_id || '', 120),
     classId: cleanText(row.class_id || '', 120),
+    itemType: orderType === 'digital_product' ? 'digital_product' : 'class',
+    productId,
+    productTitle,
     classTitle: cleanText(
-      row.class_title || row.product_name || row.product_key || 'Kelas',
+      productTitle || row.class_title || row.product_name || row.product_key || 'Kelas',
       180,
     ),
     amount,
@@ -2499,6 +2645,43 @@ async function findLynkClasses(productCandidates) {
   return [...new Set(classIds.filter(Boolean))]
 }
 
+async function findLynkDigitalProducts(productCandidates) {
+  const candidateKeys = [
+    ...new Set(productCandidates.map((candidate) => normalizeLynkKey(candidate)).filter(Boolean)),
+  ]
+  const productIds = []
+  const products = await rest(
+    'digital_products?select=id,title,lynk_product_key,status&order=id.asc',
+  ).catch(() => [])
+
+  for (const row of products || []) {
+    if (row.status !== 'Aktif') {
+      continue
+    }
+
+    const rowKeys = [
+      normalizeLynkKey(row.id),
+      normalizeLynkKey(row.title),
+      normalizeLynkKey(row.lynk_product_key || ''),
+    ].filter(Boolean)
+
+    if (
+      candidateKeys.some((candidateKey) =>
+        rowKeys.some(
+          (rowKey) =>
+            candidateKey === rowKey ||
+            candidateKey.includes(rowKey) ||
+            rowKey.includes(candidateKey),
+        ),
+      )
+    ) {
+      productIds.push(row.id)
+    }
+  }
+
+  return [...new Set(productIds.filter(Boolean))]
+}
+
 async function incrementClassStudents(classIds) {
   for (const classId of classIds) {
     const rows = await rest(`classes?select=students&id=eq.${eq(classId)}&limit=1`)
@@ -2641,12 +2824,14 @@ async function sendResendCredentialsEmail(account) {
 }
 
 function buildTripayPaymentMessage(order) {
+  const itemLabel = order.itemType === 'digital_product' ? 'produk digital' : 'kelas'
+
   return `Halo ${order.buyerName},
 
-Invoice pembayaran kelas Anda sudah dibuat.
+Invoice pembayaran ${itemLabel} Anda sudah dibuat.
 
-Kelas: ${order.classTitle}
-Harga kelas: Rp ${new Intl.NumberFormat('id-ID').format(order.amount)}
+Item: ${order.classTitle}
+Harga: Rp ${new Intl.NumberFormat('id-ID').format(order.amount)}
 Biaya layanan: ${order.paymentFee ? `Rp ${new Intl.NumberFormat('id-ID').format(order.paymentFee)}` : 'Gratis'}
 Total pembayaran: Rp ${new Intl.NumberFormat('id-ID').format(order.totalAmount || order.amount)}
 Metode pembayaran: ${order.paymentMethod}
@@ -2655,7 +2840,7 @@ ${order.expiresAt ? `Batas pembayaran: ${new Date(order.expiresAt).toLocaleStrin
 Silakan selesaikan pembayaran melalui link berikut:
 ${order.checkoutUrl}
 
-Akses kelas akan aktif otomatis setelah pembayaran sukses.
+Akses akan aktif otomatis setelah pembayaran sukses.
 
 IbnuCreative Academy`
 }
@@ -2669,16 +2854,17 @@ async function sendTripayPaymentEmail(order) {
   }
 
   const text = buildTripayPaymentMessage(order)
+  const itemLabel = order.itemType === 'digital_product' ? 'produk digital' : 'kelas'
   const expiresLine = order.expiresAt
     ? `<p><strong>Batas pembayaran:</strong> ${escapeHtml(new Date(order.expiresAt).toLocaleString('id-ID'))}</p>`
     : ''
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-      <h2>Invoice pembayaran kelas IbnuCreative</h2>
+      <h2>Invoice pembayaran IbnuCreative</h2>
       <p>Halo ${escapeHtml(order.buyerName)},</p>
-      <p>Invoice pembayaran kelas Anda sudah dibuat. Silakan selesaikan pembayaran agar akses kelas bisa aktif otomatis.</p>
-      <p><strong>Kelas:</strong> ${escapeHtml(order.classTitle)}</p>
-      <p><strong>Harga kelas:</strong> Rp ${escapeHtml(new Intl.NumberFormat('id-ID').format(order.amount))}</p>
+      <p>Invoice pembayaran ${escapeHtml(itemLabel)} Anda sudah dibuat. Silakan selesaikan pembayaran agar akses bisa aktif otomatis.</p>
+      <p><strong>Item:</strong> ${escapeHtml(order.classTitle)}</p>
+      <p><strong>Harga:</strong> Rp ${escapeHtml(new Intl.NumberFormat('id-ID').format(order.amount))}</p>
       <p><strong>Biaya layanan:</strong> ${order.paymentFee ? `Rp ${escapeHtml(new Intl.NumberFormat('id-ID').format(order.paymentFee))}` : 'Gratis'}</p>
       <p><strong>Total pembayaran:</strong> Rp ${escapeHtml(new Intl.NumberFormat('id-ID').format(order.totalAmount || order.amount))}</p>
       <p><strong>Metode pembayaran:</strong> ${escapeHtml(order.paymentMethod)}</p>
@@ -2751,6 +2937,60 @@ async function sendTripayPaymentSuccessEmail(order) {
   return sendResendEmail({
     to: order.buyerEmail,
     subject: `Pembayaran ${order.classTitle} berhasil`,
+    text,
+    html,
+  })
+}
+
+function buildDigitalProductDeliveryMessage(order) {
+  return `Halo ${order.buyerName},
+
+Pembayaran produk digital Anda sudah berhasil.
+
+Produk: ${order.productTitle}
+${order.downloadUrl ? `Link akses/download: ${order.downloadUrl}` : ''}
+${order.deliveryNote ? `Catatan: ${order.deliveryNote}` : ''}
+
+Simpan email ini untuk mengakses produk Anda kembali.
+
+IbnuCreative Academy`
+}
+
+async function sendDigitalProductDeliveryEmail(order) {
+  if (process.env.DIGITAL_PRODUCT_SEND_EMAIL === 'false') {
+    return {
+      sent: false,
+      message: 'Pengiriman email produk digital dinonaktifkan.',
+    }
+  }
+
+  if (!cleanEmail(order.buyerEmail)) {
+    return {
+      sent: false,
+      message: 'Email pembeli tidak valid.',
+    }
+  }
+
+  const text = buildDigitalProductDeliveryMessage(order)
+  const downloadButton = order.downloadUrl
+    ? `<p><a href="${escapeHtml(order.downloadUrl)}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">Akses Produk</a></p>`
+    : ''
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+      <h2>Produk digital Anda sudah siap</h2>
+      <p>Halo ${escapeHtml(order.buyerName)},</p>
+      <p>Pembayaran produk digital Anda sudah berhasil. Silakan akses produk dari link berikut.</p>
+      <p><strong>Produk:</strong> ${escapeHtml(order.productTitle)}</p>
+      ${downloadButton}
+      ${order.downloadUrl ? `<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="${escapeHtml(order.downloadUrl)}">${escapeHtml(order.downloadUrl)}</a></p>` : ''}
+      ${order.deliveryNote ? `<p><strong>Catatan:</strong><br>${escapeHtml(order.deliveryNote)}</p>` : ''}
+      <p>IbnuCreative Academy</p>
+    </div>
+  `
+
+  return sendResendEmail({
+    to: order.buyerEmail,
+    subject: `Produk digital ${order.productTitle} sudah siap`,
     text,
     html,
   })
@@ -3141,6 +3381,56 @@ async function grantMemberClassAccess(memberId, classId) {
   }
 }
 
+async function grantDigitalProductAccess({
+  productId,
+  memberId = '',
+  buyerEmail = '',
+  buyerName = '',
+  source = 'manual',
+  orderId = '',
+}) {
+  const productRows = await rest(
+    `digital_products?select=*&id=eq.${eq(productId)}&status=eq.${eq('Aktif')}&limit=1`,
+  )
+  const product = productRows?.[0]
+
+  if (!product) {
+    throw new ApiError(404, 'Produk digital aktif tidak ditemukan.')
+  }
+
+  const accessRows = await rest(
+    `digital_product_access?select=*&product_id=eq.${eq(product.id)}&or=(member_id.eq.${eq(
+      memberId || '-',
+    )},buyer_email.eq.${eq(cleanEmail(buyerEmail) || '-')})&limit=1`,
+  ).catch(() => [])
+  const existingAccess = accessRows?.[0]
+
+  if (existingAccess) {
+    return { product, granted: false, alreadyHasAccess: true, access: existingAccess }
+  }
+
+  const access = {
+    id: makeId('digital-access'),
+    product_id: product.id,
+    product_title: product.title,
+    member_id: cleanText(memberId, 120),
+    buyer_name: cleanText(buyerName || 'Pembeli', 160),
+    buyer_email: cleanEmail(buyerEmail),
+    source: cleanText(source, 40),
+    order_id: cleanText(orderId, 180),
+    status: 'active',
+    download_url: cleanExternalUrl(product.file_url || ''),
+  }
+
+  await rest('digital_product_access', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: access,
+  })
+
+  return { product, granted: true, alreadyHasAccess: false, access }
+}
+
 async function findReusableTripayOrder(memberId, classId) {
   const rows = await rest(
     `tripay_orders?select=*&member_id=eq.${eq(memberId)}&class_id=eq.${eq(
@@ -3199,50 +3489,90 @@ export async function createTripayCheckout(request) {
   const user = await requireUser(request, 'member')
   const payload = await readJson(request)
   const classId = cleanText(payload.classId, 120)
+  const productId = cleanText(payload.productId, 120)
+  const checkoutType = productId ? 'digital_product' : 'class'
   const paymentMethod = cleanText(payload.paymentMethod || '', 40).toUpperCase()
   const forceNewPayment = payload.forceNewPayment === true
 
-  if (!classId) {
-    throw new ApiError(400, 'ID kelas wajib dikirim.')
+  if (!classId && !productId) {
+    throw new ApiError(400, 'ID kelas atau produk wajib dikirim.')
   }
 
-  const [classRows, memberRows] = await Promise.all([
-    rest(`classes?select=*&id=eq.${eq(classId)}&status=eq.Aktif&limit=1`),
+  const [itemRows, memberRows] = await Promise.all([
+    checkoutType === 'digital_product'
+      ? rest(`digital_products?select=*&id=eq.${eq(productId)}&status=eq.${eq('Aktif')}&limit=1`)
+      : rest(`classes?select=*&id=eq.${eq(classId)}&status=eq.Aktif&limit=1`),
     rest(`accounts?select=*&id=eq.${eq(user.userId)}&role=eq.member&limit=1`),
   ])
-  const course = classRows?.[0]
+  const checkoutItem = itemRows?.[0]
   const member = memberRows?.[0]
 
-  if (!course) {
-    throw new ApiError(404, 'Kelas aktif tidak ditemukan.')
+  if (!checkoutItem) {
+    throw new ApiError(
+      404,
+      checkoutType === 'digital_product'
+        ? 'Produk digital aktif tidak ditemukan.'
+        : 'Kelas aktif tidak ditemukan.',
+    )
   }
 
   if (!member) {
     throw new ApiError(404, 'Akun member tidak ditemukan.')
   }
 
-  const currentClassIds = parseJson(member.allowed_class_ids, null)
+  if (checkoutType === 'class') {
+    const currentClassIds = parseJson(member.allowed_class_ids, null)
 
-  if (currentClassIds === null || (Array.isArray(currentClassIds) && currentClassIds.includes(classId))) {
-    return {
-      ok: true,
-      alreadyHasAccess: true,
-      message: 'Akses kelas sudah aktif.',
+    if (currentClassIds === null || (Array.isArray(currentClassIds) && currentClassIds.includes(classId))) {
+      return {
+        ok: true,
+        alreadyHasAccess: true,
+        message: 'Akses kelas sudah aktif.',
+      }
+    }
+  } else {
+    const existingAccess = await rest(
+      `digital_product_access?select=id&product_id=eq.${eq(checkoutItem.id)}&member_id=eq.${eq(member.id)}&limit=1`,
+    ).catch(() => [])
+
+    if (existingAccess?.[0]) {
+      return {
+        ok: true,
+        alreadyHasAccess: true,
+        message: 'Produk digital sudah dimiliki.',
+      }
     }
   }
 
-  const amount = cleanNumber(course.price, 0, 1000000000)
+  const normalPrice = cleanNumber(checkoutItem.price, 0, 1000000000)
+  const salePrice = cleanNumber(checkoutItem.sale_price, 0, 1000000000)
+  const amount = checkoutType === 'digital_product' && salePrice > 0
+    ? salePrice
+    : normalPrice
 
   if (amount <= 0) {
-    const accessResult = await grantMemberClassAccess(member.id, course.id)
+    const accessResult = checkoutType === 'digital_product'
+      ? await grantDigitalProductAccess({
+          productId: checkoutItem.id,
+          memberId: member.id,
+          buyerEmail: member.email || user.email || '',
+          buyerName: member.name || user.name || 'Member',
+          source: 'free',
+          orderId: `FREE-${checkoutItem.id}-${member.id}`,
+        })
+      : await grantMemberClassAccess(member.id, checkoutItem.id)
 
     return {
       ok: true,
       freeAccessGranted: accessResult.granted,
       alreadyHasAccess: accessResult.alreadyHasAccess,
       message: accessResult.granted
-        ? 'Akses kelas gratis sudah aktif.'
-        : 'Akses kelas sudah aktif.',
+        ? checkoutType === 'digital_product'
+          ? 'Produk digital gratis sudah aktif.'
+          : 'Akses kelas gratis sudah aktif.'
+        : checkoutType === 'digital_product'
+          ? 'Produk digital sudah dimiliki.'
+          : 'Akses kelas sudah aktif.',
     }
   }
 
@@ -3254,9 +3584,12 @@ export async function createTripayCheckout(request) {
 
   const config = tripayConfig(request)
   const method = paymentMethod || config.method
+  const orderItemId = checkoutType === 'digital_product'
+    ? `product:${checkoutItem.id}`
+    : checkoutItem.id
   const existingOrder = forceNewPayment
     ? null
-    : await findReusableTripayOrder(member.id, course.id)
+    : await findReusableTripayOrder(member.id, orderItemId)
 
   if (existingOrder?.checkout_url) {
     const existingPayment = paymentPublic(existingOrder, 'tripay')
@@ -3274,7 +3607,7 @@ export async function createTripayCheckout(request) {
   }
 
   const merchantRef = `IC${Date.now()}${randomBytes(3).toString('hex').toUpperCase()}`
-  const itemSku = cleanText(course.tripay_product_key || course.id, 80)
+  const itemSku = cleanText(checkoutItem.tripay_product_key || checkoutItem.id, 80)
   const expiresAt = new Date(Date.now() + config.expiredMinutes * 60 * 1000).toISOString()
   const checkoutPayload = {
     method,
@@ -3286,13 +3619,15 @@ export async function createTripayCheckout(request) {
     order_items: [
       {
         sku: itemSku,
-        name: cleanText(course.title || 'Kelas IbnuCreative', 160),
+        name: cleanText(checkoutItem.title || 'IbnuCreative', 160),
         price: amount,
         quantity: 1,
       },
     ],
     callback_url: config.callbackUrl,
-    return_url: config.returnUrl,
+    return_url: checkoutType === 'digital_product'
+      ? absoluteRequestUrl(request, '/member?menu=digital-products') || config.returnUrl
+      : config.returnUrl,
     expired_time: Math.floor(Date.parse(expiresAt) / 1000),
     signature: tripayCheckoutSignature({
       merchantCode: config.merchantCode,
@@ -3326,6 +3661,11 @@ export async function createTripayCheckout(request) {
   const paymentMethodLabel = paymentMethodDetails?.label || await tripayPaymentMethodLabel(method)
   const paymentFee = calculatePaymentMethodFee(paymentMethodDetails, amount)
   const savedPayload = JSON.stringify({
+    order_type: checkoutType,
+    product_id: checkoutType === 'digital_product' ? checkoutItem.id : '',
+    product_title: checkoutType === 'digital_product' ? checkoutItem.title : '',
+    delivery_url: checkoutType === 'digital_product' ? checkoutItem.file_url || '' : '',
+    delivery_note: checkoutType === 'digital_product' ? checkoutItem.delivery_note || '' : '',
     payment_method: method,
     payment_name: paymentMethodLabel,
     payment_fee: paymentFee,
@@ -3353,8 +3693,8 @@ export async function createTripayCheckout(request) {
       member_id: member.id,
       buyer_name: cleanText(member.name || user.name || 'Member', 160),
       buyer_email: buyerEmail,
-      class_id: course.id,
-      class_title: course.title,
+      class_id: orderItemId,
+      class_title: checkoutItem.title,
       amount,
       status: 'pending',
       checkout_url: checkoutUrl,
@@ -3364,7 +3704,8 @@ export async function createTripayCheckout(request) {
   const emailResult = await sendTripayPaymentEmail({
     buyerName: cleanText(member.name || user.name || 'Member', 160),
     buyerEmail,
-    classTitle: cleanText(course.title || 'Kelas IbnuCreative', 160),
+    classTitle: cleanText(checkoutItem.title || 'IbnuCreative', 160),
+    itemType: checkoutType,
     amount,
     paymentFee,
     totalAmount: amount + paymentFee,
@@ -3441,6 +3782,8 @@ export async function processTripayWebhook(request) {
     }
   }
 
+  const existingOrderPayload = parseOrderPayload(order.payload)
+
   if (!isTripayPaid(data)) {
     await rest(`tripay_orders?id=eq.${eq(order.id)}`, {
       method: 'PATCH',
@@ -3448,7 +3791,11 @@ export async function processTripayWebhook(request) {
       body: {
         reference: reference || order.reference || '',
         status,
-        payload: rawBody,
+        payload: JSON.stringify({
+          ...existingOrderPayload,
+          callback: payload,
+          raw_callback: rawBody,
+        }),
       },
     })
 
@@ -3478,6 +3825,58 @@ export async function processTripayWebhook(request) {
     }
   }
 
+  const orderPayload = existingOrderPayload
+  const isDigitalProductOrder = cleanText(orderPayload.order_type || '', 60) === 'digital_product'
+
+  if (isDigitalProductOrder) {
+    const productId = cleanText(orderPayload.product_id || '', 120)
+    const accessResult = await grantDigitalProductAccess({
+      productId,
+      memberId: order.member_id,
+      buyerEmail: order.buyer_email,
+      buyerName: order.buyer_name,
+      source: 'tripay',
+      orderId: reference || order.reference || order.merchant_ref || order.id,
+    })
+
+    await rest(`tripay_orders?id=eq.${eq(order.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: {
+        reference: reference || order.reference || '',
+        status: 'processed',
+        access_granted: accessResult.granted,
+        payload: JSON.stringify({
+          ...orderPayload,
+          callback: payload,
+          raw_callback: rawBody,
+        }),
+      },
+    })
+    const deliveryEmailResult = await sendDigitalProductDeliveryEmail({
+      buyerName: cleanText(order.buyer_name || 'Member', 160),
+      buyerEmail: cleanEmail(order.buyer_email || ''),
+      productTitle: cleanText(accessResult.product.title || order.class_title || 'Produk digital', 160),
+      downloadUrl: cleanExternalUrl(accessResult.product.file_url || orderPayload.delivery_url || ''),
+      deliveryNote: cleanText(accessResult.product.delivery_note || orderPayload.delivery_note || '', 800),
+    })
+
+    return {
+      ok: true,
+      message: accessResult.granted
+        ? 'Pembayaran Tripay sukses dan produk digital sudah aktif.'
+        : 'Pembayaran Tripay sukses. Member sudah memiliki produk digital.',
+      merchantRef: order.merchant_ref,
+      reference: reference || order.reference || '',
+      productId,
+      memberId: order.member_id,
+      accessGranted: accessResult.granted,
+      emailSent: deliveryEmailResult.sent,
+      emailMessageId: deliveryEmailResult.id || '',
+      emailError: deliveryEmailResult.sent ? '' : deliveryEmailResult.message || '',
+    }
+  }
+
   const accessResult = await grantMemberClassAccess(order.member_id, order.class_id)
 
   await rest(`tripay_orders?id=eq.${eq(order.id)}`, {
@@ -3487,7 +3886,11 @@ export async function processTripayWebhook(request) {
       reference: reference || order.reference || '',
       status: 'processed',
       access_granted: accessResult.granted,
-      payload: rawBody,
+      payload: JSON.stringify({
+        ...existingOrderPayload,
+        callback: payload,
+        raw_callback: rawBody,
+      }),
     },
   })
   const successEmailResult = await sendTripayPaymentSuccessEmail({
@@ -3608,9 +4011,12 @@ export async function processLynkWebhook(request) {
     throw new ApiError(422, 'Email pembeli tidak ditemukan pada payload Lynk.id.')
   }
 
-  const classIds = await findLynkClasses(productCandidates)
+  const [classIds, productIds] = await Promise.all([
+    findLynkClasses(productCandidates),
+    findLynkDigitalProducts(productCandidates),
+  ])
 
-  if (!classIds.length) {
+  if (!classIds.length && !productIds.length) {
     await rest('lynk_orders', {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
@@ -3632,7 +4038,7 @@ export async function processLynkWebhook(request) {
       ok: true,
       ignored: true,
       status: 'unmapped',
-      message: 'Produk Lynk.id tidak dipetakan ke kelas website, jadi tidak dibuatkan akun member.',
+      message: 'Produk Lynk.id tidak dipetakan ke kelas atau produk digital website, jadi tidak dibuatkan akun member.',
       productCandidates,
     }
   }
@@ -3699,6 +4105,19 @@ export async function processLynkWebhook(request) {
     await incrementClassStudents(newAccessIds)
   }
 
+  const productAccessResults = []
+
+  for (const digitalProductId of productIds) {
+    productAccessResults.push(await grantDigitalProductAccess({
+      productId: digitalProductId,
+      memberId: member.id,
+      buyerEmail,
+      buyerName,
+      source: 'lynk',
+      orderId,
+    }))
+  }
+
   await rest('lynk_orders', {
     method: 'POST',
     headers: { Prefer: 'return=minimal' },
@@ -3728,14 +4147,29 @@ export async function processLynkWebhook(request) {
     classIds,
   }
   const emailResult = await sendResendCredentialsEmail(account)
+  const productEmailResults = []
+
+  for (const accessResult of productAccessResults) {
+    productEmailResults.push(await sendDigitalProductDeliveryEmail({
+      buyerName,
+      buyerEmail,
+      productTitle: accessResult.product.title,
+      downloadUrl: cleanExternalUrl(accessResult.product.file_url || ''),
+      deliveryNote: cleanText(accessResult.product.delivery_note || '', 800),
+    }))
+  }
   const fulfillmentMessage = buildCredentialsMessage(account)
 
   return {
     ok: true,
-    message: 'Akun member berhasil dibuat atau diperbarui dari pembayaran Lynk.id.',
+    message: productIds.length && !classIds.length
+      ? 'Produk digital berhasil diberikan dari pembayaran Lynk.id.'
+      : 'Akun member berhasil dibuat atau diperbarui dari pembayaran Lynk.id.',
     emailSent: emailResult.sent,
     emailMessageId: emailResult.id || '',
     emailError: emailResult.sent ? '' : emailResult.message || '',
+    productEmailSent: productEmailResults.some((result) => result.sent),
+    productIds,
     fulfillmentMessage,
     account,
   }
