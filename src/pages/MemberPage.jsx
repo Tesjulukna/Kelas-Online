@@ -1642,9 +1642,27 @@ function MemberPage({
                       <span>{product.status}</span>
                     </div>
                     <div className="digital-product-detail-copy">
+                      <div className="digital-product-seller">
+                        <span className="digital-product-seller-logo" aria-hidden="true">
+                          {safeWebsiteSettings.brandLogo ? (
+                            <img src={safeWebsiteSettings.brandLogo} alt="" />
+                          ) : (
+                            <Icon name={safeWebsiteSettings.brandIcon || 'spark'} />
+                          )}
+                        </span>
+                        <span>
+                          <small>Produk dari</small>
+                          <strong>{safeWebsiteSettings.siteTitle || safeWebsiteSettings.siteName}</strong>
+                        </span>
+                      </div>
                       <p className="eyebrow">Produk digital</p>
                       <h2>{product.title}</h2>
                       <p>{product.description || 'Akses produk dikirim otomatis setelah pembayaran sukses.'}</p>
+                      <div className="digital-product-detail-tags" aria-label="Info produk digital">
+                        <span>Akses otomatis</span>
+                        <span>Delivery email</span>
+                        <span>{product.platformType || 'Digital file'}</span>
+                      </div>
                       <div className="digital-product-detail-price">
                         <small>{price ? 'Harga produk' : 'Produk gratis'}</small>
                         <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
