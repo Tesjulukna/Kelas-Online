@@ -1,6 +1,6 @@
 .app-shell {
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   color: var(--color-text);
   background: var(--color-page);
 }
@@ -8693,5 +8693,38 @@ img {
 
   .settings-modal-actions .btn {
     width: 100%;
+  }
+}
+
+@supports not (overflow: clip) {
+  .app-shell {
+    overflow-x: visible;
+  }
+}
+
+.app-shell > .site-header.public-site-header,
+.app-shell > .site-header.home-header,
+.app-shell > .site-header.login-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  align-self: start;
+}
+
+@media (max-width: 1180px) {
+  .app-shell > .site-header.public-site-header,
+  .app-shell > .site-header.home-header,
+  .app-shell > .site-header.login-header {
+    position: sticky !important;
+    top: 0 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell > .site-header.public-site-header,
+  .app-shell > .site-header.home-header,
+  .app-shell > .site-header.login-header {
+    position: sticky !important;
+    top: 0 !important;
   }
 }
