@@ -1380,11 +1380,44 @@ function App() {
       }
 
       window.location.href = data.url
+      window.setTimeout(() => {
+        if (!document.hidden) {
+          setIsGoogleLoginLoading(false)
+        }
+      }, 2500)
     } catch (error) {
       setIsGoogleLoginLoading(false)
       showNotice(error.message || 'Login Google belum bisa dibuka.')
     }
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+
+    const resetStaleGoogleLoading = () => {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      const hasOauthResponse =
+        hashParams.has('access_token') ||
+        hashParams.has('error') ||
+        hashParams.has('error_description')
+
+      if (!hasOauthResponse && getPageFromPath(window.location.pathname) === 'login') {
+        setIsGoogleLoginLoading(false)
+      }
+    }
+
+    window.addEventListener('pageshow', resetStaleGoogleLoading)
+    window.addEventListener('focus', resetStaleGoogleLoading)
+    document.addEventListener('visibilitychange', resetStaleGoogleLoading)
+
+    return () => {
+      window.removeEventListener('pageshow', resetStaleGoogleLoading)
+      window.removeEventListener('focus', resetStaleGoogleLoading)
+      document.removeEventListener('visibilitychange', resetStaleGoogleLoading)
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
