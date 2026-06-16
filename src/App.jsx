@@ -1351,6 +1351,7 @@ function App() {
 
   const handleLogin = async (event) => {
     event.preventDefault()
+    setIsGoogleLoginLoading(false)
 
     try {
       const data = await requestJson(loginApiPath, {
@@ -1410,6 +1411,7 @@ function App() {
     const backToLogin = (message) => {
       window.history.replaceState({}, '', pagePaths.login)
       window.setTimeout(() => {
+        setIsGoogleLoginLoading(false)
         setPage('login')
         showNotice(message)
       }, 0)
