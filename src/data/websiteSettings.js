@@ -294,6 +294,8 @@ function cleanPaymentMethods(value) {
         label: cleanText(item?.label || fallback.label || code, 80),
         brand: cleanText(item?.brand || fallback.brand || code.toLowerCase(), 40),
         logoUrl: cleanUrl(item?.logoUrl || '', 2000),
+        feeFlat: Math.max(0, Math.round(Number(item?.feeFlat) || 0)),
+        feePercent: Math.max(0, Math.min(100, Number(item?.feePercent) || 0)),
       }
     })
     .filter(Boolean)

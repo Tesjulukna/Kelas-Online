@@ -182,6 +182,17 @@ function PaymentMethodLogo({ method }) {
   )
 }
 
+function getPaymentMethodFee(method, amount) {
+  if (!method) {
+    return 0
+  }
+
+  const flatFee = Math.max(0, Math.round(Number(method.feeFlat) || 0))
+  const percentFee = Math.max(0, Number(method.feePercent) || 0)
+
+  return flatFee + Math.max(0, Math.round((Math.max(0, amount) * percentFee) / 100))
+}
+
 async function compressImageFile(file, { maxSize = 1800, quality = 0.9 } = {}) {
   if (!file.type.startsWith('image/')) {
     return file
@@ -272,6 +283,8 @@ function MemberPage({
   const [checkoutClassId, setCheckoutClassId] = useState('')
   const [paymentMethodCourse, setPaymentMethodCourse] = useState(null)
   const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('')
+  const [isPaymentTermsAccepted, setIsPaymentTermsAccepted] = useState(false)
+  const [isChangingPaymentMethod, setIsChangingPaymentMethod] = useState(false)
   const [dismissedExpiredPayments, setDismissedExpiredPayments] = useState(() =>
     readDismissedExpiredPaymentNotices(userId),
   )
@@ -308,6 +321,12 @@ function MemberPage({
   const resourceLinks = (activeMaterial?.resourceLinks ?? []).filter((link) => link.url)
   const isTaskImageAllowed = activeMaterial?.allowTaskImage !== false
   const isTaskImageRequired = Boolean(activeMaterial?.requireTaskImage)
+  const selectedPaymentMethod = tripayPaymentMethods.find(
+    (method) => method.code === selectedPaymentMethodCode,
+  )
+  const paymentModalAmount = Math.max(0, Math.round(Number(paymentMethodCourse?.price) || 0))
+  const paymentModalFee = getPaymentMethodFee(selectedPaymentMethod, paymentModalAmount)
+  const paymentModalTotal = paymentModalAmount + paymentModalFee
   const activePaymentsByClass = new Map()
   const expiredPaymentsByClass = new Map()
 
@@ -566,13 +585,15 @@ function MemberPage({
     onNotify('Sertifikat demo siap diunduh dari backend produksi.')
   }
 
-  const handleStartCheckout = async (course, paymentMethod = '') => {
+  const handleStartCheckout = async (course, paymentMethod = '', { forceNewPayment = false } = {}) => {
     const price = Math.max(0, Math.round(Number(course.price) || 0))
 
     setCheckoutClassId(course.id)
 
     try {
-      const data = await onCreateTripayCheckout(course, price ? paymentMethod : '')
+      const data = await onCreateTripayCheckout(course, price ? paymentMethod : '', {
+        forceNewPayment,
+      })
 
       if (data.freeAccessGranted) {
         onNotify('Akses kelas gratis sudah aktif. Silakan buka Kelas Saya.')
@@ -591,8 +612,12 @@ function MemberPage({
           data.existingPayment
             ? 'Invoice sebelumnya dibuka kembali.'
             : data.emailSent
-              ? 'Invoice Tripay dibuat dan instruksi pembayaran dikirim ke email.'
-              : 'Invoice Tripay dibuat. Email belum terkirim, silakan lanjut dari halaman pembayaran.',
+              ? forceNewPayment
+                ? 'Invoice baru dibuat dan instruksi pembayaran dikirim ke email.'
+                : 'Invoice Tripay dibuat dan instruksi pembayaran dikirim ke email.'
+              : forceNewPayment
+                ? 'Invoice baru dibuat. Email belum terkirim, silakan lanjut dari halaman pembayaran.'
+                : 'Invoice Tripay dibuat. Email belum terkirim, silakan lanjut dari halaman pembayaran.',
         )
       }
     } catch (error) {
@@ -602,7 +627,7 @@ function MemberPage({
     }
   }
 
-  const openPaymentMethodPopup = (course) => {
+  const openPaymentMethodPopup = (course, { forceNewPayment = false } = {}) => {
     const price = Math.max(0, Math.round(Number(course.price) || 0))
     const pendingPayment = activePaymentsByClass.get(course.id)
 
@@ -611,13 +636,15 @@ function MemberPage({
       return
     }
 
-    if (pendingPayment?.checkoutUrl) {
+    if (pendingPayment?.checkoutUrl && !forceNewPayment) {
       window.location.assign(pendingPayment.checkoutUrl)
       return
     }
 
     setPaymentMethodCourse(course)
     setSelectedPaymentMethodCode('')
+    setIsPaymentTermsAccepted(false)
+    setIsChangingPaymentMethod(forceNewPayment)
   }
 
   const dismissExpiredPaymentNotice = (paymentId) => {
@@ -632,12 +659,13 @@ function MemberPage({
       return
     }
 
-    const selectedMethod = tripayPaymentMethods.find(
-      (method) => method.code === selectedPaymentMethodCode,
-    )
-
-    if (!selectedMethod) {
+    if (!selectedPaymentMethod) {
       onNotify('Pilih metode pembayaran dulu.')
+      return
+    }
+
+    if (!isPaymentTermsAccepted) {
+      onNotify('Centang persetujuan syarat penggunaan dulu.')
       return
     }
 
@@ -645,7 +673,11 @@ function MemberPage({
 
     setPaymentMethodCourse(null)
     setSelectedPaymentMethodCode('')
-    handleStartCheckout(course, selectedMethod.code)
+    setIsPaymentTermsAccepted(false)
+    setIsChangingPaymentMethod(false)
+    handleStartCheckout(course, selectedPaymentMethod.code, {
+      forceNewPayment: isChangingPaymentMethod,
+    })
   }
 
   const handleSendSupport = async () => {
@@ -1335,6 +1367,16 @@ function MemberPage({
                       <Icon name="wallet" />
                       {checkoutButtonLabel}
                     </button>
+                    {pendingPayment && (
+                      <button
+                        className="btn btn-secondary member-class-button change-payment-method-button"
+                        type="button"
+                        disabled={isCheckingOut}
+                        onClick={() => openPaymentMethodPopup(course, { forceNewPayment: true })}
+                      >
+                        Ganti Metode
+                      </button>
+                    )}
                   </span>
                 </article>
               )
@@ -1361,7 +1403,9 @@ function MemberPage({
             <div className="payment-method-modal-heading">
               <div>
                 <p className="eyebrow">Pembayaran Tripay</p>
-                <h2 id="payment-method-title">Pilih metode pembayaran</h2>
+                <h2 id="payment-method-title">
+                  {isChangingPaymentMethod ? 'Ganti metode pembayaran' : 'Pilih metode pembayaran'}
+                </h2>
                 <p>{paymentMethodCourse.title}</p>
               </div>
               <button
@@ -1371,6 +1415,8 @@ function MemberPage({
                 onClick={() => {
                   setPaymentMethodCourse(null)
                   setSelectedPaymentMethodCode('')
+                  setIsPaymentTermsAccepted(false)
+                  setIsChangingPaymentMethod(false)
                 }}
               >
                 <Icon name="x" />
@@ -1393,6 +1439,36 @@ function MemberPage({
                 </button>
               ))}
             </div>
+            {isChangingPaymentMethod && (
+              <p className="payment-method-note">
+                Invoice lama tetap bisa dibayar sampai kedaluwarsa. Jika memakai metode baru,
+                lanjutkan pembayaran dari invoice terbaru.
+              </p>
+            )}
+            <div className="payment-breakdown" aria-live="polite">
+              <span>
+                <small>Harga kelas</small>
+                <strong>{formatRupiah(paymentModalAmount)}</strong>
+              </span>
+              <span>
+                <small>Biaya layanan</small>
+                <strong>{paymentModalFee ? formatRupiah(paymentModalFee) : 'Gratis'}</strong>
+              </span>
+              <span className="payment-breakdown-total">
+                <small>Total pembayaran</small>
+                <strong>{formatRupiah(paymentModalTotal)}</strong>
+              </span>
+            </div>
+            <label className="payment-terms-check">
+              <input
+                type="checkbox"
+                checked={isPaymentTermsAccepted}
+                onChange={(event) => setIsPaymentTermsAccepted(event.target.checked)}
+              />
+              <span>
+                Saya menyetujui ketentuan penggunaan dan memahami akses kelas aktif otomatis setelah pembayaran sukses.
+              </span>
+            </label>
             <div className="payment-method-modal-actions">
               <button
                 className="btn btn-secondary"
@@ -1400,6 +1476,8 @@ function MemberPage({
                 onClick={() => {
                   setPaymentMethodCourse(null)
                   setSelectedPaymentMethodCode('')
+                  setIsPaymentTermsAccepted(false)
+                  setIsChangingPaymentMethod(false)
                 }}
               >
                 Batal
@@ -1407,7 +1485,7 @@ function MemberPage({
               <button
                 className="btn btn-primary"
                 type="button"
-                disabled={!selectedPaymentMethodCode}
+                disabled={!selectedPaymentMethodCode || !isPaymentTermsAccepted}
                 onClick={handleCreateSelectedPayment}
               >
                 <Icon name="wallet" />

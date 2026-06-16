@@ -2422,7 +2422,9 @@ function buildTripayPaymentMessage(order) {
 Invoice pembayaran kelas Anda sudah dibuat.
 
 Kelas: ${order.classTitle}
-Nominal: Rp ${new Intl.NumberFormat('id-ID').format(order.amount)}
+Harga kelas: Rp ${new Intl.NumberFormat('id-ID').format(order.amount)}
+Biaya layanan: ${order.paymentFee ? `Rp ${new Intl.NumberFormat('id-ID').format(order.paymentFee)}` : 'Gratis'}
+Total pembayaran: Rp ${new Intl.NumberFormat('id-ID').format(order.totalAmount || order.amount)}
 Metode pembayaran: ${order.paymentMethod}
 ${order.expiresAt ? `Batas pembayaran: ${new Date(order.expiresAt).toLocaleString('id-ID')}` : ''}
 
@@ -2452,7 +2454,9 @@ async function sendTripayPaymentEmail(order) {
       <p>Halo ${escapeHtml(order.buyerName)},</p>
       <p>Invoice pembayaran kelas Anda sudah dibuat. Silakan selesaikan pembayaran agar akses kelas bisa aktif otomatis.</p>
       <p><strong>Kelas:</strong> ${escapeHtml(order.classTitle)}</p>
-      <p><strong>Nominal:</strong> Rp ${escapeHtml(new Intl.NumberFormat('id-ID').format(order.amount))}</p>
+      <p><strong>Harga kelas:</strong> Rp ${escapeHtml(new Intl.NumberFormat('id-ID').format(order.amount))}</p>
+      <p><strong>Biaya layanan:</strong> ${order.paymentFee ? `Rp ${escapeHtml(new Intl.NumberFormat('id-ID').format(order.paymentFee))}` : 'Gratis'}</p>
+      <p><strong>Total pembayaran:</strong> Rp ${escapeHtml(new Intl.NumberFormat('id-ID').format(order.totalAmount || order.amount))}</p>
       <p><strong>Metode pembayaran:</strong> ${escapeHtml(order.paymentMethod)}</p>
       ${expiresLine}
       <p>
@@ -2601,6 +2605,30 @@ function tripayMethodFromChannel(channel) {
       channel.imageUrl ||
       '',
   )
+  const feeFlat = cleanNumber(
+    channel.total_fee?.flat ??
+      channel.total_fee_flat ??
+      channel.fee_customer?.flat ??
+      channel.fee_customer_flat ??
+      channel.fee?.flat ??
+      channel.flat_fee ??
+      channel.fee_flat ??
+      channel.fee ??
+      channel.total_fee ??
+      0,
+    0,
+    100000000,
+  )
+  const feePercent = Math.max(0, Math.min(100, Number(
+    channel.total_fee?.percent ??
+      channel.total_fee_percent ??
+      channel.fee_customer?.percent ??
+      channel.fee_customer_percent ??
+      channel.fee?.percent ??
+      channel.percent_fee ??
+      channel.fee_percent ??
+      0,
+  ) || 0))
 
   if (!code) {
     return null
@@ -2611,6 +2639,8 @@ function tripayMethodFromChannel(channel) {
     label: label || code,
     brand: inferTripayMethodBrand(code, label),
     logoUrl,
+    feeFlat,
+    feePercent,
   }
 }
 
@@ -2678,6 +2708,8 @@ function mergeTripayPaymentMethods(savedMethods = [], tripayMethods = []) {
       logoUrl: saved?.logoUrl || method.logoUrl || '',
       label: saved?.label || method.label,
       brand: saved?.brand || method.brand,
+      feeFlat: method.feeFlat || saved?.feeFlat || 0,
+      feePercent: method.feePercent || saved?.feePercent || 0,
     }
   })
 }
@@ -2858,11 +2890,38 @@ async function tripayPaymentMethodLabel(method) {
   }
 }
 
+async function tripayPaymentMethodDetails(method) {
+  const code = cleanText(method || '', 40).toUpperCase()
+
+  if (!code) {
+    return null
+  }
+
+  try {
+    const settings = (await fetchWebsiteSettings()).settings
+    return settings.paymentMethods.find((item) => item.code === code) || null
+  } catch {
+    return null
+  }
+}
+
+function calculatePaymentMethodFee(method, amount) {
+  if (!method) {
+    return 0
+  }
+
+  const flatFee = cleanNumber(method.feeFlat || 0, 0, 100000000)
+  const percentFee = Math.max(0, Math.min(100, Number(method.feePercent) || 0))
+
+  return flatFee + Math.max(0, Math.round((cleanNumber(amount, 0, 1000000000) * percentFee) / 100))
+}
+
 export async function createTripayCheckout(request) {
   const user = await requireUser(request, 'member')
   const payload = await readJson(request)
   const classId = cleanText(payload.classId, 120)
   const paymentMethod = cleanText(payload.paymentMethod || '', 40).toUpperCase()
+  const forceNewPayment = payload.forceNewPayment === true
 
   if (!classId) {
     throw new ApiError(400, 'ID kelas wajib dikirim.')
@@ -2916,7 +2975,9 @@ export async function createTripayCheckout(request) {
 
   const config = tripayConfig(request)
   const method = paymentMethod || config.method
-  const existingOrder = await findReusableTripayOrder(member.id, course.id)
+  const existingOrder = forceNewPayment
+    ? null
+    : await findReusableTripayOrder(member.id, course.id)
 
   if (existingOrder?.checkout_url) {
     const existingPayment = paymentPublic(existingOrder, 'tripay')
@@ -2982,10 +3043,14 @@ export async function createTripayCheckout(request) {
   }
 
   const tripayData = responseData.data || responseData
-  const paymentMethodLabel = await tripayPaymentMethodLabel(method)
+  const paymentMethodDetails = await tripayPaymentMethodDetails(method)
+  const paymentMethodLabel = paymentMethodDetails?.label || await tripayPaymentMethodLabel(method)
+  const paymentFee = calculatePaymentMethodFee(paymentMethodDetails, amount)
   const savedPayload = JSON.stringify({
     payment_method: method,
     payment_name: paymentMethodLabel,
+    payment_fee: paymentFee,
+    total_amount: amount + paymentFee,
     data: tripayData,
     response: responseData,
   })
@@ -3022,6 +3087,8 @@ export async function createTripayCheckout(request) {
     buyerEmail,
     classTitle: cleanText(course.title || 'Kelas IbnuCreative', 160),
     amount,
+    paymentFee,
+    totalAmount: amount + paymentFee,
     paymentMethod: paymentMethodLabel,
     checkoutUrl,
     expiresAt,

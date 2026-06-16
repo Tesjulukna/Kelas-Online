@@ -1724,7 +1724,7 @@ function App() {
     return applySupportResponse(data)
   }
 
-  const handleCreateTripayCheckout = async (course, paymentMethod = '') => {
+  const handleCreateTripayCheckout = async (course, paymentMethod = '', options = {}) => {
     if (session?.role !== 'member') {
       throw new Error('Silakan login member untuk membeli kelas.')
     }
@@ -1735,6 +1735,7 @@ function App() {
         classId: course.id,
         memberId: session.userId,
         paymentMethod,
+        forceNewPayment: options.forceNewPayment === true,
       }),
     })
 
