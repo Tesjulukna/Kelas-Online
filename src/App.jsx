@@ -1793,6 +1793,7 @@ function App() {
               supportTickets={supportTickets}
               submissions={submissions}
               focusTarget={memberFocusTarget}
+              websiteSettings={websiteSettings}
               activeMenu={activeMemberMenu}
               onMenuChange={(menuId) => navigateToDashboardMenu('member', menuId)}
               isMenuOpen={isDashboardMenuOpen}

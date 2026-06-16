@@ -3,6 +3,7 @@ import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
 import { memberMenuItems } from '../data/platformData'
+import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import { uploadStorageFile } from '../lib/storageUpload'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
@@ -105,25 +106,15 @@ function formatRupiah(value) {
   }).format(amount)
 }
 
-const tripayPaymentMethods = [
-  { code: 'QRIS', label: 'QRIS', brand: 'qris' },
-  { code: 'QRIS2', label: 'QRIS 2', brand: 'qris' },
-  { code: 'BCAVA', label: 'BCA Virtual Account', brand: 'bca' },
-  { code: 'BNIVA', label: 'BNI Virtual Account', brand: 'bni' },
-  { code: 'BRIVA', label: 'BRI Virtual Account', brand: 'bri' },
-  { code: 'MANDIRIVA', label: 'Mandiri Virtual Account', brand: 'mandiri' },
-  { code: 'PERMATAVA', label: 'Permata Virtual Account', brand: 'permata' },
-  { code: 'CIMBVA', label: 'CIMB Niaga Virtual Account', brand: 'cimb' },
-  { code: 'BSIVA', label: 'BSI Virtual Account', brand: 'bsi' },
-  { code: 'MUAMALATVA', label: 'Muamalat Virtual Account', brand: 'muamalat' },
-  { code: 'ALFAMART', label: 'Alfamart', brand: 'alfamart' },
-  { code: 'INDOMARET', label: 'Indomaret', brand: 'indomaret' },
-  { code: 'ALFAMIDI', label: 'Alfamidi', brand: 'alfamidi' },
-  { code: 'OVO', label: 'OVO', brand: 'ovo' },
-  { code: 'SHOPEEPAY', label: 'ShopeePay', brand: 'shopeepay' },
-]
-
 function PaymentMethodLogo({ method }) {
+  if (method.logoUrl) {
+    return (
+      <span className="payment-method-logo custom-logo" aria-hidden="true">
+        <img src={method.logoUrl} alt="" />
+      </span>
+    )
+  }
+
   if (method.brand === 'qris') {
     return (
       <span className="payment-method-logo qris-logo" aria-hidden="true">
@@ -226,7 +217,10 @@ function MemberPage({
   onCreateSubmission = async () => {},
   onCreateTripayCheckout = async () => {},
   focusTarget = null,
+  websiteSettings = defaultWebsiteSettings,
 }) {
+  const safeWebsiteSettings = cleanWebsiteSettings(websiteSettings)
+  const tripayPaymentMethods = safeWebsiteSettings.paymentMethods
   const courses = classes.filter((course) => course.status === 'Aktif')
   const allActiveCourses = allClasses.filter((course) => course.status === 'Aktif')
   const accessibleClassIds = Array.isArray(allowedClassIds)
@@ -247,6 +241,7 @@ function MemberPage({
   const [activePromptInstruction, setActivePromptInstruction] = useState(null)
   const [checkoutClassId, setCheckoutClassId] = useState('')
   const [paymentMethodCourse, setPaymentMethodCourse] = useState(null)
+  const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('')
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
   const materials = selectedCourse?.materials ?? []
@@ -545,17 +540,28 @@ function MemberPage({
     }
 
     setPaymentMethodCourse(course)
+    setSelectedPaymentMethodCode('')
   }
 
-  const handleSelectPaymentMethod = (method) => {
+  const handleCreateSelectedPayment = () => {
     if (!paymentMethodCourse) {
+      return
+    }
+
+    const selectedMethod = tripayPaymentMethods.find(
+      (method) => method.code === selectedPaymentMethodCode,
+    )
+
+    if (!selectedMethod) {
+      onNotify('Pilih metode pembayaran dulu.')
       return
     }
 
     const course = paymentMethodCourse
 
     setPaymentMethodCourse(null)
-    handleStartCheckout(course, method.code)
+    setSelectedPaymentMethodCode('')
+    handleStartCheckout(course, selectedMethod.code)
   }
 
   const handleSendSupport = async () => {
@@ -1256,7 +1262,10 @@ function MemberPage({
                 className="icon-button"
                 type="button"
                 aria-label="Tutup pilihan metode pembayaran"
-                onClick={() => setPaymentMethodCourse(null)}
+                onClick={() => {
+                  setPaymentMethodCourse(null)
+                  setSelectedPaymentMethodCode('')
+                }}
               >
                 <Icon name="x" />
               </button>
@@ -1264,16 +1273,40 @@ function MemberPage({
             <div className="payment-method-grid" aria-label="Daftar metode pembayaran">
               {tripayPaymentMethods.map((method) => (
                 <button
-                  className="payment-method-option"
+                  className={`payment-method-option ${
+                    selectedPaymentMethodCode === method.code ? 'selected' : ''
+                  }`}
                   type="button"
                   key={method.code}
                   title={method.label}
                   aria-label={method.label}
-                  onClick={() => handleSelectPaymentMethod(method)}
+                  aria-pressed={selectedPaymentMethodCode === method.code}
+                  onClick={() => setSelectedPaymentMethodCode(method.code)}
                 >
                   <PaymentMethodLogo method={method} />
                 </button>
               ))}
+            </div>
+            <div className="payment-method-modal-actions">
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => {
+                  setPaymentMethodCourse(null)
+                  setSelectedPaymentMethodCode('')
+                }}
+              >
+                Batal
+              </button>
+              <button
+                className="btn btn-primary"
+                type="button"
+                disabled={!selectedPaymentMethodCode}
+                onClick={handleCreateSelectedPayment}
+              >
+                <Icon name="wallet" />
+                Buat Pembayaran
+              </button>
             </div>
           </section>
         </div>

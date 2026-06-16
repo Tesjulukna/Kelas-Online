@@ -277,6 +277,13 @@ function WebsiteSettingsPanel({
       description: 'Atur heading daftar kelas, fallback, dan benefit website.',
     },
     {
+      id: 'payments',
+      eyebrow: 'Pembayaran',
+      title: 'Logo metode pembayaran',
+      icon: 'wallet',
+      description: 'Upload logo QRIS, virtual account, minimarket, dan e-wallet.',
+    },
+    {
       id: 'schedule',
       eyebrow: 'Alur Belajar',
       title: 'Section langkah belajar',
@@ -600,6 +607,33 @@ function WebsiteSettingsPanel({
               <Icon name="arrowRight" />
               Tambah Benefit
             </button>
+          </div>
+        </div>
+
+        <div className={`settings-section ${activeSectionId === 'payments' ? 'is-active' : ''}`}>
+          <SectionHeader eyebrow="Pembayaran" title="Logo metode pembayaran" icon="wallet" />
+          <div className="settings-list payment-method-settings-list">
+            {draft.paymentMethods.map((item, index) => (
+              <article className="settings-row payment-method-settings-row" key={item.code}>
+                <strong>{item.code}</strong>
+                <TextField
+                  label="Nama metode"
+                  value={item.label}
+                  onChange={(value) =>
+                    updateArrayItem(['paymentMethods'], index, 'label', value)
+                  }
+                />
+                <ImageField
+                  label="Logo metode"
+                  value={item.logoUrl}
+                  onChange={(value) =>
+                    updateArrayItem(['paymentMethods'], index, 'logoUrl', value)
+                  }
+                  onUploadImage={onUploadImage}
+                  onNotify={onNotify}
+                />
+              </article>
+            ))}
           </div>
         </div>
 

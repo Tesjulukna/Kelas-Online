@@ -58,6 +58,23 @@ export const defaultWebsiteSettings = {
     fallbackPrice: 'Mulai dari kelas pilihan',
     emptyPrice: 'Harga tersedia di dashboard',
   },
+  paymentMethods: [
+    { code: 'QRIS', label: 'QRIS', brand: 'qris', logoUrl: '' },
+    { code: 'QRIS2', label: 'QRIS 2', brand: 'qris', logoUrl: '' },
+    { code: 'BCAVA', label: 'BCA Virtual Account', brand: 'bca', logoUrl: '' },
+    { code: 'BNIVA', label: 'BNI Virtual Account', brand: 'bni', logoUrl: '' },
+    { code: 'BRIVA', label: 'BRI Virtual Account', brand: 'bri', logoUrl: '' },
+    { code: 'MANDIRIVA', label: 'Mandiri Virtual Account', brand: 'mandiri', logoUrl: '' },
+    { code: 'PERMATAVA', label: 'Permata Virtual Account', brand: 'permata', logoUrl: '' },
+    { code: 'CIMBVA', label: 'CIMB Niaga Virtual Account', brand: 'cimb', logoUrl: '' },
+    { code: 'BSIVA', label: 'BSI Virtual Account', brand: 'bsi', logoUrl: '' },
+    { code: 'MUAMALATVA', label: 'Muamalat Virtual Account', brand: 'muamalat', logoUrl: '' },
+    { code: 'ALFAMART', label: 'Alfamart', brand: 'alfamart', logoUrl: '' },
+    { code: 'INDOMARET', label: 'Indomaret', brand: 'indomaret', logoUrl: '' },
+    { code: 'ALFAMIDI', label: 'Alfamidi', brand: 'alfamidi', logoUrl: '' },
+    { code: 'OVO', label: 'OVO', brand: 'ovo', logoUrl: '' },
+    { code: 'SHOPEEPAY', label: 'ShopeePay', brand: 'shopeepay', logoUrl: '' },
+  ],
   benefits: {
     eyebrow: 'Benefit',
     title: 'Belajar lebih terarah dengan materi, tugas, dan feedback mentor.',
@@ -254,6 +271,23 @@ function cleanFooterLinks(value) {
   })
 }
 
+function cleanPaymentMethods(value) {
+  const fallbackMethods = defaultWebsiteSettings.paymentMethods
+  const source = Array.isArray(value) ? value : fallbackMethods
+
+  return fallbackMethods.map((fallbackMethod, index) => {
+    const item =
+      source.find((candidate) => candidate?.code === fallbackMethod.code) ?? source[index]
+
+    return {
+      code: fallbackMethod.code,
+      label: cleanText(item?.label || fallbackMethod.label, 80),
+      brand: cleanText(item?.brand || fallbackMethod.brand, 40),
+      logoUrl: cleanUrl(item?.logoUrl || '', 2000),
+    }
+  })
+}
+
 export function cleanWebsiteSettings(value = {}) {
   const source = value && typeof value === 'object' ? value : {}
 
@@ -319,6 +353,7 @@ export function cleanWebsiteSettings(value = {}) {
         90,
       ),
     },
+    paymentMethods: cleanPaymentMethods(source.paymentMethods),
     benefits: {
       eyebrow: cleanText(
         source.benefits?.eyebrow || defaultWebsiteSettings.benefits.eyebrow,

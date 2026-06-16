@@ -525,6 +525,8 @@ function AdminPage({
   const [paymentSearchTerm, setPaymentSearchTerm] = useState('')
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all')
   const [paymentSourceFilter, setPaymentSourceFilter] = useState('all')
+  const [paymentStartDate, setPaymentStartDate] = useState('')
+  const [paymentEndDate, setPaymentEndDate] = useState('')
   const [paymentPageSize, setPaymentPageSize] = useState(10)
   const [paymentPage, setPaymentPage] = useState(1)
   const [supportForm, setSupportForm] = useState(() => createEmptySupportForm())
@@ -563,8 +565,28 @@ function AdminPage({
     pendingPaymentStatuses.includes(String(payment.status).toLowerCase()) && !payment.accessGranted
   const isFailedPayment = (payment) =>
     failedPaymentStatuses.includes(String(payment.status).toLowerCase())
-  const paidPayments = payments.filter(isPaidPayment)
-  const pendingPayments = payments.filter(isPendingPayment)
+  const getPaymentTime = (payment) => getTimeValue(payment.createdAt || payment.updatedAt)
+  const paymentStartTime = paymentStartDate
+    ? new Date(`${paymentStartDate}T00:00:00`).getTime()
+    : 0
+  const paymentEndTime = paymentEndDate
+    ? new Date(`${paymentEndDate}T23:59:59`).getTime()
+    : 0
+  const paymentMatchesDateRange = (payment) => {
+    const paymentTime = getPaymentTime(payment)
+
+    if (!paymentTime) {
+      return !paymentStartTime && !paymentEndTime
+    }
+
+    return (
+      (!paymentStartTime || paymentTime >= paymentStartTime) &&
+      (!paymentEndTime || paymentTime <= paymentEndTime)
+    )
+  }
+  const reportPayments = payments.filter(paymentMatchesDateRange)
+  const paidPayments = reportPayments.filter(isPaidPayment)
+  const pendingPayments = reportPayments.filter(isPendingPayment)
   const totalPaidRevenue = paidPayments.reduce((total, payment) => total + payment.amount, 0)
   const tripayRevenue = paidPayments
     .filter((payment) => payment.source === 'tripay')
@@ -592,8 +614,9 @@ function AdminPage({
       paymentStatusFilter === 'all' || payment.status === paymentStatusFilter
     const sourceMatches =
       paymentSourceFilter === 'all' || payment.sourceLabel === paymentSourceFilter
+    const dateMatches = paymentMatchesDateRange(payment)
 
-    return searchMatches && statusMatches && sourceMatches
+    return searchMatches && statusMatches && sourceMatches && dateMatches
   })
   const paymentPageCount = Math.max(1, Math.ceil(filteredPayments.length / paymentPageSize))
   const safePaymentPage = Math.min(paymentPage, paymentPageCount)
@@ -2231,6 +2254,7 @@ function AdminPage({
               <div>
                 <p className="eyebrow">Pembayaran</p>
                 <h2>Riwayat transaksi</h2>
+                <small>Statistik mengikuti rentang tanggal yang dipilih.</small>
               </div>
               <div className="payment-filter-bar">
                 <label>
@@ -2279,6 +2303,41 @@ function AdminPage({
                     ))}
                   </select>
                 </label>
+                <label>
+                  Mulai
+                  <input
+                    type="date"
+                    value={paymentStartDate}
+                    onChange={(event) => {
+                      setPaymentStartDate(event.target.value)
+                      setPaymentPage(1)
+                    }}
+                  />
+                </label>
+                <label>
+                  Sampai
+                  <input
+                    type="date"
+                    value={paymentEndDate}
+                    onChange={(event) => {
+                      setPaymentEndDate(event.target.value)
+                      setPaymentPage(1)
+                    }}
+                  />
+                </label>
+                {(paymentStartDate || paymentEndDate) && (
+                  <button
+                    className="btn btn-secondary payment-date-reset"
+                    type="button"
+                    onClick={() => {
+                      setPaymentStartDate('')
+                      setPaymentEndDate('')
+                      setPaymentPage(1)
+                    }}
+                  >
+                    Reset tanggal
+                  </button>
+                )}
               </div>
             </div>
 
