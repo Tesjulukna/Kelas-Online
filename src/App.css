@@ -2108,9 +2108,15 @@ mark {
     position: fixed;
     inset: 0 0 auto 0;
     z-index: 80;
-    padding-left: 288px;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    padding-left: 40px;
     background: rgba(248, 250, 252, 0.96);
     box-shadow: 0 10px 26px rgba(15, 23, 42, 0.07);
+  }
+
+  .site-header.dashboard-header .brand {
+    justify-self: start;
   }
 
   .dashboard-layout {
