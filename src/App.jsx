@@ -1649,14 +1649,18 @@ function App() {
     return applySupportResponse(data)
   }
 
-  const handleCreateTripayCheckout = async (course) => {
+  const handleCreateTripayCheckout = async (course, paymentMethod = '') => {
     if (session?.role !== 'member') {
       throw new Error('Silakan login member untuk membeli kelas.')
     }
 
     const data = await requestJson(tripayCheckoutApiPath, {
       method: 'POST',
-      body: JSON.stringify({ classId: course.id, memberId: session.userId }),
+      body: JSON.stringify({
+        classId: course.id,
+        memberId: session.userId,
+        paymentMethod,
+      }),
     })
 
     if (data.alreadyHasAccess || data.freeAccessGranted) {

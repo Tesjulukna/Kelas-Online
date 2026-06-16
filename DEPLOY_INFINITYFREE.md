@@ -168,7 +168,7 @@ Set callback Tripay ke:
 https://domain-anda.com/api/tripay-webhook.php
 ```
 
-Di dashboard admin, isi `Harga kelas`. Member akan melihat kelas yang belum mereka akses di menu `Kelas Tersedia`. Kelas berbayar akan checkout via Tripay, sedangkan harga kosong atau `0` langsung gratis dan masuk ke `Kelas Saya`. Setelah callback Tripay berstatus `PAID`, akses kelas berbayar ditambahkan otomatis ke akun member.
+Di dashboard admin, isi `Harga kelas`. Member akan melihat kelas yang belum mereka akses di menu `Kelas Tersedia`. Kelas berbayar akan checkout via Tripay, sedangkan harga kosong atau `0` langsung gratis dan masuk ke `Kelas Saya`. Member dapat memilih metode pembayaran yang tersedia di kartu kelas; pastikan metode tersebut aktif di merchant Tripay. Setelah callback Tripay berstatus `PAID`, akses kelas berbayar ditambahkan otomatis ke akun member.
 
 Jika upload video gagal, biasanya penyebabnya batas upload hosting. Coba pakai MP4 H.264 yang sudah dikompres, lalu sesuaikan `max_video_upload_mb` di `api/config.php` agar tidak lebih besar dari limit `upload_max_filesize` dan `post_max_size` hosting.
 

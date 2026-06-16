@@ -2346,6 +2346,7 @@ export async function createTripayCheckout(request) {
   const user = await requireUser(request, 'member')
   const payload = await readJson(request)
   const classId = cleanText(payload.classId, 120)
+  const paymentMethod = cleanText(payload.paymentMethod || '', 40).toUpperCase()
 
   if (!classId) {
     throw new ApiError(400, 'ID kelas wajib dikirim.')
@@ -2398,10 +2399,11 @@ export async function createTripayCheckout(request) {
   }
 
   const config = tripayConfig(request)
+  const method = paymentMethod || config.method
   const merchantRef = `IC${Date.now()}${randomBytes(3).toString('hex').toUpperCase()}`
   const itemSku = cleanText(course.tripay_product_key || course.id, 80)
   const checkoutPayload = {
-    method: config.method,
+    method,
     merchant_ref: merchantRef,
     amount,
     customer_name: cleanText(member.name || user.name || 'Member', 120),
@@ -2480,6 +2482,7 @@ export async function createTripayCheckout(request) {
     checkoutUrl,
     merchantRef,
     reference,
+    paymentMethod: method,
     message: 'Checkout Tripay berhasil dibuat.',
   }
 }

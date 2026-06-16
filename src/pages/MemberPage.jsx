@@ -105,6 +105,24 @@ function formatRupiah(value) {
   }).format(amount)
 }
 
+const tripayPaymentMethods = [
+  { code: 'QRIS', label: 'QRIS' },
+  { code: 'QRIS2', label: 'QRIS 2' },
+  { code: 'BCAVA', label: 'BCA Virtual Account' },
+  { code: 'BNIVA', label: 'BNI Virtual Account' },
+  { code: 'BRIVA', label: 'BRI Virtual Account' },
+  { code: 'MANDIRIVA', label: 'Mandiri Virtual Account' },
+  { code: 'PERMATAVA', label: 'Permata Virtual Account' },
+  { code: 'CIMBVA', label: 'CIMB Niaga Virtual Account' },
+  { code: 'BSIVA', label: 'BSI Virtual Account' },
+  { code: 'MUAMALATVA', label: 'Muamalat Virtual Account' },
+  { code: 'ALFAMART', label: 'Alfamart' },
+  { code: 'INDOMARET', label: 'Indomaret' },
+  { code: 'ALFAMIDI', label: 'Alfamidi' },
+  { code: 'OVO', label: 'OVO' },
+  { code: 'SHOPEEPAY', label: 'ShopeePay' },
+]
+
 async function compressImageFile(file, { maxSize = 1800, quality = 0.9 } = {}) {
   if (!file.type.startsWith('image/')) {
     return file
@@ -189,6 +207,7 @@ function MemberPage({
   const [previewImage, setPreviewImage] = useState(null)
   const [activePromptInstruction, setActivePromptInstruction] = useState(null)
   const [checkoutClassId, setCheckoutClassId] = useState('')
+  const [paymentMethodByClass, setPaymentMethodByClass] = useState({})
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
   const materials = selectedCourse?.materials ?? []
@@ -448,13 +467,13 @@ function MemberPage({
     onNotify('Sertifikat demo siap diunduh dari backend produksi.')
   }
 
-  const handleStartCheckout = async (course) => {
+  const handleStartCheckout = async (course, paymentMethod = '') => {
     const price = Math.max(0, Math.round(Number(course.price) || 0))
 
     setCheckoutClassId(course.id)
 
     try {
-      const data = await onCreateTripayCheckout(course)
+      const data = await onCreateTripayCheckout(course, price ? paymentMethod : '')
 
       if (data.freeAccessGranted) {
         onNotify('Akses kelas gratis sudah aktif. Silakan buka Kelas Saya.')
@@ -1105,6 +1124,8 @@ function MemberPage({
             {availableCourses.map((course) => {
               const price = Math.max(0, Math.round(Number(course.price) || 0))
               const isCheckingOut = checkoutClassId === course.id
+              const selectedPaymentMethod =
+                paymentMethodByClass[course.id] || tripayPaymentMethods[0].code
               const accessNote = price
                 ? 'Akses materi dibuka otomatis setelah pembayaran sukses.'
                 : 'Kelas gratis bisa langsung dibuka dari akun member.'
@@ -1135,11 +1156,32 @@ function MemberPage({
                     <small>{price ? 'Harga kelas' : 'Kelas gratis'}</small>
                     <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
                   </span>
+                  {Boolean(price) && (
+                    <label className="available-payment-method">
+                      <small>Metode pembayaran</small>
+                      <select
+                        value={selectedPaymentMethod}
+                        disabled={isCheckingOut}
+                        onChange={(event) =>
+                          setPaymentMethodByClass((current) => ({
+                            ...current,
+                            [course.id]: event.target.value,
+                          }))
+                        }
+                      >
+                        {tripayPaymentMethods.map((method) => (
+                          <option value={method.code} key={method.code}>
+                            {method.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <button
                     className="btn btn-primary member-class-button"
                     type="button"
                     disabled={isCheckingOut}
-                    onClick={() => handleStartCheckout(course)}
+                    onClick={() => handleStartCheckout(course, selectedPaymentMethod)}
                   >
                     <Icon name="wallet" />
                     {checkoutButtonLabel}

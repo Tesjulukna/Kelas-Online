@@ -95,7 +95,7 @@ Endpoint ini akan membuat atau memperbarui member berdasarkan produk Lynk yang c
 https://domain-vercel-anda.vercel.app/api/tripay-webhook
 ```
 
-Member bisa membuka menu `Kelas Tersedia` dan memilih kelas yang belum mereka akses. Kelas berbayar akan checkout via Tripay, sedangkan kelas gratis langsung masuk ke `Kelas Saya`. Akses kelas berbayar akan aktif otomatis setelah callback Tripay berstatus `PAID`.
+Member bisa membuka menu `Kelas Tersedia` dan memilih kelas yang belum mereka akses. Kelas berbayar akan checkout via Tripay, sedangkan kelas gratis langsung masuk ke `Kelas Saya`. Akses kelas berbayar akan aktif otomatis setelah callback Tripay berstatus `PAID`. `TRIPAY_DEFAULT_METHOD` hanya dipakai sebagai fallback; member tetap bisa memilih metode pembayaran yang tampil di kartu kelas.
 
 ## 7. Email otomatis Resend
 
