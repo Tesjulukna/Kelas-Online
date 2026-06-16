@@ -7680,8 +7680,10 @@ img {
 .digital-product-detail-page {
   position: relative;
   display: grid;
-  gap: 16px;
-  padding-bottom: 96px;
+  gap: 18px;
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding-bottom: 112px;
 }
 
 .digital-product-detail-topbar {
@@ -7691,6 +7693,8 @@ img {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  height: 0;
+  padding: 12px;
   pointer-events: none;
 }
 
@@ -7715,9 +7719,8 @@ img {
 
 .digital-product-detail-hero {
   display: grid;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1fr);
-  gap: 22px;
-  align-items: stretch;
+  grid-template-columns: 1fr;
+  gap: 0;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -7729,7 +7732,8 @@ img {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 320px;
+  min-height: clamp(260px, 46vw, 520px);
+  aspect-ratio: 16 / 9;
   color: var(--color-teal-dark);
   background: #edf7f4;
 }
@@ -7760,21 +7764,26 @@ img {
 
 .digital-product-detail-copy {
   display: grid;
-  align-content: center;
-  gap: 14px;
+  justify-items: center;
+  gap: 16px;
   min-width: 0;
-  padding: 30px 28px 30px 0;
+  padding: 30px 32px 34px;
+  text-align: center;
 }
 
 .digital-product-detail-copy h2 {
   margin: 0;
+  max-width: 760px;
   color: var(--color-heading);
-  font-size: clamp(1.8rem, 3vw, 2.75rem);
-  line-height: 1.08;
+  font-size: clamp(1.9rem, 4.2vw, 3.35rem);
+  line-height: 1.05;
 }
 
 .digital-product-detail-copy p {
+  max-width: 720px;
   color: var(--color-muted);
+  font-size: 1.02rem;
+  line-height: 1.75;
 }
 
 .digital-product-detail-price {
@@ -7854,6 +7863,7 @@ img {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 12px;
   border: 1px solid var(--color-border);
@@ -7864,6 +7874,7 @@ img {
 }
 
 .digital-product-sticky-actions .expired-payment-notice {
+  flex: 1 1 260px;
   margin-right: auto;
 }
 
@@ -7874,7 +7885,12 @@ img {
 }
 
 .digital-buy-button {
+  flex: 1 1 220px;
   min-width: 180px;
+}
+
+.digital-cart-button {
+  flex: 0 1 160px;
 }
 
 .change-payment-method-button {
@@ -9368,5 +9384,103 @@ img {
   .app-shell > .site-header.login-header {
     position: sticky !important;
     top: 0 !important;
+  }
+}
+
+@media (max-width: 920px) {
+  .digital-product-detail-page {
+    width: 100%;
+    padding-bottom: 138px;
+  }
+
+  .digital-product-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .digital-product-detail-copy {
+    padding: 26px 24px 30px;
+  }
+
+  .digital-product-sticky-actions {
+    right: 16px;
+    left: 16px;
+  }
+}
+
+@media (max-width: 760px) {
+  .digital-product-detail-page {
+    gap: 14px;
+    padding-bottom: 168px;
+  }
+
+  .digital-product-detail-topbar {
+    top: 72px;
+    padding: 10px;
+  }
+
+  .digital-product-detail-image {
+    min-height: 220px;
+    aspect-ratio: 4 / 3;
+  }
+
+  .digital-product-detail-copy {
+    align-items: start;
+    justify-items: start;
+    padding: 22px 18px 26px;
+    text-align: left;
+  }
+
+  .digital-product-detail-copy h2 {
+    font-size: clamp(1.65rem, 8vw, 2.35rem);
+  }
+
+  .digital-product-detail-copy p {
+    font-size: 0.96rem;
+    line-height: 1.65;
+  }
+
+  .digital-product-detail-price {
+    justify-items: start;
+  }
+
+  .digital-product-sticky-actions {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: stretch;
+    padding: 10px;
+  }
+
+  .digital-product-sticky-actions .expired-payment-notice,
+  .digital-product-sticky-actions .change-payment-method-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .digital-buy-button,
+  .digital-cart-button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .digital-product-detail-page {
+    padding-bottom: 188px;
+  }
+
+  .digital-product-detail-image {
+    min-height: 190px;
+  }
+
+  .digital-product-detail-panel dl div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .digital-product-sticky-actions {
+    grid-template-columns: 1fr;
   }
 }
