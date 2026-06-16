@@ -6290,6 +6290,91 @@ img {
   }
 }
 
+/* Public information pages */
+.public-info-page {
+  min-height: 72vh;
+  padding: 118px 24px 64px;
+  background:
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 42%, #f7fbff 100%);
+}
+
+.public-info-hero,
+.public-info-grid,
+.public-info-action {
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
+
+.public-info-hero {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 28px;
+}
+
+.public-info-hero h1 {
+  max-width: 760px;
+  color: var(--color-heading);
+  font-size: clamp(2.15rem, 5vw, 3.9rem);
+  line-height: 1.02;
+}
+
+.public-info-hero p {
+  max-width: 760px;
+  color: var(--color-muted);
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.public-info-hero small {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+.public-info-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.public-info-card {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.public-info-card h2 {
+  color: var(--color-heading);
+  font-size: 1.12rem;
+}
+
+.public-info-card ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--color-text);
+  line-height: 1.65;
+}
+
+.public-info-action {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 22px;
+}
+
+@media (max-width: 620px) {
+  .public-info-page {
+    padding: 96px 14px 46px;
+  }
+
+  .public-info-card {
+    padding: 18px;
+  }
+}
+
 /* Homepage and login footer */
 .site-footer {
   border-top: 1px solid var(--color-border);

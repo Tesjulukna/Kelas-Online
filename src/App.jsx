@@ -33,7 +33,12 @@ const pagePaths = {
   login: '/login',
   member: '/member',
   admin: '/admin',
+  about: '/tentang-kami',
+  contact: '/kontak-support',
+  privacy: '/kebijakan-privasi',
+  terms: '/ketentuan-layanan',
 }
+const publicInfoPages = ['about', 'contact', 'privacy', 'terms']
 const notificationSeenKey = 'ibnucreative.notifications.seen.v1'
 
 function getPageFromPath(pathname) {
@@ -51,6 +56,22 @@ function getPageFromPath(pathname) {
     return 'admin'
   }
 
+  if (cleanPath === '/tentang-kami') {
+    return 'about'
+  }
+
+  if (cleanPath === '/kontak-support') {
+    return 'contact'
+  }
+
+  if (cleanPath === '/kebijakan-privasi') {
+    return 'privacy'
+  }
+
+  if (cleanPath === '/ketentuan-layanan') {
+    return 'terms'
+  }
+
   return 'home'
 }
 
@@ -61,7 +82,7 @@ function getInitialPage(session) {
 
   const page = getPageFromPath(window.location.pathname)
 
-  if (session?.role && page !== session.role) {
+  if (session?.role && page !== session.role && !publicInfoPages.includes(page)) {
     window.history.replaceState({}, '', pagePaths[session.role] ?? pagePaths.home)
     return session.role
   }
@@ -874,7 +895,8 @@ function App() {
 
       if (
         currentSession?.role &&
-        nextPage !== currentSession.role
+        nextPage !== currentSession.role &&
+        !publicInfoPages.includes(nextPage)
       ) {
         nextPage = currentSession.role
         window.history.replaceState({}, '', pagePaths[currentSession.role] ?? pagePaths.home)
@@ -1232,6 +1254,12 @@ function App() {
   const goToLogin = () => {
     setActiveSection('home')
     navigateToPage('login')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const goToPublicInfoPage = (nextPage) => {
+    setActiveSection('home')
+    navigateToPage(nextPage)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -1700,6 +1728,9 @@ function App() {
             onSubmit={handleLogin}
           />
         )}
+        {publicInfoPages.includes(page) && (
+          <PublicInfoPage page={page} settings={websiteSettings} onLogin={goToLogin} />
+        )}
         {page === 'member' &&
           (session?.role === 'member' ? (
             <MemberPage
@@ -1770,9 +1801,10 @@ function App() {
             />
           ))}
       </main>
-      {(page === 'home' || page === 'login') && (
+      {(page === 'home' || page === 'login' || publicInfoPages.includes(page)) && (
         <SiteFooter
           onHomeSection={goToHomeSection}
+          onInfoPage={goToPublicInfoPage}
           onLogin={session ? goToDashboard : goToLogin}
           isLoggedIn={Boolean(session)}
           settings={websiteSettings}
@@ -1819,7 +1851,160 @@ function BrandMark({ settings }) {
   )
 }
 
-function SiteFooter({ onHomeSection, onLogin, isLoggedIn, settings }) {
+function PublicInfoPage({ page, settings, onLogin }) {
+  const safeSettings = cleanWebsiteSettings(settings)
+  const pages = {
+    about: {
+      eyebrow: 'Tentang Kami',
+      title: `Tentang ${safeSettings.siteName}`,
+      description:
+        `${safeSettings.siteName} adalah platform kelas online kreatif yang membantu member belajar desain, video, konten digital, dan strategi jualan melalui materi praktik, tugas, dan arahan mentor.`,
+      sections: [
+        {
+          title: 'Fokus layanan',
+          items: [
+            'Menyediakan akses kelas online berbasis materi digital.',
+            'Membantu member belajar melalui modul, tugas praktik, dan feedback.',
+            'Mengelola akses kelas gratis maupun berbayar secara digital.',
+          ],
+        },
+        {
+          title: 'Cara belajar',
+          items: [
+            'Member login ke dashboard untuk membuka kelas yang sudah dimiliki.',
+            'Materi bisa berupa video, teks, gambar referensi, dan instruksi tugas.',
+            'Member dapat mengirim tugas dan menerima balasan mentor dari dashboard.',
+          ],
+        },
+      ],
+    },
+    contact: {
+      eyebrow: 'Kontak Support',
+      title: 'Kontak Support',
+      description:
+        'Jika mengalami kendala login, akses kelas, pembayaran, atau materi belajar, member dapat menghubungi support melalui dashboard member atau kanal kontak resmi yang tersedia di website.',
+      sections: [
+        {
+          title: 'Bantuan member',
+          items: [
+            'Login ke dashboard member.',
+            'Buka menu Bantuan Mentor atau Support.',
+            'Kirim pertanyaan dengan detail kendala agar tim dapat menindaklanjuti.',
+          ],
+        },
+        {
+          title: 'Informasi yang perlu disiapkan',
+          items: [
+            'Nama akun atau username member.',
+            'Judul kelas yang bermasalah.',
+            'Bukti pembayaran jika kendala terkait transaksi.',
+          ],
+        },
+      ],
+      actionLabel: 'Login untuk Support',
+    },
+    privacy: {
+      eyebrow: 'Kebijakan Privasi',
+      title: 'Kebijakan Privasi',
+      description:
+        `Kebijakan ini menjelaskan bagaimana ${safeSettings.siteName} mengelola data pengguna saat menggunakan website, dashboard member, dan layanan kelas online.`,
+      sections: [
+        {
+          title: 'Data yang dikumpulkan',
+          items: [
+            'Nama, username, email, dan informasi profil yang diberikan saat pendaftaran.',
+            'Data akses kelas, progress belajar, tugas, dan komunikasi support.',
+            'Data transaksi yang diperlukan untuk memproses pembayaran dan membuka akses kelas.',
+          ],
+        },
+        {
+          title: 'Penggunaan data',
+          items: [
+            'Memproses login dan menjaga keamanan akun.',
+            'Memberikan akses kelas, menyimpan progress belajar, dan mengelola tugas.',
+            'Mengirim informasi terkait akun, akses belajar, transaksi, dan bantuan support.',
+          ],
+        },
+        {
+          title: 'Perlindungan data',
+          items: [
+            'Data akun dan sesi disimpan untuk kebutuhan operasional layanan.',
+            'Akses admin digunakan hanya untuk pengelolaan kelas, member, transaksi, dan support.',
+            'Kami tidak menjual data pribadi member kepada pihak lain.',
+          ],
+        },
+      ],
+    },
+    terms: {
+      eyebrow: 'Ketentuan Layanan',
+      title: 'Ketentuan Layanan',
+      description:
+        `Dengan menggunakan ${safeSettings.siteName}, pengguna menyetujui ketentuan layanan kelas online, akses materi, pembayaran, dan penggunaan dashboard.`,
+      sections: [
+        {
+          title: 'Akses kelas',
+          items: [
+            'Kelas gratis dapat langsung dibuka setelah member memilih akses gratis.',
+            'Kelas berbayar akan terbuka setelah pembayaran berhasil diverifikasi.',
+            'Akses kelas berlaku untuk akun member yang melakukan pembelian atau diberi akses.',
+          ],
+        },
+        {
+          title: 'Pembayaran',
+          items: [
+            'Pembayaran kelas berbayar diproses melalui penyedia pembayaran yang tersedia di website.',
+            'Akses kelas akan aktif otomatis setelah status pembayaran dinyatakan sukses.',
+            'Member wajib memastikan data email dan akun yang digunakan sudah benar.',
+          ],
+        },
+        {
+          title: 'Penggunaan materi',
+          items: [
+            'Materi kelas digunakan untuk pembelajaran pribadi member.',
+            'Member tidak diperbolehkan membagikan ulang materi berbayar tanpa izin.',
+            'Pelanggaran penggunaan dapat menyebabkan pembatasan akses akun.',
+          ],
+        },
+      ],
+    },
+  }
+  const content = pages[page] ?? pages.about
+
+  return (
+    <section className="public-info-page">
+      <div className="public-info-hero">
+        <p className="eyebrow">{content.eyebrow}</p>
+        <h1>{content.title}</h1>
+        <p>{content.description}</p>
+        <small>Terakhir diperbarui: 16 Juni 2026</small>
+      </div>
+
+      <div className="public-info-grid">
+        {content.sections.map((section) => (
+          <article className="public-info-card" key={section.title}>
+            <h2>{section.title}</h2>
+            <ul>
+              {section.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+
+      {content.actionLabel && (
+        <div className="public-info-action">
+          <button className="btn btn-primary" type="button" onClick={onLogin}>
+            <Icon name="logIn" />
+            {content.actionLabel}
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function SiteFooter({ onHomeSection, onInfoPage, onLogin, isLoggedIn, settings }) {
   const year = new Date().getFullYear()
   const safeSettings = cleanWebsiteSettings(settings)
 
@@ -1868,6 +2053,18 @@ function SiteFooter({ onHomeSection, onLogin, isLoggedIn, settings }) {
             {isLoggedIn
               ? safeSettings.header.dashboardLabel
               : safeSettings.header.loginLabel}
+          </button>
+          <button type="button" onClick={() => onInfoPage('about')}>
+            Tentang Kami
+          </button>
+          <button type="button" onClick={() => onInfoPage('contact')}>
+            Kontak Support
+          </button>
+          <button type="button" onClick={() => onInfoPage('privacy')}>
+            Kebijakan Privasi
+          </button>
+          <button type="button" onClick={() => onInfoPage('terms')}>
+            Ketentuan Layanan
           </button>
         </nav>
 
