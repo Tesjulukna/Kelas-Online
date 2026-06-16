@@ -689,6 +689,8 @@ function mapClass(row, materials) {
     next: row.next_label,
     liveAt: row.live_at,
     lessons: row.lessons,
+    showOnHomepage: row.show_on_homepage !== false,
+    highlighted: Boolean(row.highlighted),
     materials,
   }
 }
@@ -751,6 +753,8 @@ function mapDigitalProduct(row) {
     requireCustomerPhone: Boolean(row.require_customer_phone),
     lynkProductKey: row.lynk_product_key || '',
     tripayProductKey: row.tripay_product_key || '',
+    showOnHomepage: row.show_on_homepage !== false,
+    highlighted: Boolean(row.highlighted),
     createdAt: row.created_at || '',
     updatedAt: row.updated_at || '',
   }
@@ -1075,6 +1079,8 @@ function cleanClassesForDb(value) {
           next_label: cleanText(item.next || 'Lanjutkan modul berikutnya', 160),
           live_at: cleanText(item.liveAt || 'Jadwal menyusul', 160),
           lessons: cleanText(item.lessons || `${materials.length} materi`, 80),
+          show_on_homepage: item.showOnHomepage !== false,
+          highlighted: Boolean(item.highlighted),
         },
         materials: materials
           .filter(
@@ -1179,6 +1185,8 @@ function cleanDigitalProductsForDb(value) {
       require_customer_phone: Boolean(item.requireCustomerPhone),
       lynk_product_key: cleanText(item.lynkProductKey || '', 180),
       tripay_product_key: cleanText(item.tripayProductKey || '', 180),
+      show_on_homepage: item.showOnHomepage !== false,
+      highlighted: Boolean(item.highlighted),
     }))
 }
 

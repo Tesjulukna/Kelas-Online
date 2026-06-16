@@ -522,6 +522,8 @@ function seedClasses() {
     next: item.next ?? 'Lanjutkan modul berikutnya',
     liveAt: item.liveAt ?? 'Jumat, 29 Mei 2026, 20.00 WITA',
     lessons: item.lessons ?? `${16 + index * 4} materi`,
+    showOnHomepage: item.showOnHomepage !== false,
+    highlighted: item.highlighted === true,
     materials: createSeedMaterials(item, index),
   }))
 }
@@ -551,6 +553,8 @@ function cleanClasses(value) {
         next: cleanText(item.next || 'Lanjutkan modul berikutnya'),
         liveAt: cleanText(item.liveAt || 'Jadwal menyusul'),
         lessons: cleanText(item.lessons || '12 materi'),
+        showOnHomepage: item.showOnHomepage !== false,
+        highlighted: item.highlighted === true,
         materials: cleanMaterials(item.materials, classId, item.title),
       }
     })
@@ -592,6 +596,8 @@ function cleanDigitalProducts(value) {
       requireCustomerPhone: item.requireCustomerPhone === true,
       lynkProductKey: cleanLongText(item.lynkProductKey || '', 160),
       tripayProductKey: cleanLongText(item.tripayProductKey || '', 160),
+      showOnHomepage: item.showOnHomepage !== false,
+      highlighted: item.highlighted === true,
       createdAt: cleanText(item.createdAt || ''),
       updatedAt: cleanText(item.updatedAt || ''),
     }))
@@ -2065,6 +2071,7 @@ function App() {
             onLogin={goToDashboard}
             onExplore={goToHomeSection}
             classes={classes}
+            digitalProducts={digitalProducts}
             settings={websiteSettings}
           />
         )}

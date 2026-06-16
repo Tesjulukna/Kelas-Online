@@ -1278,6 +1278,25 @@ mark {
   font-weight: 800;
 }
 
+.muted-mark {
+  color: #64748b;
+  background: #eef2f7;
+}
+
+.admin-inline-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.admin-inline-badges mark {
+  min-height: 22px;
+  padding: 0 8px;
+  font-size: 0.72rem;
+}
+
 .admin-actions {
   align-items: stretch;
   gap: 16px;
@@ -1711,6 +1730,7 @@ mark {
 }
 
 .row-actions {
+  position: relative;
   display: flex;
   gap: 8px;
   justify-content: flex-end;
@@ -1732,6 +1752,70 @@ mark {
 .row-actions button:last-child {
   color: #b43d28;
   background: #fff7f5;
+}
+
+.row-action-menu {
+  position: relative;
+}
+
+.row-action-menu summary {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-heading);
+  background: #ffffff;
+  cursor: pointer;
+  list-style: none;
+}
+
+.row-action-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.row-action-menu summary .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.row-action-menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 4px;
+  min-width: 184px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow-md);
+}
+
+.row-action-menu-panel button {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  color: var(--color-heading);
+  background: transparent;
+  text-align: left;
+}
+
+.row-action-menu-panel button:hover {
+  background: #f3f8f7;
+}
+
+.row-action-menu-panel .danger-action,
+.row-action-menu-panel button.danger-action {
+  color: #b43d28;
+}
+
+.digital-product-table {
+  overflow: visible;
 }
 
 .card-actions {
@@ -6185,6 +6269,11 @@ img {
     var(--color-surface);
 }
 
+.homepage-card-highlighted {
+  border-color: rgba(20, 184, 166, 0.48);
+  box-shadow: 0 22px 48px rgba(20, 184, 166, 0.14);
+}
+
 .homepage-course-card::after {
   content: '';
   position: absolute;
@@ -6276,6 +6365,23 @@ img {
   box-shadow: 0 18px 38px rgba(0, 0, 0, 0.24);
 }
 
+.homepage-card-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(13, 74, 70, 0.88);
+  font-size: 0.76rem;
+  font-weight: 900;
+  box-shadow: 0 12px 24px rgba(13, 74, 70, 0.22);
+}
+
 .homepage-course-body {
   display: grid;
   gap: 8px;
@@ -6332,6 +6438,16 @@ img {
   inset: auto 18px 0;
   height: 4px;
   opacity: 0.78;
+}
+
+.homepage-products-section {
+  padding-top: 22px;
+}
+
+.homepage-product-card .homepage-course-visual {
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.94), rgba(37, 99, 235, 0.78)),
+    #0f766e;
 }
 
 @media (max-width: 920px) {

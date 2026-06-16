@@ -149,6 +149,13 @@ const paths = {
       <path d="M8 12.5h5" />
     </>
   ),
+  moreVertical: (
+    <>
+      <circle cx="12" cy="5" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="12" cy="19" r="1" />
+    </>
+  ),
   play: (
     <>
       <circle cx="12" cy="12" r="9" />

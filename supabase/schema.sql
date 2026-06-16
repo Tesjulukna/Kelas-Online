@@ -42,6 +42,8 @@ create table if not exists public.classes (
   next_label text not null default 'Lanjutkan modul berikutnya',
   live_at text not null default 'Jadwal menyusul',
   lessons text not null default '0 materi',
+  show_on_homepage boolean not null default true,
+  highlighted boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -75,6 +77,8 @@ create table if not exists public.digital_products (
   require_customer_phone boolean not null default false,
   lynk_product_key text not null default '',
   tripay_product_key text not null default '',
+  show_on_homepage boolean not null default true,
+  highlighted boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -111,6 +115,8 @@ alter table public.digital_products add column if not exists custom_message text
 alter table public.digital_products add column if not exists block_layout text not null default 'default';
 alter table public.digital_products add column if not exists require_customer_name boolean not null default false;
 alter table public.digital_products add column if not exists require_customer_phone boolean not null default false;
+alter table public.digital_products add column if not exists show_on_homepage boolean not null default true;
+alter table public.digital_products add column if not exists highlighted boolean not null default false;
 
 create table if not exists public.materials (
   id text primary key,
@@ -289,6 +295,8 @@ create index if not exists digital_product_access_product_index on public.digita
 
 alter table public.classes add column if not exists price integer not null default 0;
 alter table public.classes add column if not exists tripay_product_key text not null default '';
+alter table public.classes add column if not exists show_on_homepage boolean not null default true;
+alter table public.classes add column if not exists highlighted boolean not null default false;
 
 drop trigger if exists accounts_updated_at on public.accounts;
 create trigger accounts_updated_at before update on public.accounts

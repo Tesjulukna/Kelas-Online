@@ -269,6 +269,8 @@ function createEmptyClassForm() {
     next: '',
     liveAt: '',
     lessons: '',
+    showOnHomepage: true,
+    highlighted: false,
     materials: [createEmptyMaterial()],
   }
 }
@@ -316,6 +318,8 @@ function createEmptyDigitalProductForm() {
     requireCustomerPhone: false,
     lynkProductKey: '',
     tripayProductKey: '',
+    showOnHomepage: true,
+    highlighted: false,
   }
 }
 
@@ -1016,6 +1020,8 @@ function AdminPage({
       requireCustomerPhone: product.requireCustomerPhone === true,
       lynkProductKey: product.lynkProductKey || '',
       tripayProductKey: product.tripayProductKey || '',
+      showOnHomepage: product.showOnHomepage !== false,
+      highlighted: product.highlighted === true,
     })
     setEditingDigitalProductId(product.id)
     setIsDigitalProductBuilderOpen(true)
@@ -1043,6 +1049,42 @@ function AdminPage({
     } catch (error) {
       onNotify(error.message || 'Produk digital tidak bisa dihapus.')
     }
+  }
+
+  const updateDigitalProductQuickAction = async (productId, changes, message) => {
+    try {
+      await onDigitalProductsChange((current) =>
+        current.map((item) => (item.id === productId ? { ...item, ...changes } : item)),
+      )
+      onNotify(message)
+    } catch (error) {
+      onNotify(error.message || 'Produk digital tidak bisa diperbarui.')
+    }
+  }
+
+  const duplicateDigitalProduct = async (product) => {
+    try {
+      const copy = {
+        ...product,
+        id: `digital-product-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title: `${product.title} Copy`,
+        status: 'Draft',
+        showOnHomepage: false,
+        highlighted: false,
+      }
+
+      await onDigitalProductsChange((current) => [copy, ...current])
+      onNotify('Produk digital berhasil diduplikat sebagai draft.')
+    } catch (error) {
+      onNotify(error.message || 'Produk digital tidak bisa diduplikat.')
+    }
+  }
+
+  const showDigitalProductAnalysis = (product, accessCount) => {
+    const homepageLabel = product.showOnHomepage !== false ? 'tampil di homepage' : 'disembunyikan dari homepage'
+    const statusLabel = product.status || 'Draft'
+
+    onNotify(`${product.title}: ${accessCount} pembeli, status ${statusLabel}, ${homepageLabel}.`)
   }
 
   const openCreateClass = () => {
@@ -1748,6 +1790,8 @@ function AdminPage({
       next: existingClass?.next ?? 'Mulai materi pertama',
       liveAt: existingClass?.liveAt ?? '',
       lessons: `${materials.length} materi`,
+      showOnHomepage: classForm.showOnHomepage !== false,
+      highlighted: classForm.highlighted === true,
       materials,
     }
 
@@ -1790,6 +1834,8 @@ function AdminPage({
       next: item.next ?? '',
       liveAt: item.liveAt ?? '',
       lessons: item.lessons ?? '',
+      showOnHomepage: item.showOnHomepage !== false,
+      highlighted: item.highlighted === true,
       materials: item.materials?.length
         ? item.materials.map((material) => ({
             ...material,
@@ -1811,6 +1857,17 @@ function AdminPage({
     setEditingClassId(item.id)
     setIsClassModalOpen(true)
     setActionStatus(`Sedang mengedit ${item.title}.`)
+  }
+
+  const updateClassQuickAction = async (classId, changes, message) => {
+    try {
+      await onClassesChange((current) =>
+        current.map((item) => (item.id === classId ? { ...item, ...changes } : item)),
+      )
+      onNotify(message)
+    } catch (error) {
+      onNotify(error.message || 'Kelas tidak bisa diperbarui.')
+    }
   }
 
   const confirmDeleteClass = async () => {
@@ -2191,6 +2248,12 @@ function AdminPage({
                     <small>
                       {item.materials?.length ?? 0} materi / {item.lessons}
                     </small>
+                    <span className="admin-inline-badges">
+                      <mark className={item.showOnHomepage === false ? 'muted-mark' : ''}>
+                        {item.showOnHomepage === false ? 'Hidden home' : 'Show home'}
+                      </mark>
+                      {item.highlighted && <mark>Highlight</mark>}
+                    </span>
                   </span>
                 </span>
                 <span data-label="Peserta" role="cell">
@@ -2205,6 +2268,32 @@ function AdminPage({
                 <span className="row-actions" data-label="Aksi" role="cell">
                   <button type="button" onClick={() => handleEditClass(item)}>
                     Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateClassQuickAction(
+                        item.id,
+                        { showOnHomepage: item.showOnHomepage === false },
+                        item.showOnHomepage === false
+                          ? 'Kelas ditampilkan di homepage.'
+                          : 'Kelas disembunyikan dari homepage.',
+                      )
+                    }
+                  >
+                    {item.showOnHomepage === false ? 'Show' : 'Hide'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateClassQuickAction(
+                        item.id,
+                        { highlighted: !item.highlighted },
+                        item.highlighted ? 'Highlight kelas dimatikan.' : 'Kelas dijadikan highlight.',
+                      )
+                    }
+                  >
+                    {item.highlighted ? 'Unhighlight' : 'Highlight'}
                   </button>
                   <button type="button" onClick={() => setPendingDeleteClass(item)}>
                     Hapus
@@ -2697,13 +2786,81 @@ function AdminPage({
                     <span className="payment-identity" data-label="Produk" role="cell">
                       <strong>{product.title}</strong>
                       <small>{product.fileName || product.fileUrl || 'Link produk belum diisi'}</small>
+                      <span className="admin-inline-badges">
+                        <mark className={product.showOnHomepage === false ? 'muted-mark' : ''}>
+                          {product.showOnHomepage === false ? 'Hidden home' : 'Show home'}
+                        </mark>
+                        {product.highlighted && <mark>Highlight</mark>}
+                      </span>
                     </span>
                     <span data-label="Harga" role="cell">{product.price ? formatRupiah(product.price) : 'Gratis'}</span>
                     <span data-label="Status" role="cell"><mark>{product.status}</mark></span>
                     <span data-label="Terjual" role="cell">{accessCount} pembeli</span>
                     <span className="row-actions" data-label="Aksi" role="cell">
                       <button type="button" onClick={() => handleEditDigitalProduct(product)}>Edit</button>
-                      <button type="button" onClick={() => handleDeleteDigitalProduct(product.id)}>Hapus</button>
+                      <details className="row-action-menu">
+                        <summary aria-label={`Buka aksi produk ${product.title}`}>
+                          <Icon name="moreVertical" />
+                        </summary>
+                        <div className="row-action-menu-panel">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateDigitalProductQuickAction(
+                                product.id,
+                                { showOnHomepage: product.showOnHomepage === false },
+                                product.showOnHomepage === false
+                                  ? 'Produk ditampilkan di homepage.'
+                                  : 'Produk disembunyikan dari homepage.',
+                              )
+                            }
+                          >
+                            {product.showOnHomepage === false ? 'Show' : 'Hide'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateDigitalProductQuickAction(
+                                product.id,
+                                { status: 'Aktif' },
+                                'Produk dipublish.',
+                              )
+                            }
+                          >
+                            Publish
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateDigitalProductQuickAction(
+                                product.id,
+                                { highlighted: !product.highlighted },
+                                product.highlighted
+                                  ? 'Highlight produk dimatikan.'
+                                  : 'Produk dijadikan highlight.',
+                              )
+                            }
+                          >
+                            {product.highlighted ? 'Unhighlight' : 'Highlight'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => showDigitalProductAnalysis(product, accessCount)}
+                          >
+                            Analisis
+                          </button>
+                          <button type="button" onClick={() => duplicateDigitalProduct(product)}>
+                            Duplicat
+                          </button>
+                          <button
+                            className="danger-action"
+                            type="button"
+                            onClick={() => handleDeleteDigitalProduct(product.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </details>
                     </span>
                   </div>
                 )
