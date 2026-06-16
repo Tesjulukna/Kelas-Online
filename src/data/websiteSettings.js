@@ -273,19 +273,30 @@ function cleanFooterLinks(value) {
 
 function cleanPaymentMethods(value) {
   const fallbackMethods = defaultWebsiteSettings.paymentMethods
-  const source = Array.isArray(value) ? value : fallbackMethods
+  const source = Array.isArray(value) && value.length ? value : fallbackMethods
+  const seenCodes = new Set()
 
-  return fallbackMethods.map((fallbackMethod, index) => {
-    const item =
-      source.find((candidate) => candidate?.code === fallbackMethod.code) ?? source[index]
+  return source
+    .map((item, index) => {
+      const fallback = fallbackMethods.find((method) => method.code === item?.code) ??
+        fallbackMethods[index] ??
+        fallbackMethods[0]
+      const code = cleanText(item?.code || fallback.code, 40).toUpperCase()
 
-    return {
-      code: fallbackMethod.code,
-      label: cleanText(item?.label || fallbackMethod.label, 80),
-      brand: cleanText(item?.brand || fallbackMethod.brand, 40),
-      logoUrl: cleanUrl(item?.logoUrl || '', 2000),
-    }
-  })
+      if (!code || seenCodes.has(code)) {
+        return null
+      }
+
+      seenCodes.add(code)
+
+      return {
+        code,
+        label: cleanText(item?.label || fallback.label || code, 80),
+        brand: cleanText(item?.brand || fallback.brand || code.toLowerCase(), 40),
+        logoUrl: cleanUrl(item?.logoUrl || '', 2000),
+      }
+    })
+    .filter(Boolean)
 }
 
 export function cleanWebsiteSettings(value = {}) {

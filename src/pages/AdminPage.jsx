@@ -487,6 +487,7 @@ function AdminPage({
   websiteSettings,
   onClassesChange,
   onWebsiteSettingsChange = async () => {},
+  onSyncTripayPaymentMethods = async () => [],
   onDownloadBackup = async () => {},
   onRestoreBackup = async () => {},
   onCreateMember = async () => {},
@@ -2761,6 +2762,7 @@ function AdminPage({
           key={JSON.stringify(websiteSettings)}
           settings={websiteSettings}
           onSave={onWebsiteSettingsChange}
+          onSyncTripayPaymentMethods={onSyncTripayPaymentMethods}
           onDownloadBackup={onDownloadBackup}
           onRestoreBackup={onRestoreBackup}
           onUploadImage={handleWebsiteImageUpload}

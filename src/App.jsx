@@ -24,6 +24,7 @@ const submissionsApiPath = '/api/submissions'
 const paymentsApiPath = '/api/payments'
 const settingsApiPath = '/api/settings'
 const backupApiPath = '/api/backup'
+const tripayPaymentMethodsApiPath = '/api/tripay-payment-methods'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
 const loginApiPath = '/api/login'
 const logoutApiPath = '/api/logout'
@@ -1500,6 +1501,30 @@ function App() {
     return savedSettings
   }
 
+  const handleSyncTripayPaymentMethods = async () => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk sinkron metode pembayaran.')
+    }
+
+    const data = await requestJson(tripayPaymentMethodsApiPath)
+    const paymentMethods = Array.isArray(data.paymentMethods) ? data.paymentMethods : []
+
+    if (!paymentMethods.length) {
+      throw new Error('Metode pembayaran aktif dari Tripay belum bisa dibaca.')
+    }
+
+    const syncedSettings = cleanWebsiteSettings({
+      ...websiteSettings,
+      paymentMethods,
+    })
+
+    setWebsiteSettings(syncedSettings)
+    window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(syncedSettings))
+    announceWebsiteSettingsSync()
+
+    return syncedSettings.paymentMethods
+  }
+
   const refreshDataAfterRestore = async () => {
     const [
       nextClasses,
@@ -1827,6 +1852,7 @@ function App() {
               websiteSettings={websiteSettings}
               onClassesChange={handleClassesChange}
               onWebsiteSettingsChange={handleWebsiteSettingsChange}
+              onSyncTripayPaymentMethods={handleSyncTripayPaymentMethods}
               onDownloadBackup={handleDownloadBackup}
               onRestoreBackup={handleRestoreBackup}
               onCreateMember={handleCreateMember}

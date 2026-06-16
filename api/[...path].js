@@ -11,6 +11,7 @@ import {
   fetchClasses,
   fetchMembers,
   fetchPayments,
+  fetchTripayPaymentMethods,
   fetchSubmissions,
   fetchSupportTickets,
   fetchWebsiteSettings,
@@ -208,6 +209,16 @@ async function routeRequest(request, response) {
 
     await requireUser(request, 'admin')
     sendJson(response, 200, await fetchPayments())
+    return
+  }
+
+  if (route === 'tripay-payment-methods') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+      return
+    }
+
+    sendJson(response, 200, await fetchTripayPaymentMethods(request))
     return
   }
 

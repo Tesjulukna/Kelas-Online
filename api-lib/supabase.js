@@ -629,20 +629,39 @@ export async function fetchWebsiteSettings() {
   try {
     const rows = await rest('site_settings?select=*&id=eq.main&limit=1')
     const payload = rows?.[0]?.payload
+    const settings = await hydrateTripayPaymentMethods(
+      cleanWebsiteSettings(payload || defaultWebsiteSettings),
+    )
 
     return {
-      settings: cleanWebsiteSettings(payload || defaultWebsiteSettings),
+      settings,
       updatedAt: rows?.[0]?.updated_at || new Date().toISOString(),
     }
   } catch (error) {
     if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
+      const settings = await hydrateTripayPaymentMethods(defaultWebsiteSettings)
+
       return {
-        settings: defaultWebsiteSettings,
+        settings,
         updatedAt: new Date().toISOString(),
       }
     }
 
     throw error
+  }
+}
+
+export async function fetchTripayPaymentMethods(request) {
+  await requireUser(request, 'admin')
+
+  const settings = (await fetchWebsiteSettings()).settings
+  const tripayMethods = await fetchTripayPaymentChannels()
+  const paymentMethods = mergeTripayPaymentMethods(settings.paymentMethods, tripayMethods)
+
+  return {
+    paymentMethods,
+    synced: tripayMethods.length > 0,
+    updatedAt: new Date().toISOString(),
   }
 }
 
@@ -2362,6 +2381,154 @@ function tripayApiBaseUrl() {
   return process.env.TRIPAY_IS_PRODUCTION === 'true'
     ? 'https://tripay.co.id/api'
     : 'https://tripay.co.id/api-sandbox'
+}
+
+function inferTripayMethodBrand(code, name = '') {
+  const value = `${code} ${name}`.toLowerCase()
+
+  if (value.includes('qris')) return 'qris'
+  if (value.includes('bca')) return 'bca'
+  if (value.includes('bni')) return 'bni'
+  if (value.includes('bri')) return 'bri'
+  if (value.includes('mandiri')) return 'mandiri'
+  if (value.includes('permata')) return 'permata'
+  if (value.includes('cimb')) return 'cimb'
+  if (value.includes('bsi')) return 'bsi'
+  if (value.includes('muamalat')) return 'muamalat'
+  if (value.includes('alfamart')) return 'alfamart'
+  if (value.includes('indomaret')) return 'indomaret'
+  if (value.includes('alfamidi')) return 'alfamidi'
+  if (value.includes('ovo')) return 'ovo'
+  if (value.includes('shopee')) return 'shopeepay'
+
+  return code.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 40) || 'wallet'
+}
+
+function isTripayChannelActive(channel) {
+  const active = channel.active ?? channel.is_active ?? channel.enabled
+  const status = cleanText(channel.status || channel.payment_status || '', 40).toLowerCase()
+
+  if (active === false || active === 0 || active === '0') {
+    return false
+  }
+
+  if (['inactive', 'disabled', 'nonaktif', 'off'].includes(status)) {
+    return false
+  }
+
+  return true
+}
+
+function tripayMethodFromChannel(channel) {
+  const code = cleanText(
+    channel.code || channel.payment_code || channel.method || channel.payment_method || '',
+    40,
+  ).toUpperCase()
+  const label = cleanText(
+    channel.name || channel.payment_name || channel.title || channel.label || code,
+    80,
+  )
+  const logoUrl = cleanExternalUrl(
+    channel.icon_url ||
+      channel.iconUrl ||
+      channel.logo_url ||
+      channel.logoUrl ||
+      channel.image_url ||
+      channel.imageUrl ||
+      '',
+  )
+
+  if (!code) {
+    return null
+  }
+
+  return {
+    code,
+    label: label || code,
+    brand: inferTripayMethodBrand(code, label),
+    logoUrl,
+  }
+}
+
+async function fetchTripayPaymentChannels() {
+  const apiKey = cleanText(process.env.TRIPAY_API_KEY || '', 300)
+
+  if (!apiKey) {
+    return []
+  }
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 7000)
+
+  try {
+    const response = await fetch(`${tripayApiBaseUrl()}/merchant/payment-channel`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: 'application/json',
+        'User-Agent': 'ibnucreative-tripay-payment-methods',
+      },
+      signal: controller.signal,
+    })
+    const responseText = await response.text()
+    const responseData = parseJson(responseText, {})
+
+    if (!response.ok || responseData.success === false) {
+      return []
+    }
+
+    const channels = Array.isArray(responseData.data)
+      ? responseData.data
+      : Array.isArray(responseData)
+        ? responseData
+        : []
+
+    return channels
+      .filter(isTripayChannelActive)
+      .map(tripayMethodFromChannel)
+      .filter(Boolean)
+  } catch {
+    return []
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function mergeTripayPaymentMethods(savedMethods = [], tripayMethods = []) {
+  const savedByCode = new Map(
+    cleanWebsiteSettings({ paymentMethods: savedMethods }).paymentMethods.map((method) => [
+      method.code,
+      method,
+    ]),
+  )
+  const remoteMethods = cleanWebsiteSettings({ paymentMethods: tripayMethods }).paymentMethods
+
+  if (!remoteMethods.length) {
+    return [...savedByCode.values()]
+  }
+
+  return remoteMethods.map((method) => {
+    const saved = savedByCode.get(method.code)
+
+    return {
+      ...method,
+      logoUrl: saved?.logoUrl || method.logoUrl || '',
+      label: saved?.label || method.label,
+      brand: saved?.brand || method.brand,
+    }
+  })
+}
+
+async function hydrateTripayPaymentMethods(settings) {
+  const tripayMethods = await fetchTripayPaymentChannels()
+
+  if (!tripayMethods.length) {
+    return settings
+  }
+
+  return cleanWebsiteSettings({
+    ...settings,
+    paymentMethods: mergeTripayPaymentMethods(settings.paymentMethods, tripayMethods),
+  })
 }
 
 function tripayConfig(request) {

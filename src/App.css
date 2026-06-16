@@ -8041,6 +8041,12 @@ img {
   min-width: 0;
 }
 
+.settings-section-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -4px 0 2px;
+}
+
 .settings-section-icon {
   width: 34px;
   height: 34px;

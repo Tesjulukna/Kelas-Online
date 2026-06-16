@@ -144,6 +144,7 @@ function SectionHeader({ eyebrow, title, icon }) {
 function WebsiteSettingsPanel({
   settings,
   onSave,
+  onSyncTripayPaymentMethods = async () => [],
   onDownloadBackup,
   onRestoreBackup,
   onUploadImage,
@@ -152,6 +153,7 @@ function WebsiteSettingsPanel({
   const [draft, setDraft] = useState(() => cleanWebsiteSettings(settings))
   const [isSaving, setIsSaving] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [isSyncingPayments, setIsSyncingPayments] = useState(false)
   const [activeSectionId, setActiveSectionId] = useState('')
 
   const updateValue = (path, value) => {
@@ -237,6 +239,29 @@ function WebsiteSettingsPanel({
     } finally {
       event.target.value = ''
       setIsRestoring(false)
+    }
+  }
+
+  const handleSyncTripayPaymentMethods = async () => {
+    setIsSyncingPayments(true)
+
+    try {
+      const paymentMethods = await onSyncTripayPaymentMethods()
+
+      if (!paymentMethods.length) {
+        onNotify('Belum ada metode pembayaran aktif yang terbaca dari Tripay.')
+        return
+      }
+
+      setDraft((current) => cleanWebsiteSettings({
+        ...current,
+        paymentMethods,
+      }))
+      onNotify('Metode pembayaran aktif dari Tripay berhasil disinkronkan.')
+    } catch (error) {
+      onNotify(error.message || 'Metode pembayaran Tripay belum bisa disinkronkan.')
+    } finally {
+      setIsSyncingPayments(false)
     }
   }
 
@@ -612,6 +637,17 @@ function WebsiteSettingsPanel({
 
         <div className={`settings-section ${activeSectionId === 'payments' ? 'is-active' : ''}`}>
           <SectionHeader eyebrow="Pembayaran" title="Logo metode pembayaran" icon="wallet" />
+          <div className="settings-section-toolbar">
+            <button
+              className="btn btn-secondary"
+              type="button"
+              disabled={isSyncingPayments}
+              onClick={handleSyncTripayPaymentMethods}
+            >
+              <Icon name="download" />
+              {isSyncingPayments ? 'Sinkron...' : 'Sinkron dari Tripay'}
+            </button>
+          </div>
           <div className="settings-list payment-method-settings-list">
             {draft.paymentMethods.map((item, index) => (
               <article className="settings-row payment-method-settings-row" key={item.code}>
