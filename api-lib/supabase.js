@@ -1240,6 +1240,15 @@ export async function replaceClasses(classes) {
         })
       : assetRows
 
+  try {
+    await rest('classes?select=show_on_homepage,highlighted&limit=1')
+  } catch {
+    throw new ApiError(
+      500,
+      'Kolom kelas untuk homepage belum ada di Supabase. Jalankan schema.sql terbaru dulu, lalu ulangi.',
+    )
+  }
+
   await rest('classes?id=not.is.null', {
     method: 'DELETE',
     headers: { Prefer: 'return=minimal' },
@@ -1276,16 +1285,41 @@ export async function replaceDigitalProducts(request, products) {
   await requireUser(request, 'admin')
   const rows = cleanDigitalProductsForDb(products)
 
-  await rest('digital_products?id=not.is.null', {
-    method: 'DELETE',
-    headers: { Prefer: 'return=minimal' },
-  })
-
   if (rows.length) {
-    await rest('digital_products', {
-      method: 'POST',
+    try {
+      await rest('digital_products', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: rows,
+      })
+    } catch (error) {
+      if (
+        String(error?.message || '').includes('show_on_homepage') ||
+        String(error?.message || '').includes('highlighted')
+      ) {
+        throw new ApiError(
+          500,
+          'Kolom produk digital untuk homepage belum ada di Supabase. Jalankan schema.sql terbaru dulu, lalu ulangi.',
+        )
+      }
+
+      throw error
+    }
+
+    const keepIds = new Set(rows.map((row) => row.id))
+    const existingRows = await rest('digital_products?select=id').catch(() => [])
+    const staleRows = (existingRows || []).filter((row) => !keepIds.has(row.id))
+
+    for (const staleRow of staleRows) {
+      await rest(`digital_products?id=eq.${eq(staleRow.id)}`, {
+        method: 'DELETE',
+        headers: { Prefer: 'return=minimal' },
+      })
+    }
+  } else {
+    await rest('digital_products?id=not.is.null', {
+      method: 'DELETE',
       headers: { Prefer: 'return=minimal' },
-      body: rows,
     })
   }
 
@@ -2956,6 +2990,7 @@ function buildDigitalProductDeliveryMessage(order) {
 Pembayaran produk digital Anda sudah berhasil.
 
 Produk: ${order.productTitle}
+${order.productDescription ? `Deskripsi: ${order.productDescription}` : ''}
 ${order.downloadUrl ? `Link akses/download: ${order.downloadUrl}` : ''}
 ${order.deliveryNote ? `Catatan: ${order.deliveryNote}` : ''}
 
@@ -2989,6 +3024,7 @@ async function sendDigitalProductDeliveryEmail(order) {
       <p>Halo ${escapeHtml(order.buyerName)},</p>
       <p>Pembayaran produk digital Anda sudah berhasil. Silakan akses produk dari link berikut.</p>
       <p><strong>Produk:</strong> ${escapeHtml(order.productTitle)}</p>
+      ${order.productDescription ? `<p><strong>Deskripsi:</strong><br>${escapeHtml(order.productDescription)}</p>` : ''}
       ${downloadButton}
       ${order.downloadUrl ? `<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="${escapeHtml(order.downloadUrl)}">${escapeHtml(order.downloadUrl)}</a></p>` : ''}
       ${order.deliveryNote ? `<p><strong>Catatan:</strong><br>${escapeHtml(order.deliveryNote)}</p>` : ''}
@@ -3735,6 +3771,196 @@ export async function createTripayCheckout(request) {
   }
 }
 
+export async function createPublicDigitalProductCheckout(request) {
+  const payload = await readJson(request)
+  const productId = cleanText(payload.productId, 120)
+  const paymentMethod = cleanText(payload.paymentMethod || '', 40).toUpperCase()
+  const buyerName = cleanText(payload.buyerName || '', 120)
+  const buyerEmail = cleanEmail(payload.buyerEmail || '')
+  const buyerPhone = cleanPhone(payload.buyerPhone || '')
+  const acceptedTerms = payload.acceptedTerms === true
+  const acceptedMarketing = payload.acceptedMarketing === true
+
+  if (!productId) {
+    throw new ApiError(400, 'ID produk wajib dikirim.')
+  }
+
+  if (!buyerName || !buyerEmail || !buyerPhone) {
+    throw new ApiError(422, 'Nama, email, dan nomor HP wajib diisi.')
+  }
+
+  if (!paymentMethod) {
+    throw new ApiError(422, 'Pilih metode pembayaran dulu.')
+  }
+
+  if (!acceptedTerms || !acceptedMarketing) {
+    throw new ApiError(422, 'Centang persetujuan checkout terlebih dahulu.')
+  }
+
+  const productRows = await rest(
+    `digital_products?select=*&id=eq.${eq(productId)}&status=eq.${eq('Aktif')}&limit=1`,
+  )
+  const product = productRows?.[0]
+
+  if (!product) {
+    throw new ApiError(404, 'Produk digital aktif tidak ditemukan.')
+  }
+
+  const normalPrice = cleanNumber(product.price, 0, 1000000000)
+  const salePrice = cleanNumber(product.sale_price, 0, 1000000000)
+  const amount = salePrice > 0 ? salePrice : normalPrice
+
+  if (amount <= 0) {
+    const accessResult = await grantDigitalProductAccess({
+      productId: product.id,
+      buyerEmail,
+      buyerName,
+      source: 'free-public',
+      orderId: `FREE-PUBLIC-${product.id}-${Date.now()}`,
+    })
+    const deliveryEmailResult = await sendDigitalProductDeliveryEmail({
+      buyerName,
+      buyerEmail,
+      productTitle: cleanText(product.title || 'Produk digital', 160),
+      productDescription: cleanText(product.description || '', 800),
+      downloadUrl: cleanExternalUrl(product.file_url || ''),
+      deliveryNote: cleanText(product.delivery_note || '', 800),
+    })
+
+    return {
+      ok: true,
+      freeAccessGranted: accessResult.granted,
+      emailSent: deliveryEmailResult.sent,
+      message: 'Produk gratis sudah dikirim ke email.',
+    }
+  }
+
+  const config = tripayConfig(request)
+  const merchantRef = `ICP${Date.now()}${randomBytes(3).toString('hex').toUpperCase()}`
+  const itemSku = cleanText(product.tripay_product_key || product.id, 80)
+  const expiresAt = new Date(Date.now() + config.expiredMinutes * 60 * 1000).toISOString()
+  const checkoutPayload = {
+    method: paymentMethod,
+    merchant_ref: merchantRef,
+    amount,
+    customer_name: buyerName,
+    customer_email: buyerEmail,
+    customer_phone: buyerPhone || config.customerPhone,
+    order_items: [
+      {
+        sku: itemSku,
+        name: cleanText(product.title || 'Produk digital', 160),
+        price: amount,
+        quantity: 1,
+      },
+    ],
+    callback_url: config.callbackUrl,
+    return_url: absoluteRequestUrl(request, '/') || config.returnUrl,
+    expired_time: Math.floor(Date.parse(expiresAt) / 1000),
+    signature: tripayCheckoutSignature({
+      merchantCode: config.merchantCode,
+      merchantRef,
+      amount,
+      privateKey: config.privateKey,
+    }),
+  }
+  const response = await fetch(`${tripayApiBaseUrl()}/transaction/create`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
+      'User-Agent': 'ibnucreative-public-product-checkout',
+    },
+    body: encodeTripayForm(checkoutPayload),
+  })
+  const responseText = await response.text()
+  const responseData = parseJson(responseText, {})
+
+  if (!response.ok || responseData.success === false) {
+    throw new ApiError(
+      response.status || 502,
+      responseData.message || responseData.error || 'Checkout Tripay gagal dibuat.',
+    )
+  }
+
+  const tripayData = responseData.data || responseData
+  const paymentMethodDetails = await tripayPaymentMethodDetails(paymentMethod)
+  const paymentMethodLabel = paymentMethodDetails?.label || await tripayPaymentMethodLabel(paymentMethod)
+  const paymentFee = calculatePaymentMethodFee(paymentMethodDetails, amount)
+  const checkoutUrl =
+    cleanExternalUrl(tripayData.checkout_url || '') ||
+    cleanExternalUrl(tripayData.pay_url || '') ||
+    cleanExternalUrl(tripayData.payment_url || '')
+  const reference = cleanText(tripayData.reference || '', 180)
+
+  if (!checkoutUrl) {
+    throw new ApiError(502, 'Tripay tidak mengembalikan URL checkout.')
+  }
+
+  const savedPayload = JSON.stringify({
+    order_type: 'digital_product',
+    public_checkout: true,
+    product_id: product.id,
+    product_title: product.title || '',
+    product_description: product.description || '',
+    delivery_url: product.file_url || '',
+    delivery_note: product.delivery_note || '',
+    buyer_phone: buyerPhone,
+    accepted_marketing: acceptedMarketing,
+    payment_method: paymentMethod,
+    payment_name: paymentMethodLabel,
+    payment_fee: paymentFee,
+    total_amount: amount + paymentFee,
+    data: tripayData,
+    response: responseData,
+  })
+
+  await rest('tripay_orders', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      id: makeId('tripay'),
+      merchant_ref: merchantRef,
+      reference,
+      member_id: '',
+      buyer_name: buyerName,
+      buyer_email: buyerEmail,
+      class_id: `product:${product.id}`,
+      class_title: product.title || 'Produk digital',
+      amount,
+      status: 'pending',
+      checkout_url: checkoutUrl,
+      payload: savedPayload,
+    },
+  })
+
+  const emailResult = await sendTripayPaymentEmail({
+    buyerName,
+    buyerEmail,
+    classTitle: cleanText(product.title || 'Produk digital', 160),
+    itemType: 'digital_product',
+    amount,
+    paymentFee,
+    totalAmount: amount + paymentFee,
+    paymentMethod: paymentMethodLabel,
+    checkoutUrl,
+    expiresAt,
+  })
+
+  return {
+    ok: true,
+    checkoutUrl,
+    merchantRef,
+    reference,
+    paymentMethod,
+    expiresAt,
+    emailSent: emailResult.sent,
+    emailError: emailResult.sent ? '' : emailResult.message || '',
+    message: 'Checkout produk digital berhasil dibuat.',
+  }
+}
+
 export async function processTripayWebhook(request) {
   const privateKey = cleanText(process.env.TRIPAY_PRIVATE_KEY || '', 300)
   const rawBody = await readRawBody(request)
@@ -3865,6 +4091,7 @@ export async function processTripayWebhook(request) {
       buyerName: cleanText(order.buyer_name || 'Member', 160),
       buyerEmail: cleanEmail(order.buyer_email || ''),
       productTitle: cleanText(accessResult.product.title || order.class_title || 'Produk digital', 160),
+      productDescription: cleanText(accessResult.product.description || orderPayload.product_description || '', 800),
       downloadUrl: cleanExternalUrl(accessResult.product.file_url || orderPayload.delivery_url || ''),
       deliveryNote: cleanText(accessResult.product.delivery_note || orderPayload.delivery_note || '', 800),
     })

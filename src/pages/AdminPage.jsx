@@ -1870,6 +1870,36 @@ function AdminPage({
     }
   }
 
+  const duplicateClass = async (item) => {
+    try {
+      const copy = {
+        ...item,
+        id: `admin-class-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title: `${item.title} Copy`,
+        students: 0,
+        status: 'Draft',
+        showOnHomepage: false,
+        highlighted: false,
+        materials: (item.materials || []).map((material, index) => ({
+          ...material,
+          id: `material-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`,
+        })),
+      }
+
+      await onClassesChange((current) => [copy, ...current])
+      onNotify('Kelas berhasil diduplikat sebagai draft.')
+    } catch (error) {
+      onNotify(error.message || 'Kelas tidak bisa diduplikat.')
+    }
+  }
+
+  const showClassAnalysis = (item) => {
+    const homepageLabel = item.showOnHomepage !== false ? 'tampil di homepage' : 'disembunyikan dari homepage'
+    const statusLabel = item.status || 'Draft'
+
+    onNotify(`${item.title}: ${item.students || 0} peserta, status ${statusLabel}, ${homepageLabel}.`)
+  }
+
   const confirmDeleteClass = async () => {
     const classId = pendingDeleteClass?.id
 
@@ -2269,35 +2299,66 @@ function AdminPage({
                   <button type="button" onClick={() => handleEditClass(item)}>
                     Edit
                   </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateClassQuickAction(
-                        item.id,
-                        { showOnHomepage: item.showOnHomepage === false },
-                        item.showOnHomepage === false
-                          ? 'Kelas ditampilkan di homepage.'
-                          : 'Kelas disembunyikan dari homepage.',
-                      )
-                    }
-                  >
-                    {item.showOnHomepage === false ? 'Show' : 'Hide'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateClassQuickAction(
-                        item.id,
-                        { highlighted: !item.highlighted },
-                        item.highlighted ? 'Highlight kelas dimatikan.' : 'Kelas dijadikan highlight.',
-                      )
-                    }
-                  >
-                    {item.highlighted ? 'Unhighlight' : 'Highlight'}
-                  </button>
-                  <button type="button" onClick={() => setPendingDeleteClass(item)}>
-                    Hapus
-                  </button>
+                  <details className="row-action-menu">
+                    <summary aria-label={`Buka aksi kelas ${item.title}`}>
+                      <Icon name="moreVertical" />
+                    </summary>
+                    <div className="row-action-menu-panel">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClassQuickAction(
+                            item.id,
+                            { showOnHomepage: item.showOnHomepage === false },
+                            item.showOnHomepage === false
+                              ? 'Kelas ditampilkan di homepage.'
+                              : 'Kelas disembunyikan dari homepage.',
+                          )
+                        }
+                      >
+                        {item.showOnHomepage === false ? 'Show' : 'Hide'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClassQuickAction(
+                            item.id,
+                            { status: 'Aktif' },
+                            'Kelas dipublish.',
+                          )
+                        }
+                      >
+                        Publish
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClassQuickAction(
+                            item.id,
+                            { highlighted: !item.highlighted },
+                            item.highlighted
+                              ? 'Highlight kelas dimatikan.'
+                              : 'Kelas dijadikan highlight.',
+                          )
+                        }
+                      >
+                        {item.highlighted ? 'Unhighlight' : 'Highlight'}
+                      </button>
+                      <button type="button" onClick={() => showClassAnalysis(item)}>
+                        Analisis
+                      </button>
+                      <button type="button" onClick={() => duplicateClass(item)}>
+                        Duplicat
+                      </button>
+                      <button
+                        className="danger-action"
+                        type="button"
+                        onClick={() => setPendingDeleteClass(item)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </details>
                 </span>
               </div>
             ))}

@@ -4,6 +4,7 @@ import {
   createGoogleAuthUrl,
   createMember,
   createSubmission,
+  createPublicDigitalProductCheckout,
   createSupportTicket,
   createTripayCheckout,
   deleteMember,
@@ -313,6 +314,16 @@ async function routeRequest(request, response) {
 
   if (route === 'tripay-checkout') {
     sendJson(response, 200, await createTripayCheckout(request))
+    return
+  }
+
+  if (route === 'public-product-checkout') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+      return
+    }
+
+    sendJson(response, 200, await createPublicDigitalProductCheckout(request))
     return
   }
 

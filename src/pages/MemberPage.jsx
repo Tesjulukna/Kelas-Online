@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
@@ -250,6 +250,7 @@ function MemberPage({
   supportTickets = [],
   submissions = [],
   payments = [],
+  checkoutClassRequestId = '',
   activeMenu,
   onMenuChange,
   isMenuOpen,
@@ -259,6 +260,7 @@ function MemberPage({
   onReplySupportTicket = async () => {},
   onCreateSubmission = async () => {},
   onCreateTripayCheckout = async () => {},
+  onCheckoutClassRequestHandled = () => {},
   focusTarget = null,
   websiteSettings = defaultWebsiteSettings,
 }) {
@@ -294,6 +296,7 @@ function MemberPage({
   const [dismissedExpiredPayments, setDismissedExpiredPayments] = useState(() =>
     readDismissedExpiredPaymentNotices(userId),
   )
+  const handledCheckoutRequestRef = useRef('')
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
   const selectedDigitalProduct = activeDigitalProducts.find(
@@ -346,45 +349,59 @@ function MemberPage({
   const paymentModalAmount = getCheckoutAmount(paymentMethodCourse)
   const paymentModalFee = getPaymentMethodFee(selectedPaymentMethod, paymentModalAmount)
   const paymentModalTotal = paymentModalAmount + paymentModalFee
-  const activePaymentsByClass = new Map()
-  const expiredPaymentsByClass = new Map()
-  const activePaymentsByProduct = new Map()
-  const expiredPaymentsByProduct = new Map()
+  const {
+    activePaymentsByClass,
+    expiredPaymentsByClass,
+    activePaymentsByProduct,
+    expiredPaymentsByProduct,
+  } = useMemo(() => {
+    const nextActivePaymentsByClass = new Map()
+    const nextExpiredPaymentsByClass = new Map()
+    const nextActivePaymentsByProduct = new Map()
+    const nextExpiredPaymentsByProduct = new Map()
 
-  payments
-    .filter((payment) => payment.source === 'tripay')
-    .forEach((payment) => {
-      const status = String(payment.status || '').toLowerCase()
-      const isProductPayment = payment.itemType === 'digital_product' || Boolean(payment.productId)
-      const productId = payment.productId || String(payment.classId || '').replace(/^product:/, '')
-      const pendingMap = isProductPayment ? activePaymentsByProduct : activePaymentsByClass
-      const expiredMap = isProductPayment ? expiredPaymentsByProduct : expiredPaymentsByClass
-      const key = isProductPayment ? productId : payment.classId
-      const currentPending = pendingMap.get(key)
-      const currentExpired = expiredMap.get(key)
+    payments
+      .filter((payment) => payment.source === 'tripay')
+      .forEach((payment) => {
+        const status = String(payment.status || '').toLowerCase()
+        const isProductPayment = payment.itemType === 'digital_product' || Boolean(payment.productId)
+        const productId = payment.productId || String(payment.classId || '').replace(/^product:/, '')
+        const pendingMap = isProductPayment ? nextActivePaymentsByProduct : nextActivePaymentsByClass
+        const expiredMap = isProductPayment ? nextExpiredPaymentsByProduct : nextExpiredPaymentsByClass
+        const key = isProductPayment ? productId : payment.classId
+        const currentPending = pendingMap.get(key)
+        const currentExpired = expiredMap.get(key)
 
-      if (
-        ['pending', 'unpaid', 'waiting', 'callback'].includes(status) &&
-        payment.checkoutUrl &&
-        !payment.isExpired
-      ) {
         if (
-          !currentPending ||
-          Date.parse(payment.createdAt || '') > Date.parse(currentPending.createdAt || '')
+          ['pending', 'unpaid', 'waiting', 'callback'].includes(status) &&
+          payment.checkoutUrl &&
+          !payment.isExpired
         ) {
-          pendingMap.set(key, payment)
+          if (
+            !currentPending ||
+            Date.parse(payment.createdAt || '') > Date.parse(currentPending.createdAt || '')
+          ) {
+            pendingMap.set(key, payment)
+          }
         }
-      }
 
-      if (status === 'expired' || payment.isExpired) {
-        if (
-          !currentExpired ||
-          Date.parse(payment.createdAt || '') > Date.parse(currentExpired.createdAt || '')
-        ) {
-          expiredMap.set(key, payment)
+        if (status === 'expired' || payment.isExpired) {
+          if (
+            !currentExpired ||
+            Date.parse(payment.createdAt || '') > Date.parse(currentExpired.createdAt || '')
+          ) {
+            expiredMap.set(key, payment)
+          }
         }
-      }
-    })
+      })
+
+    return {
+      activePaymentsByClass: nextActivePaymentsByClass,
+      expiredPaymentsByClass: nextExpiredPaymentsByClass,
+      activePaymentsByProduct: nextActivePaymentsByProduct,
+      expiredPaymentsByProduct: nextExpiredPaymentsByProduct,
+    }
+  }, [payments])
 
   const rememberCoursePosition = useCallback((courseId, materialIndex) => {
     setCourseProgress((current) => ({
@@ -452,7 +469,7 @@ function MemberPage({
     return Math.min(100, Math.round((submittedRequiredIds.size / requiredCount) * 100))
   }
 
-  const handleDashboardMenuChange = (menuId) => {
+  const handleDashboardMenuChange = useCallback((menuId) => {
     if (menuId !== 'my-courses') {
       setSelectedCourseId(null)
       setActiveMaterialIndex(0)
@@ -463,7 +480,7 @@ function MemberPage({
     }
 
     onMenuChange(menuId)
-  }
+  }, [onMenuChange])
 
   const handleOpenDigitalProductDetail = (product) => {
     setSelectedDigitalProductId(product.id)
@@ -664,7 +681,7 @@ function MemberPage({
     onNotify('Sertifikat demo siap diunduh dari backend produksi.')
   }
 
-  const handleStartCheckout = async (item, paymentMethod = '', { forceNewPayment = false, itemType = 'class' } = {}) => {
+  const handleStartCheckout = useCallback(async (item, paymentMethod = '', { forceNewPayment = false, itemType = 'class' } = {}) => {
     const price = getCheckoutAmount({ ...item, itemType })
 
     setCheckoutClassId(`${itemType}:${item.id}`)
@@ -709,9 +726,9 @@ function MemberPage({
     } finally {
       setCheckoutClassId('')
     }
-  }
+  }, [handleDashboardMenuChange, onCreateTripayCheckout, onNotify])
 
-  const openPaymentMethodPopup = (item, { forceNewPayment = false, itemType = 'class' } = {}) => {
+  const openPaymentMethodPopup = useCallback((item, { forceNewPayment = false, itemType = 'class' } = {}) => {
     const price = getCheckoutAmount({ ...item, itemType })
     const pendingPayment = itemType === 'digital_product'
       ? activePaymentsByProduct.get(item.id)
@@ -731,7 +748,7 @@ function MemberPage({
     setSelectedPaymentMethodCode('')
     setIsPaymentTermsAccepted(false)
     setIsChangingPaymentMethod(forceNewPayment)
-  }
+  }, [activePaymentsByClass, activePaymentsByProduct, handleStartCheckout])
 
   const dismissExpiredPaymentNotice = (paymentId) => {
     const nextDismissed = [...new Set([...dismissedExpiredPayments, paymentId])]
@@ -767,6 +784,36 @@ function MemberPage({
       itemType,
     })
   }
+
+  useEffect(() => {
+    if (
+      !checkoutClassRequestId ||
+      activeMenu !== 'available-classes' ||
+      handledCheckoutRequestRef.current === checkoutClassRequestId
+    ) {
+      return
+    }
+
+    const targetCourse = availableCourses.find((course) => course.id === checkoutClassRequestId)
+
+    if (!targetCourse) {
+      return
+    }
+
+    handledCheckoutRequestRef.current = checkoutClassRequestId
+    const timer = window.setTimeout(() => {
+      openPaymentMethodPopup(targetCourse)
+      onCheckoutClassRequestHandled()
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [
+    checkoutClassRequestId,
+    activeMenu,
+    availableCourses,
+    openPaymentMethodPopup,
+    onCheckoutClassRequestHandled,
+  ])
 
   const handleSendSupport = async () => {
     if (!supportDraft.trim()) {

@@ -17,6 +17,7 @@ const websiteSettingsKey = 'ibnucreative.website-settings.v1'
 const classesSyncKey = 'ibnucreative.classes.sync.v1'
 const peopleSyncKey = 'ibnucreative.people.sync.v1'
 const websiteSettingsSyncKey = 'ibnucreative.website-settings.sync.v1'
+const pendingClassCheckoutKey = 'ibnucreative.pending-class-checkout.v1'
 const classesApiPath = '/api/classes'
 const digitalProductsApiPath = '/api/digital-products'
 const membersApiPath = '/api/members'
@@ -27,6 +28,7 @@ const settingsApiPath = '/api/settings'
 const backupApiPath = '/api/backup'
 const tripayPaymentMethodsApiPath = '/api/tripay-payment-methods'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
+const publicProductCheckoutApiPath = '/api/public-product-checkout'
 const loginApiPath = '/api/login'
 const googleAuthUrlApiPath = '/api/google-auth-url'
 const googleLoginApiPath = '/api/google-login'
@@ -1021,6 +1023,13 @@ function App() {
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [memberFocusTarget, setMemberFocusTarget] = useState(null)
+  const [pendingCheckoutClassId, setPendingCheckoutClassId] = useState(() => {
+    if (typeof window === 'undefined') {
+      return ''
+    }
+
+    return window.sessionStorage.getItem(pendingClassCheckoutKey) || ''
+  })
   const [seenNotificationIds, setSeenNotificationIds] = useState(() =>
     readSeenNotifications(readSession()?.userId),
   )
@@ -1439,8 +1448,45 @@ function App() {
     setLoginPassword('')
     setActiveSection('home')
     setIsDashboardMenuOpen(false)
-    navigateToDashboardMenu(nextSession.role, 'overview', { replace: true })
+    const pendingClassId =
+      nextSession.role === 'member'
+        ? pendingCheckoutClassId ||
+          (typeof window !== 'undefined'
+            ? window.sessionStorage.getItem(pendingClassCheckoutKey) || ''
+            : '')
+        : ''
+
+    if (pendingClassId) {
+      setPendingCheckoutClassId(pendingClassId)
+      navigateToDashboardMenu(nextSession.role, 'available-classes', { replace: true })
+    } else {
+      navigateToDashboardMenu(nextSession.role, 'overview', { replace: true })
+    }
     showNotice(message || `Berhasil masuk sebagai ${nextSession.role}.`)
+  }
+
+  const requestPublicClassCheckout = (classId) => {
+    const nextClassId = cleanText(classId || '')
+
+    if (!nextClassId) {
+      return
+    }
+
+    setPendingCheckoutClassId(nextClassId)
+    window.sessionStorage.setItem(pendingClassCheckoutKey, nextClassId)
+
+    if (session?.role === 'member') {
+      navigateToDashboardMenu('member', 'available-classes')
+      return
+    }
+
+    goToLogin()
+    showNotice('Silakan login dulu untuk melanjutkan pembayaran kelas.')
+  }
+
+  const clearPendingClassCheckout = () => {
+    setPendingCheckoutClassId('')
+    window.sessionStorage.removeItem(pendingClassCheckoutKey)
   }
 
   const handleLogin = async (event) => {
@@ -2035,6 +2081,16 @@ function App() {
     return data
   }
 
+  const handlePublicProductCheckout = async (payload) => {
+    const data = await requestJson(publicProductCheckoutApiPath, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    showNotice(data.message || 'Checkout produk digital berhasil dibuat.')
+    return data
+  }
+
   const currentMember = session?.role === 'member'
     ? members.find((member) => member.id === session.userId)
     : null
@@ -2070,6 +2126,8 @@ function App() {
             isLoggedIn={Boolean(session)}
             onLogin={goToDashboard}
             onExplore={goToHomeSection}
+            onRequestClassCheckout={requestPublicClassCheckout}
+            onPublicProductCheckout={handlePublicProductCheckout}
             classes={classes}
             digitalProducts={digitalProducts}
             settings={websiteSettings}
@@ -2106,6 +2164,7 @@ function App() {
               submissions={submissions}
               payments={payments}
               focusTarget={memberFocusTarget}
+              checkoutClassRequestId={pendingCheckoutClassId}
               websiteSettings={websiteSettings}
               activeMenu={activeMemberMenu}
               onMenuChange={(menuId) => navigateToDashboardMenu('member', menuId)}
@@ -2116,6 +2175,7 @@ function App() {
               onReplySupportTicket={handleReplySupportTicket}
               onCreateSubmission={handleCreateSubmission}
               onCreateTripayCheckout={handleCreateTripayCheckout}
+              onCheckoutClassRequestHandled={clearPendingClassCheckout}
             />
           ) : (
             <LoginPage
