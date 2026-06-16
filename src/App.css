@@ -2103,6 +2103,33 @@ mark {
   background: rgba(148, 163, 184, 0.42);
 }
 
+@media (min-width: 761px) {
+  .site-header.dashboard-header {
+    padding-left: 288px;
+  }
+
+  .dashboard-layout {
+    display: block;
+    width: min(1180px, calc(100% - 48px));
+    margin: 0 auto;
+    padding-left: 264px;
+  }
+
+  .dashboard-sidebar,
+  .admin-sidebar {
+    position: fixed;
+    z-index: 25;
+    top: 88px;
+    left: max(24px, calc((100vw - 1180px) / 2));
+    width: 248px;
+    max-height: calc(100vh - 110px);
+  }
+
+  .dashboard-main {
+    min-width: 0;
+  }
+}
+
 .dashboard-sidebar .eyebrow {
   color: var(--color-teal-dark);
 }
@@ -2533,6 +2560,7 @@ img {
 
   .site-header.dashboard-header {
     grid-template-columns: 36px minmax(0, 1fr) auto;
+    padding-left: 12px;
   }
 
   .brand {
@@ -2546,6 +2574,8 @@ img {
   }
 
   .dashboard-layout {
+    display: grid;
+    padding-left: 0;
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
     width: calc(100% - 22px);
