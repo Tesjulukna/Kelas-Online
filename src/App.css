@@ -2080,12 +2080,27 @@ mark {
 
 .dashboard-sidebar,
 .admin-sidebar {
+  position: sticky;
+  top: 88px;
+  align-self: start;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   gap: 14px;
   padding: 14px;
   border: 1px solid var(--color-border);
   color: var(--color-text);
   background: #ffffff;
   box-shadow: var(--shadow-sm);
+}
+
+.dashboard-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.42);
 }
 
 .dashboard-sidebar .eyebrow {
@@ -2545,6 +2560,10 @@ img {
   }
 
   .dashboard-sidebar {
+    position: fixed;
+    top: 0;
+    max-height: 100dvh;
+    overflow-y: auto;
     grid-column: auto;
     align-content: start;
     grid-auto-rows: max-content;
