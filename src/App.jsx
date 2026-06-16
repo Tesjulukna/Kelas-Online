@@ -84,6 +84,10 @@ function getInitialPage(session) {
     return session?.role ?? 'home'
   }
 
+  if (window.location.hash.includes('access_token=') || window.location.hash.includes('error=')) {
+    return 'login'
+  }
+
   const page = getPageFromPath(window.location.pathname)
 
   if (session?.role && page !== session.role && !publicInfoPages.includes(page)) {
@@ -1382,7 +1386,7 @@ function App() {
   }
 
   useEffect(() => {
-    if (typeof window === 'undefined' || window.location.pathname !== '/auth/google/callback') {
+    if (typeof window === 'undefined') {
       return
     }
 
@@ -1394,6 +1398,15 @@ function App() {
       params.get('error') ||
       query.get('error_description') ||
       query.get('error')
+
+    if (
+      window.location.pathname !== '/auth/google/callback' &&
+      !accessToken &&
+      !errorMessage
+    ) {
+      return
+    }
+
     const backToLogin = (message) => {
       window.history.replaceState({}, '', pagePaths.login)
       window.setTimeout(() => {
@@ -1413,6 +1426,7 @@ function App() {
     }
 
     let isCurrent = true
+    window.history.replaceState({}, '', pagePaths.login)
 
     Promise.resolve()
       .then(() => {
@@ -1989,7 +2003,7 @@ function App() {
             />
           ))}
       </main>
-      {(page === 'home' || page === 'login' || publicInfoPages.includes(page)) && (
+      {(page === 'home' || publicInfoPages.includes(page)) && (
         <SiteFooter
           onHomeSection={goToHomeSection}
           onInfoPage={goToPublicInfoPage}
@@ -2351,7 +2365,7 @@ function Header({
       className={
         session
           ? `site-header logged-in ${showDashboardMenu ? 'dashboard-header' : 'public-header'}`
-          : 'site-header'
+          : `site-header public-header public-site-header ${activePage === 'login' ? 'login-header' : 'home-header'}`
       }
     >
       {showDashboardMenu && (
@@ -2469,17 +2483,21 @@ function NotificationBell({ notifications, unreadCount, onOpenNotification }) {
             <strong>Notifikasi</strong>
             <small>{unreadCount} baru</small>
           </div>
-          {notifications.slice(0, 8).map((notification) => (
-            <button
-              key={notification.id}
-              type="button"
-              role="menuitem"
-              onClick={() => handleOpenNotification(notification)}
-            >
-              <strong>{notification.title}</strong>
-              <span>{notification.message}</span>
-            </button>
-          ))}
+          {notifications.length > 0 && (
+            <div className="notification-list" role="none">
+              {notifications.map((notification) => (
+                <button
+                  key={notification.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleOpenNotification(notification)}
+                >
+                  <strong>{notification.title}</strong>
+                  <span>{notification.message}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {!notifications.length && (
             <p className="notification-empty">Belum ada notifikasi.</p>
           )}

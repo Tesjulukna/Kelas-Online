@@ -218,6 +218,24 @@
   color: var(--color-muted);
 }
 
+.notification-list {
+  display: grid;
+  gap: 6px;
+  max-height: min(420px, calc(100vh - 132px));
+  overflow-y: auto;
+  padding-right: 2px;
+  overscroll-behavior: contain;
+}
+
+.notification-list::-webkit-scrollbar {
+  width: 7px;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
 .notification-dropdown button {
   display: grid;
   gap: 3px;
@@ -266,6 +284,14 @@
 
 .site-header.public-header {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.site-header.public-site-header,
+.site-header.login-header,
+.site-header.home-header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
 }
 
 .site-header.dashboard-header {
