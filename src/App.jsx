@@ -407,7 +407,10 @@ function readSession() {
   }
 
   try {
-    const saved = JSON.parse(window.sessionStorage.getItem(sessionKey))
+    const rawSession =
+      window.localStorage.getItem(sessionKey) ??
+      window.sessionStorage.getItem(sessionKey)
+    const saved = JSON.parse(rawSession)
 
     if (
       !saved ||
@@ -416,11 +419,11 @@ function readSession() {
       typeof saved.username !== 'string' ||
       typeof saved.userId !== 'string'
     ) {
-      window.sessionStorage.removeItem(sessionKey)
+      clearSession()
       return null
     }
 
-    return {
+    const nextSession = {
       userId: cleanText(saved.userId || ''),
       name: cleanText(saved.name) || 'Sahabat Kreatif',
       username: cleanUsername(saved.username || saved.name || ''),
@@ -433,9 +436,43 @@ function readSession() {
       token: cleanSessionToken(saved.token),
       signedInAt: saved.signedInAt,
     }
+
+    saveSession(nextSession)
+
+    return nextSession
   } catch {
-    window.sessionStorage.removeItem(sessionKey)
+    clearSession()
     return null
+  }
+}
+
+function saveSession(nextSession) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(sessionKey, JSON.stringify(nextSession))
+    window.sessionStorage.removeItem(sessionKey)
+  } catch {
+    try {
+      window.sessionStorage.setItem(sessionKey, JSON.stringify(nextSession))
+    } catch {
+      // If browser storage is blocked, the in-memory React state still works for this page.
+    }
+  }
+}
+
+function clearSession() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.removeItem(sessionKey)
+    window.sessionStorage.removeItem(sessionKey)
+  } catch {
+    // Storage cleanup is best-effort.
   }
 }
 
@@ -1105,7 +1142,7 @@ function App() {
             const nextSession = syncSessionWithMemberAccount(session, memberAccount)
 
             if (JSON.stringify(nextSession) !== JSON.stringify(session)) {
-              window.sessionStorage.setItem(sessionKey, JSON.stringify(nextSession))
+              saveSession(nextSession)
               setSession(nextSession)
             }
           }
@@ -1225,7 +1262,7 @@ function App() {
         throw new Error('Session login tidak valid.')
       }
 
-      window.sessionStorage.setItem(sessionKey, JSON.stringify(nextSession))
+      saveSession(nextSession)
       setSession(nextSession)
       setSeenNotificationIds(readSeenNotifications(nextSession.userId))
       setLoginUsername(nextSession.username)
@@ -1251,7 +1288,7 @@ function App() {
     }).catch(() => {
       // Local preview may not have a PHP session; browser session cleanup still happens.
     })
-    window.sessionStorage.removeItem(sessionKey)
+    clearSession()
     setSession(null)
     setSeenNotificationIds([])
     setIsDashboardMenuOpen(false)
@@ -1317,7 +1354,7 @@ function App() {
           email: cleanEmail(data.session?.email ?? nextSession.email ?? ''),
         }
 
-        window.sessionStorage.setItem(sessionKey, JSON.stringify(savedSession))
+        saveSession(savedSession)
         setSession(savedSession)
         setIsProfileEditorOpen(false)
         announcePeopleSync()
