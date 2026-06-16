@@ -4078,6 +4078,7 @@ img {
 }
 
 .member-pagination-bar,
+.payment-pagination-bar,
 .pagination-controls,
 .pagination-pages {
   display: flex;
@@ -4086,7 +4087,8 @@ img {
   flex-wrap: wrap;
 }
 
-.member-pagination-bar {
+.member-pagination-bar,
+.payment-pagination-bar {
   justify-content: space-between;
   margin-bottom: 12px;
   padding: 10px 12px;
@@ -4095,13 +4097,15 @@ img {
   background: #fbfcfd;
 }
 
-.member-pagination-bar p {
+.member-pagination-bar p,
+.payment-pagination-bar p {
   margin: 0;
   color: var(--color-muted);
   font-size: 0.84rem;
 }
 
-.member-pagination-bar label {
+.member-pagination-bar label,
+.payment-pagination-bar label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -4110,7 +4114,8 @@ img {
   font-weight: 700;
 }
 
-.member-pagination-bar select {
+.member-pagination-bar select,
+.payment-pagination-bar select {
   min-height: 34px;
   padding: 0 10px;
   border: 1px solid var(--color-border);

@@ -525,6 +525,8 @@ function AdminPage({
   const [paymentSearchTerm, setPaymentSearchTerm] = useState('')
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all')
   const [paymentSourceFilter, setPaymentSourceFilter] = useState('all')
+  const [paymentPageSize, setPaymentPageSize] = useState(10)
+  const [paymentPage, setPaymentPage] = useState(1)
   const [supportForm, setSupportForm] = useState(() => createEmptySupportForm())
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false)
   const [pendingDeleteSupport, setPendingDeleteSupport] = useState(null)
@@ -593,6 +595,17 @@ function AdminPage({
 
     return searchMatches && statusMatches && sourceMatches
   })
+  const paymentPageCount = Math.max(1, Math.ceil(filteredPayments.length / paymentPageSize))
+  const safePaymentPage = Math.min(paymentPage, paymentPageCount)
+  const paymentPageStart = filteredPayments.length ? (safePaymentPage - 1) * paymentPageSize : 0
+  const paymentPageEnd = Math.min(filteredPayments.length, paymentPageStart + paymentPageSize)
+  const visiblePayments = filteredPayments.slice(paymentPageStart, paymentPageEnd)
+  const paymentPageNumbers = Array.from({ length: paymentPageCount }, (_, index) => index + 1).filter(
+    (pageNumber) =>
+      pageNumber === 1 ||
+      pageNumber === paymentPageCount ||
+      Math.abs(pageNumber - safePaymentPage) <= 2,
+  )
   const memberSearchQuery = memberSearchTerm.trim().toLowerCase()
   const memberStatusOptions = [
     ...new Set(members.map((member) => member.status).filter(Boolean)),
@@ -2225,7 +2238,10 @@ function AdminPage({
                   <input
                     type="search"
                     value={paymentSearchTerm}
-                    onChange={(event) => setPaymentSearchTerm(event.target.value)}
+                    onChange={(event) => {
+                      setPaymentSearchTerm(event.target.value)
+                      setPaymentPage(1)
+                    }}
                     placeholder="Nama, email, kelas, atau order"
                   />
                 </label>
@@ -2233,7 +2249,10 @@ function AdminPage({
                   Status
                   <select
                     value={paymentStatusFilter}
-                    onChange={(event) => setPaymentStatusFilter(event.target.value)}
+                    onChange={(event) => {
+                      setPaymentStatusFilter(event.target.value)
+                      setPaymentPage(1)
+                    }}
                   >
                     <option value="all">Semua status</option>
                     {paymentStatusOptions.map((status) => (
@@ -2247,7 +2266,10 @@ function AdminPage({
                   Kanal
                   <select
                     value={paymentSourceFilter}
-                    onChange={(event) => setPaymentSourceFilter(event.target.value)}
+                    onChange={(event) => {
+                      setPaymentSourceFilter(event.target.value)
+                      setPaymentPage(1)
+                    }}
                   >
                     <option value="all">Semua kanal</option>
                     {paymentSourceOptions.map((source) => (
@@ -2259,6 +2281,31 @@ function AdminPage({
                 </label>
               </div>
             </div>
+
+            {filteredPayments.length > 0 && (
+              <div className="member-pagination-bar payment-pagination-bar">
+                <p>
+                  Menampilkan {paymentPageStart + 1}-{paymentPageEnd} dari{' '}
+                  {filteredPayments.length} transaksi
+                </p>
+                <label className="pagination-size-select">
+                  Tampilkan
+                  <select
+                    value={paymentPageSize}
+                    onChange={(event) => {
+                      setPaymentPageSize(Number(event.target.value))
+                      setPaymentPage(1)
+                    }}
+                  >
+                    {[10, 25, 50, 100].map((size) => (
+                      <option value={size} key={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
 
             <div
               className="admin-table payment-table compact-list-table"
@@ -2273,7 +2320,7 @@ function AdminPage({
                 <span role="columnheader">Status</span>
                 <span role="columnheader">Waktu</span>
               </div>
-              {filteredPayments.map((payment) => {
+              {visiblePayments.map((payment) => {
                 const statusType = isPaidPayment(payment)
                   ? 'success'
                   : isFailedPayment(payment)
@@ -2327,6 +2374,37 @@ function AdminPage({
                 </article>
               )}
             </div>
+            {filteredPayments.length > paymentPageSize && (
+              <div className="pagination-controls" aria-label="Navigasi halaman transaksi">
+                <button
+                  type="button"
+                  onClick={() => setPaymentPage(Math.max(1, safePaymentPage - 1))}
+                  disabled={safePaymentPage === 1}
+                >
+                  Prev
+                </button>
+                <div className="pagination-pages">
+                  {paymentPageNumbers.map((pageNumber) => (
+                    <button
+                      className={safePaymentPage === pageNumber ? 'active' : ''}
+                      type="button"
+                      key={pageNumber}
+                      onClick={() => setPaymentPage(pageNumber)}
+                      aria-current={safePaymentPage === pageNumber ? 'page' : undefined}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPaymentPage(Math.min(paymentPageCount, safePaymentPage + 1))}
+                  disabled={safePaymentPage === paymentPageCount}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </section>
         </>
       )}

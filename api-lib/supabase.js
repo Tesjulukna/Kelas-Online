@@ -1059,6 +1059,7 @@ function paymentPublic(row, source) {
     reference: cleanText(row.reference || '', 180),
     buyerName: cleanText(row.buyer_name || '', 160),
     buyerEmail: cleanEmail(row.buyer_email || ''),
+    memberId: cleanText(row.member_id || '', 120),
     classId: cleanText(row.class_id || '', 120),
     classTitle: cleanText(
       row.class_title || row.product_name || row.product_key || 'Kelas',
@@ -1074,14 +1075,75 @@ function paymentPublic(row, source) {
   }
 }
 
+function historicalAccessPayments(members, classes, payments) {
+  const paidAccessKeys = new Set(
+    payments
+      .filter((payment) => payment.accessGranted || ['paid', 'processed', 'success', 'settlement'].includes(payment.status.toLowerCase()))
+      .map((payment) => `${payment.memberId || payment.buyerEmail}:${payment.classId}`)
+      .filter((key) => !key.startsWith(':') && !key.endsWith(':')),
+  )
+  const paidClasses = (classes || [])
+    .filter((course) => cleanNumber(course.price, 0, 1000000000) > 0)
+    .map((course) => ({
+      id: cleanText(course.id, 120),
+      title: cleanText(course.title || 'Kelas', 180),
+      price: cleanNumber(course.price, 0, 1000000000),
+    }))
+
+  return (members || [])
+    .filter((member) => member.role === 'member' && member.status === 'Aktif')
+    .flatMap((member) => {
+      const memberId = cleanText(member.id, 120)
+      const memberEmail = cleanEmail(member.email || '')
+      const allowedClassIds = parseJson(member.allowed_class_ids, null)
+      const accessibleClasses = Array.isArray(allowedClassIds)
+        ? paidClasses.filter((course) => allowedClassIds.includes(course.id))
+        : paidClasses
+
+      return accessibleClasses
+        .filter((course) => {
+          const keyById = `${memberId}:${course.id}`
+          const keyByEmail = `${memberEmail}:${course.id}`
+
+          return !paidAccessKeys.has(keyById) && !paidAccessKeys.has(keyByEmail)
+        })
+        .map((course) => ({
+          id: `legacy-access:${memberId}:${course.id}`,
+          source: 'legacy_access',
+          sourceLabel: 'Akses lama',
+          orderCode: `AKSES-${memberId}-${course.id}`,
+          merchantRef: '',
+          reference: '',
+          buyerName: cleanText(member.name || 'Member', 160),
+          buyerEmail: memberEmail,
+          memberId,
+          classId: course.id,
+          classTitle: course.title,
+          amount: course.price,
+          status: 'paid',
+          paymentMethod: 'Akses kelas',
+          checkoutUrl: '',
+          accessGranted: true,
+          createdAt: cleanText(member.joined_at || member.created_at || '', 60),
+          updatedAt: cleanText(member.updated_at || member.joined_at || '', 60),
+        }))
+    })
+}
+
 export async function fetchPayments() {
-  const [tripayRows, lynkRows] = await Promise.all([
+  const [tripayRows, lynkRows, memberRows, classRows] = await Promise.all([
     fetchBackupTable('tripay_orders'),
     fetchBackupTable('lynk_orders'),
+    fetchBackupTable('accounts'),
+    fetchBackupTable('classes'),
   ])
-  const payments = [
+  const gatewayPayments = [
     ...(tripayRows || []).map((row) => paymentPublic(row, 'tripay')),
     ...(lynkRows || []).map((row) => paymentPublic(row, 'lynk')),
+  ]
+  const payments = [
+    ...gatewayPayments,
+    ...historicalAccessPayments(memberRows || [], classRows || [], gatewayPayments),
   ].sort((a, b) => {
     const bTime = Date.parse(b.createdAt || b.updatedAt || '') || 0
     const aTime = Date.parse(a.createdAt || a.updatedAt || '') || 0

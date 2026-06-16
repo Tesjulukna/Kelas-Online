@@ -692,6 +692,7 @@ function cleanPayments(value) {
       reference: cleanLongText(item.reference || '', 180),
       buyerName: cleanText(item.buyerName || 'Member'),
       buyerEmail: cleanEmail(item.buyerEmail || ''),
+      memberId: cleanText(item.memberId || ''),
       classId: cleanText(item.classId || ''),
       classTitle: cleanLongText(item.classTitle || 'Kelas', 180),
       amount: Math.max(0, Math.round(Number(item.amount) || 0)),
