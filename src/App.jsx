@@ -27,6 +27,8 @@ const backupApiPath = '/api/backup'
 const tripayPaymentMethodsApiPath = '/api/tripay-payment-methods'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
 const loginApiPath = '/api/login'
+const googleAuthUrlApiPath = '/api/google-auth-url'
+const googleLoginApiPath = '/api/google-login'
 const logoutApiPath = '/api/logout'
 const profileApiPath = '/api/profile'
 const allowedRoles = ['member', 'admin']
@@ -176,6 +178,10 @@ function cleanUsername(value) {
 function cleanEmail(value) {
   const email = cleanLongText(value, 120).toLowerCase()
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ''
+}
+
+function cleanPhone(value) {
+  return cleanLongText(value, 40).replace(/[^0-9+()\-\s.]/g, '')
 }
 
 function cleanSessionToken(value) {
@@ -578,6 +584,7 @@ function cleanMembers(value) {
       name: cleanText(item.name || item.username) || 'Member',
       username: cleanUsername(item.username),
       email: cleanLongText(item.email || '', 120),
+      phone: cleanPhone(item.phone || ''),
       status: cleanText(item.status || 'Aktif'),
       avatar: cleanAvatar(item.avatar),
       allowedClassIds: Array.isArray(item.allowedClassIds)
@@ -901,6 +908,7 @@ function App() {
     () => readSession()?.username ?? '',
   )
   const [loginPassword, setLoginPassword] = useState('')
+  const [isGoogleLoginLoading, setIsGoogleLoginLoading] = useState(false)
   const [activeMemberMenu, setActiveMemberMenu] = useState(() =>
     getDashboardMenuFromUrl('member'),
   )
@@ -1321,6 +1329,22 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const applyLoginSession = (nextSession, message) => {
+    if (!nextSession || !allowedRoles.includes(nextSession.role)) {
+      throw new Error('Session login tidak valid.')
+    }
+
+    saveSession(nextSession)
+    setSession(nextSession)
+    setSeenNotificationIds(readSeenNotifications(nextSession.userId))
+    setLoginUsername(nextSession.username)
+    setLoginPassword('')
+    setActiveSection('home')
+    setIsDashboardMenuOpen(false)
+    navigateToDashboardMenu(nextSession.role, 'overview', { replace: true })
+    showNotice(message || `Berhasil masuk sebagai ${nextSession.role}.`)
+  }
+
   const handleLogin = async (event) => {
     event.preventDefault()
 
@@ -1334,23 +1358,101 @@ function App() {
       })
       const nextSession = data.session
 
-      if (!nextSession || !allowedRoles.includes(nextSession.role)) {
-        throw new Error('Session login tidak valid.')
-      }
-
-      saveSession(nextSession)
-      setSession(nextSession)
-      setSeenNotificationIds(readSeenNotifications(nextSession.userId))
-      setLoginUsername(nextSession.username)
-      setLoginPassword('')
-      setActiveSection('home')
-      setIsDashboardMenuOpen(false)
-      navigateToDashboardMenu(nextSession.role, 'overview', { replace: true })
-      showNotice(`Berhasil masuk sebagai ${nextSession.role}.`)
+      applyLoginSession(nextSession, `Berhasil masuk sebagai ${nextSession.role}.`)
     } catch (error) {
       showNotice(error.message || 'Login gagal.')
     }
   }
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoginLoading(true)
+
+    try {
+      const data = await requestJson(googleAuthUrlApiPath)
+
+      if (!data.url) {
+        throw new Error('URL login Google tidak tersedia.')
+      }
+
+      window.location.href = data.url
+    } catch (error) {
+      setIsGoogleLoginLoading(false)
+      showNotice(error.message || 'Login Google belum bisa dibuka.')
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.location.pathname !== '/auth/google/callback') {
+      return
+    }
+
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const query = new URLSearchParams(window.location.search)
+    const accessToken = params.get('access_token')
+    const errorMessage =
+      params.get('error_description') ||
+      params.get('error') ||
+      query.get('error_description') ||
+      query.get('error')
+    const backToLogin = (message) => {
+      window.history.replaceState({}, '', pagePaths.login)
+      window.setTimeout(() => {
+        setPage('login')
+        showNotice(message)
+      }, 0)
+    }
+
+    if (errorMessage) {
+      backToLogin(errorMessage)
+      return
+    }
+
+    if (!accessToken) {
+      backToLogin('Token login Google tidak ditemukan.')
+      return
+    }
+
+    let isCurrent = true
+
+    Promise.resolve()
+      .then(() => {
+        if (isCurrent) {
+          setIsGoogleLoginLoading(true)
+        }
+
+        return requestJson(googleLoginApiPath, {
+          method: 'POST',
+          body: JSON.stringify({ accessToken }),
+        })
+      })
+      .then((data) => {
+        if (!isCurrent) {
+          return
+        }
+
+        applyLoginSession(data.session, 'Berhasil masuk dengan akun Google.')
+      })
+      .catch((error) => {
+        if (!isCurrent) {
+          return
+        }
+
+        window.history.replaceState({}, '', pagePaths.login)
+        setPage('login')
+        showNotice(error.message || 'Login Google gagal.')
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsGoogleLoginLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+    // Callback OAuth hanya perlu diproses sekali saat halaman dibuka dari Google.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const requestLogout = () => {
     setIsLogoutConfirmOpen(true)
@@ -1802,6 +1904,8 @@ function App() {
             password={loginPassword}
             onPasswordChange={setLoginPassword}
             onSubmit={handleLogin}
+            onGoogleLogin={handleGoogleLogin}
+            isGoogleLoading={isGoogleLoginLoading}
           />
         )}
         {publicInfoPages.includes(page) && (
@@ -1840,6 +1944,8 @@ function App() {
               password={loginPassword}
               onPasswordChange={setLoginPassword}
               onSubmit={handleLogin}
+              onGoogleLogin={handleGoogleLogin}
+              isGoogleLoading={isGoogleLoginLoading}
             />
           ))}
         {page === 'admin' &&
@@ -1878,6 +1984,8 @@ function App() {
               password={loginPassword}
               onPasswordChange={setLoginPassword}
               onSubmit={handleLogin}
+              onGoogleLogin={handleGoogleLogin}
+              isGoogleLoading={isGoogleLoginLoading}
             />
           ))}
       </main>

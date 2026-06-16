@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   name VARCHAR(120) NOT NULL,
   username VARCHAR(80) NOT NULL,
   email VARCHAR(160) NOT NULL DEFAULT '',
+  phone VARCHAR(40) NOT NULL DEFAULT '',
   status VARCHAR(40) NOT NULL DEFAULT 'Aktif',
   avatar MEDIUMTEXT,
   allowed_class_ids MEDIUMTEXT,

@@ -35,6 +35,7 @@ $statements = [
         name VARCHAR(120) NOT NULL,
         username VARCHAR(80) NOT NULL,
         email VARCHAR(160) NOT NULL DEFAULT '',
+        phone VARCHAR(40) NOT NULL DEFAULT '',
         status VARCHAR(40) NOT NULL DEFAULT 'Aktif',
         avatar MEDIUMTEXT,
         allowed_class_ids MEDIUMTEXT,
@@ -246,6 +247,7 @@ function ensure_column_definition(PDO $pdo, string $table, string $definition): 
 }
 
 ensure_column($pdo, 'accounts', 'avatar', 'MEDIUMTEXT NULL AFTER status');
+ensure_column($pdo, 'accounts', 'phone', "VARCHAR(40) NOT NULL DEFAULT '' AFTER email");
 ensure_column($pdo, 'accounts', 'allowed_class_ids', 'MEDIUMTEXT NULL AFTER avatar');
 ensure_column($pdo, 'classes', 'price', 'INT NOT NULL DEFAULT 0 AFTER revenue');
 ensure_column($pdo, 'classes', 'lynk_product_key', "VARCHAR(180) NOT NULL DEFAULT '' AFTER revenue");

@@ -1,6 +1,7 @@
 import {
   apiHandler,
   createBackup,
+  createGoogleAuthUrl,
   createMember,
   createSubmission,
   createSupportTicket,
@@ -17,6 +18,7 @@ import {
   fetchSupportTickets,
   fetchWebsiteSettings,
   login,
+  loginWithGoogle,
   logout,
   prepareFileUpload,
   prepareVideoUpload,
@@ -244,6 +246,26 @@ async function routeRequest(request, response) {
 
   if (route === 'login') {
     sendJson(response, 200, await login(await readJson(request), request))
+    return
+  }
+
+  if (route === 'google-auth-url') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+      return
+    }
+
+    sendJson(response, 200, await createGoogleAuthUrl(request))
+    return
+  }
+
+  if (route === 'google-login') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+      return
+    }
+
+    sendJson(response, 200, await loginWithGoogle(await readJson(request), request))
     return
   }
 

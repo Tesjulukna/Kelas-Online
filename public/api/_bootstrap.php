@@ -120,6 +120,11 @@ function clean_email($value): string
     return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
 }
 
+function clean_phone($value): string
+{
+    return substr(preg_replace('/[^0-9+()\-\s.]/', '', clean_text($value, 40)) ?? '', 0, 40);
+}
+
 function clean_number($value, int $min = 0, int $max = 1000000): int
 {
     $number = filter_var($value, FILTER_VALIDATE_INT);
@@ -771,6 +776,7 @@ function public_account(array $account): array
         'name' => $account['name'],
         'username' => $account['username'],
         'email' => $account['email'],
+        'phone' => $account['phone'] ?? '',
         'status' => $account['status'],
         'avatar' => $account['avatar'] ?? '',
         'allowedClassIds' => clean_allowed_class_ids($account['allowed_class_ids'] ?? null),

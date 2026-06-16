@@ -278,6 +278,7 @@ function createEmptyMemberForm() {
     name: '',
     username: '',
     email: '',
+    phone: '',
     password: '',
     status: 'Aktif',
     classAccessMode: 'all',
@@ -595,6 +596,31 @@ function AdminPage({
   const tripayRevenue = paidPayments
     .filter((payment) => payment.source === 'tripay')
     .reduce((total, payment) => total + payment.amount, 0)
+  const revenueByDate = paidPayments.reduce((items, payment) => {
+    const time = getPaymentTime(payment)
+
+    if (!time) {
+      return items
+    }
+
+    const dateKey = new Date(time).toISOString().slice(0, 10)
+    const current = items.get(dateKey) || { dateKey, total: 0, count: 0 }
+
+    items.set(dateKey, {
+      dateKey,
+      total: current.total + payment.amount,
+      count: current.count + 1,
+    })
+
+    return items
+  }, new Map())
+  const revenueChartItems = [...revenueByDate.values()].sort((first, second) =>
+    first.dateKey.localeCompare(second.dateKey),
+  )
+  const highestRevenueChartValue = Math.max(
+    1,
+    ...revenueChartItems.map((item) => item.total),
+  )
   const paymentSourceOptions = [
     ...new Set(payments.map((payment) => payment.sourceLabel).filter(Boolean)),
   ]
@@ -641,7 +667,7 @@ function AdminPage({
   const filteredMembers = members.filter((member) => {
     const searchMatches =
       !memberSearchQuery ||
-      [member.name, member.email, member.username]
+      [member.name, member.email, member.phone, member.username]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(memberSearchQuery))
     const statusMatches =
@@ -1666,6 +1692,7 @@ function AdminPage({
       name: memberForm.name.trim(),
       username: memberForm.username.trim(),
       email: memberForm.email.trim(),
+      phone: memberForm.phone.trim(),
       password: memberForm.password,
       status: memberForm.status,
       allowedClassIds:
@@ -1710,6 +1737,7 @@ function AdminPage({
       name: member.name,
       username: member.username,
       email: member.email ?? '',
+      phone: member.phone ?? '',
       password: '',
       status: member.status ?? 'Aktif',
       classAccessMode: Array.isArray(member.allowedClassIds)
@@ -2145,6 +2173,7 @@ function AdminPage({
                     <span>
                       <strong>{member.name}</strong>
                       <small>{member.email || 'Email belum diisi'}</small>
+                      {member.phone && <small>{member.phone}</small>}
                       <small className="mobile-list-meta">
                         {member.username} - {member.status}
                       </small>
@@ -2246,6 +2275,76 @@ function AdminPage({
 
       {activeMenu === 'payments' && (
         <>
+          <section className="panel payment-report-panel">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Rentang laporan</p>
+                <h2>Grafik pendapatan</h2>
+                <small>Filter tanggal ini mengatur statistik, grafik, dan tabel transaksi.</small>
+              </div>
+              <div className="payment-date-filter-bar">
+                <label>
+                  Mulai
+                  <input
+                    type="date"
+                    value={paymentStartDate}
+                    onChange={(event) => {
+                      setPaymentStartDate(event.target.value)
+                      setPaymentPage(1)
+                    }}
+                  />
+                </label>
+                <label>
+                  Sampai
+                  <input
+                    type="date"
+                    value={paymentEndDate}
+                    onChange={(event) => {
+                      setPaymentEndDate(event.target.value)
+                      setPaymentPage(1)
+                    }}
+                  />
+                </label>
+                {(paymentStartDate || paymentEndDate) && (
+                  <button
+                    className="btn btn-secondary payment-date-reset"
+                    type="button"
+                    onClick={() => {
+                      setPaymentStartDate('')
+                      setPaymentEndDate('')
+                      setPaymentPage(1)
+                    }}
+                  >
+                    Reset tanggal
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="payment-revenue-chart" aria-label="Grafik pendapatan harian">
+              {revenueChartItems.length ? (
+                revenueChartItems.map((item) => (
+                  <div className="payment-chart-item" key={item.dateKey}>
+                    <span
+                      className="payment-chart-bar"
+                      style={{
+                        height: `${Math.max(8, Math.round((item.total / highestRevenueChartValue) * 100))}%`,
+                      }}
+                      title={`${new Date(item.dateKey).toLocaleDateString('id-ID')}: ${formatRupiah(item.total)}`}
+                    ></span>
+                    <small>{new Date(item.dateKey).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</small>
+                    <strong>{formatRupiah(item.total)}</strong>
+                  </div>
+                ))
+              ) : (
+                <article className="empty-state payment-chart-empty">
+                  <Icon name="trendingUp" />
+                  <h3>Belum ada pendapatan pada rentang ini</h3>
+                  <p>Ubah rentang tanggal untuk melihat grafik pendapatan lain.</p>
+                </article>
+              )}
+            </div>
+          </section>
+
           <section className="summary-grid admin-summary payment-summary">
             <MetricCard icon="wallet" label="Omzet terbayar" value={formatRupiah(totalPaidRevenue)} />
             <MetricCard icon="trendingUp" label="Transaksi sukses" value={paidPayments.length} />
@@ -2259,7 +2358,7 @@ function AdminPage({
               <div>
                 <p className="eyebrow">Pembayaran</p>
                 <h2>Riwayat transaksi</h2>
-                <small>Statistik mengikuti rentang tanggal yang dipilih.</small>
+                <small>Tabel mengikuti rentang tanggal dan filter transaksi.</small>
               </div>
               <div className="payment-filter-bar">
                 <label>
@@ -2308,41 +2407,6 @@ function AdminPage({
                     ))}
                   </select>
                 </label>
-                <label>
-                  Mulai
-                  <input
-                    type="date"
-                    value={paymentStartDate}
-                    onChange={(event) => {
-                      setPaymentStartDate(event.target.value)
-                      setPaymentPage(1)
-                    }}
-                  />
-                </label>
-                <label>
-                  Sampai
-                  <input
-                    type="date"
-                    value={paymentEndDate}
-                    onChange={(event) => {
-                      setPaymentEndDate(event.target.value)
-                      setPaymentPage(1)
-                    }}
-                  />
-                </label>
-                {(paymentStartDate || paymentEndDate) && (
-                  <button
-                    className="btn btn-secondary payment-date-reset"
-                    type="button"
-                    onClick={() => {
-                      setPaymentStartDate('')
-                      setPaymentEndDate('')
-                      setPaymentPage(1)
-                    }}
-                  >
-                    Reset tanggal
-                  </button>
-                )}
               </div>
             </div>
 
@@ -2834,6 +2898,16 @@ function AdminPage({
                   value={memberForm.email}
                   onChange={handleMemberFormChange}
                   placeholder="nama@email.com"
+                />
+              </label>
+              <label>
+                Nomor telepon
+                <input
+                  name="phone"
+                  type="tel"
+                  value={memberForm.phone}
+                  onChange={handleMemberFormChange}
+                  placeholder="Opsional, contoh: 081234567890"
                 />
               </label>
               <label>

@@ -6,6 +6,8 @@ function LoginPage({
   password,
   onPasswordChange,
   onSubmit,
+  onGoogleLogin,
+  isGoogleLoading = false,
 }) {
   return (
     <section className="page-wrap auth-page">
@@ -48,6 +50,18 @@ function LoginPage({
           <Icon name="arrowRight" />
           Masuk Dashboard
         </button>
+        <div className="google-login-block">
+          <p>Login atau daftar menggunakan akun Google</p>
+          <button
+            className="google-login-button"
+            type="button"
+            onClick={onGoogleLogin}
+            disabled={isGoogleLoading}
+          >
+            <span className="google-mark" aria-hidden="true">G</span>
+            {isGoogleLoading ? 'Menghubungkan...' : 'Login dengan Google'}
+          </button>
+        </div>
       </form>
     </section>
   )

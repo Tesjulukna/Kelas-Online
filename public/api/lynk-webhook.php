@@ -154,6 +154,42 @@ function lynk_first_email($value): string
     return '';
 }
 
+function lynk_first_phone(array $payload): string
+{
+    return clean_phone(lynk_first_value($payload, [
+        'buyer.phone',
+        'buyer.phone_number',
+        'buyer.whatsapp',
+        'customer.phone',
+        'customer.phone_number',
+        'customer.whatsapp',
+        'user.phone',
+        'user.phone_number',
+        'order.customer_phone',
+        'data.buyer.phone',
+        'data.buyer.phone_number',
+        'data.buyer.whatsapp',
+        'data.customer.phone',
+        'data.customer.phone_number',
+        'data.customer.whatsapp',
+        'data.message_data.customer.phone',
+        'data.message_data.customer.phone_number',
+        'data.message_data.customer.whatsapp',
+        'message_data.customer.phone',
+        'message_data.customer.phone_number',
+        'message_data.customer.whatsapp',
+        'buyer_phone',
+        'buyer_phone_number',
+        'customer_phone',
+        'customer_phone_number',
+        'phone',
+        'phone_number',
+        'telephone',
+        'whatsapp',
+        'wa',
+    ]));
+}
+
 function lynk_collect_product_candidates(array $payload): array
 {
     $paths = [
@@ -369,6 +405,13 @@ function lynk_send_credentials_email(string $email, string $name, array $account
 function lynk_ensure_tables(PDO $pdo): void
 {
     try {
+        $accountQuery = $pdo->prepare('SHOW COLUMNS FROM accounts LIKE ?');
+        $accountQuery->execute(['phone']);
+
+        if (!$accountQuery->fetch()) {
+            $pdo->exec("ALTER TABLE accounts ADD phone VARCHAR(40) NOT NULL DEFAULT '' AFTER email");
+        }
+
         $query = $pdo->prepare('SHOW COLUMNS FROM classes LIKE ?');
         $query->execute(['lynk_product_key']);
 
@@ -421,6 +464,7 @@ $orderId = lynk_first_value($payload, [
     'data.invoice_id',
 ]);
 $buyerEmail = lynk_first_email($payload);
+$buyerPhone = lynk_first_phone($payload);
 $buyerName = lynk_first_value($payload, [
     'buyer.name',
     'customer.name',
@@ -526,11 +570,12 @@ if ($member) {
 
     $update = $pdo->prepare(
         'UPDATE accounts
-        SET name = ?, status = ?, allowed_class_ids = ?, password_hash = ?
+        SET name = ?, phone = ?, status = ?, allowed_class_ids = ?, password_hash = ?
         WHERE id = ? AND role = ?',
     );
     $update->execute([
         $buyerName ?: $member['name'],
+        $buyerPhone ?: ($member['phone'] ?? ''),
         'Aktif',
         json_encode($mergedClassIds, JSON_UNESCAPED_UNICODE),
         $passwordHash,
@@ -546,8 +591,8 @@ if ($member) {
     $passwordCreated = true;
     $insert = $pdo->prepare(
         'INSERT INTO accounts
-        (id, role, name, username, email, status, avatar, allowed_class_ids, password_hash, joined_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (id, role, name, username, email, phone, status, avatar, allowed_class_ids, password_hash, joined_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     );
     $insert->execute([
         $member['id'],
@@ -555,6 +600,7 @@ if ($member) {
         $buyerName ?: 'Pembeli Lynk.id',
         $member['username'],
         $buyerEmail,
+        $buyerPhone,
         'Aktif',
         '',
         json_encode($classIds, JSON_UNESCAPED_UNICODE),

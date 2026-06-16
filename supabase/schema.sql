@@ -16,6 +16,7 @@ create table if not exists public.accounts (
   name text not null,
   username text not null,
   email text not null default '',
+  phone text not null default '',
   status text not null default 'Aktif',
   avatar text not null default '',
   allowed_class_ids jsonb,
@@ -73,6 +74,9 @@ alter table public.materials
 
 alter table public.materials
   add column if not exists image_name text not null default '';
+
+alter table public.accounts
+  add column if not exists phone text not null default '';
 
 create table if not exists public.material_assets (
   id text primary key,

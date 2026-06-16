@@ -44,6 +44,25 @@ Folder hasil build ada di `dist/`.
 
 Ikuti panduan di [DEPLOY_VERCEL_SUPABASE.md](./DEPLOY_VERCEL_SUPABASE.md).
 
+### Login Google
+
+Login Google memakai Supabase Auth sebagai penyedia OAuth, lalu website tetap membuat session member sendiri di tabel `auth_sessions`.
+
+Setelah deploy, aktifkan Google provider di Supabase:
+
+- Buka Supabase Dashboard > Authentication > Providers > Google.
+- Isi Google Client ID dan Client Secret dari Google Cloud Console.
+- Tambahkan redirect URL website: `https://domain-anda.com/auth/google/callback`.
+- Di Google Cloud Console, masukkan redirect URL Supabase OAuth Callback yang ditampilkan di halaman provider Google Supabase.
+
+Environment opsional di Vercel:
+
+```bash
+GOOGLE_AUTH_REDIRECT_URL=https://domain-anda.com/auth/google/callback
+```
+
+Jika env ini dikosongkan, website otomatis memakai domain request saat ini dengan path `/auth/google/callback`.
+
 ## Deploy InfinityFree Legacy
 
 Ikuti panduan di [DEPLOY_INFINITYFREE.md](./DEPLOY_INFINITYFREE.md).

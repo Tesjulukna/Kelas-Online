@@ -138,6 +138,10 @@ function cleanEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : ''
 }
 
+function cleanPhone(value) {
+  return cleanText(value, 40).replace(/[^0-9+()\-\s.]/g, '')
+}
+
 function cleanNumber(value, min = 0, max = 1000000) {
   const number = Number(value)
   return Number.isFinite(number) ? Math.min(max, Math.max(min, Math.round(number))) : min
@@ -352,6 +356,38 @@ async function rest(path, options = {}) {
   return data
 }
 
+function isMissingPhoneColumnError(error) {
+  const message = String(error?.message || '').toLowerCase()
+
+  return message.includes('phone') && (
+    message.includes('column') ||
+    message.includes('schema cache') ||
+    message.includes('could not find')
+  )
+}
+
+async function restAccountWrite(path, options = {}) {
+  try {
+    return await rest(path, options)
+  } catch (error) {
+    if (
+      options.body &&
+      Object.hasOwn(options.body, 'phone') &&
+      isMissingPhoneColumnError(error)
+    ) {
+      const body = { ...options.body }
+      delete body.phone
+
+      return rest(path, {
+        ...options,
+        body,
+      })
+    }
+
+    throw error
+  }
+}
+
 async function storage(path, options = {}) {
   assertConfig()
 
@@ -440,6 +476,7 @@ function accountPublic(account, progressRows = [], sessionRows = []) {
     name: account.name,
     username: account.username,
     email: account.email || '',
+    phone: account.phone || '',
     status: account.status,
     avatar: account.avatar || '',
     allowedClassIds: parseJson(account.allowed_class_ids, null),
@@ -524,6 +561,36 @@ function sessionPayload(account, token = '') {
     token,
     signedInAt: new Date().toISOString(),
   }
+}
+
+async function createAccountSession(account, requestOrUserAgent = '') {
+  const request = typeof requestOrUserAgent === 'object' && requestOrUserAgent
+    ? requestOrUserAgent
+    : null
+  const userAgent = request
+    ? request.headers?.['user-agent'] || ''
+    : requestOrUserAgent
+  const token = randomBytes(32).toString('hex')
+
+  await rest(`auth_sessions?expires_at=lt.${eq(new Date().toISOString())}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=minimal' },
+  })
+  await rest('auth_sessions', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      id: makeId('session'),
+      account_id: account.id,
+      role: account.role,
+      token_hash: tokenHash(token),
+      user_agent: cleanText(userAgent, 255),
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      last_seen_at: new Date().toISOString(),
+    },
+  })
+
+  return { session: sessionPayload(account, token) }
 }
 
 function requestSessionToken(request) {
@@ -1302,7 +1369,7 @@ export async function createMember(payload) {
   }
 
   await assertUniqueUsername(username)
-  await rest('accounts', {
+  await restAccountWrite('accounts', {
     method: 'POST',
     headers: { Prefer: 'return=minimal' },
     body: {
@@ -1311,6 +1378,7 @@ export async function createMember(payload) {
       name: cleanText(payload.name || username, 120),
       username,
       email: cleanEmail(payload.email),
+      phone: cleanPhone(payload.phone),
       status: cleanText(payload.status || 'Aktif', 40),
       avatar: cleanUrl(payload.avatar || ''),
       allowed_class_ids: Array.isArray(payload.allowedClassIds)
@@ -1353,13 +1421,14 @@ export async function updateMember(payload) {
     allowed_class_ids: Array.isArray(payload.allowedClassIds)
       ? JSON.stringify(payload.allowedClassIds.map((classId) => cleanText(classId, 120)))
       : null,
+    phone: cleanPhone(payload.phone),
   }
 
   if (payload.password) {
     nextMember.password_hash = await hashPasswordValue(payload.password)
   }
 
-  await rest(`accounts?id=eq.${eq(memberId)}&role=eq.member`, {
+  await restAccountWrite(`accounts?id=eq.${eq(memberId)}&role=eq.member`, {
     method: 'PATCH',
     headers: { Prefer: 'return=minimal' },
     body: nextMember,
@@ -1795,27 +1864,121 @@ export async function login(payload, userAgent = '') {
   }
 
   await clearLoginFailures(attemptKey)
-  const token = randomBytes(32).toString('hex')
+  return createAccountSession(account, loginUserAgent)
+}
 
-  await rest(`auth_sessions?expires_at=lt.${eq(new Date().toISOString())}`, {
-    method: 'DELETE',
-    headers: { Prefer: 'return=minimal' },
-  })
-  await rest('auth_sessions', {
-    method: 'POST',
-    headers: { Prefer: 'return=minimal' },
-    body: {
-      id: makeId('session'),
-      account_id: account.id,
-      role: account.role,
-      token_hash: tokenHash(token),
-      user_agent: cleanText(loginUserAgent, 255),
-      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      last_seen_at: new Date().toISOString(),
+export async function createGoogleAuthUrl(request) {
+  assertConfig()
+
+  const redirectTo = cleanExternalUrl(process.env.GOOGLE_AUTH_REDIRECT_URL || '') ||
+    absoluteRequestUrl(request, '/auth/google/callback')
+
+  if (!redirectTo) {
+    throw new ApiError(500, 'URL callback Google tidak bisa dibuat.')
+  }
+
+  const url = new URL(`${supabaseUrl}/auth/v1/authorize`)
+  url.searchParams.set('provider', 'google')
+  url.searchParams.set('redirect_to', redirectTo)
+
+  return {
+    url: url.toString(),
+    redirectTo,
+  }
+}
+
+async function fetchSupabaseAuthUser(accessToken) {
+  assertConfig()
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: {
+      apikey: serviceKey,
+      Authorization: `Bearer ${accessToken}`,
+      'User-Agent': 'ibnucreative-google-login',
     },
   })
+  const data = await response.json().catch(() => ({}))
 
-  return { session: sessionPayload(account, token) }
+  if (!response.ok) {
+    throw new ApiError(401, data.message || data.error_description || 'Login Google tidak valid.')
+  }
+
+  return data
+}
+
+export async function loginWithGoogle(payload, request) {
+  const accessToken = cleanText(payload.accessToken || payload.access_token || '', 2400)
+
+  if (!accessToken) {
+    throw new ApiError(400, 'Token Google belum diterima.')
+  }
+
+  const authUser = await fetchSupabaseAuthUser(accessToken)
+  const email = cleanEmail(authUser.email || authUser.user_metadata?.email || '')
+
+  if (!email) {
+    throw new ApiError(422, 'Email Google tidak ditemukan.')
+  }
+
+  if (authUser.email_confirmed_at === null || authUser.confirmed_at === null) {
+    throw new ApiError(403, 'Email Google belum terverifikasi.')
+  }
+
+  const metadata = authUser.user_metadata || {}
+  const fullName = cleanText(
+    metadata.full_name || metadata.name || metadata.display_name || email.split('@')[0],
+    120,
+  )
+  const avatar = cleanUrl(metadata.avatar_url || metadata.picture || '')
+  const rows = await rest(`accounts?select=*&role=eq.member&email=eq.${eq(email)}&limit=1`)
+  let account = rows?.[0]
+
+  if (account) {
+    const updates = {}
+
+    if (!account.name && fullName) {
+      updates.name = fullName
+    }
+
+    if (!account.avatar && avatar) {
+      updates.avatar = avatar
+    }
+
+    if (account.status !== 'Aktif') {
+      updates.status = 'Aktif'
+    }
+
+    if (Object.keys(updates).length) {
+      await rest(`accounts?id=eq.${eq(account.id)}&role=eq.member`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: updates,
+      })
+      account = { ...account, ...updates }
+    }
+  } else {
+    account = {
+      id: makeId('member'),
+      role: 'member',
+      name: fullName || 'Member Google',
+      username: await uniqueMemberUsername(email, fullName),
+      email,
+      phone: '',
+      status: 'Aktif',
+      avatar,
+      allowed_class_ids: JSON.stringify([]),
+      password_hash: await hashPasswordValue(randomBytes(24).toString('hex')),
+      joined_at: new Date().toISOString().slice(0, 10),
+    }
+
+    await restAccountWrite('accounts', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: account,
+    })
+  }
+
+  return createAccountSession(account, request)
 }
 
 export async function logout(request) {
@@ -2101,6 +2264,48 @@ function firstEmail(payload) {
   return ''
 }
 
+function firstPhone(payload) {
+  const preferred = firstValue(payload, [
+    'buyer.phone',
+    'buyer.phone_number',
+    'buyer.whatsapp',
+    'customer.phone',
+    'customer.phone_number',
+    'customer.whatsapp',
+    'user.phone',
+    'user.phone_number',
+    'order.customer_phone',
+    'data.buyer.phone',
+    'data.buyer.phone_number',
+    'data.buyer.whatsapp',
+    'data.customer.phone',
+    'data.customer.phone_number',
+    'data.customer.whatsapp',
+    'data.message_data.customer.phone',
+    'data.message_data.customer.phone_number',
+    'data.message_data.customer.whatsapp',
+    'message_data.customer.phone',
+    'message_data.customer.phone_number',
+    'message_data.customer.whatsapp',
+    'buyer_phone',
+    'buyer_phone_number',
+    'customer_phone',
+    'customer_phone_number',
+    'phone',
+    'phone_number',
+    'telephone',
+    'whatsapp',
+    'wa',
+  ])
+  const phone = cleanPhone(preferred)
+
+  if (phone) {
+    return phone
+  }
+
+  return ''
+}
+
 function normalizeLynkKey(value) {
   return cleanText(value, 240)
     .toLowerCase()
@@ -2212,6 +2417,25 @@ function generatedLynkPassword(email, secret) {
 }
 
 async function uniqueLynkUsername(email, name) {
+  const rawBase = cleanUsername(email.split('@')[0] || name || 'member') || 'member'
+  let username = rawBase
+  let counter = 2
+
+  while (true) {
+    const existing = await rest(
+      `accounts?select=id&role=eq.member&username=eq.${eq(username)}&limit=1`,
+    )
+
+    if (!existing?.[0]) {
+      return username
+    }
+
+    username = `${rawBase}${counter}`
+    counter += 1
+  }
+}
+
+async function uniqueMemberUsername(email, name) {
   const rawBase = cleanUsername(email.split('@')[0] || name || 'member') || 'member'
   let username = rawBase
   let counter = 2
@@ -2472,6 +2696,61 @@ async function sendTripayPaymentEmail(order) {
   return sendResendEmail({
     to: order.buyerEmail,
     subject: `Selesaikan pembayaran ${order.classTitle}`,
+    text,
+    html,
+  })
+}
+
+function buildTripaySuccessMessage(order) {
+  return `Halo ${order.buyerName},
+
+Pembayaran kelas Anda sudah berhasil.
+
+Kelas: ${order.classTitle}
+Status akses: Aktif
+
+Silakan login dan buka menu Kelas Saya untuk mulai belajar:
+${order.classUrl}
+
+IbnuCreative Academy`
+}
+
+async function sendTripayPaymentSuccessEmail(order) {
+  if (process.env.TRIPAY_SEND_SUCCESS_EMAIL === 'false') {
+    return {
+      sent: false,
+      message: 'Pengiriman email pembayaran sukses dinonaktifkan.',
+    }
+  }
+
+  if (!cleanEmail(order.buyerEmail)) {
+    return {
+      sent: false,
+      message: 'Email pembeli tidak valid.',
+    }
+  }
+
+  const text = buildTripaySuccessMessage(order)
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+      <h2>Pembayaran berhasil, akses kelas sudah aktif</h2>
+      <p>Halo ${escapeHtml(order.buyerName)},</p>
+      <p>Pembayaran kelas Anda sudah berhasil. Akses belajar sudah aktif dan bisa langsung dibuka dari akun member.</p>
+      <p><strong>Kelas:</strong> ${escapeHtml(order.classTitle)}</p>
+      <p><strong>Status akses:</strong> Aktif</p>
+      <p>
+        <a href="${escapeHtml(order.classUrl)}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700">
+          Buka Kelas Saya
+        </a>
+      </p>
+      <p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="${escapeHtml(order.classUrl)}">${escapeHtml(order.classUrl)}</a></p>
+      <p>IbnuCreative Academy</p>
+    </div>
+  `
+
+  return sendResendEmail({
+    to: order.buyerEmail,
+    subject: `Pembayaran ${order.classTitle} berhasil`,
     text,
     html,
   })
@@ -3211,6 +3490,12 @@ export async function processTripayWebhook(request) {
       payload: rawBody,
     },
   })
+  const successEmailResult = await sendTripayPaymentSuccessEmail({
+    buyerName: cleanText(order.buyer_name || 'Member', 160),
+    buyerEmail: cleanEmail(order.buyer_email || ''),
+    classTitle: cleanText(order.class_title || 'Kelas IbnuCreative', 160),
+    classUrl: absoluteRequestUrl(request, '/member?menu=my-courses') || loginUrlFromRequest(request),
+  })
 
   return {
     ok: true,
@@ -3222,6 +3507,9 @@ export async function processTripayWebhook(request) {
     classId: order.class_id,
     memberId: order.member_id,
     accessGranted: accessResult.granted,
+    emailSent: successEmailResult.sent,
+    emailMessageId: successEmailResult.id || '',
+    emailError: successEmailResult.sent ? '' : successEmailResult.message || '',
   }
 }
 
@@ -3266,6 +3554,7 @@ export async function processLynkWebhook(request) {
       'refId',
     ]) || eventId || sha256(rawBody)
   const buyerEmail = firstEmail(payload)
+  const buyerPhone = firstPhone(payload)
   const buyerName =
     firstValue(payload, [
       'buyer.name',
@@ -3367,11 +3656,12 @@ export async function processLynkWebhook(request) {
     newAccessIds = mergedClassIds.filter((classId) => !currentClassIds.includes(classId))
     passwordCreated = resetExistingPassword
 
-    await rest(`accounts?id=eq.${eq(existingMember.id)}&role=eq.member`, {
+    await restAccountWrite(`accounts?id=eq.${eq(existingMember.id)}&role=eq.member`, {
       method: 'PATCH',
       headers: { Prefer: 'return=minimal' },
       body: {
         name: buyerName || existingMember.name,
+        phone: buyerPhone || existingMember.phone || '',
         status: 'Aktif',
         allowed_class_ids: JSON.stringify(mergedClassIds),
         ...(resetExistingPassword
@@ -3386,7 +3676,7 @@ export async function processLynkWebhook(request) {
     }
     passwordCreated = true
 
-    await rest('accounts', {
+    await restAccountWrite('accounts', {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
       body: {
@@ -3395,6 +3685,7 @@ export async function processLynkWebhook(request) {
         name: buyerName,
         username: member.username,
         email: buyerEmail,
+        phone: buyerPhone,
         status: 'Aktif',
         avatar: '',
         allowed_class_ids: JSON.stringify(classIds),

@@ -21,6 +21,13 @@ function member_api_datetime($value): string
 function ensure_member_access_column(PDO $pdo): void
 {
     try {
+        $phoneQuery = $pdo->prepare('SHOW COLUMNS FROM accounts LIKE ?');
+        $phoneQuery->execute(['phone']);
+
+        if (!$phoneQuery->fetch()) {
+            $pdo->exec("ALTER TABLE accounts ADD phone VARCHAR(40) NOT NULL DEFAULT '' AFTER email");
+        }
+
         $query = $pdo->prepare('SHOW COLUMNS FROM accounts LIKE ?');
         $query->execute(['allowed_class_ids']);
 
@@ -227,8 +234,8 @@ if ($method === 'POST') {
 
     $insert = $pdo->prepare(
         'INSERT INTO accounts
-        (id, role, name, username, email, status, avatar, allowed_class_ids, password_hash, joined_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (id, role, name, username, email, phone, status, avatar, allowed_class_ids, password_hash, joined_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     );
     $insert->execute([
         make_id('member'),
@@ -236,6 +243,7 @@ if ($method === 'POST') {
         clean_text($payload['name'] ?? $username, 120),
         $username,
         clean_email($payload['email'] ?? ''),
+        clean_phone($payload['phone'] ?? ''),
         clean_text($payload['status'] ?? 'Aktif', 40),
         clean_image($payload['avatar'] ?? ''),
         encode_allowed_class_ids($payload['allowedClassIds'] ?? null),
@@ -280,13 +288,14 @@ if ($method === 'PUT') {
 
     $update = $pdo->prepare(
         'UPDATE accounts
-        SET name = ?, username = ?, email = ?, status = ?, avatar = ?, allowed_class_ids = ?, password_hash = ?
+        SET name = ?, username = ?, email = ?, phone = ?, status = ?, avatar = ?, allowed_class_ids = ?, password_hash = ?
         WHERE id = ? AND role = ?',
     );
     $update->execute([
         clean_text($payload['name'] ?? $username, 120),
         $username,
         clean_email($payload['email'] ?? ''),
+        clean_phone($payload['phone'] ?? ''),
         clean_text($payload['status'] ?? 'Aktif', 40),
         clean_image($payload['avatar'] ?? '') ?: ($current['avatar'] ?? ''),
         encode_allowed_class_ids($payload['allowedClassIds'] ?? null),
