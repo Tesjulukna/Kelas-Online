@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Icon from '../components/Icon'
 import { benefits, courseHighlights } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
@@ -19,6 +19,7 @@ function HomePage({
   onExplore,
   onRequestClassCheckout = () => {},
   onPublicProductCheckout = async () => {},
+  initialDetail = null,
   classes = [],
   digitalProducts = [],
   settings = defaultWebsiteSettings,
@@ -91,6 +92,47 @@ function HomePage({
   const selectedProductPrice = selectedProductSalePrice || selectedProductNormalPrice
   const paymentMethods = websiteSettings.paymentMethods || []
 
+  useEffect(() => {
+    if (!initialDetail?.id) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      if (initialDetail.type === 'kelas') {
+        setSelectedClassId(initialDetail.id)
+        setSelectedProductId('')
+      }
+
+      if (initialDetail.type === 'produk') {
+        setSelectedProductId(initialDetail.id)
+        setSelectedClassId('')
+      }
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [initialDetail])
+
+  const openClassDetail = (classId) => {
+    setSelectedClassId(classId)
+    setSelectedProductId('')
+    window.history.pushState({}, '', `/kelas/${encodeURIComponent(classId)}`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const openProductDetail = (productId) => {
+    setSelectedProductId(productId)
+    setSelectedClassId('')
+    window.history.pushState({}, '', `/produk/${encodeURIComponent(productId)}`)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const closePublicDetail = () => {
+    setSelectedClassId('')
+    setSelectedProductId('')
+    window.history.pushState({}, '', '/')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const shareItem = async (title, text) => {
     const url = typeof window !== 'undefined' ? window.location.href : ''
 
@@ -146,7 +188,7 @@ function HomePage({
     return (
       <section className="public-detail-page">
         <div className="public-detail-topbar">
-          <button className="icon-action-button" type="button" onClick={() => setSelectedClassId('')}>
+          <button className="icon-action-button" type="button" onClick={closePublicDetail}>
             <Icon name="arrowLeft" />
           </button>
           <button
@@ -194,7 +236,7 @@ function HomePage({
     return (
       <section className="public-detail-page">
         <div className="public-detail-topbar">
-          <button className="icon-action-button" type="button" onClick={() => setSelectedProductId('')}>
+          <button className="icon-action-button" type="button" onClick={closePublicDetail}>
             <Icon name="arrowLeft" />
           </button>
           <button
@@ -360,7 +402,7 @@ function HomePage({
                 <button
                   className="btn btn-primary homepage-course-button"
                   type="button"
-                  onClick={() => setSelectedClassId(course.id)}
+                  onClick={() => openClassDetail(course.id)}
                 >
                   Detail Kelas
                   <Icon name="arrowRight" />
@@ -409,7 +451,7 @@ function HomePage({
                 <button
                   className="btn btn-primary homepage-course-button"
                   type="button"
-                  onClick={() => setSelectedProductId(product.id)}
+                  onClick={() => openProductDetail(product.id)}
                 >
                   Detail Produk
                   <Icon name="arrowRight" />

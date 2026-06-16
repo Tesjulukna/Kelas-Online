@@ -96,6 +96,10 @@
       "destination": "/api/tripay-checkout"
     },
     {
+      "source": "/api/public-product-checkout.php",
+      "destination": "/api/public-product-checkout"
+    },
+    {
       "source": "/api/tripay-webhook.php",
       "destination": "/api/tripay-webhook"
     },

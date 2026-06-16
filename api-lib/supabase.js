@@ -814,7 +814,7 @@ export async function fetchClasses() {
 }
 
 export async function fetchDigitalProducts(request = null) {
-  const user = request ? await requireUser(request) : null
+  const user = request ? await currentUser(request) : null
   const path = user?.role === 'admin'
     ? 'digital_products?select=*&order=updated_at.desc,id.asc'
     : `digital_products?select=*&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`

@@ -82,6 +82,20 @@ function getPageFromPath(pathname) {
   return 'home'
 }
 
+function getPublicDetailFromPath(pathname) {
+  const cleanPath = pathname.replace(/\/+$/, '') || '/'
+  const [, type, id] = cleanPath.split('/')
+
+  if ((type === 'kelas' || type === 'produk') && id) {
+    return {
+      type,
+      id: decodeURIComponent(id),
+    }
+  }
+
+  return null
+}
+
 function getInitialPage(session) {
   if (typeof window === 'undefined') {
     return session?.role ?? 'home'
@@ -93,7 +107,12 @@ function getInitialPage(session) {
 
   const page = getPageFromPath(window.location.pathname)
 
-  if (session?.role && page !== session.role && !publicInfoPages.includes(page)) {
+  if (
+    session?.role &&
+    page !== session.role &&
+    !publicInfoPages.includes(page) &&
+    !getPublicDetailFromPath(window.location.pathname)
+  ) {
     window.history.replaceState({}, '', pagePaths[session.role] ?? pagePaths.home)
     return session.role
   }
@@ -931,7 +950,7 @@ async function fetchStoredMembers() {
 }
 
 async function fetchStoredDigitalProducts(currentSession) {
-  if (!currentSession || !['admin', 'member'].includes(currentSession.role)) {
+  if (currentSession && !['admin', 'member'].includes(currentSession.role)) {
     return { digitalProducts: [], digitalProductAccess: [] }
   }
 
@@ -1051,7 +1070,8 @@ function App() {
       if (
         currentSession?.role &&
         nextPage !== currentSession.role &&
-        !publicInfoPages.includes(nextPage)
+        !publicInfoPages.includes(nextPage) &&
+        !getPublicDetailFromPath(window.location.pathname)
       ) {
         nextPage = currentSession.role
         window.history.replaceState({}, '', pagePaths[currentSession.role] ?? pagePaths.home)
@@ -1556,6 +1576,26 @@ function App() {
       window.removeEventListener('pageshow', resetStaleGoogleLoading)
       window.removeEventListener('focus', resetStaleGoogleLoading)
       document.removeEventListener('visibilitychange', resetStaleGoogleLoading)
+    }
+  }, [])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    fetchStoredDigitalProducts(null)
+      .then((productData) => {
+        if (!isCurrent) {
+          return
+        }
+
+        setDigitalProducts(productData.digitalProducts)
+      })
+      .catch(() => {
+        // Homepage remains usable if product data is temporarily unavailable.
+      })
+
+    return () => {
+      isCurrent = false
     }
   }, [])
 
@@ -2102,6 +2142,9 @@ function App() {
   const memberClasses = session?.role === 'member' && Array.isArray(currentMemberAccess)
     ? classes.filter((course) => currentMemberAccess.includes(course.id))
     : classes
+  const publicDetailTarget = typeof window === 'undefined'
+    ? null
+    : getPublicDetailFromPath(window.location.pathname)
 
   return (
     <div className="app-shell">
@@ -2128,6 +2171,7 @@ function App() {
             onExplore={goToHomeSection}
             onRequestClassCheckout={requestPublicClassCheckout}
             onPublicProductCheckout={handlePublicProductCheckout}
+            initialDetail={publicDetailTarget}
             classes={classes}
             digitalProducts={digitalProducts}
             settings={websiteSettings}
