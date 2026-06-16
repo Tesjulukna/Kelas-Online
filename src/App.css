@@ -1801,6 +1801,15 @@ textarea:focus-visible {
   .digital-builder-grid {
     grid-template-columns: 1fr;
   }
+
+  .digital-product-detail-hero,
+  .digital-product-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .digital-product-detail-copy {
+    padding: 0 22px 24px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -1826,6 +1835,38 @@ textarea:focus-visible {
   .digital-price-row,
   .digital-layout-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .digital-product-detail-page {
+    padding-bottom: 152px;
+  }
+
+  .digital-product-detail-topbar {
+    top: 74px;
+  }
+
+  .digital-product-detail-image {
+    min-height: 240px;
+  }
+
+  .digital-product-sticky-actions {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  }
+
+  .digital-product-sticky-actions .expired-payment-notice,
+  .digital-product-sticky-actions .change-payment-method-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .digital-buy-button,
+  .digital-cart-button {
+    width: 100%;
+    min-width: 0;
   }
 
   .site-header:not(.logged-in) {
@@ -7630,6 +7671,210 @@ img {
   display: grid;
   gap: 8px;
   justify-items: end;
+}
+
+.digital-product-card .available-payment-action {
+  min-width: 148px;
+}
+
+.digital-product-detail-page {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding-bottom: 96px;
+}
+
+.digital-product-detail-topbar {
+  position: sticky;
+  top: 84px;
+  z-index: 8;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.icon-action-button {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-heading);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.icon-action-button .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.digital-product-detail-hero {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.digital-product-detail-image {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  color: var(--color-teal-dark);
+  background: #edf7f4;
+}
+
+.digital-product-detail-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.digital-product-detail-image > .icon {
+  width: 74px;
+  height: 74px;
+}
+
+.digital-product-detail-image > span {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  min-height: 30px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(13, 74, 70, 0.82);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.digital-product-detail-copy {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 30px 28px 30px 0;
+}
+
+.digital-product-detail-copy h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(1.8rem, 3vw, 2.75rem);
+  line-height: 1.08;
+}
+
+.digital-product-detail-copy p {
+  color: var(--color-muted);
+}
+
+.digital-product-detail-price {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.digital-product-detail-price small {
+  color: var(--color-muted);
+  font-weight: 800;
+}
+
+.digital-product-detail-price strong {
+  color: var(--color-heading);
+  font-size: 1.42rem;
+}
+
+.digital-product-detail-price .struck-price {
+  text-decoration: line-through;
+}
+
+.digital-product-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
+  gap: 16px;
+}
+
+.digital-product-detail-panel {
+  display: grid;
+  gap: 13px;
+}
+
+.digital-product-detail-panel h3 {
+  margin: 0;
+}
+
+.digital-product-detail-panel p {
+  color: var(--color-muted);
+}
+
+.digital-product-detail-panel dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.digital-product-detail-panel dl div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.digital-product-detail-panel dl div:last-child {
+  border-bottom: 0;
+}
+
+.digital-product-detail-panel dt {
+  color: var(--color-muted);
+  font-weight: 800;
+}
+
+.digital-product-detail-panel dd {
+  margin: 0;
+  color: var(--color-heading);
+  font-weight: 900;
+}
+
+.digital-product-sticky-actions {
+  position: fixed;
+  right: max(20px, calc((100vw - 1180px) / 2));
+  bottom: 16px;
+  left: max(20px, calc((100vw - 1180px) / 2));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(12px);
+}
+
+.digital-product-sticky-actions .expired-payment-notice {
+  margin-right: auto;
+}
+
+.digital-cart-button.active {
+  color: #0f766e;
+  border-color: rgba(15, 118, 110, 0.32);
+  background: #e6fffb;
+}
+
+.digital-buy-button {
+  min-width: 180px;
 }
 
 .change-payment-method-button {

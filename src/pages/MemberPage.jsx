@@ -273,6 +273,8 @@ function MemberPage({
     : new Set(allActiveCourses.map((course) => course.id))
   const availableCourses = allActiveCourses.filter((course) => !accessibleClassIds.has(course.id))
   const [selectedCourseId, setSelectedCourseId] = useState(null)
+  const [selectedDigitalProductId, setSelectedDigitalProductId] = useState(null)
+  const [digitalProductCartIds, setDigitalProductCartIds] = useState([])
   const [activeMaterialIndex, setActiveMaterialIndex] = useState(0)
   const [taskDraft, setTaskDraft] = useState('')
   const [taskAttachment, setTaskAttachment] = useState(null)
@@ -294,6 +296,9 @@ function MemberPage({
   )
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
+  const selectedDigitalProduct = activeDigitalProducts.find(
+    (product) => product.id === selectedDigitalProductId,
+  )
   const materials = selectedCourse?.materials ?? []
   const currentMaterialIndex = Math.min(
     activeMaterialIndex,
@@ -453,7 +458,60 @@ function MemberPage({
       setActiveMaterialIndex(0)
     }
 
+    if (menuId !== 'digital-products') {
+      setSelectedDigitalProductId(null)
+    }
+
     onMenuChange(menuId)
+  }
+
+  const handleOpenDigitalProductDetail = (product) => {
+    setSelectedDigitalProductId(product.id)
+    handleDashboardMenuChange('digital-products')
+    onNotify(`Membuka detail ${product.title}.`)
+  }
+
+  const handleBackToDigitalProducts = () => {
+    setSelectedDigitalProductId(null)
+  }
+
+  const handleShareDigitalProduct = async (product) => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+    const shareData = {
+      title: product.title,
+      text: product.description || `Lihat produk digital ${product.title}`,
+      url: shareUrl,
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+        return
+      }
+
+      if (navigator.clipboard && shareUrl) {
+        await navigator.clipboard.writeText(shareUrl)
+        onNotify('Link produk berhasil disalin.')
+        return
+      }
+
+      onNotify('Fitur share belum tersedia di browser ini.')
+    } catch (error) {
+      if (error?.name !== 'AbortError') {
+        onNotify('Produk belum bisa dibagikan.')
+      }
+    }
+  }
+
+  const handleToggleDigitalProductCart = (product) => {
+    setDigitalProductCartIds((current) => {
+      const isInCart = current.includes(product.id)
+      onNotify(isInCart ? 'Produk dihapus dari keranjang.' : 'Produk ditambahkan ke keranjang.')
+
+      return isInCart
+        ? current.filter((itemId) => itemId !== product.id)
+        : [...current, product.id]
+    })
   }
 
   const isMaterialUnlocked = (index) => {
@@ -1527,15 +1585,10 @@ function MemberPage({
       )}
 
       {activeMenu === 'digital-products' && (
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Produk digital</p>
-              <h2>Produk digital</h2>
-            </div>
-          </div>
-          <div className="learning-list">
-            {activeDigitalProducts.map((product) => {
+        selectedDigitalProduct ? (
+          <section className="digital-product-detail-page">
+            {(() => {
+              const product = selectedDigitalProduct
               const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
               const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
               const price = salePrice || normalPrice
@@ -1545,6 +1598,7 @@ function MemberPage({
               const showExpiredNotice =
                 expiredPayment && !dismissedExpiredPayments.includes(expiredPayment.id)
               const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
+              const isInCart = digitalProductCartIds.includes(product.id)
               let buttonLabel = isOwned
                 ? 'Akses Produk'
                 : pendingPayment
@@ -1558,30 +1612,75 @@ function MemberPage({
               }
 
               return (
-                <article className="member-class-card available-class-card" key={product.id}>
-                  <span className="member-class-visual">
-                    {product.thumbnail ? (
-                      <img src={product.thumbnail} alt="" />
-                    ) : (
-                      <Icon name="download" />
-                    )}
-                    <span>{product.status}</span>
-                  </span>
-                  <span className="member-class-body">
-                    <h3>{product.title}</h3>
-                    <p>{product.fileName || 'Produk digital'}</p>
-                    <span className="member-class-next">
-                      {product.description || 'Akses produk dikirim otomatis setelah pembayaran sukses.'}
-                    </span>
-                  </span>
-                  <span className="available-class-price">
-                    <small>{price ? 'Harga produk' : 'Produk gratis'}</small>
-                    <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
-                    {salePrice > 0 && normalPrice > salePrice && (
-                      <small className="struck-price">{formatRupiah(normalPrice)}</small>
-                    )}
-                  </span>
-                  <span className="available-payment-action">
+                <>
+                  <div className="digital-product-detail-topbar">
+                    <button
+                      className="icon-action-button"
+                      type="button"
+                      aria-label="Kembali ke produk digital"
+                      onClick={handleBackToDigitalProducts}
+                    >
+                      <Icon name="arrowLeft" />
+                    </button>
+                    <button
+                      className="icon-action-button"
+                      type="button"
+                      aria-label="Bagikan produk"
+                      onClick={() => handleShareDigitalProduct(product)}
+                    >
+                      <Icon name="share" />
+                    </button>
+                  </div>
+
+                  <article className="digital-product-detail-hero">
+                    <div className="digital-product-detail-image">
+                      {product.thumbnail ? (
+                        <img src={product.thumbnail} alt="" />
+                      ) : (
+                        <Icon name="download" />
+                      )}
+                      <span>{product.status}</span>
+                    </div>
+                    <div className="digital-product-detail-copy">
+                      <p className="eyebrow">Produk digital</p>
+                      <h2>{product.title}</h2>
+                      <p>{product.description || 'Akses produk dikirim otomatis setelah pembayaran sukses.'}</p>
+                      <div className="digital-product-detail-price">
+                        <small>{price ? 'Harga produk' : 'Produk gratis'}</small>
+                        <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
+                        {salePrice > 0 && normalPrice > salePrice && (
+                          <small className="struck-price">{formatRupiah(normalPrice)}</small>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+
+                  <div className="digital-product-detail-grid">
+                    <article className="panel digital-product-detail-panel">
+                      <h3>Isi produk</h3>
+                      <dl>
+                        <div>
+                          <dt>File</dt>
+                          <dd>{product.fileName || 'Link akses produk'}</dd>
+                        </div>
+                        <div>
+                          <dt>Platform</dt>
+                          <dd>{product.platformType || 'Digital delivery'}</dd>
+                        </div>
+                        <div>
+                          <dt>Akses</dt>
+                          <dd>{isOwned ? 'Sudah aktif di akun Anda' : 'Aktif otomatis setelah pembayaran sukses'}</dd>
+                        </div>
+                      </dl>
+                    </article>
+
+                    <article className="panel digital-product-detail-panel">
+                      <h3>Catatan</h3>
+                      <p>{product.deliveryNote || product.customMessage || 'Instruksi akses akan dikirim ke email setelah pembayaran berhasil.'}</p>
+                    </article>
+                  </div>
+
+                  <div className="digital-product-sticky-actions">
                     {showExpiredNotice && (
                       <span className="expired-payment-notice">
                         <span>Pembayaran sebelumnya expired.</span>
@@ -1595,7 +1694,15 @@ function MemberPage({
                       </span>
                     )}
                     <button
-                      className="btn btn-primary member-class-button"
+                      className={`btn btn-secondary digital-cart-button ${isInCart ? 'active' : ''}`}
+                      type="button"
+                      onClick={() => handleToggleDigitalProductCart(product)}
+                    >
+                      <Icon name="cart" />
+                      {isInCart ? 'Di Keranjang' : 'Keranjang'}
+                    </button>
+                    <button
+                      className="btn btn-primary digital-buy-button"
                       type="button"
                       disabled={isCheckingOut}
                       onClick={() => {
@@ -1612,7 +1719,7 @@ function MemberPage({
                     </button>
                     {pendingPayment && !isOwned && (
                       <button
-                        className="btn btn-secondary member-class-button change-payment-method-button"
+                        className="btn btn-secondary change-payment-method-button"
                         type="button"
                         onClick={() => openPaymentMethodPopup(product, {
                           forceNewPayment: true,
@@ -1622,19 +1729,128 @@ function MemberPage({
                         Ganti metode
                       </button>
                     )}
-                  </span>
-                </article>
+                  </div>
+                </>
               )
-            })}
-            {!activeDigitalProducts.length && (
-              <article className="empty-state">
-                <Icon name="download" />
-                <h3>Belum ada produk digital</h3>
-                <p>Produk digital akan muncul setelah admin mengaktifkannya.</p>
-              </article>
-            )}
-          </div>
-        </section>
+            })()}
+          </section>
+        ) : (
+          <section className="panel">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Produk digital</p>
+                <h2>Produk digital</h2>
+              </div>
+            </div>
+            <div className="learning-list">
+              {activeDigitalProducts.map((product) => {
+                const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
+                const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
+                const price = salePrice || normalPrice
+                const isOwned = ownedDigitalProductIds.has(product.id)
+                const pendingPayment = activePaymentsByProduct.get(product.id)
+                const expiredPayment = expiredPaymentsByProduct.get(product.id)
+                const showExpiredNotice =
+                  expiredPayment && !dismissedExpiredPayments.includes(expiredPayment.id)
+                const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
+                let buttonLabel = isOwned
+                  ? 'Akses Produk'
+                  : pendingPayment
+                    ? 'Selesaikan Pembayaran'
+                    : price
+                      ? product.purchaseButtonLabel || 'Beli Produk'
+                      : 'Ambil Gratis'
+
+                if (isCheckingOut) {
+                  buttonLabel = price ? 'Membuat invoice...' : 'Membuka akses...'
+                }
+
+                return (
+                  <article className="member-class-card available-class-card digital-product-card" key={product.id}>
+                    <span className="member-class-visual">
+                      {product.thumbnail ? (
+                        <img src={product.thumbnail} alt="" />
+                      ) : (
+                        <Icon name="download" />
+                      )}
+                      <span>{product.status}</span>
+                    </span>
+                    <span className="member-class-body">
+                      <h3>{product.title}</h3>
+                      <p>{product.fileName || 'Produk digital'}</p>
+                      <span className="member-class-next">
+                        {product.description || 'Akses produk dikirim otomatis setelah pembayaran sukses.'}
+                      </span>
+                    </span>
+                    <span className="available-class-price">
+                      <small>{price ? 'Harga produk' : 'Produk gratis'}</small>
+                      <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
+                      {salePrice > 0 && normalPrice > salePrice && (
+                        <small className="struck-price">{formatRupiah(normalPrice)}</small>
+                      )}
+                    </span>
+                    <span className="available-payment-action">
+                      {showExpiredNotice && (
+                        <span className="expired-payment-notice">
+                          <span>Pembayaran sebelumnya expired.</span>
+                          <button
+                            type="button"
+                            aria-label="Tutup pemberitahuan pembayaran expired"
+                            onClick={() => dismissExpiredPaymentNotice(expiredPayment.id)}
+                          >
+                            <Icon name="x" />
+                          </button>
+                        </span>
+                      )}
+                      <button
+                        className="btn btn-secondary member-class-button"
+                        type="button"
+                        onClick={() => handleOpenDigitalProductDetail(product)}
+                      >
+                        Detail
+                      </button>
+                      <button
+                        className="btn btn-primary member-class-button"
+                        type="button"
+                        disabled={isCheckingOut}
+                        onClick={() => {
+                          if (isOwned && product.fileUrl) {
+                            window.open(product.fileUrl, '_blank', 'noopener,noreferrer')
+                            return
+                          }
+
+                          openPaymentMethodPopup(product, { itemType: 'digital_product' })
+                        }}
+                      >
+                        <Icon name={isOwned ? 'download' : 'wallet'} />
+                        {buttonLabel}
+                      </button>
+                      {pendingPayment && !isOwned && (
+                        <button
+                          className="btn btn-secondary member-class-button change-payment-method-button"
+                          type="button"
+                          onClick={() => openPaymentMethodPopup(product, {
+                            forceNewPayment: true,
+                            itemType: 'digital_product',
+                          })}
+                        >
+                          Ganti metode
+                        </button>
+                      )}
+                    </span>
+                  </article>
+                )
+              })}
+              {!activeDigitalProducts.length && (
+                <article className="empty-state">
+                  <Icon name="download" />
+                  <h3>Belum ada produk digital</h3>
+                  <p>Produk digital akan muncul setelah admin mengaktifkannya.</p>
+                </article>
+              )}
+            </div>
+          </section>
+        )
       )}
 
       {activeMenu === 'certificates' && (

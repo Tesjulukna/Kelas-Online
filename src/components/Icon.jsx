@@ -5,6 +5,12 @@ const paths = {
       <path d="m13 6 6 6-6 6" />
     </>
   ),
+  arrowLeft: (
+    <>
+      <path d="M19 12H5" />
+      <path d="m11 6-6 6 6 6" />
+    </>
+  ),
   bell: (
     <>
       <path d="M18 9.5a6 6 0 0 0-12 0c0 7-2.5 7.5-2.5 7.5h17S18 16.5 18 9.5Z" />
@@ -47,6 +53,13 @@ const paths = {
     <>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 7.5v5l3.4 2" />
+    </>
+  ),
+  cart: (
+    <>
+      <path d="M4 5h2l2 10.5h9.5l2-7.5H7.2" />
+      <circle cx="9.5" cy="19" r="1.5" />
+      <circle cx="17" cy="19" r="1.5" />
     </>
   ),
   download: (
@@ -146,6 +159,15 @@ const paths = {
     <>
       <path d="m21 3-7.5 18-3.2-7.3L3 10.5z" />
       <path d="m10.3 13.7 4.4-4.4" />
+    </>
+  ),
+  share: (
+    <>
+      <circle cx="18" cy="5" r="2.5" />
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="19" r="2.5" />
+      <path d="m8.3 10.8 7.4-4.6" />
+      <path d="m8.3 13.2 7.4 4.6" />
     </>
   ),
   settings: (
