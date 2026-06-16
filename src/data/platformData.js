@@ -94,6 +94,7 @@ export const adminMenuItems = [
   { id: 'overview', label: 'Ringkasan', icon: 'layoutDashboard' },
   { id: 'manage-classes', label: 'Kelola Kelas', icon: 'bookOpen' },
   { id: 'students', label: 'Peserta', icon: 'users' },
+  { id: 'payments', label: 'Pembayaran', icon: 'wallet' },
   { id: 'submissions', label: 'Tugas Member', icon: 'message' },
   { id: 'certificates', label: 'Sertifikat', icon: 'certificate' },
   { id: 'support', label: 'Bantuan Mentor', icon: 'message' },

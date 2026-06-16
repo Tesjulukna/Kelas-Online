@@ -218,6 +218,24 @@ function parseJson(value, fallback = null) {
   }
 }
 
+function parseOrderPayload(value) {
+  const parsed = parseJson(value, {})
+
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+}
+
+function firstPayloadValue(payload, paths) {
+  for (const path of paths) {
+    const value = path.split('.').reduce((current, key) => current?.[key], payload)
+
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return String(value)
+    }
+  }
+
+  return ''
+}
+
 function makeId(prefix) {
   return `${prefix}-${Date.now()}-${randomBytes(4).toString('hex')}`
 }
@@ -996,6 +1014,83 @@ export async function fetchMembers() {
     members: (members || []).map((account) =>
       accountPublic(account, progressRows || [], sessionRows || []),
     ),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+function paymentPublic(row, source) {
+  const payload = parseOrderPayload(row.payload)
+  const sourceLabel = source === 'tripay' ? 'Tripay' : 'Lynk.id'
+  const amount = source === 'tripay'
+    ? cleanNumber(row.amount, 0, 1000000000)
+    : cleanNumber(
+        firstPayloadValue(payload, [
+          'amount',
+          'total_amount',
+          'data.amount',
+          'data.total_amount',
+          'order.total',
+          'data.order.total',
+        ]),
+        0,
+        1000000000,
+      )
+  const paymentMethod = source === 'tripay'
+    ? firstPayloadValue(payload, [
+        'payment_method',
+        'method',
+        'data.payment_method',
+        'data.method',
+        'payment_name',
+        'data.payment_name',
+      ])
+    : 'Lynk.id'
+  const status = cleanText(row.status || (source === 'tripay' ? 'pending' : 'processed'), 60)
+  const orderCode = source === 'tripay'
+    ? cleanText(row.reference || row.merchant_ref || row.id, 180)
+    : cleanText(row.order_id || row.event_id || row.id, 180)
+
+  return {
+    id: `${source}:${row.id}`,
+    source,
+    sourceLabel,
+    orderCode,
+    merchantRef: cleanText(row.merchant_ref || '', 180),
+    reference: cleanText(row.reference || '', 180),
+    buyerName: cleanText(row.buyer_name || '', 160),
+    buyerEmail: cleanEmail(row.buyer_email || ''),
+    classId: cleanText(row.class_id || '', 120),
+    classTitle: cleanText(
+      row.class_title || row.product_name || row.product_key || 'Kelas',
+      180,
+    ),
+    amount,
+    status,
+    paymentMethod: cleanText(paymentMethod || sourceLabel, 80),
+    checkoutUrl: cleanExternalUrl(row.checkout_url || ''),
+    accessGranted: row.access_granted === true,
+    createdAt: cleanText(row.created_at || '', 60),
+    updatedAt: cleanText(row.updated_at || '', 60),
+  }
+}
+
+export async function fetchPayments() {
+  const [tripayRows, lynkRows] = await Promise.all([
+    fetchBackupTable('tripay_orders'),
+    fetchBackupTable('lynk_orders'),
+  ])
+  const payments = [
+    ...(tripayRows || []).map((row) => paymentPublic(row, 'tripay')),
+    ...(lynkRows || []).map((row) => paymentPublic(row, 'lynk')),
+  ].sort((a, b) => {
+    const bTime = Date.parse(b.createdAt || b.updatedAt || '') || 0
+    const aTime = Date.parse(a.createdAt || a.updatedAt || '') || 0
+
+    return bTime - aTime
+  })
+
+  return {
+    payments,
     updatedAt: new Date().toISOString(),
   }
 }

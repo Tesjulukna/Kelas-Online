@@ -10,6 +10,7 @@ import {
   deleteSupportTicket,
   fetchClasses,
   fetchMembers,
+  fetchPayments,
   fetchSubmissions,
   fetchSupportTickets,
   fetchWebsiteSettings,
@@ -196,6 +197,17 @@ async function routeRequest(request, response) {
 
   if (route === 'submissions') {
     await handleSubmissions(request, response, url)
+    return
+  }
+
+  if (route === 'payments') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+      return
+    }
+
+    await requireUser(request, 'admin')
+    sendJson(response, 200, await fetchPayments())
     return
   }
 

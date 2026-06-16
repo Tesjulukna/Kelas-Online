@@ -483,6 +483,7 @@ function AdminPage({
   members = [],
   supportTickets = [],
   submissions = [],
+  payments = [],
   websiteSettings,
   onClassesChange,
   onWebsiteSettingsChange = async () => {},
@@ -521,6 +522,9 @@ function AdminPage({
   const [submissionListStatusFilter, setSubmissionListStatusFilter] = useState('all')
   const [submissionListClassFilter, setSubmissionListClassFilter] = useState('all')
   const [isSubmissionFilterOpen, setIsSubmissionFilterOpen] = useState(false)
+  const [paymentSearchTerm, setPaymentSearchTerm] = useState('')
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all')
+  const [paymentSourceFilter, setPaymentSourceFilter] = useState('all')
   const [supportForm, setSupportForm] = useState(() => createEmptySupportForm())
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false)
   const [pendingDeleteSupport, setPendingDeleteSupport] = useState(null)
@@ -547,6 +551,48 @@ function AdminPage({
   const pendingSubmissions = submissions.filter(
     (item) => item.status === 'Menunggu Review',
   ).length
+  const paymentSearchQuery = paymentSearchTerm.trim().toLowerCase()
+  const paidPaymentStatuses = ['paid', 'processed', 'success', 'settlement']
+  const pendingPaymentStatuses = ['pending', 'unpaid', 'waiting', 'callback']
+  const failedPaymentStatuses = ['failed', 'expired', 'cancelled', 'canceled']
+  const isPaidPayment = (payment) =>
+    paidPaymentStatuses.includes(String(payment.status).toLowerCase()) || payment.accessGranted
+  const isPendingPayment = (payment) =>
+    pendingPaymentStatuses.includes(String(payment.status).toLowerCase()) && !payment.accessGranted
+  const isFailedPayment = (payment) =>
+    failedPaymentStatuses.includes(String(payment.status).toLowerCase())
+  const paidPayments = payments.filter(isPaidPayment)
+  const pendingPayments = payments.filter(isPendingPayment)
+  const totalPaidRevenue = paidPayments.reduce((total, payment) => total + payment.amount, 0)
+  const tripayRevenue = paidPayments
+    .filter((payment) => payment.source === 'tripay')
+    .reduce((total, payment) => total + payment.amount, 0)
+  const paymentSourceOptions = [
+    ...new Set(payments.map((payment) => payment.sourceLabel).filter(Boolean)),
+  ]
+  const paymentStatusOptions = [
+    ...new Set(payments.map((payment) => payment.status).filter(Boolean)),
+  ]
+  const filteredPayments = payments.filter((payment) => {
+    const searchMatches =
+      !paymentSearchQuery ||
+      [
+        payment.buyerName,
+        payment.buyerEmail,
+        payment.classTitle,
+        payment.orderCode,
+        payment.reference,
+        payment.merchantRef,
+      ]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(paymentSearchQuery))
+    const statusMatches =
+      paymentStatusFilter === 'all' || payment.status === paymentStatusFilter
+    const sourceMatches =
+      paymentSourceFilter === 'all' || payment.sourceLabel === paymentSourceFilter
+
+    return searchMatches && statusMatches && sourceMatches
+  })
   const memberSearchQuery = memberSearchTerm.trim().toLowerCase()
   const memberStatusOptions = [
     ...new Set(members.map((member) => member.status).filter(Boolean)),
@@ -1801,6 +1847,7 @@ function AdminPage({
             <MetricCard icon="users" label="Sedang aktif" value={onlineMembers.length} />
             <MetricCard icon="message" label="Bantuan masuk" value={waitingSupportCount} />
             <MetricCard icon="fileText" label="Tugas masuk" value={pendingSubmissions} />
+            <MetricCard icon="wallet" label="Omzet terbayar" value={formatRupiah(totalPaidRevenue)} />
           </section>
 
           <section className="admin-actions">
@@ -2155,6 +2202,133 @@ function AdminPage({
             </div>
           )}
         </section>
+      )}
+
+      {activeMenu === 'payments' && (
+        <>
+          <section className="summary-grid admin-summary payment-summary">
+            <MetricCard icon="wallet" label="Omzet terbayar" value={formatRupiah(totalPaidRevenue)} />
+            <MetricCard icon="trendingUp" label="Transaksi sukses" value={paidPayments.length} />
+            <MetricCard icon="clock" label="Menunggu bayar" value={pendingPayments.length} />
+            <MetricCard icon="shield" label="Omzet Tripay" value={formatRupiah(tripayRevenue)} />
+          </section>
+
+          <section className="panel payment-panel">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Pembayaran</p>
+                <h2>Riwayat transaksi</h2>
+              </div>
+              <div className="payment-filter-bar">
+                <label>
+                  Cari
+                  <input
+                    type="search"
+                    value={paymentSearchTerm}
+                    onChange={(event) => setPaymentSearchTerm(event.target.value)}
+                    placeholder="Nama, email, kelas, atau order"
+                  />
+                </label>
+                <label>
+                  Status
+                  <select
+                    value={paymentStatusFilter}
+                    onChange={(event) => setPaymentStatusFilter(event.target.value)}
+                  >
+                    <option value="all">Semua status</option>
+                    {paymentStatusOptions.map((status) => (
+                      <option value={status} key={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Kanal
+                  <select
+                    value={paymentSourceFilter}
+                    onChange={(event) => setPaymentSourceFilter(event.target.value)}
+                  >
+                    <option value="all">Semua kanal</option>
+                    {paymentSourceOptions.map((source) => (
+                      <option value={source} key={source}>
+                        {source}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div
+              className="admin-table payment-table compact-list-table"
+              role="table"
+              aria-label="Riwayat transaksi pembayaran"
+            >
+              <div className="table-row table-head" role="row">
+                <span role="columnheader">Transaksi</span>
+                <span role="columnheader">Member</span>
+                <span role="columnheader">Kelas</span>
+                <span role="columnheader">Nominal</span>
+                <span role="columnheader">Status</span>
+                <span role="columnheader">Waktu</span>
+              </div>
+              {filteredPayments.map((payment) => {
+                const statusType = isPaidPayment(payment)
+                  ? 'success'
+                  : isFailedPayment(payment)
+                    ? 'danger'
+                    : 'pending'
+
+                return (
+                  <div className="table-row" role="row" key={payment.id}>
+                    <span className="payment-identity" data-label="Transaksi" role="cell">
+                      <strong>{payment.orderCode || payment.reference || '-'}</strong>
+                      <small>
+                        {payment.sourceLabel} / {payment.paymentMethod || '-'}
+                      </small>
+                    </span>
+                    <span data-label="Member" role="cell">
+                      <span className="payment-member-cell">
+                        <strong>{payment.buyerName || 'Member'}</strong>
+                        <small>{payment.buyerEmail || '-'}</small>
+                      </span>
+                    </span>
+                    <span data-label="Kelas" role="cell">
+                      {payment.classTitle}
+                    </span>
+                    <span data-label="Nominal" role="cell">
+                      <strong>{payment.amount ? formatRupiah(payment.amount) : '-'}</strong>
+                    </span>
+                    <span data-label="Status" role="cell">
+                      <mark className={`payment-status ${statusType}`}>
+                        {payment.status}
+                      </mark>
+                    </span>
+                    <span data-label="Waktu" role="cell">
+                      {payment.createdAt
+                        ? new Date(payment.createdAt).toLocaleString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : '-'}
+                    </span>
+                  </div>
+                )
+              })}
+              {!filteredPayments.length && (
+                <article className="empty-state table-empty">
+                  <Icon name="wallet" />
+                  <h3>Belum ada transaksi</h3>
+                  <p>Riwayat pembayaran Tripay dan Lynk.id akan muncul di sini.</p>
+                </article>
+              )}
+            </div>
+          </section>
+        </>
       )}
 
       {activeMenu === 'submissions' && (

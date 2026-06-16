@@ -21,6 +21,7 @@ const classesApiPath = '/api/classes'
 const membersApiPath = '/api/members'
 const supportApiPath = '/api/support'
 const submissionsApiPath = '/api/submissions'
+const paymentsApiPath = '/api/payments'
 const settingsApiPath = '/api/settings'
 const backupApiPath = '/api/backup'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
@@ -109,6 +110,7 @@ function getDashboardMenuFromUrl(role) {
         'overview',
         'manage-classes',
         'students',
+        'payments',
         'submissions',
         'certificates',
         'support',
@@ -674,6 +676,34 @@ function cleanSubmissions(value) {
     }))
 }
 
+function cleanPayments(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((item) => item?.id)
+    .map((item) => ({
+      id: cleanText(item.id),
+      source: cleanText(item.source || ''),
+      sourceLabel: cleanText(item.sourceLabel || item.source || 'Pembayaran'),
+      orderCode: cleanLongText(item.orderCode || '', 180),
+      merchantRef: cleanLongText(item.merchantRef || '', 180),
+      reference: cleanLongText(item.reference || '', 180),
+      buyerName: cleanText(item.buyerName || 'Member'),
+      buyerEmail: cleanEmail(item.buyerEmail || ''),
+      classId: cleanText(item.classId || ''),
+      classTitle: cleanLongText(item.classTitle || 'Kelas', 180),
+      amount: Math.max(0, Math.round(Number(item.amount) || 0)),
+      status: cleanText(item.status || 'pending'),
+      paymentMethod: cleanText(item.paymentMethod || item.sourceLabel || '-'),
+      checkoutUrl: cleanLongText(item.checkoutUrl || '', 300),
+      accessGranted: item.accessGranted === true,
+      createdAt: cleanText(item.createdAt || ''),
+      updatedAt: cleanText(item.updatedAt || ''),
+    }))
+}
+
 function readClasses() {
   if (typeof window === 'undefined') {
     return seedClasses()
@@ -849,6 +879,16 @@ async function fetchStoredSubmissions(currentSession) {
   return cleanSubmissions(data.submissions)
 }
 
+async function fetchStoredPayments(currentSession) {
+  if (currentSession?.role !== 'admin') {
+    return []
+  }
+
+  const data = await requestJson(paymentsApiPath)
+
+  return cleanPayments(data.payments)
+}
+
 function App() {
   const [session, setSession] = useState(() => readSession())
   const [page, setPage] = useState(() => getInitialPage(readSession()))
@@ -868,6 +908,7 @@ function App() {
   const [members, setMembers] = useState([])
   const [supportTickets, setSupportTickets] = useState([])
   const [submissions, setSubmissions] = useState([])
+  const [payments, setPayments] = useState([])
   const [isClassesLoaded, setIsClassesLoaded] = useState(false)
   const [isWebsiteSettingsLoaded, setIsWebsiteSettingsLoaded] = useState(false)
   const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(false)
@@ -1150,10 +1191,11 @@ function App() {
         fetchStoredMembers(),
         fetchStoredSupportTickets(session),
         fetchStoredSubmissions(session),
+        fetchStoredPayments(session),
       ])
 
       requests
-        .then(([nextMembers, nextSupportTickets, nextSubmissions]) => {
+        .then(([nextMembers, nextSupportTickets, nextSubmissions, nextPayments]) => {
           if (!isCurrent) {
             return
           }
@@ -1170,12 +1212,14 @@ function App() {
           }
           setSupportTickets(nextSupportTickets)
           setSubmissions(nextSubmissions)
+          setPayments(nextPayments)
         })
         .catch(() => {
           if (isCurrent) {
             setMembers((current) => current)
             setSupportTickets((current) => current)
             setSubmissions((current) => current)
+            setPayments((current) => current)
           }
         })
     }
@@ -1461,12 +1505,14 @@ function App() {
       nextMembers,
       nextSupportTickets,
       nextSubmissions,
+      nextPayments,
       nextSettings,
     ] = await Promise.all([
       fetchStoredClasses(),
       fetchStoredMembers(),
       fetchStoredSupportTickets(session),
       fetchStoredSubmissions(session),
+      fetchStoredPayments(session),
       fetchStoredWebsiteSettings(),
     ])
 
@@ -1474,6 +1520,7 @@ function App() {
     setMembers(nextMembers)
     setSupportTickets(nextSupportTickets)
     setSubmissions(nextSubmissions)
+    setPayments(nextPayments)
     setWebsiteSettings(nextSettings)
     window.sessionStorage.setItem(classesKey, JSON.stringify(nextClasses))
     window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(nextSettings))
@@ -1778,6 +1825,7 @@ function App() {
               members={members}
               supportTickets={supportTickets}
               submissions={submissions}
+              payments={payments}
               websiteSettings={websiteSettings}
               onClassesChange={handleClassesChange}
               onWebsiteSettingsChange={handleWebsiteSettingsChange}

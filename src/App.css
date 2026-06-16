@@ -3934,6 +3934,41 @@ img {
   display: none;
 }
 
+.payment-filter-bar {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.payment-filter-bar label {
+  display: grid;
+  flex: 1 1 160px;
+  max-width: 260px;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.payment-filter-bar label:first-child {
+  flex-basis: 280px;
+  max-width: 340px;
+}
+
+.payment-filter-bar input,
+.payment-filter-bar select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-heading);
+  background: #ffffff;
+  font: inherit;
+}
+
 .member-table .table-row,
 .support-table .table-row {
   grid-template-columns:
@@ -3958,7 +3993,19 @@ img {
   min-width: 1060px;
 }
 
+.payment-table .table-row {
+  grid-template-columns:
+    minmax(190px, 1fr)
+    minmax(180px, 0.9fr)
+    minmax(180px, 0.9fr)
+    minmax(120px, 0.55fr)
+    minmax(115px, 0.5fr)
+    minmax(150px, 0.7fr);
+  min-width: 980px;
+}
+
 .member-identity,
+.payment-identity,
 .support-message {
   display: flex;
   gap: 10px;
@@ -3973,6 +4020,8 @@ img {
 
 .member-identity strong,
 .member-identity small,
+.payment-identity strong,
+.payment-identity small,
 .support-message strong,
 .support-message small {
   display: block;
@@ -3980,11 +4029,42 @@ img {
 }
 
 .member-identity small,
+.payment-identity small,
 .support-message small,
 .password-note,
 .support-ticket-preview span,
 .support-ticket-preview p {
   color: var(--color-muted);
+}
+
+.payment-member-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.payment-member-cell small {
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+.payment-status {
+  text-transform: capitalize;
+}
+
+.payment-status.success {
+  color: #0f766e;
+  background: #ccfbf1;
+}
+
+.payment-status.pending {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.payment-status.danger {
+  color: #b91c1c;
+  background: #fee2e2;
 }
 
 .support-message {
