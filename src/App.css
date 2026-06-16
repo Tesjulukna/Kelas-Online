@@ -7069,6 +7069,45 @@ img {
   white-space: nowrap;
 }
 
+.available-payment-action {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.expired-payment-notice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  color: #9a3412;
+  background: #fff7ed;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.expired-payment-notice button {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  background: rgba(154, 52, 18, 0.08);
+  cursor: pointer;
+}
+
+.expired-payment-notice .icon {
+  width: 14px;
+  height: 14px;
+}
+
 .payment-method-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -7345,6 +7384,7 @@ img {
 
   .member-class-progress,
   .available-class-price,
+  .available-payment-action,
   .member-class-button {
     grid-column: 2;
   }
@@ -7367,6 +7407,7 @@ img {
 
   .member-class-progress,
   .available-class-price,
+  .available-payment-action,
   .member-class-button {
     grid-column: auto;
   }
@@ -7377,6 +7418,10 @@ img {
 
   .member-class-button {
     width: 100%;
+  }
+
+  .available-payment-action {
+    justify-items: stretch;
   }
 
   .quick-action-grid {

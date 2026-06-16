@@ -588,6 +588,9 @@ function AdminPage({
   const reportPayments = payments.filter(paymentMatchesDateRange)
   const paidPayments = reportPayments.filter(isPaidPayment)
   const pendingPayments = reportPayments.filter(isPendingPayment)
+  const expiredPayments = reportPayments.filter(
+    (payment) => String(payment.status).toLowerCase() === 'expired' || payment.isExpired,
+  )
   const totalPaidRevenue = paidPayments.reduce((total, payment) => total + payment.amount, 0)
   const tripayRevenue = paidPayments
     .filter((payment) => payment.source === 'tripay')
@@ -2247,6 +2250,7 @@ function AdminPage({
             <MetricCard icon="wallet" label="Omzet terbayar" value={formatRupiah(totalPaidRevenue)} />
             <MetricCard icon="trendingUp" label="Transaksi sukses" value={paidPayments.length} />
             <MetricCard icon="clock" label="Menunggu bayar" value={pendingPayments.length} />
+            <MetricCard icon="shield" label="Expired" value={expiredPayments.length} />
             <MetricCard icon="shield" label="Omzet Tripay" value={formatRupiah(tripayRevenue)} />
           </section>
 

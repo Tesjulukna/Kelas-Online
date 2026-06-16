@@ -699,8 +699,10 @@ function cleanPayments(value) {
       amount: Math.max(0, Math.round(Number(item.amount) || 0)),
       status: cleanText(item.status || 'pending'),
       paymentMethod: cleanText(item.paymentMethod || item.sourceLabel || '-'),
-      checkoutUrl: cleanLongText(item.checkoutUrl || '', 300),
+      checkoutUrl: cleanLongText(item.checkoutUrl || '', 1000),
       accessGranted: item.accessGranted === true,
+      expiresAt: cleanText(item.expiresAt || ''),
+      isExpired: item.isExpired === true,
       createdAt: cleanText(item.createdAt || ''),
       updatedAt: cleanText(item.updatedAt || ''),
     }))
@@ -882,7 +884,7 @@ async function fetchStoredSubmissions(currentSession) {
 }
 
 async function fetchStoredPayments(currentSession) {
-  if (currentSession?.role !== 'admin') {
+  if (!currentSession || !['admin', 'member'].includes(currentSession.role)) {
     return []
   }
 
@@ -1817,6 +1819,7 @@ function App() {
               allowedClassIds={currentMemberAccess}
               supportTickets={supportTickets}
               submissions={submissions}
+              payments={payments}
               focusTarget={memberFocusTarget}
               websiteSettings={websiteSettings}
               activeMenu={activeMemberMenu}

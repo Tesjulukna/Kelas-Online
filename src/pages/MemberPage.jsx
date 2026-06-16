@@ -8,6 +8,7 @@ import { uploadStorageFile } from '../lib/storageUpload'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
+const expiredPaymentNoticeKey = 'ibnucreative.expiredPaymentNotices.v1'
 const uploadFileApiPath = '/api/upload-file'
 
 function scopedStorageKey(baseKey, userId = '') {
@@ -104,6 +105,34 @@ function formatRupiah(value) {
     currency: 'IDR',
     maximumFractionDigits: 0,
   }).format(amount)
+}
+
+function readDismissedExpiredPaymentNotices(userId = '') {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  const storageKey = scopedStorageKey(expiredPaymentNoticeKey, userId)
+
+  try {
+    const value = JSON.parse(window.localStorage.getItem(storageKey))
+
+    return Array.isArray(value) ? value : []
+  } catch {
+    window.localStorage.removeItem(storageKey)
+    return []
+  }
+}
+
+function saveDismissedExpiredPaymentNotices(userId = '', value = []) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(
+    scopedStorageKey(expiredPaymentNoticeKey, userId),
+    JSON.stringify([...new Set(value)]),
+  )
 }
 
 function PaymentMethodLogo({ method }) {
@@ -207,6 +236,7 @@ function MemberPage({
   allowedClassIds = null,
   supportTickets = [],
   submissions = [],
+  payments = [],
   activeMenu,
   onMenuChange,
   isMenuOpen,
@@ -242,6 +272,9 @@ function MemberPage({
   const [checkoutClassId, setCheckoutClassId] = useState('')
   const [paymentMethodCourse, setPaymentMethodCourse] = useState(null)
   const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('')
+  const [dismissedExpiredPayments, setDismissedExpiredPayments] = useState(() =>
+    readDismissedExpiredPaymentNotices(userId),
+  )
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
   const materials = selectedCourse?.materials ?? []
@@ -275,6 +308,38 @@ function MemberPage({
   const resourceLinks = (activeMaterial?.resourceLinks ?? []).filter((link) => link.url)
   const isTaskImageAllowed = activeMaterial?.allowTaskImage !== false
   const isTaskImageRequired = Boolean(activeMaterial?.requireTaskImage)
+  const activePaymentsByClass = new Map()
+  const expiredPaymentsByClass = new Map()
+
+  payments
+    .filter((payment) => payment.source === 'tripay')
+    .forEach((payment) => {
+      const status = String(payment.status || '').toLowerCase()
+      const currentPending = activePaymentsByClass.get(payment.classId)
+      const currentExpired = expiredPaymentsByClass.get(payment.classId)
+
+      if (
+        ['pending', 'unpaid', 'waiting', 'callback'].includes(status) &&
+        payment.checkoutUrl &&
+        !payment.isExpired
+      ) {
+        if (
+          !currentPending ||
+          Date.parse(payment.createdAt || '') > Date.parse(currentPending.createdAt || '')
+        ) {
+          activePaymentsByClass.set(payment.classId, payment)
+        }
+      }
+
+      if (status === 'expired' || payment.isExpired) {
+        if (
+          !currentExpired ||
+          Date.parse(payment.createdAt || '') > Date.parse(currentExpired.createdAt || '')
+        ) {
+          expiredPaymentsByClass.set(payment.classId, payment)
+        }
+      }
+    })
 
   const rememberCoursePosition = useCallback((courseId, materialIndex) => {
     setCourseProgress((current) => ({
@@ -522,7 +587,13 @@ function MemberPage({
       }
 
       if (price) {
-        onNotify('Checkout Tripay dibuka. Akses kelas aktif otomatis setelah pembayaran sukses.')
+        onNotify(
+          data.existingPayment
+            ? 'Invoice sebelumnya dibuka kembali.'
+            : data.emailSent
+              ? 'Invoice Tripay dibuat dan instruksi pembayaran dikirim ke email.'
+              : 'Invoice Tripay dibuat. Email belum terkirim, silakan lanjut dari halaman pembayaran.',
+        )
       }
     } catch (error) {
       onNotify(error.message || 'Checkout Tripay tidak bisa dibuat.')
@@ -533,14 +604,27 @@ function MemberPage({
 
   const openPaymentMethodPopup = (course) => {
     const price = Math.max(0, Math.round(Number(course.price) || 0))
+    const pendingPayment = activePaymentsByClass.get(course.id)
 
     if (!price) {
       handleStartCheckout(course)
       return
     }
 
+    if (pendingPayment?.checkoutUrl) {
+      window.location.assign(pendingPayment.checkoutUrl)
+      return
+    }
+
     setPaymentMethodCourse(course)
     setSelectedPaymentMethodCode('')
+  }
+
+  const dismissExpiredPaymentNotice = (paymentId) => {
+    const nextDismissed = [...new Set([...dismissedExpiredPayments, paymentId])]
+
+    setDismissedExpiredPayments(nextDismissed)
+    saveDismissedExpiredPaymentNotices(userId, nextDismissed)
   }
 
   const handleCreateSelectedPayment = () => {
@@ -1191,10 +1275,18 @@ function MemberPage({
             {availableCourses.map((course) => {
               const price = Math.max(0, Math.round(Number(course.price) || 0))
               const isCheckingOut = checkoutClassId === course.id
+              const pendingPayment = activePaymentsByClass.get(course.id)
+              const expiredPayment = expiredPaymentsByClass.get(course.id)
+              const showExpiredNotice =
+                expiredPayment && !dismissedExpiredPayments.includes(expiredPayment.id)
               const accessNote = price
                 ? 'Akses materi dibuka otomatis setelah pembayaran sukses.'
                 : 'Kelas gratis bisa langsung dibuka dari akun member.'
-              let checkoutButtonLabel = price ? 'Bayar & Buka Akses' : 'Masuk Gratis'
+              let checkoutButtonLabel = pendingPayment
+                ? 'Selesaikan Pembayaran'
+                : price
+                  ? 'Bayar & Buka Akses'
+                  : 'Masuk Gratis'
 
               if (isCheckingOut) {
                 checkoutButtonLabel = price ? 'Membuat invoice...' : 'Membuka akses...'
@@ -1221,15 +1313,29 @@ function MemberPage({
                     <small>{price ? 'Harga kelas' : 'Kelas gratis'}</small>
                     <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
                   </span>
-                  <button
-                    className="btn btn-primary member-class-button"
-                    type="button"
-                    disabled={isCheckingOut}
-                    onClick={() => openPaymentMethodPopup(course)}
-                  >
-                    <Icon name="wallet" />
-                    {checkoutButtonLabel}
-                  </button>
+                  <span className="available-payment-action">
+                    {showExpiredNotice && (
+                      <span className="expired-payment-notice">
+                        <span>Pembayaran sebelumnya expired.</span>
+                        <button
+                          type="button"
+                          aria-label="Tutup pemberitahuan pembayaran expired"
+                          onClick={() => dismissExpiredPaymentNotice(expiredPayment.id)}
+                        >
+                          <Icon name="x" />
+                        </button>
+                      </span>
+                    )}
+                    <button
+                      className="btn btn-primary member-class-button"
+                      type="button"
+                      disabled={isCheckingOut}
+                      onClick={() => openPaymentMethodPopup(course)}
+                    >
+                      <Icon name="wallet" />
+                      {checkoutButtonLabel}
+                    </button>
+                  </span>
                 </article>
               )
             })}

@@ -176,7 +176,7 @@ function cleanUrl(value, maxLength = 600) {
 }
 
 function cleanExternalUrl(value) {
-  const rawUrl = cleanText(value, 360)
+  const rawUrl = cleanText(value, 1200)
 
   if (!rawUrl) {
     return ''
@@ -234,6 +234,22 @@ function firstPayloadValue(payload, paths) {
   }
 
   return ''
+}
+
+function parseTimestamp(value) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return 0
+  }
+
+  const raw = String(value).trim()
+  const numeric = Number(raw)
+
+  if (Number.isFinite(numeric)) {
+    return numeric > 9999999999 ? numeric : numeric * 1000
+  }
+
+  const parsed = Date.parse(raw)
+  return Number.isNaN(parsed) ? 0 : parsed
 }
 
 function makeId(prefix) {
@@ -443,6 +459,56 @@ function accountPublic(account, progressRows = [], sessionRows = []) {
         lastActivityAt: row.last_activity_at || row.updated_at || '',
       })),
   }
+}
+
+function tripayOrderExpiresAt(row, payload = parseOrderPayload(row.payload)) {
+  const explicitTime = parseTimestamp(firstPayloadValue(payload, [
+    'expired_time',
+    'expires_time',
+    'expiry_time',
+    'data.expired_time',
+    'data.expires_time',
+    'data.expiry_time',
+    'expired_at',
+    'expires_at',
+    'data.expired_at',
+    'data.expires_at',
+  ]))
+
+  if (explicitTime) {
+    return new Date(explicitTime).toISOString()
+  }
+
+  const createdTime = parseTimestamp(row.created_at || row.updated_at || '')
+
+  if (!createdTime) {
+    return ''
+  }
+
+  const expiredMinutes = cleanNumber(process.env.TRIPAY_EXPIRED_MINUTES || 1440, 5, 10080)
+  return new Date(createdTime + expiredMinutes * 60 * 1000).toISOString()
+}
+
+function tripayOrderStatus(row, payload = parseOrderPayload(row.payload)) {
+  const status = cleanText(row.status || firstPayloadValue(payload, [
+    'status',
+    'data.status',
+    'payment_status',
+    'data.payment_status',
+  ]) || 'pending', 60).toLowerCase()
+  const payableStatuses = ['pending', 'unpaid', 'waiting', 'callback']
+  const expiresAt = tripayOrderExpiresAt(row, payload)
+  const expiresTime = parseTimestamp(expiresAt)
+
+  if (
+    payableStatuses.includes(status) &&
+    expiresTime &&
+    expiresTime <= Date.now()
+  ) {
+    return 'expired'
+  }
+
+  return status
 }
 
 function sessionPayload(account, token = '') {
@@ -1040,6 +1106,10 @@ export async function fetchMembers() {
 function paymentPublic(row, source) {
   const payload = parseOrderPayload(row.payload)
   const sourceLabel = source === 'tripay' ? 'Tripay' : 'Lynk.id'
+  const expiresAt = source === 'tripay' ? tripayOrderExpiresAt(row, payload) : ''
+  const status = source === 'tripay'
+    ? tripayOrderStatus(row, payload)
+    : cleanText(row.status || 'processed', 60)
   const amount = source === 'tripay'
     ? cleanNumber(row.amount, 0, 1000000000)
     : cleanNumber(
@@ -1064,7 +1134,6 @@ function paymentPublic(row, source) {
         'data.payment_name',
       ])
     : 'Lynk.id'
-  const status = cleanText(row.status || (source === 'tripay' ? 'pending' : 'processed'), 60)
   const orderCode = source === 'tripay'
     ? cleanText(row.reference || row.merchant_ref || row.id, 180)
     : cleanText(row.order_id || row.event_id || row.id, 180)
@@ -1089,6 +1158,8 @@ function paymentPublic(row, source) {
     paymentMethod: cleanText(paymentMethod || sourceLabel, 80),
     checkoutUrl: cleanExternalUrl(row.checkout_url || ''),
     accessGranted: row.access_granted === true,
+    expiresAt,
+    isExpired: status === 'expired',
     createdAt: cleanText(row.created_at || '', 60),
     updatedAt: cleanText(row.updated_at || '', 60),
   }
@@ -1172,6 +1243,42 @@ export async function fetchPayments() {
 
   return {
     payments,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+async function expireTripayOrderIfNeeded(row) {
+  const payload = parseOrderPayload(row.payload)
+  const status = tripayOrderStatus(row, payload)
+
+  if (status === 'expired' && row.status !== 'expired') {
+    await rest(`tripay_orders?id=eq.${eq(row.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: { status: 'expired' },
+    }).catch(() => null)
+
+    return { ...row, status: 'expired' }
+  }
+
+  return row
+}
+
+async function fetchMemberTripayRows(memberId) {
+  const rows = await rest(
+    `tripay_orders?select=*&member_id=eq.${eq(memberId)}&order=created_at.desc&limit=100`,
+  )
+  const checkedRows = await Promise.all((rows || []).map(expireTripayOrderIfNeeded))
+
+  return checkedRows
+}
+
+export async function fetchMemberPayments(request) {
+  const user = await requireUser(request, 'member')
+  const rows = await fetchMemberTripayRows(user.userId)
+
+  return {
+    payments: rows.map((row) => paymentPublic(row, 'tripay')),
     updatedAt: new Date().toISOString(),
   }
 }
@@ -2309,6 +2416,63 @@ async function sendResendCredentialsEmail(account) {
   })
 }
 
+function buildTripayPaymentMessage(order) {
+  return `Halo ${order.buyerName},
+
+Invoice pembayaran kelas Anda sudah dibuat.
+
+Kelas: ${order.classTitle}
+Nominal: Rp ${new Intl.NumberFormat('id-ID').format(order.amount)}
+Metode pembayaran: ${order.paymentMethod}
+${order.expiresAt ? `Batas pembayaran: ${new Date(order.expiresAt).toLocaleString('id-ID')}` : ''}
+
+Silakan selesaikan pembayaran melalui link berikut:
+${order.checkoutUrl}
+
+Akses kelas akan aktif otomatis setelah pembayaran sukses.
+
+IbnuCreative Academy`
+}
+
+async function sendTripayPaymentEmail(order) {
+  if (process.env.TRIPAY_SEND_PAYMENT_EMAIL === 'false') {
+    return {
+      sent: false,
+      message: 'Pengiriman email pembayaran dinonaktifkan.',
+    }
+  }
+
+  const text = buildTripayPaymentMessage(order)
+  const expiresLine = order.expiresAt
+    ? `<p><strong>Batas pembayaran:</strong> ${escapeHtml(new Date(order.expiresAt).toLocaleString('id-ID'))}</p>`
+    : ''
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+      <h2>Invoice pembayaran kelas IbnuCreative</h2>
+      <p>Halo ${escapeHtml(order.buyerName)},</p>
+      <p>Invoice pembayaran kelas Anda sudah dibuat. Silakan selesaikan pembayaran agar akses kelas bisa aktif otomatis.</p>
+      <p><strong>Kelas:</strong> ${escapeHtml(order.classTitle)}</p>
+      <p><strong>Nominal:</strong> Rp ${escapeHtml(new Intl.NumberFormat('id-ID').format(order.amount))}</p>
+      <p><strong>Metode pembayaran:</strong> ${escapeHtml(order.paymentMethod)}</p>
+      ${expiresLine}
+      <p>
+        <a href="${escapeHtml(order.checkoutUrl)}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">
+          Selesaikan Pembayaran
+        </a>
+      </p>
+      <p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="${escapeHtml(order.checkoutUrl)}">${escapeHtml(order.checkoutUrl)}</a></p>
+      <p>IbnuCreative Academy</p>
+    </div>
+  `
+
+  return sendResendEmail({
+    to: order.buyerEmail,
+    subject: `Selesaikan pembayaran ${order.classTitle}`,
+    text,
+    html,
+  })
+}
+
 function webhookSecretFromRequest(request, payload) {
   const authHeader = String(request.headers.authorization || '')
   const url = new URL(request.url || '/', 'http://localhost')
@@ -2666,6 +2830,34 @@ async function grantMemberClassAccess(memberId, classId) {
   }
 }
 
+async function findReusableTripayOrder(memberId, classId) {
+  const rows = await rest(
+    `tripay_orders?select=*&member_id=eq.${eq(memberId)}&class_id=eq.${eq(
+      classId,
+    )}&order=created_at.desc&limit=10`,
+  )
+  const checkedRows = await Promise.all((rows || []).map(expireTripayOrderIfNeeded))
+
+  return checkedRows.find((row) =>
+    ['pending', 'unpaid', 'waiting', 'callback'].includes(tripayOrderStatus(row)),
+  )
+}
+
+async function tripayPaymentMethodLabel(method) {
+  const code = cleanText(method || '', 40).toUpperCase()
+
+  if (!code) {
+    return ''
+  }
+
+  try {
+    const settings = (await fetchWebsiteSettings()).settings
+    return settings.paymentMethods.find((item) => item.code === code)?.label || code
+  } catch {
+    return code
+  }
+}
+
 export async function createTripayCheckout(request) {
   const user = await requireUser(request, 'member')
   const payload = await readJson(request)
@@ -2724,8 +2916,26 @@ export async function createTripayCheckout(request) {
 
   const config = tripayConfig(request)
   const method = paymentMethod || config.method
+  const existingOrder = await findReusableTripayOrder(member.id, course.id)
+
+  if (existingOrder?.checkout_url) {
+    const existingPayment = paymentPublic(existingOrder, 'tripay')
+
+    return {
+      ok: true,
+      existingPayment: true,
+      checkoutUrl: existingPayment.checkoutUrl,
+      merchantRef: existingPayment.merchantRef,
+      reference: existingPayment.reference,
+      paymentMethod: existingPayment.paymentMethod,
+      expiresAt: existingPayment.expiresAt,
+      message: 'Invoice pembayaran sebelumnya masih aktif.',
+    }
+  }
+
   const merchantRef = `IC${Date.now()}${randomBytes(3).toString('hex').toUpperCase()}`
   const itemSku = cleanText(course.tripay_product_key || course.id, 80)
+  const expiresAt = new Date(Date.now() + config.expiredMinutes * 60 * 1000).toISOString()
   const checkoutPayload = {
     method,
     merchant_ref: merchantRef,
@@ -2743,7 +2953,7 @@ export async function createTripayCheckout(request) {
     ],
     callback_url: config.callbackUrl,
     return_url: config.returnUrl,
-    expired_time: Math.floor(Date.now() / 1000) + config.expiredMinutes * 60,
+    expired_time: Math.floor(Date.parse(expiresAt) / 1000),
     signature: tripayCheckoutSignature({
       merchantCode: config.merchantCode,
       merchantRef,
@@ -2772,6 +2982,13 @@ export async function createTripayCheckout(request) {
   }
 
   const tripayData = responseData.data || responseData
+  const paymentMethodLabel = await tripayPaymentMethodLabel(method)
+  const savedPayload = JSON.stringify({
+    payment_method: method,
+    payment_name: paymentMethodLabel,
+    data: tripayData,
+    response: responseData,
+  })
   const checkoutUrl =
     cleanExternalUrl(tripayData.checkout_url || '') ||
     cleanExternalUrl(tripayData.pay_url || '') ||
@@ -2797,8 +3014,17 @@ export async function createTripayCheckout(request) {
       amount,
       status: 'pending',
       checkout_url: checkoutUrl,
-      payload: responseText,
+      payload: savedPayload,
     },
+  })
+  const emailResult = await sendTripayPaymentEmail({
+    buyerName: cleanText(member.name || user.name || 'Member', 160),
+    buyerEmail,
+    classTitle: cleanText(course.title || 'Kelas IbnuCreative', 160),
+    amount,
+    paymentMethod: paymentMethodLabel,
+    checkoutUrl,
+    expiresAt,
   })
 
   return {
@@ -2807,6 +3033,9 @@ export async function createTripayCheckout(request) {
     merchantRef,
     reference,
     paymentMethod: method,
+    expiresAt,
+    emailSent: emailResult.sent,
+    emailError: emailResult.sent ? '' : emailResult.message || '',
     message: 'Checkout Tripay berhasil dibuat.',
   }
 }

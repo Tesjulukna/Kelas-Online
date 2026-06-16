@@ -10,6 +10,7 @@ import {
   deleteSupportTicket,
   fetchClasses,
   fetchMembers,
+  fetchMemberPayments,
   fetchPayments,
   fetchTripayPaymentMethods,
   fetchSubmissions,
@@ -207,8 +208,8 @@ async function routeRequest(request, response) {
       return
     }
 
-    await requireUser(request, 'admin')
-    sendJson(response, 200, await fetchPayments())
+    const user = await requireUser(request)
+    sendJson(response, 200, user.role === 'admin' ? await fetchPayments() : await fetchMemberPayments(request))
     return
   }
 
