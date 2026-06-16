@@ -106,22 +106,61 @@ function formatRupiah(value) {
 }
 
 const tripayPaymentMethods = [
-  { code: 'QRIS', label: 'QRIS' },
-  { code: 'QRIS2', label: 'QRIS 2' },
-  { code: 'BCAVA', label: 'BCA Virtual Account' },
-  { code: 'BNIVA', label: 'BNI Virtual Account' },
-  { code: 'BRIVA', label: 'BRI Virtual Account' },
-  { code: 'MANDIRIVA', label: 'Mandiri Virtual Account' },
-  { code: 'PERMATAVA', label: 'Permata Virtual Account' },
-  { code: 'CIMBVA', label: 'CIMB Niaga Virtual Account' },
-  { code: 'BSIVA', label: 'BSI Virtual Account' },
-  { code: 'MUAMALATVA', label: 'Muamalat Virtual Account' },
-  { code: 'ALFAMART', label: 'Alfamart' },
-  { code: 'INDOMARET', label: 'Indomaret' },
-  { code: 'ALFAMIDI', label: 'Alfamidi' },
-  { code: 'OVO', label: 'OVO' },
-  { code: 'SHOPEEPAY', label: 'ShopeePay' },
+  { code: 'QRIS', label: 'QRIS', brand: 'qris' },
+  { code: 'QRIS2', label: 'QRIS 2', brand: 'qris' },
+  { code: 'BCAVA', label: 'BCA Virtual Account', brand: 'bca' },
+  { code: 'BNIVA', label: 'BNI Virtual Account', brand: 'bni' },
+  { code: 'BRIVA', label: 'BRI Virtual Account', brand: 'bri' },
+  { code: 'MANDIRIVA', label: 'Mandiri Virtual Account', brand: 'mandiri' },
+  { code: 'PERMATAVA', label: 'Permata Virtual Account', brand: 'permata' },
+  { code: 'CIMBVA', label: 'CIMB Niaga Virtual Account', brand: 'cimb' },
+  { code: 'BSIVA', label: 'BSI Virtual Account', brand: 'bsi' },
+  { code: 'MUAMALATVA', label: 'Muamalat Virtual Account', brand: 'muamalat' },
+  { code: 'ALFAMART', label: 'Alfamart', brand: 'alfamart' },
+  { code: 'INDOMARET', label: 'Indomaret', brand: 'indomaret' },
+  { code: 'ALFAMIDI', label: 'Alfamidi', brand: 'alfamidi' },
+  { code: 'OVO', label: 'OVO', brand: 'ovo' },
+  { code: 'SHOPEEPAY', label: 'ShopeePay', brand: 'shopeepay' },
 ]
+
+function PaymentMethodLogo({ method }) {
+  if (method.brand === 'qris') {
+    return (
+      <span className="payment-method-logo qris-logo" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+    )
+  }
+
+  if (['alfamart', 'indomaret', 'alfamidi'].includes(method.brand)) {
+    return (
+      <span className={`payment-method-logo store-logo ${method.brand}`} aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+    )
+  }
+
+  if (['ovo', 'shopeepay'].includes(method.brand)) {
+    return (
+      <span className={`payment-method-logo wallet-logo ${method.brand}`} aria-hidden="true">
+        <span></span>
+      </span>
+    )
+  }
+
+  return (
+    <span className={`payment-method-logo bank-logo ${method.brand}`} aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+  )
+}
 
 async function compressImageFile(file, { maxSize = 1800, quality = 0.9 } = {}) {
   if (!file.type.startsWith('image/')) {
@@ -207,7 +246,7 @@ function MemberPage({
   const [previewImage, setPreviewImage] = useState(null)
   const [activePromptInstruction, setActivePromptInstruction] = useState(null)
   const [checkoutClassId, setCheckoutClassId] = useState('')
-  const [paymentMethodByClass, setPaymentMethodByClass] = useState({})
+  const [paymentMethodCourse, setPaymentMethodCourse] = useState(null)
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
   const materials = selectedCourse?.materials ?? []
@@ -495,6 +534,28 @@ function MemberPage({
     } finally {
       setCheckoutClassId('')
     }
+  }
+
+  const openPaymentMethodPopup = (course) => {
+    const price = Math.max(0, Math.round(Number(course.price) || 0))
+
+    if (!price) {
+      handleStartCheckout(course)
+      return
+    }
+
+    setPaymentMethodCourse(course)
+  }
+
+  const handleSelectPaymentMethod = (method) => {
+    if (!paymentMethodCourse) {
+      return
+    }
+
+    const course = paymentMethodCourse
+
+    setPaymentMethodCourse(null)
+    handleStartCheckout(course, method.code)
   }
 
   const handleSendSupport = async () => {
@@ -1124,8 +1185,6 @@ function MemberPage({
             {availableCourses.map((course) => {
               const price = Math.max(0, Math.round(Number(course.price) || 0))
               const isCheckingOut = checkoutClassId === course.id
-              const selectedPaymentMethod =
-                paymentMethodByClass[course.id] || tripayPaymentMethods[0].code
               const accessNote = price
                 ? 'Akses materi dibuka otomatis setelah pembayaran sukses.'
                 : 'Kelas gratis bisa langsung dibuka dari akun member.'
@@ -1156,32 +1215,11 @@ function MemberPage({
                     <small>{price ? 'Harga kelas' : 'Kelas gratis'}</small>
                     <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
                   </span>
-                  {Boolean(price) && (
-                    <label className="available-payment-method">
-                      <small>Metode pembayaran</small>
-                      <select
-                        value={selectedPaymentMethod}
-                        disabled={isCheckingOut}
-                        onChange={(event) =>
-                          setPaymentMethodByClass((current) => ({
-                            ...current,
-                            [course.id]: event.target.value,
-                          }))
-                        }
-                      >
-                        {tripayPaymentMethods.map((method) => (
-                          <option value={method.code} key={method.code}>
-                            {method.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
                   <button
                     className="btn btn-primary member-class-button"
                     type="button"
                     disabled={isCheckingOut}
-                    onClick={() => handleStartCheckout(course, selectedPaymentMethod)}
+                    onClick={() => openPaymentMethodPopup(course)}
                   >
                     <Icon name="wallet" />
                     {checkoutButtonLabel}
@@ -1198,6 +1236,47 @@ function MemberPage({
             )}
           </div>
         </section>
+      )}
+
+      {paymentMethodCourse && (
+        <div className="payment-method-modal-backdrop" role="presentation">
+          <section
+            className="payment-method-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-method-title"
+          >
+            <div className="payment-method-modal-heading">
+              <div>
+                <p className="eyebrow">Pembayaran Tripay</p>
+                <h2 id="payment-method-title">Pilih metode pembayaran</h2>
+                <p>{paymentMethodCourse.title}</p>
+              </div>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Tutup pilihan metode pembayaran"
+                onClick={() => setPaymentMethodCourse(null)}
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="payment-method-grid" aria-label="Daftar metode pembayaran">
+              {tripayPaymentMethods.map((method) => (
+                <button
+                  className="payment-method-option"
+                  type="button"
+                  key={method.code}
+                  title={method.label}
+                  aria-label={method.label}
+                  onClick={() => handleSelectPaymentMethod(method)}
+                >
+                  <PaymentMethodLogo method={method} />
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
       )}
 
       {activeMenu === 'certificates' && (

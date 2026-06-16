@@ -1723,11 +1723,7 @@ function App() {
       throw new Error('Link pembayaran Tripay belum tersedia.')
     }
 
-    const checkoutWindow = window.open(data.checkoutUrl, '_blank', 'noopener,noreferrer')
-
-    if (!checkoutWindow) {
-      window.location.assign(data.checkoutUrl)
-    }
+    window.location.assign(data.checkoutUrl)
 
     return data
   }
