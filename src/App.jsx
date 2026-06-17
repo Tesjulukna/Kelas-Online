@@ -1014,6 +1014,9 @@ async function fetchStoredPayments(currentSession) {
 }
 
 function App() {
+  const [currentPath, setCurrentPath] = useState(() =>
+    typeof window === 'undefined' ? '/' : `${window.location.pathname}${window.location.search}${window.location.hash}`,
+  )
   const [session, setSession] = useState(() => readSession())
   const [page, setPage] = useState(() => getInitialPage(readSession()))
   const [activeSection, setActiveSection] = useState(() => getInitialSection())
@@ -1064,7 +1067,12 @@ function App() {
   }, [notice])
 
   useEffect(() => {
+    const updateCurrentPath = () => {
+      setCurrentPath(`${window.location.pathname}${window.location.search}${window.location.hash}`)
+    }
+
     const handlePopState = () => {
+      updateCurrentPath()
       const currentSession = readSession()
       let nextPage = getPageFromPath(window.location.pathname)
 
@@ -1095,7 +1103,11 @@ function App() {
     }
 
     window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
+    window.addEventListener('ibnucreative-route-change', updateCurrentPath)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('ibnucreative-route-change', updateCurrentPath)
+    }
   }, [])
 
   useEffect(() => {
@@ -2145,8 +2157,8 @@ function App() {
     : classes
   const publicDetailTarget = typeof window === 'undefined'
     ? null
-    : getPublicDetailFromPath(window.location.pathname)
-  const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk)\//.test(window.location.pathname)
+    : getPublicDetailFromPath(currentPath.split(/[?#]/)[0] || '/')
+  const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk)\//.test(currentPath.split(/[?#]/)[0] || '/')
   const shouldShowSiteFooter = !isPublicDetailPath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
 
   return (

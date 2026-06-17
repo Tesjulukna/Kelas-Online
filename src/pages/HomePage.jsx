@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import Icon from '../components/Icon'
 import { benefits, courseHighlights } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
+import CheckoutProduk from './detail/CheckoutProduk'
+import DetailKelas from './detail/DetailKelas'
+import DetailProduk from './detail/DetailProduk'
 
 function formatRupiah(value) {
   const amount = Math.max(0, Math.round(Number(value) || 0))
@@ -43,51 +46,8 @@ function withPublicCodes(items) {
   }))
 }
 
-function PublicPaymentMethodLogo({ method }) {
-  if (method.logoUrl) {
-    return (
-      <span className="payment-method-logo custom-logo" aria-hidden="true">
-        <img src={method.logoUrl} alt="" />
-      </span>
-    )
-  }
-
-  if (method.brand === 'qris') {
-    return (
-      <span className="payment-method-logo qris-logo" aria-hidden="true">
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-      </span>
-    )
-  }
-
-  if (['alfamart', 'indomaret', 'alfamidi'].includes(method.brand)) {
-    return (
-      <span className={`payment-method-logo store-logo ${method.brand}`} aria-hidden="true">
-        <span></span>
-        <span></span>
-        <span></span>
-      </span>
-    )
-  }
-
-  if (['ovo', 'shopeepay'].includes(method.brand)) {
-    return (
-      <span className={`payment-method-logo wallet-logo ${method.brand}`} aria-hidden="true">
-        <span></span>
-      </span>
-    )
-  }
-
-  return (
-    <span className={`payment-method-logo bank-logo ${method.brand}`} aria-hidden="true">
-      <span></span>
-      <span></span>
-      <span></span>
-    </span>
-  )
+function notifyRouteChange() {
+  window.dispatchEvent(new Event('ibnucreative-route-change'))
 }
 
 function HomePage({
@@ -221,6 +181,7 @@ function HomePage({
 
       if (window.location.pathname !== nextPath) {
         window.history.replaceState({}, '', nextPath)
+        notifyRouteChange()
       }
     }
 
@@ -229,6 +190,7 @@ function HomePage({
 
       if (window.location.pathname !== nextPath) {
         window.history.replaceState({}, '', nextPath)
+        notifyRouteChange()
       }
     }
 
@@ -237,6 +199,7 @@ function HomePage({
 
       if (window.location.pathname !== nextPath) {
         window.history.replaceState({}, '', nextPath)
+        notifyRouteChange()
       }
     }
   }, [checkoutProduct?.publicCode, selectedClass?.publicCode, selectedProduct?.publicCode])
@@ -248,6 +211,7 @@ function HomePage({
     setSelectedProductId('')
     setCheckoutProductId('')
     window.history.pushState({}, '', `/kelas/${encodeURIComponent(course?.publicCode || classId)}`)
+    notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -259,6 +223,7 @@ function HomePage({
     setCheckoutProductId('')
     setIsPaymentPickerOpen(false)
     window.history.pushState({}, '', `/produk/${encodeURIComponent(product?.publicCode || productId)}`)
+    notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -268,6 +233,7 @@ function HomePage({
     setCheckoutProductId('')
     setIsPaymentPickerOpen(false)
     window.history.pushState({}, '', '/')
+    notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -278,6 +244,7 @@ function HomePage({
     setSelectedProductId('')
     setIsPaymentPickerOpen(false)
     window.history.pushState({}, '', `/produk/${encodeURIComponent(product?.publicCode || productId)}/checkout`)
+    notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -335,199 +302,51 @@ function HomePage({
 
   if (selectedClass) {
     return (
-      <section className="public-detail-page">
-        <div className="public-detail-topbar">
-          <button className="icon-action-button" type="button" onClick={closePublicDetail}>
-            <Icon name="arrowLeft" />
-          </button>
-          <button
-            className="icon-action-button"
-            type="button"
-            onClick={() => shareItem(selectedClass.title, selectedClass.title)}
-          >
-            <Icon name="share" />
-          </button>
-        </div>
-        <article className="public-detail-hero">
-          <div className="public-detail-image">
-            {selectedClass.thumbnail ? <img src={selectedClass.thumbnail} alt="" /> : <Icon name="bookOpen" />}
-          </div>
-          <div className="public-detail-copy">
-            <p className="eyebrow">Detail kelas</p>
-            <h1>{selectedClass.title}</h1>
-            <p>{selectedClass.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.</p>
-            <div className="public-detail-meta">
-              <span>{selectedClass.lessons}</span>
-              <span>{selectedClass.price ? formatRupiah(selectedClass.price) : 'Gratis'}</span>
-              <span>{selectedClass.status}</span>
-            </div>
-          </div>
-        </article>
-        <div className="public-sticky-actions">
-          <button className="btn btn-secondary" type="button">
-            <Icon name="cart" />
-            Keranjang
-          </button>
-          <button className="btn btn-primary" type="button" onClick={() => onRequestClassCheckout(selectedClass.id)}>
-            <Icon name="wallet" />
-            Beli
-          </button>
-        </div>
-      </section>
+      <DetailKelas
+        course={selectedClass}
+        onBack={closePublicDetail}
+        onBuy={onRequestClassCheckout}
+        onShare={shareItem}
+      />
     )
+  }
+
+  const selectPublicPaymentMethod = (paymentMethod) => {
+    setPublicCheckoutForm((current) => ({
+      ...current,
+      paymentMethod,
+    }))
   }
 
   if (selectedProduct) {
     return (
-      <section className="public-detail-page">
-        <div className="public-detail-topbar">
-          <button className="icon-action-button" type="button" onClick={closePublicDetail}>
-            <Icon name="arrowLeft" />
-          </button>
-          <button
-            className="icon-action-button"
-            type="button"
-            onClick={() => shareItem(selectedProduct.title, selectedProduct.description)}
-          >
-            <Icon name="share" />
-          </button>
-        </div>
-        <article className="public-detail-hero public-product-detail">
-          <div className="public-detail-image">
-            {selectedProduct.thumbnail ? <img src={selectedProduct.thumbnail} alt="" /> : <Icon name="download" />}
-          </div>
-          <div className="public-detail-copy">
-            <p className="eyebrow">Produk digital</p>
-            <h1>{selectedProduct.title}</h1>
-            <p>{selectedProduct.description || 'Produk digital siap dikirim otomatis setelah pembayaran berhasil.'}</p>
-            <div className="public-detail-meta">
-              <span>{selectedProduct.fileName || 'Digital delivery'}</span>
-              <span>{selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}</span>
-              <span>Akses via email</span>
-            </div>
-          </div>
-        </article>
-        <div className="public-sticky-actions">
-          <button className="btn btn-secondary" type="button">
-            <Icon name="cart" />
-            Keranjang
-          </button>
-          <button className="btn btn-primary" type="button" onClick={() => openProductCheckout(selectedProduct.id)}>
-            <Icon name="wallet" />
-            Beli
-          </button>
-        </div>
-      </section>
+      <DetailProduk
+        product={selectedProduct}
+        priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
+        onBack={closePublicDetail}
+        onBuy={openProductCheckout}
+        onShare={shareItem}
+      />
     )
   }
 
   if (checkoutProduct) {
     return (
-      <section className="public-detail-page public-checkout-page">
-        <div className="public-detail-topbar">
-          <button className="icon-action-button" type="button" onClick={() => openProductDetail(checkoutProduct.id)}>
-            <Icon name="arrowLeft" />
-          </button>
-          <button
-            className="icon-action-button"
-            type="button"
-            onClick={() => shareItem(checkoutProduct.title, checkoutProduct.description)}
-          >
-            <Icon name="share" />
-          </button>
-        </div>
-        <form className="public-checkout-panel" onSubmit={submitPublicProductCheckout}>
-          <div className="section-heading">
-            <p className="eyebrow">Checkout produk</p>
-            <h2>{checkoutProduct.title}</h2>
-            <small>{selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}</small>
-          </div>
-          <div className="public-checkout-grid">
-            <label>
-              Nama
-              <input name="buyerName" value={publicCheckoutForm.buyerName} onChange={handlePublicCheckoutChange} required />
-            </label>
-            <label>
-              Email
-              <input name="buyerEmail" type="email" value={publicCheckoutForm.buyerEmail} onChange={handlePublicCheckoutChange} required />
-            </label>
-            <label>
-              Nomor HP
-              <input name="buyerPhone" value={publicCheckoutForm.buyerPhone} onChange={handlePublicCheckoutChange} required />
-            </label>
-          </div>
-          {!isPublicProductFree ? (
-            <>
-              <button
-                className="btn btn-secondary public-payment-picker-toggle"
-                type="button"
-                onClick={() => setIsPaymentPickerOpen((current) => !current)}
-              >
-                Pilih Metode Pembayaran
-                <Icon name="wallet" />
-              </button>
-              {isPaymentPickerOpen && (
-                <div className="payment-method-grid public-payment-method-grid" aria-label="Daftar metode pembayaran">
-                  {paymentMethods.map((method) => (
-                    <button
-                      className={`payment-method-option ${
-                        publicCheckoutForm.paymentMethod === method.code ? 'selected' : ''
-                      }`}
-                      key={method.code}
-                      type="button"
-                      title={method.label}
-                      aria-label={method.label}
-                      aria-pressed={publicCheckoutForm.paymentMethod === method.code}
-                      onClick={() =>
-                        setPublicCheckoutForm((current) => ({
-                          ...current,
-                          paymentMethod: method.code,
-                        }))
-                      }
-                    >
-                      <PublicPaymentMethodLogo method={method} />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="public-checkout-free-note">Produk ini gratis. Isi data penerima, lalu ambil produk tanpa memilih metode pembayaran.</p>
-          )}
-          {!isPublicProductFree && publicCheckoutForm.paymentMethod && (
-            <p className="public-checkout-status">
-              Metode dipilih: {paymentMethods.find((method) => method.code === publicCheckoutForm.paymentMethod)?.label || publicCheckoutForm.paymentMethod}
-            </p>
-          )}
-          <label className="public-checkout-check">
-            <input
-              type="checkbox"
-              name="acceptedTerms"
-              checked={publicCheckoutForm.acceptedTerms}
-              onChange={handlePublicCheckoutChange}
-            />
-            <span>Saya menyetujui ketentuan penggunaan.</span>
-          </label>
-          <label className="public-checkout-check">
-            <input
-              type="checkbox"
-              name="acceptedMarketing"
-              checked={publicCheckoutForm.acceptedMarketing}
-              onChange={handlePublicCheckoutChange}
-            />
-            <span>Saya setuju alamat email dan nomor telepon digunakan untuk menerima produk atau pesan pemasaran.</span>
-          </label>
-          {publicCheckoutStatus && <p className="public-checkout-status">{publicCheckoutStatus}</p>}
-          <button
-            className="btn btn-primary public-checkout-button"
-            type="submit"
-            disabled={(!isPublicProductFree && !publicCheckoutForm.paymentMethod) || !publicCheckoutForm.acceptedTerms || !publicCheckoutForm.acceptedMarketing}
-          >
-            {isPublicProductFree ? 'Ambil Produk' : 'Buat Pembayaran'}
-            <Icon name="arrowRight" />
-          </button>
-        </form>
-      </section>
+      <CheckoutProduk
+        product={checkoutProduct}
+        form={publicCheckoutForm}
+        isFree={isPublicProductFree}
+        isPaymentPickerOpen={isPaymentPickerOpen}
+        paymentMethods={paymentMethods}
+        priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
+        status={publicCheckoutStatus}
+        onBack={() => openProductDetail(checkoutProduct.id)}
+        onChange={handlePublicCheckoutChange}
+        onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
+        onPaymentMethodSelect={selectPublicPaymentMethod}
+        onShare={shareItem}
+        onSubmit={submitPublicProductCheckout}
+      />
     )
   }
 
