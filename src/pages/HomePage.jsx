@@ -13,6 +13,36 @@ function formatRupiah(value) {
   }).format(amount)
 }
 
+function publicCodeFromId(id, takenCodes = new Set()) {
+  const source = String(id || 'item')
+  let hash = 0x811c9dc5
+
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+
+  for (let salt = 0; salt < 100; salt += 1) {
+    const code = String(10000 + ((hash + salt * 9973) % 90000)).padStart(5, '0')
+
+    if (!takenCodes.has(code)) {
+      takenCodes.add(code)
+      return code
+    }
+  }
+
+  return String(10000 + (hash % 90000)).padStart(5, '0')
+}
+
+function withPublicCodes(items) {
+  const takenCodes = new Set()
+
+  return items.map((item) => ({
+    ...item,
+    publicCode: publicCodeFromId(item.id, takenCodes),
+  }))
+}
+
 function PublicPaymentMethodLogo({ method }) {
   if (method.logoUrl) {
     return (
@@ -88,11 +118,12 @@ function HomePage({
   const heroStyle = websiteSettings.hero.backgroundImage
     ? { backgroundImage: `url(${JSON.stringify(websiteSettings.hero.backgroundImage)})` }
     : undefined
-  const homepageClasses = classes.filter(
+  const homepageClasses = withPublicCodes(classes.filter(
     (course) => course.status === 'Aktif' && course.showOnHomepage !== false,
-  )
-  const homepageProducts = digitalProducts.filter(
+  ))
+  const homepageProducts = withPublicCodes(digitalProducts.filter(
     (product) => product.status === 'Aktif' && product.showOnHomepage !== false,
+  )
   )
   const publicCourses = classes.length
     ? homepageClasses
@@ -100,6 +131,7 @@ function HomePage({
         .sort((first, second) => Number(second.highlighted) - Number(first.highlighted))
         .map((course) => ({
         id: course.id,
+        publicCode: course.publicCode,
         title: course.title,
         level: course.status,
         lessons: course.lessons,
@@ -126,6 +158,7 @@ function HomePage({
 
       return {
         id: product.id,
+        publicCode: product.publicCode,
         title: product.title,
         thumbnail: product.thumbnail,
         price: price ? formatRupiah(price) : 'Gratis',
@@ -134,13 +167,14 @@ function HomePage({
         description: product.description || 'Produk digital siap diakses otomatis setelah pembayaran berhasil.',
       }
     })
-  const selectedClass = homepageClasses.find((course) => course.id === selectedClassId)
-  const selectedProduct = homepageProducts.find((product) => product.id === selectedProductId)
-  const checkoutProduct = homepageProducts.find((product) => product.id === checkoutProductId)
+  const selectedClass = homepageClasses.find((course) => course.id === selectedClassId || course.publicCode === selectedClassId)
+  const selectedProduct = homepageProducts.find((product) => product.id === selectedProductId || product.publicCode === selectedProductId)
+  const checkoutProduct = homepageProducts.find((product) => product.id === checkoutProductId || product.publicCode === checkoutProductId)
   const activeCheckoutProduct = checkoutProduct || selectedProduct
   const selectedProductSalePrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.salePrice) || 0))
   const selectedProductNormalPrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.price) || 0))
   const selectedProductPrice = selectedProductSalePrice || selectedProductNormalPrice
+  const isPublicProductFree = selectedProductPrice <= 0
   const paymentMethods = websiteSettings.paymentMethods || []
 
   useEffect(() => {
@@ -170,20 +204,54 @@ function HomePage({
     return () => window.clearTimeout(timer)
   }, [initialDetail])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (selectedClass?.publicCode && window.location.pathname.startsWith('/kelas/')) {
+      const nextPath = `/kelas/${encodeURIComponent(selectedClass.publicCode)}`
+
+      if (window.location.pathname !== nextPath) {
+        window.history.replaceState({}, '', nextPath)
+      }
+    }
+
+    if (selectedProduct?.publicCode && window.location.pathname.startsWith('/produk/')) {
+      const nextPath = `/produk/${encodeURIComponent(selectedProduct.publicCode)}`
+
+      if (window.location.pathname !== nextPath) {
+        window.history.replaceState({}, '', nextPath)
+      }
+    }
+
+    if (checkoutProduct?.publicCode && window.location.pathname.startsWith('/produk/')) {
+      const nextPath = `/produk/${encodeURIComponent(checkoutProduct.publicCode)}/checkout`
+
+      if (window.location.pathname !== nextPath) {
+        window.history.replaceState({}, '', nextPath)
+      }
+    }
+  }, [checkoutProduct?.publicCode, selectedClass?.publicCode, selectedProduct?.publicCode])
+
   const openClassDetail = (classId) => {
+    const course = homepageClasses.find((item) => item.id === classId || item.publicCode === classId)
+
     setSelectedClassId(classId)
     setSelectedProductId('')
     setCheckoutProductId('')
-    window.history.pushState({}, '', `/kelas/${encodeURIComponent(classId)}`)
+    window.history.pushState({}, '', `/kelas/${encodeURIComponent(course?.publicCode || classId)}`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const openProductDetail = (productId) => {
+    const product = homepageProducts.find((item) => item.id === productId || item.publicCode === productId)
+
     setSelectedProductId(productId)
     setSelectedClassId('')
     setCheckoutProductId('')
     setIsPaymentPickerOpen(false)
-    window.history.pushState({}, '', `/produk/${encodeURIComponent(productId)}`)
+    window.history.pushState({}, '', `/produk/${encodeURIComponent(product?.publicCode || productId)}`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -197,10 +265,12 @@ function HomePage({
   }
 
   const openProductCheckout = (productId) => {
+    const product = homepageProducts.find((item) => item.id === productId || item.publicCode === productId)
+
     setCheckoutProductId(productId)
     setSelectedProductId('')
     setIsPaymentPickerOpen(false)
-    window.history.pushState({}, '', `/produk/${encodeURIComponent(productId)}/checkout`)
+    window.history.pushState({}, '', `/produk/${encodeURIComponent(product?.publicCode || productId)}/checkout`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -237,12 +307,13 @@ function HomePage({
       return
     }
 
-    setPublicCheckoutStatus('Membuat invoice...')
+    setPublicCheckoutStatus(isPublicProductFree ? 'Memproses produk gratis...' : 'Membuat invoice...')
 
     try {
       const data = await onPublicProductCheckout({
         productId: activeCheckoutProduct.id,
         ...publicCheckoutForm,
+        paymentMethod: isPublicProductFree ? '' : publicCheckoutForm.paymentMethod,
       })
 
       if (data?.checkoutUrl) {
@@ -382,39 +453,45 @@ function HomePage({
               <input name="buyerPhone" value={publicCheckoutForm.buyerPhone} onChange={handlePublicCheckoutChange} required />
             </label>
           </div>
-          <button
-            className="btn btn-secondary public-payment-picker-toggle"
-            type="button"
-            onClick={() => setIsPaymentPickerOpen((current) => !current)}
-          >
-            Pilih Metode Pembayaran
-            <Icon name="wallet" />
-          </button>
-          {isPaymentPickerOpen && (
-            <div className="payment-method-grid public-payment-method-grid" aria-label="Daftar metode pembayaran">
-              {paymentMethods.map((method) => (
-                <button
-                  className={`payment-method-option ${
-                    publicCheckoutForm.paymentMethod === method.code ? 'selected' : ''
-                  }`}
-                  key={method.code}
-                  type="button"
-                  title={method.label}
-                  aria-label={method.label}
-                  aria-pressed={publicCheckoutForm.paymentMethod === method.code}
-                  onClick={() =>
-                    setPublicCheckoutForm((current) => ({
-                      ...current,
-                      paymentMethod: method.code,
-                    }))
-                  }
-                >
-                  <PublicPaymentMethodLogo method={method} />
-                </button>
-              ))}
-            </div>
+          {!isPublicProductFree ? (
+            <>
+              <button
+                className="btn btn-secondary public-payment-picker-toggle"
+                type="button"
+                onClick={() => setIsPaymentPickerOpen((current) => !current)}
+              >
+                Pilih Metode Pembayaran
+                <Icon name="wallet" />
+              </button>
+              {isPaymentPickerOpen && (
+                <div className="payment-method-grid public-payment-method-grid" aria-label="Daftar metode pembayaran">
+                  {paymentMethods.map((method) => (
+                    <button
+                      className={`payment-method-option ${
+                        publicCheckoutForm.paymentMethod === method.code ? 'selected' : ''
+                      }`}
+                      key={method.code}
+                      type="button"
+                      title={method.label}
+                      aria-label={method.label}
+                      aria-pressed={publicCheckoutForm.paymentMethod === method.code}
+                      onClick={() =>
+                        setPublicCheckoutForm((current) => ({
+                          ...current,
+                          paymentMethod: method.code,
+                        }))
+                      }
+                    >
+                      <PublicPaymentMethodLogo method={method} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="public-checkout-free-note">Produk ini gratis. Isi data penerima, lalu ambil produk tanpa memilih metode pembayaran.</p>
           )}
-          {publicCheckoutForm.paymentMethod && (
+          {!isPublicProductFree && publicCheckoutForm.paymentMethod && (
             <p className="public-checkout-status">
               Metode dipilih: {paymentMethods.find((method) => method.code === publicCheckoutForm.paymentMethod)?.label || publicCheckoutForm.paymentMethod}
             </p>
@@ -441,9 +518,9 @@ function HomePage({
           <button
             className="btn btn-primary public-checkout-button"
             type="submit"
-            disabled={!publicCheckoutForm.paymentMethod || !publicCheckoutForm.acceptedTerms || !publicCheckoutForm.acceptedMarketing}
+            disabled={(!isPublicProductFree && !publicCheckoutForm.paymentMethod) || !publicCheckoutForm.acceptedTerms || !publicCheckoutForm.acceptedMarketing}
           >
-            Buat Pembayaran
+            {isPublicProductFree ? 'Ambil Produk' : 'Buat Pembayaran'}
             <Icon name="arrowRight" />
           </button>
         </form>

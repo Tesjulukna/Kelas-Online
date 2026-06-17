@@ -1,5 +1,6 @@
 /* global Buffer, process */
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import bcrypt from 'bcryptjs'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../src/data/websiteSettings.js'
 
@@ -3102,6 +3103,125 @@ function absoluteRequestUrl(request, path) {
   return origin ? `${origin}${path}` : ''
 }
 
+function publicCodeFromId(id, takenCodes = new Set()) {
+  const source = String(id || 'item')
+  let hash = 0x811c9dc5
+
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+
+  for (let salt = 0; salt < 100; salt += 1) {
+    const code = String(10000 + ((hash + salt * 9973) % 90000)).padStart(5, '0')
+
+    if (!takenCodes.has(code)) {
+      takenCodes.add(code)
+      return code
+    }
+  }
+
+  return String(10000 + (hash % 90000)).padStart(5, '0')
+}
+
+function withPublicCodes(rows = []) {
+  const takenCodes = new Set()
+
+  return rows.map((row) => ({
+    ...row,
+    public_code: publicCodeFromId(row.id, takenCodes),
+  }))
+}
+
+function absolutePublicUrl(request, value) {
+  const url = cleanUrl(value || '')
+
+  if (!url || url.startsWith('data:')) {
+    return ''
+  }
+
+  if (url.startsWith('/')) {
+    return absoluteRequestUrl(request, url)
+  }
+
+  return url
+}
+
+async function readAppHtml() {
+  for (const filePath of ['dist/index.html', 'index.html']) {
+    try {
+      return await readFile(filePath, 'utf8')
+    } catch {
+      // Try the next known app entry point.
+    }
+  }
+
+  return '<!doctype html><html lang="id"><head><title>IbnuCreative</title></head><body><div id="root"></div></body></html>'
+}
+
+function injectHeadMeta(html, meta) {
+  const tags = [
+    `<title>${escapeHtml(meta.title)}</title>`,
+    `<meta name="description" content="${escapeHtml(meta.description)}" />`,
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:title" content="${escapeHtml(meta.title)}" />`,
+    `<meta property="og:description" content="${escapeHtml(meta.description)}" />`,
+    `<meta property="og:url" content="${escapeHtml(meta.url)}" />`,
+    meta.image ? `<meta property="og:image" content="${escapeHtml(meta.image)}" />` : '',
+    meta.image ? `<meta property="og:image:secure_url" content="${escapeHtml(meta.image)}" />` : '',
+    `<meta name="twitter:card" content="${meta.image ? 'summary_large_image' : 'summary'}" />`,
+    `<meta name="twitter:title" content="${escapeHtml(meta.title)}" />`,
+    `<meta name="twitter:description" content="${escapeHtml(meta.description)}" />`,
+    meta.image ? `<meta name="twitter:image" content="${escapeHtml(meta.image)}" />` : '',
+  ].filter(Boolean).join('\n    ')
+
+  return html
+    .replace(/<title>[\s\S]*?<\/title>/i, '')
+    .replace(/<meta name="description"[^>]*>/i, '')
+    .replace('</head>', `    ${tags}\n  </head>`)
+}
+
+export async function renderPublicDetailPage(request, response, { type, code }) {
+  const itemType = type === 'kelas' ? 'kelas' : 'produk'
+  const cleanCode = cleanText(code || '', 20)
+  const publicPath = `/${itemType}/${encodeURIComponent(cleanCode)}`
+  const rows = itemType === 'kelas'
+    ? await rest(`classes?select=id,title,mentor,lessons,price,status,thumbnail&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
+    : await rest(`digital_products?select=id,title,description,price,sale_price,status,thumbnail,file_name,platform_type&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
+  const item = withPublicCodes(rows || []).find((row) => row.public_code === cleanCode || row.id === cleanCode)
+
+  if (!item) {
+    response.statusCode = 404
+    response.setHeader('Content-Type', 'text/html; charset=utf-8')
+    response.end(injectHeadMeta(await readAppHtml(), {
+      title: 'Halaman tidak ditemukan',
+      description: 'Kelas atau produk yang Anda buka tidak ditemukan.',
+      image: '',
+      url: absoluteRequestUrl(request, publicPath),
+    }))
+    return
+  }
+
+  const amount = itemType === 'kelas'
+    ? cleanNumber(item.price, 0, 1000000000)
+    : cleanNumber(item.sale_price, 0, 1000000000) || cleanNumber(item.price, 0, 1000000000)
+  const priceText = amount ? `Harga ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount)}.` : 'Gratis.'
+  const description = itemType === 'kelas'
+    ? `${item.mentor || 'Mentor IbnuCreative'} membimbing kelas ini. ${priceText}`
+    : `${item.description || item.file_name || item.platform_type || 'Produk digital IbnuCreative'}. ${priceText}`
+  const html = injectHeadMeta(await readAppHtml(), {
+    title: cleanText(item.title || (itemType === 'kelas' ? 'Detail kelas' : 'Detail produk'), 160),
+    description: cleanText(description, 220),
+    image: absolutePublicUrl(request, item.thumbnail || ''),
+    url: absoluteRequestUrl(request, publicPath),
+  })
+
+  response.statusCode = 200
+  response.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300')
+  response.setHeader('Content-Type', 'text/html; charset=utf-8')
+  response.end(html)
+}
+
 function tripayApiBaseUrl() {
   const configured = cleanExternalUrl(process.env.TRIPAY_API_BASE_URL || '')
 
@@ -3789,10 +3909,6 @@ export async function createPublicDigitalProductCheckout(request) {
     throw new ApiError(422, 'Nama, email, dan nomor HP wajib diisi.')
   }
 
-  if (!paymentMethod) {
-    throw new ApiError(422, 'Pilih metode pembayaran dulu.')
-  }
-
   if (!acceptedTerms || !acceptedMarketing) {
     throw new ApiError(422, 'Centang persetujuan checkout terlebih dahulu.')
   }
@@ -3833,6 +3949,10 @@ export async function createPublicDigitalProductCheckout(request) {
       emailSent: deliveryEmailResult.sent,
       message: 'Produk gratis sudah dikirim ke email.',
     }
+  }
+
+  if (!paymentMethod) {
+    throw new ApiError(422, 'Pilih metode pembayaran dulu.')
   }
 
   const config = tripayConfig(request)

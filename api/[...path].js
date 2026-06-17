@@ -28,6 +28,7 @@ import {
   processTripayWebhook,
   readJson,
   redirectProtectedVideo,
+  renderPublicDetailPage,
   replaceClasses,
   replaceDigitalProducts,
   replaceWebsiteSettings,
@@ -324,6 +325,19 @@ async function routeRequest(request, response) {
     }
 
     sendJson(response, 200, await createPublicDigitalProductCheckout(request))
+    return
+  }
+
+  if (route === 'public-page') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+      return
+    }
+
+    await renderPublicDetailPage(request, response, {
+      type: url.searchParams.get('type') || '',
+      code: url.searchParams.get('code') || '',
+    })
     return
   }
 
