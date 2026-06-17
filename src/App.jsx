@@ -84,12 +84,13 @@ function getPageFromPath(pathname) {
 
 function getPublicDetailFromPath(pathname) {
   const cleanPath = pathname.replace(/\/+$/, '') || '/'
-  const [, type, id] = cleanPath.split('/')
+  const [, type, id, action] = cleanPath.split('/')
 
   if ((type === 'kelas' || type === 'produk') && id) {
     return {
       type,
       id: decodeURIComponent(id),
+      action: action || '',
     }
   }
 
@@ -2145,6 +2146,7 @@ function App() {
   const publicDetailTarget = typeof window === 'undefined'
     ? null
     : getPublicDetailFromPath(window.location.pathname)
+  const shouldShowSiteFooter = publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget)
 
   return (
     <div className="app-shell">
@@ -2276,7 +2278,7 @@ function App() {
             />
           ))}
       </main>
-      {(page === 'home' || publicInfoPages.includes(page)) && (
+      {shouldShowSiteFooter && (
         <SiteFooter
           onHomeSection={goToHomeSection}
           onInfoPage={goToPublicInfoPage}

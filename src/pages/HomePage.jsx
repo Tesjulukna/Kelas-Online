@@ -13,6 +13,53 @@ function formatRupiah(value) {
   }).format(amount)
 }
 
+function PublicPaymentMethodLogo({ method }) {
+  if (method.logoUrl) {
+    return (
+      <span className="payment-method-logo custom-logo" aria-hidden="true">
+        <img src={method.logoUrl} alt="" />
+      </span>
+    )
+  }
+
+  if (method.brand === 'qris') {
+    return (
+      <span className="payment-method-logo qris-logo" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+    )
+  }
+
+  if (['alfamart', 'indomaret', 'alfamidi'].includes(method.brand)) {
+    return (
+      <span className={`payment-method-logo store-logo ${method.brand}`} aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </span>
+    )
+  }
+
+  if (['ovo', 'shopeepay'].includes(method.brand)) {
+    return (
+      <span className={`payment-method-logo wallet-logo ${method.brand}`} aria-hidden="true">
+        <span></span>
+      </span>
+    )
+  }
+
+  return (
+    <span className={`payment-method-logo bank-logo ${method.brand}`} aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+  )
+}
+
 function HomePage({
   isLoggedIn,
   onLogin,
@@ -27,6 +74,8 @@ function HomePage({
   const websiteSettings = cleanWebsiteSettings(settings)
   const [selectedClassId, setSelectedClassId] = useState('')
   const [selectedProductId, setSelectedProductId] = useState('')
+  const [checkoutProductId, setCheckoutProductId] = useState('')
+  const [isPaymentPickerOpen, setIsPaymentPickerOpen] = useState(false)
   const [publicCheckoutForm, setPublicCheckoutForm] = useState({
     buyerName: '',
     buyerEmail: '',
@@ -87,8 +136,10 @@ function HomePage({
     })
   const selectedClass = homepageClasses.find((course) => course.id === selectedClassId)
   const selectedProduct = homepageProducts.find((product) => product.id === selectedProductId)
-  const selectedProductSalePrice = Math.max(0, Math.round(Number(selectedProduct?.salePrice) || 0))
-  const selectedProductNormalPrice = Math.max(0, Math.round(Number(selectedProduct?.price) || 0))
+  const checkoutProduct = homepageProducts.find((product) => product.id === checkoutProductId)
+  const activeCheckoutProduct = checkoutProduct || selectedProduct
+  const selectedProductSalePrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.salePrice) || 0))
+  const selectedProductNormalPrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.price) || 0))
   const selectedProductPrice = selectedProductSalePrice || selectedProductNormalPrice
   const paymentMethods = websiteSettings.paymentMethods || []
 
@@ -101,10 +152,17 @@ function HomePage({
       if (initialDetail.type === 'kelas') {
         setSelectedClassId(initialDetail.id)
         setSelectedProductId('')
+        setCheckoutProductId('')
       }
 
       if (initialDetail.type === 'produk') {
-        setSelectedProductId(initialDetail.id)
+        if (initialDetail.action === 'checkout') {
+          setCheckoutProductId(initialDetail.id)
+          setSelectedProductId('')
+        } else {
+          setSelectedProductId(initialDetail.id)
+          setCheckoutProductId('')
+        }
         setSelectedClassId('')
       }
     }, 0)
@@ -115,6 +173,7 @@ function HomePage({
   const openClassDetail = (classId) => {
     setSelectedClassId(classId)
     setSelectedProductId('')
+    setCheckoutProductId('')
     window.history.pushState({}, '', `/kelas/${encodeURIComponent(classId)}`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -122,6 +181,8 @@ function HomePage({
   const openProductDetail = (productId) => {
     setSelectedProductId(productId)
     setSelectedClassId('')
+    setCheckoutProductId('')
+    setIsPaymentPickerOpen(false)
     window.history.pushState({}, '', `/produk/${encodeURIComponent(productId)}`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -129,7 +190,17 @@ function HomePage({
   const closePublicDetail = () => {
     setSelectedClassId('')
     setSelectedProductId('')
+    setCheckoutProductId('')
+    setIsPaymentPickerOpen(false)
     window.history.pushState({}, '', '/')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const openProductCheckout = (productId) => {
+    setCheckoutProductId(productId)
+    setSelectedProductId('')
+    setIsPaymentPickerOpen(false)
+    window.history.pushState({}, '', `/produk/${encodeURIComponent(productId)}/checkout`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -162,7 +233,7 @@ function HomePage({
   const submitPublicProductCheckout = async (event) => {
     event.preventDefault()
 
-    if (!selectedProduct) {
+    if (!activeCheckoutProduct) {
       return
     }
 
@@ -170,7 +241,7 @@ function HomePage({
 
     try {
       const data = await onPublicProductCheckout({
-        productId: selectedProduct.id,
+        productId: activeCheckoutProduct.id,
         ...publicCheckoutForm,
       })
 
@@ -262,10 +333,40 @@ function HomePage({
             </div>
           </div>
         </article>
+        <div className="public-product-sticky-actions">
+          <button className="btn btn-secondary" type="button">
+            <Icon name="cart" />
+            Keranjang
+          </button>
+          <button className="btn btn-primary" type="button" onClick={() => openProductCheckout(selectedProduct.id)}>
+            <Icon name="wallet" />
+            Beli
+          </button>
+        </div>
+      </section>
+    )
+  }
+
+  if (checkoutProduct) {
+    return (
+      <section className="public-detail-page public-checkout-page">
+        <div className="public-detail-topbar">
+          <button className="icon-action-button" type="button" onClick={() => openProductDetail(checkoutProduct.id)}>
+            <Icon name="arrowLeft" />
+          </button>
+          <button
+            className="icon-action-button"
+            type="button"
+            onClick={() => shareItem(checkoutProduct.title, checkoutProduct.description)}
+          >
+            <Icon name="share" />
+          </button>
+        </div>
         <form className="public-checkout-panel" onSubmit={submitPublicProductCheckout}>
           <div className="section-heading">
             <p className="eyebrow">Checkout produk</p>
-            <h2>Isi data pembeli</h2>
+            <h2>{checkoutProduct.title}</h2>
+            <small>{selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}</small>
           </div>
           <div className="public-checkout-grid">
             <label>
@@ -281,20 +382,43 @@ function HomePage({
               <input name="buyerPhone" value={publicCheckoutForm.buyerPhone} onChange={handlePublicCheckoutChange} required />
             </label>
           </div>
-          <div className="public-payment-methods">
-            {paymentMethods.map((method) => (
-              <label key={method.code}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={method.code}
-                  checked={publicCheckoutForm.paymentMethod === method.code}
-                  onChange={handlePublicCheckoutChange}
-                />
-                <span>{method.label}</span>
-              </label>
-            ))}
-          </div>
+          <button
+            className="btn btn-secondary public-payment-picker-toggle"
+            type="button"
+            onClick={() => setIsPaymentPickerOpen((current) => !current)}
+          >
+            Pilih Metode Pembayaran
+            <Icon name="wallet" />
+          </button>
+          {isPaymentPickerOpen && (
+            <div className="payment-method-grid public-payment-method-grid" aria-label="Daftar metode pembayaran">
+              {paymentMethods.map((method) => (
+                <button
+                  className={`payment-method-option ${
+                    publicCheckoutForm.paymentMethod === method.code ? 'selected' : ''
+                  }`}
+                  key={method.code}
+                  type="button"
+                  title={method.label}
+                  aria-label={method.label}
+                  aria-pressed={publicCheckoutForm.paymentMethod === method.code}
+                  onClick={() =>
+                    setPublicCheckoutForm((current) => ({
+                      ...current,
+                      paymentMethod: method.code,
+                    }))
+                  }
+                >
+                  <PublicPaymentMethodLogo method={method} />
+                </button>
+              ))}
+            </div>
+          )}
+          {publicCheckoutForm.paymentMethod && (
+            <p className="public-checkout-status">
+              Metode dipilih: {paymentMethods.find((method) => method.code === publicCheckoutForm.paymentMethod)?.label || publicCheckoutForm.paymentMethod}
+            </p>
+          )}
           <label className="public-checkout-check">
             <input
               type="checkbox"
