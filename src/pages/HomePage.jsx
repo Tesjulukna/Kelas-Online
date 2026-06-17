@@ -176,25 +176,32 @@ function HomePage({
   const selectedProductPrice = selectedProductSalePrice || selectedProductNormalPrice
   const isPublicProductFree = selectedProductPrice <= 0
   const paymentMethods = websiteSettings.paymentMethods || []
+  const initialDetailType = initialDetail?.type || ''
+  const initialDetailId = initialDetail?.id || ''
+  const initialDetailAction = initialDetail?.action || ''
 
   useEffect(() => {
-    if (!initialDetail?.id) {
-      return
-    }
-
     const timer = window.setTimeout(() => {
-      if (initialDetail.type === 'kelas') {
-        setSelectedClassId(initialDetail.id)
+      if (!initialDetailId) {
+        setSelectedClassId('')
+        setSelectedProductId('')
+        setCheckoutProductId('')
+        setIsPaymentPickerOpen(false)
+        return
+      }
+
+      if (initialDetailType === 'kelas') {
+        setSelectedClassId(initialDetailId)
         setSelectedProductId('')
         setCheckoutProductId('')
       }
 
-      if (initialDetail.type === 'produk') {
-        if (initialDetail.action === 'checkout') {
-          setCheckoutProductId(initialDetail.id)
+      if (initialDetailType === 'produk') {
+        if (initialDetailAction === 'checkout') {
+          setCheckoutProductId(initialDetailId)
           setSelectedProductId('')
         } else {
-          setSelectedProductId(initialDetail.id)
+          setSelectedProductId(initialDetailId)
           setCheckoutProductId('')
         }
         setSelectedClassId('')
@@ -202,7 +209,7 @@ function HomePage({
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [initialDetail])
+  }, [initialDetailAction, initialDetailId, initialDetailType])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
