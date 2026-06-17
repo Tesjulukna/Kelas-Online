@@ -6471,6 +6471,8 @@ img {
 
 .public-detail-hero,
 .public-checkout-panel {
+  position: relative;
+  display: grid;
   overflow: hidden;
   border: 1px solid rgba(205, 217, 232, 0.9);
   border-radius: 18px;
@@ -6479,10 +6481,13 @@ img {
 }
 
 .public-detail-image {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   min-height: clamp(250px, 44vw, 500px);
   aspect-ratio: 16 / 9;
+  overflow: hidden;
   color: #0f766e;
   background:
     linear-gradient(135deg, rgba(20, 184, 166, 0.16), rgba(37, 99, 235, 0.08)),
@@ -6501,10 +6506,15 @@ img {
 }
 
 .public-detail-copy {
+  position: relative;
+  z-index: 2;
   display: grid;
   justify-items: center;
   gap: 15px;
+  width: 100%;
+  margin: 0;
   padding: 30px;
+  background: #ffffff;
   text-align: center;
 }
 
@@ -6592,7 +6602,7 @@ img {
   margin-top: 0;
 }
 
-.public-product-sticky-actions {
+.public-sticky-actions {
   position: fixed;
   right: max(20px, calc((100vw - 980px) / 2));
   bottom: 16px;
@@ -9829,7 +9839,7 @@ img {
     justify-self: stretch;
   }
 
-  .public-product-sticky-actions {
+  .public-sticky-actions {
     right: 12px;
     bottom: 12px;
     left: 12px;
@@ -9837,14 +9847,14 @@ img {
     padding: 10px;
   }
 
-  .public-product-sticky-actions .btn {
+  .public-sticky-actions .btn {
     min-width: 0;
     width: 100%;
   }
 }
 
 @media (max-width: 420px) {
-  .public-product-sticky-actions {
+  .public-sticky-actions {
     grid-template-columns: 1fr;
   }
 

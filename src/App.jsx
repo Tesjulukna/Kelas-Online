@@ -2146,7 +2146,8 @@ function App() {
   const publicDetailTarget = typeof window === 'undefined'
     ? null
     : getPublicDetailFromPath(window.location.pathname)
-  const shouldShowSiteFooter = publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget)
+  const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk)\//.test(window.location.pathname)
+  const shouldShowSiteFooter = !isPublicDetailPath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
 
   return (
     <div className="app-shell">

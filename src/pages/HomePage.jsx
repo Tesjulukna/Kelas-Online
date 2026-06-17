@@ -354,22 +354,18 @@ function HomePage({
               <span>{selectedClass.price ? formatRupiah(selectedClass.price) : 'Gratis'}</span>
               <span>{selectedClass.status}</span>
             </div>
-            <div className="public-detail-actions">
-              <button className="btn btn-primary" type="button" onClick={() => onRequestClassCheckout(selectedClass.id)}>
-                Daftar
-                <Icon name="arrowRight" />
-              </button>
-              <button
-                className="btn btn-secondary"
-                type="button"
-                onClick={() => shareItem(selectedClass.title, selectedClass.title)}
-              >
-                <Icon name="share" />
-                Share
-              </button>
-            </div>
           </div>
         </article>
+        <div className="public-sticky-actions">
+          <button className="btn btn-secondary" type="button">
+            <Icon name="cart" />
+            Keranjang
+          </button>
+          <button className="btn btn-primary" type="button" onClick={() => onRequestClassCheckout(selectedClass.id)}>
+            <Icon name="wallet" />
+            Beli
+          </button>
+        </div>
       </section>
     )
   }
@@ -404,7 +400,7 @@ function HomePage({
             </div>
           </div>
         </article>
-        <div className="public-product-sticky-actions">
+        <div className="public-sticky-actions">
           <button className="btn btn-secondary" type="button">
             <Icon name="cart" />
             Keranjang
