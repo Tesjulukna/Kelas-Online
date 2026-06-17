@@ -3881,13 +3881,29 @@ export async function createTripayCheckout(request) {
     }
   } else {
     const existingAccess = await rest(
-      `digital_product_access?select=id&product_id=eq.${eq(checkoutItem.id)}&member_id=eq.${eq(member.id)}&limit=1`,
+      `digital_product_access?select=*&product_id=eq.${eq(checkoutItem.id)}&member_id=eq.${eq(member.id)}&limit=1`,
     ).catch(() => [])
 
     if (existingAccess?.[0]) {
+      const access = existingAccess[0]
+      const accessOrderId = cleanText(
+        access.order_id || `ACCESS-${checkoutItem.id}-${member.id}`,
+        180,
+      )
+
+      if (!access.order_id && accessOrderId) {
+        await rest(`digital_product_access?id=eq.${eq(access.id)}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: { order_id: accessOrderId },
+        }).catch(() => {})
+      }
+
       return {
         ok: true,
         alreadyHasAccess: true,
+        accessUrl: publicProductAccessUrl(request, accessOrderId),
+        accessOrderId,
         message: 'Produk digital sudah dimiliki.',
       }
     }
@@ -3911,10 +3927,18 @@ export async function createTripayCheckout(request) {
         })
       : await grantMemberClassAccess(member.id, checkoutItem.id)
 
+    const accessOrderId = checkoutType === 'digital_product'
+      ? accessResult.access?.order_id || `FREE-${checkoutItem.id}-${member.id}`
+      : ''
+
     return {
       ok: true,
       freeAccessGranted: accessResult.granted,
       alreadyHasAccess: accessResult.alreadyHasAccess,
+      accessUrl: checkoutType === 'digital_product'
+        ? publicProductAccessUrl(request, accessOrderId)
+        : '',
+      accessOrderId,
       message: accessResult.granted
         ? checkoutType === 'digital_product'
           ? 'Produk digital gratis sudah aktif.'
@@ -3975,7 +3999,7 @@ export async function createTripayCheckout(request) {
     ],
     callback_url: config.callbackUrl,
     return_url: checkoutType === 'digital_product'
-      ? absoluteRequestUrl(request, '/member?menu=digital-products') || config.returnUrl
+      ? publicProductAccessUrl(request, merchantRef) || config.returnUrl
       : config.returnUrl,
     expired_time: Math.floor(Date.parse(expiresAt) / 1000),
     signature: tripayCheckoutSignature({

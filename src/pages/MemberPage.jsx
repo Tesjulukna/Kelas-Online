@@ -307,6 +307,10 @@ function MemberPage({
   const selectedDigitalProduct = activeDigitalProducts.find(
     (product) => product.id === selectedDigitalProductId,
   )
+  const digitalProductAccessByProduct = useMemo(
+    () => new Map(digitalProductAccess.map((access) => [access.productId, access])),
+    [digitalProductAccess],
+  )
   const materials = selectedCourse?.materials ?? []
   const currentMaterialIndex = Math.min(
     activeMaterialIndex,
@@ -728,6 +732,29 @@ function MemberPage({
     onNotify('Sertifikat demo siap diunduh dari backend produksi.')
   }
 
+  const openDigitalProductAccessPage = useCallback((product, data = null) => {
+    const accessOrderId =
+      data?.accessOrderId ||
+      digitalProductAccessByProduct.get(product.id)?.orderId ||
+      ''
+    const accessUrl = data?.accessUrl || (accessOrderId
+      ? `/produk-akses/${encodeURIComponent(accessOrderId)}`
+      : '')
+
+    if (accessUrl) {
+      window.location.assign(accessUrl)
+      return true
+    }
+
+    if (product.fileUrl) {
+      window.open(product.fileUrl, '_blank', 'noopener,noreferrer')
+      return true
+    }
+
+    onNotify('Akses produk belum punya link. Hubungi admin.')
+    return false
+  }, [digitalProductAccessByProduct, onNotify])
+
   const handleStartCheckout = useCallback(async (item, paymentMethod = '', { forceNewPayment = false, itemType = 'class' } = {}) => {
     const price = getCheckoutAmount({ ...item, itemType })
 
@@ -743,6 +770,9 @@ function MemberPage({
         onNotify(itemType === 'digital_product'
           ? 'Produk digital gratis sudah aktif.'
           : 'Akses kelas gratis sudah aktif. Silakan buka Kelas Saya.')
+        if (itemType === 'digital_product' && openDigitalProductAccessPage(item, data)) {
+          return
+        }
         handleDashboardMenuChange(itemType === 'digital_product' ? 'digital-products' : 'my-courses')
         return
       }
@@ -751,6 +781,9 @@ function MemberPage({
         onNotify(itemType === 'digital_product'
           ? 'Produk digital sudah dimiliki.'
           : 'Akses kelas sudah aktif. Silakan buka Kelas Saya.')
+        if (itemType === 'digital_product' && openDigitalProductAccessPage(item, data)) {
+          return
+        }
         handleDashboardMenuChange(itemType === 'digital_product' ? 'digital-products' : 'my-courses')
         return
       }
@@ -773,7 +806,7 @@ function MemberPage({
     } finally {
       setCheckoutClassId('')
     }
-  }, [handleDashboardMenuChange, onCreateTripayCheckout, onNotify])
+  }, [handleDashboardMenuChange, onCreateTripayCheckout, onNotify, openDigitalProductAccessPage])
 
   const openPaymentMethodPopup = useCallback((item, { forceNewPayment = false, itemType = 'class' } = {}) => {
     const price = getCheckoutAmount({ ...item, itemType })
@@ -1858,8 +1891,8 @@ function MemberPage({
                       type="button"
                       disabled={isCheckingOut}
                       onClick={() => {
-                        if (isOwned && product.fileUrl) {
-                          window.open(product.fileUrl, '_blank', 'noopener,noreferrer')
+                        if (isOwned) {
+                          openDigitalProductAccessPage(product)
                           return
                         }
 
@@ -1964,8 +1997,8 @@ function MemberPage({
                         type="button"
                         disabled={isCheckingOut}
                         onClick={() => {
-                          if (isOwned && product.fileUrl) {
-                            window.open(product.fileUrl, '_blank', 'noopener,noreferrer')
+                          if (isOwned) {
+                            openDigitalProductAccessPage(product)
                             return
                           }
 
