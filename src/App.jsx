@@ -1620,7 +1620,7 @@ function App() {
     setActiveSection('home')
     setPage('home')
     setCurrentPath(nextPath)
-    window.history.pushState({}, '', nextPath)
+    window.history.pushState({ publicDetailFromApp: true }, '', nextPath)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -2349,6 +2349,14 @@ function App() {
       ? currentMember.allowedClassIds
       : session.allowedClassIds
     : null
+  const checkoutCustomer = session?.role === 'member'
+    ? {
+        isMember: true,
+        name: currentMember?.name || session.name || 'Member',
+        email: currentMember?.email || session.email || '',
+        phone: currentMember?.phone || '',
+      }
+    : null
   const memberClasses = session?.role === 'member' && Array.isArray(currentMemberAccess)
     ? classes.filter((course) => currentMemberAccess.includes(course.id))
     : classes
@@ -2385,6 +2393,7 @@ function App() {
             onPublicProductCheckout={handlePublicProductCheckout}
             publicProductAccessApiPath={publicProductAccessApiPath}
             initialDetail={publicDetailTarget}
+            checkoutCustomer={checkoutCustomer}
             classes={classes}
             digitalProducts={digitalProducts}
             testimonials={testimonials}

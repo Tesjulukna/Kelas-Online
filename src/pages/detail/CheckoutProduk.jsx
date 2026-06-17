@@ -50,6 +50,9 @@ function PaymentMethodLogo({ method }) {
 function CheckoutProduk({
   product,
   form,
+  checkoutCustomer = null,
+  isMemberCheckout = false,
+  memberNeedsPhone = false,
   isFree,
   isPaymentPickerOpen,
   paymentMethods,
@@ -74,6 +77,8 @@ function CheckoutProduk({
     paymentMethods.find((method) => method.code === form.paymentMethod)?.label ||
     form.paymentMethod
   const customerQuestions = Array.isArray(product.customerQuestions) ? product.customerQuestions : []
+  const memberName = checkoutCustomer?.name || form.buyerName || 'Member'
+  const memberEmail = checkoutCustomer?.email || form.buyerEmail || '-'
 
   return (
     <section className="public-detail-page public-checkout-page">
@@ -95,20 +100,41 @@ function CheckoutProduk({
           <h2>{product.title}</h2>
           <small>{priceLabel}</small>
         </div>
-        <div className="public-checkout-grid">
-          <label>
-            Nama
-            <input name="buyerName" value={form.buyerName} onChange={onChange} required />
-          </label>
-          <label>
-            Email
-            <input name="buyerEmail" type="email" value={form.buyerEmail} onChange={onChange} required />
-          </label>
-          <label>
-            Nomor HP
-            <input name="buyerPhone" value={form.buyerPhone} onChange={onChange} required />
-          </label>
-        </div>
+        {isMemberCheckout ? (
+          <div className="public-checkout-account">
+            <span className="public-checkout-account-icon" aria-hidden="true">
+              <Icon name="user" />
+            </span>
+            <div>
+              <small>Checkout memakai akun member</small>
+              <strong>{memberName}</strong>
+              <span>{memberEmail}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="public-checkout-grid">
+            <label>
+              Nama
+              <input name="buyerName" value={form.buyerName} onChange={onChange} required />
+            </label>
+            <label>
+              Email
+              <input name="buyerEmail" type="email" value={form.buyerEmail} onChange={onChange} required />
+            </label>
+            <label>
+              Nomor HP
+              <input name="buyerPhone" value={form.buyerPhone} onChange={onChange} required />
+            </label>
+          </div>
+        )}
+        {memberNeedsPhone && (
+          <div className="public-checkout-grid">
+            <label>
+              Nomor HP untuk invoice
+              <input name="buyerPhone" value={form.buyerPhone} onChange={onChange} required />
+            </label>
+          </div>
+        )}
         {customerQuestions.length > 0 && (
           <div className="public-checkout-grid">
             {customerQuestions.map((question) => (
@@ -211,7 +237,13 @@ function CheckoutProduk({
         <button
           className="btn btn-primary public-checkout-button"
           type="submit"
-          disabled={(!isFree && !form.paymentMethod) || !form.acceptedTerms || !form.acceptedMarketing}
+          disabled={
+            (!isFree && !form.paymentMethod) ||
+            !form.acceptedTerms ||
+            !form.acceptedMarketing ||
+            (isMemberCheckout && (!memberEmail || memberEmail === '-')) ||
+            (memberNeedsPhone && !form.buyerPhone)
+          }
         >
           {isFree ? 'Ambil Produk' : 'Buat Pembayaran'}
           <Icon name="arrowRight" />

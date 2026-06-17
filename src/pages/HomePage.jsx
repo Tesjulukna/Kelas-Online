@@ -65,6 +65,7 @@ function HomePage({
   onPublicProductCheckout = async () => {},
   publicProductAccessApiPath = '/api/public-product-access',
   initialDetail = null,
+  checkoutCustomer = null,
   classes = [],
   digitalProducts = [],
   testimonials = [],
@@ -168,6 +169,9 @@ function HomePage({
   const initialDetailId = initialDetail?.id || ''
   const initialDetailAction = initialDetail?.action || ''
   const wishlistCount = wishlistItems.length
+  const isMemberCheckout = checkoutCustomer?.isMember === true
+  const memberCheckoutPhone = checkoutCustomer?.phone || ''
+  const memberNeedsCheckoutPhone = isMemberCheckout && !memberCheckoutPhone
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -306,24 +310,37 @@ function HomePage({
     setSelectedClassId(classId)
     setSelectedProductId('')
     setCheckoutProductId('')
-    window.history.pushState({}, '', `/kelas/${encodeURIComponent(course?.publicCode || classId)}`)
+    window.history.pushState(
+      { publicDetailFromApp: true },
+      '',
+      `/kelas/${encodeURIComponent(course?.publicCode || classId)}`,
+    )
     notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const openProductDetail = (productId) => {
-    const product = homepageProducts.find((item) => item.id === productId || item.publicCode === productId)
+    const product = detailProducts.find((item) => item.id === productId || item.publicCode === productId)
 
     setSelectedProductId(productId)
     setSelectedClassId('')
     setCheckoutProductId('')
     setIsPaymentPickerOpen(false)
-    window.history.pushState({}, '', `/produk/${encodeURIComponent(product?.publicCode || productId)}`)
+    window.history.pushState(
+      { publicDetailFromApp: true },
+      '',
+      `/produk/${encodeURIComponent(product?.publicCode || productId)}`,
+    )
     notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const closePublicDetail = () => {
+    if (window.history.state?.publicDetailFromApp && window.history.length > 1) {
+      window.history.back()
+      return
+    }
+
     setSelectedClassId('')
     setSelectedProductId('')
     setCheckoutProductId('')
@@ -385,12 +402,16 @@ function HomePage({
   }
 
   const openProductCheckout = (productId) => {
-    const product = homepageProducts.find((item) => item.id === productId || item.publicCode === productId)
+    const product = detailProducts.find((item) => item.id === productId || item.publicCode === productId)
 
     setCheckoutProductId(productId)
     setSelectedProductId('')
     setIsPaymentPickerOpen(false)
-    window.history.pushState({}, '', `/produk/${encodeURIComponent(product?.publicCode || productId)}/checkout`)
+    window.history.pushState(
+      { publicDetailFromApp: true },
+      '',
+      `/produk/${encodeURIComponent(product?.publicCode || productId)}/checkout`,
+    )
     notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -444,6 +465,15 @@ function HomePage({
       const data = await onPublicProductCheckout({
         productId: activeCheckoutProduct.id,
         ...publicCheckoutForm,
+        buyerName: isMemberCheckout
+          ? checkoutCustomer?.name || publicCheckoutForm.buyerName || 'Member'
+          : publicCheckoutForm.buyerName,
+        buyerEmail: isMemberCheckout
+          ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
+          : publicCheckoutForm.buyerEmail,
+        buyerPhone: isMemberCheckout
+          ? memberCheckoutPhone || publicCheckoutForm.buyerPhone
+          : publicCheckoutForm.buyerPhone,
         paymentMethod: isPublicProductFree ? '' : publicCheckoutForm.paymentMethod,
       })
 
@@ -559,6 +589,9 @@ function HomePage({
       <CheckoutProduk
         product={checkoutProduct}
         form={publicCheckoutForm}
+        checkoutCustomer={checkoutCustomer}
+        isMemberCheckout={isMemberCheckout}
+        memberNeedsPhone={memberNeedsCheckoutPhone}
         isFree={isPublicProductFree}
         isPaymentPickerOpen={isPaymentPickerOpen}
         paymentMethods={paymentMethods}
