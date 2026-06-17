@@ -1607,6 +1607,23 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const openPublicProductDetail = (product) => {
+    const productCode = product?.publicCode || product?.id
+
+    if (!productCode) {
+      showNotice('Detail produk belum bisa dibuka.')
+      return
+    }
+
+    const nextPath = `/produk/${encodeURIComponent(productCode)}`
+
+    setActiveSection('home')
+    setPage('home')
+    setCurrentPath(nextPath)
+    window.history.pushState({}, '', nextPath)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const applyLoginSession = (nextSession, message) => {
     if (!nextSession || !allowedRoles.includes(nextSession.role)) {
       throw new Error('Session login tidak valid.')
@@ -2418,6 +2435,7 @@ function App() {
               onCreateSubmission={handleCreateSubmission}
               onCreateTestimonial={handleCreateTestimonial}
               onCreateTripayCheckout={handleCreateTripayCheckout}
+              onOpenPublicProductDetail={openPublicProductDetail}
               onCheckoutClassRequestHandled={clearPendingClassCheckout}
             />
           ) : (

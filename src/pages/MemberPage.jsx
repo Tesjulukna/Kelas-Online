@@ -5,6 +5,7 @@ import MetricCard from '../components/MetricCard'
 import { memberMenuItems } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import { uploadStorageFile } from '../lib/storageUpload'
+import { withPublicCodes } from '../utils/publicCodes'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
@@ -262,6 +263,7 @@ function MemberPage({
   onCreateSubmission = async () => {},
   onCreateTestimonial = async () => {},
   onCreateTripayCheckout = async () => {},
+  onOpenPublicProductDetail = null,
   onCheckoutClassRequestHandled = () => {},
   focusTarget = null,
   websiteSettings = defaultWebsiteSettings,
@@ -270,7 +272,7 @@ function MemberPage({
   const tripayPaymentMethods = safeWebsiteSettings.paymentMethods
   const courses = classes.filter((course) => course.status === 'Aktif')
   const allActiveCourses = allClasses.filter((course) => course.status === 'Aktif')
-  const activeDigitalProducts = digitalProducts.filter((product) => product.status === 'Aktif')
+  const activeDigitalProducts = withPublicCodes(digitalProducts.filter((product) => product.status === 'Aktif'))
   const ownedDigitalProductIds = new Set(digitalProductAccess.map((access) => access.productId))
   const accessibleClassIds = Array.isArray(allowedClassIds)
     ? new Set(allowedClassIds)
@@ -521,6 +523,11 @@ function MemberPage({
   }, [onMenuChange])
 
   const handleOpenDigitalProductDetail = (product) => {
+    if (onOpenPublicProductDetail) {
+      onOpenPublicProductDetail(product)
+      return
+    }
+
     setSelectedDigitalProductId(product.id)
     handleDashboardMenuChange('digital-products')
     onNotify(`Membuka detail ${product.title}.`)
@@ -531,7 +538,9 @@ function MemberPage({
   }
 
   const handleShareDigitalProduct = async (product) => {
-    const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+    const shareUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/produk/${encodeURIComponent(product.publicCode || product.id)}`
+      : ''
     const shareData = {
       title: product.title,
       text: product.description || `Lihat produk digital ${product.title}`,

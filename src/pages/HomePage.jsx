@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Icon from '../components/Icon'
 import { benefits, courseHighlights } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
+import { withPublicCodes } from '../utils/publicCodes'
 import CheckoutProduk from './detail/CheckoutProduk'
 import DetailKelas from './detail/DetailKelas'
 import DetailProduk from './detail/DetailProduk'
@@ -26,36 +27,6 @@ function getPaymentMethodFee(method, amount) {
   const percentFee = Math.max(0, Number(method.feePercent) || 0)
 
   return flatFee + Math.max(0, Math.round((Math.max(0, amount) * percentFee) / 100))
-}
-
-function publicCodeFromId(id, takenCodes = new Set()) {
-  const source = String(id || 'item')
-  let hash = 0x811c9dc5
-
-  for (let index = 0; index < source.length; index += 1) {
-    hash ^= source.charCodeAt(index)
-    hash = Math.imul(hash, 0x01000193) >>> 0
-  }
-
-  for (let salt = 0; salt < 100; salt += 1) {
-    const code = String(10000 + ((hash + salt * 9973) % 90000)).padStart(5, '0')
-
-    if (!takenCodes.has(code)) {
-      takenCodes.add(code)
-      return code
-    }
-  }
-
-  return String(10000 + (hash % 90000)).padStart(5, '0')
-}
-
-function withPublicCodes(items) {
-  const takenCodes = new Set()
-
-  return items.map((item) => ({
-    ...item,
-    publicCode: publicCodeFromId(item.id, takenCodes),
-  }))
 }
 
 function notifyRouteChange() {
@@ -130,10 +101,8 @@ function HomePage({
   const homepageClasses = withPublicCodes(classes.filter(
     (course) => course.status === 'Aktif' && course.showOnHomepage !== false,
   ))
-  const homepageProducts = withPublicCodes(digitalProducts.filter(
-    (product) => product.status === 'Aktif' && product.showOnHomepage !== false,
-  )
-  )
+  const detailProducts = withPublicCodes(digitalProducts.filter((product) => product.status === 'Aktif'))
+  const homepageProducts = detailProducts.filter((product) => product.showOnHomepage !== false)
   const publicCourses = classes.length
     ? homepageClasses
         .slice()
@@ -182,8 +151,8 @@ function HomePage({
   const activeTestimonial = approvedTestimonials.length
     ? approvedTestimonials[testimonialIndex % approvedTestimonials.length]
     : null
-  const selectedProduct = homepageProducts.find((product) => product.id === selectedProductId || product.publicCode === selectedProductId)
-  const checkoutProduct = homepageProducts.find((product) => product.id === checkoutProductId || product.publicCode === checkoutProductId)
+  const selectedProduct = detailProducts.find((product) => product.id === selectedProductId || product.publicCode === selectedProductId)
+  const checkoutProduct = detailProducts.find((product) => product.id === checkoutProductId || product.publicCode === checkoutProductId)
   const activeCheckoutProduct = checkoutProduct || selectedProduct
   const selectedProductSalePrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.salePrice) || 0))
   const selectedProductNormalPrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.price) || 0))
