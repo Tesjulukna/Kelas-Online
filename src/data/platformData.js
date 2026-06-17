@@ -64,7 +64,7 @@ export const memberCourses = [
 export const memberMenuItems = [
   { id: 'overview', label: 'Ringkasan', icon: 'layoutDashboard' },
   { id: 'my-courses', label: 'Kelas Saya', icon: 'bookOpen' },
-  { id: 'available-classes', label: 'Kelas Tersedia', icon: 'wallet' },
+  { id: 'available-classes', label: 'Kelas Tersedia', icon: 'bookOpen' },
   { id: 'digital-products', label: 'Produk Digital', icon: 'download' },
   { id: 'certificates', label: 'Sertifikat', icon: 'certificate' },
   { id: 'support', label: 'Bantuan Mentor', icon: 'message' },
@@ -98,6 +98,7 @@ export const adminMenuItems = [
   { id: 'students', label: 'Peserta', icon: 'users' },
   { id: 'payments', label: 'Pembayaran', icon: 'wallet' },
   { id: 'submissions', label: 'Tugas Member', icon: 'message' },
+  { id: 'testimonials', label: 'Testimoni Peserta', icon: 'user' },
   { id: 'certificates', label: 'Sertifikat', icon: 'certificate' },
   { id: 'support', label: 'Bantuan Mentor', icon: 'message' },
   { id: 'website-settings', label: 'Pengaturan Website', icon: 'settings' },

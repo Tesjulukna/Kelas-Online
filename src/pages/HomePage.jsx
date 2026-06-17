@@ -96,6 +96,7 @@ function HomePage({
   initialDetail = null,
   classes = [],
   digitalProducts = [],
+  testimonials = [],
   settings = defaultWebsiteSettings,
 }) {
   const websiteSettings = cleanWebsiteSettings(settings)
@@ -112,6 +113,7 @@ function HomePage({
     data: null,
     error: '',
   })
+  const [testimonialIndex, setTestimonialIndex] = useState(0)
   const [publicCheckoutForm, setPublicCheckoutForm] = useState({
     buyerName: '',
     buyerEmail: '',
@@ -176,6 +178,10 @@ function HomePage({
       }
     })
   const selectedClass = homepageClasses.find((course) => course.id === selectedClassId || course.publicCode === selectedClassId)
+  const approvedTestimonials = testimonials.filter((testimonial) => testimonial.status === 'approved')
+  const activeTestimonial = approvedTestimonials.length
+    ? approvedTestimonials[testimonialIndex % approvedTestimonials.length]
+    : null
   const selectedProduct = homepageProducts.find((product) => product.id === selectedProductId || product.publicCode === selectedProductId)
   const checkoutProduct = homepageProducts.find((product) => product.id === checkoutProductId || product.publicCode === checkoutProductId)
   const activeCheckoutProduct = checkoutProduct || selectedProduct
@@ -276,6 +282,18 @@ function HomePage({
   useEffect(() => {
     writePublicWishlist(wishlistItems)
   }, [wishlistItems])
+
+  useEffect(() => {
+    if (approvedTestimonials.length <= 1) {
+      return undefined
+    }
+
+    const timer = window.setInterval(() => {
+      setTestimonialIndex((current) => (current + 1) % approvedTestimonials.length)
+    }, 5200)
+
+    return () => window.clearInterval(timer)
+  }, [approvedTestimonials.length])
 
   useEffect(() => {
     if (!accessOrderCode) {
@@ -723,6 +741,42 @@ function HomePage({
               </article>
             ))}
           </div>
+        </section>
+      )}
+
+      {activeTestimonial && (
+        <section className="content-section modern-section homepage-testimonials-section" id="testimonials">
+          <div className="section-heading reveal-panel">
+            <p className="eyebrow">Testimoni peserta</p>
+            <h2>Cerita setelah menyelesaikan kelas</h2>
+          </div>
+          <article className="testimonial-comment-card" key={activeTestimonial.id}>
+            <span className="testimonial-avatar" aria-hidden="true">
+              {activeTestimonial.memberAvatar ? (
+                <img src={activeTestimonial.memberAvatar} alt="" />
+              ) : (
+                <Icon name="user" />
+              )}
+            </span>
+            <div className="testimonial-comment-body">
+              <div className="testimonial-comment-heading">
+                <strong>{activeTestimonial.memberName}</strong>
+                <small>{activeTestimonial.classTitle}</small>
+              </div>
+              <p>{activeTestimonial.message}</p>
+              <div className="testimonial-dots" aria-label="Navigasi testimoni">
+                {approvedTestimonials.map((testimonial, index) => (
+                  <button
+                    className={testimonial.id === activeTestimonial.id ? 'active' : ''}
+                    type="button"
+                    key={testimonial.id}
+                    aria-label={`Lihat testimoni ${index + 1}`}
+                    onClick={() => setTestimonialIndex(index)}
+                  />
+                ))}
+              </div>
+            </div>
+          </article>
         </section>
       )}
 

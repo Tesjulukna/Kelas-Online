@@ -223,6 +223,19 @@ create table if not exists public.submissions (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.testimonials (
+  id text primary key,
+  member_id text not null default '',
+  member_name text not null default '',
+  member_avatar text not null default '',
+  class_id text not null default '',
+  class_title text not null default '',
+  message text not null default '',
+  status text not null default 'pending',
+  created_at text not null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.member_progress (
   member_id text not null,
   class_id text not null,
@@ -290,6 +303,9 @@ create index if not exists login_attempt_block_index on public.login_attempts(bl
 create index if not exists support_member_index on public.support_tickets(member_id);
 create index if not exists submission_member_index on public.submissions(member_id);
 create index if not exists submission_material_index on public.submissions(material_id);
+create index if not exists testimonial_status_index on public.testimonials(status);
+create index if not exists testimonial_member_index on public.testimonials(member_id);
+create index if not exists testimonial_class_index on public.testimonials(class_id);
 create index if not exists member_progress_activity_index on public.member_progress(last_activity_at);
 create index if not exists lynk_order_email_index on public.lynk_orders(buyer_email);
 create index if not exists tripay_order_reference_index on public.tripay_orders(reference);
@@ -336,6 +352,10 @@ drop trigger if exists submissions_updated_at on public.submissions;
 create trigger submissions_updated_at before update on public.submissions
 for each row execute function public.set_updated_at();
 
+drop trigger if exists testimonials_updated_at on public.testimonials;
+create trigger testimonials_updated_at before update on public.testimonials
+for each row execute function public.set_updated_at();
+
 drop trigger if exists member_progress_updated_at on public.member_progress;
 create trigger member_progress_updated_at before update on public.member_progress
 for each row execute function public.set_updated_at();
@@ -366,6 +386,7 @@ alter table public.auth_sessions enable row level security;
 alter table public.login_attempts enable row level security;
 alter table public.support_tickets enable row level security;
 alter table public.submissions enable row level security;
+alter table public.testimonials enable row level security;
 alter table public.member_progress enable row level security;
 alter table public.lynk_orders enable row level security;
 alter table public.tripay_orders enable row level security;

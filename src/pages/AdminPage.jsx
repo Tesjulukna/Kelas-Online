@@ -588,6 +588,7 @@ function AdminPage({
   members = [],
   supportTickets = [],
   submissions = [],
+  testimonials = [],
   payments = [],
   websiteSettings,
   onClassesChange,
@@ -602,6 +603,8 @@ function AdminPage({
   onUpdateSupportTicket = async () => {},
   onDeleteSupportTicket = async () => {},
   onUpdateSubmission = async () => {},
+  onUpdateTestimonial = async () => {},
+  onDeleteTestimonial = async () => {},
   activeMenu,
   onMenuChange,
   isMenuOpen,
@@ -668,6 +671,25 @@ function AdminPage({
   const pendingSubmissions = submissions.filter(
     (item) => item.status === 'Menunggu Review',
   ).length
+  const pendingTestimonials = testimonials.filter((item) => item.status === 'pending').length
+  const approvedTestimonials = testimonials.filter((item) => item.status === 'approved').length
+  const handleModerateTestimonial = async (testimonial, status) => {
+    try {
+      await onUpdateTestimonial({ id: testimonial.id, status })
+      onNotify(status === 'approved' ? 'Testimoni disetujui.' : 'Testimoni ditolak.')
+    } catch (error) {
+      onNotify(error.message || 'Status testimoni belum bisa diubah.')
+    }
+  }
+
+  const handleRemoveTestimonial = async (testimonial) => {
+    try {
+      await onDeleteTestimonial(testimonial.id)
+      onNotify('Testimoni dihapus.')
+    } catch (error) {
+      onNotify(error.message || 'Testimoni belum bisa dihapus.')
+    }
+  }
   const paymentSearchQuery = paymentSearchTerm.trim().toLowerCase()
   const paidPaymentStatuses = ['paid', 'processed', 'success', 'settlement']
   const pendingPaymentStatuses = ['pending', 'unpaid', 'waiting', 'callback']
@@ -3758,6 +3780,65 @@ function AdminPage({
             )}
           </section>
         </>
+      )}
+
+      {activeMenu === 'testimonials' && (
+        <section className="panel testimonial-admin-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Moderasi sosial proof</p>
+              <h2>{pendingTestimonials} testimoni menunggu persetujuan</h2>
+              <small>{approvedTestimonials} testimoni sudah tampil di homepage.</small>
+            </div>
+          </div>
+          <div className="testimonial-admin-list">
+            {testimonials.map((testimonial) => (
+              <article className="testimonial-admin-card" key={testimonial.id}>
+                <span className="sidebar-avatar" aria-hidden="true">
+                  {testimonial.memberAvatar ? (
+                    <img src={testimonial.memberAvatar} alt="" />
+                  ) : (
+                    <Icon name="user" />
+                  )}
+                </span>
+                <div>
+                  <div className="testimonial-admin-heading">
+                    <strong>{testimonial.memberName}</strong>
+                    <mark>{testimonial.status}</mark>
+                  </div>
+                  <small>{testimonial.classTitle}</small>
+                  <p>{testimonial.message}</p>
+                  <div className="row-actions testimonial-admin-actions">
+                    <button
+                      type="button"
+                      onClick={() => handleModerateTestimonial(testimonial, 'approved')}
+                      disabled={testimonial.status === 'approved'}
+                    >
+                      ACC
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleModerateTestimonial(testimonial, 'rejected')}
+                      disabled={testimonial.status === 'rejected'}
+                    >
+                      Tolak
+                    </button>
+                    <button type="button" onClick={() => handleRemoveTestimonial(testimonial)}>
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+            {!testimonials.length && (
+              <article className="empty-state">
+                <Icon name="message" />
+                <h3>Belum ada testimoni</h3>
+                <p>Testimoni akan muncul setelah peserta menyelesaikan kelas dan mengirim pengalaman mereka.</p>
+              </article>
+            )}
+          </div>
+        </section>
       )}
 
       {activeMenu === 'submissions' && (

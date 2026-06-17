@@ -7,9 +7,11 @@ import {
   createPublicDigitalProductCheckout,
   createSupportTicket,
   createTripayCheckout,
+  currentUser,
   deleteMember,
   deleteSubmission,
   deleteSupportTicket,
+  deleteTestimonial,
   fetchClasses,
   fetchDigitalProducts,
   fetchMembers,
@@ -19,6 +21,7 @@ import {
   fetchTripayPaymentMethods,
   fetchSubmissions,
   fetchSupportTickets,
+  fetchTestimonials,
   fetchWebsiteSettings,
   login,
   loginWithGoogle,
@@ -41,6 +44,8 @@ import {
   updateProfile,
   updateSubmission,
   updateSupportTicket,
+  updateTestimonial,
+  createTestimonial,
 } from '../api-lib/supabase.js'
 
 function getRoute(request) {
@@ -195,6 +200,29 @@ async function handleSubmissions(request, response, url) {
   sendJson(response, 200, await deleteSubmission(url.searchParams.get('id') || ''))
 }
 
+async function handleTestimonials(request, response, url) {
+  if (request.method === 'GET') {
+    const user = await currentUser(request).catch(() => null)
+    sendJson(response, 200, await fetchTestimonials(user))
+    return
+  }
+
+  if (request.method === 'POST') {
+    const member = await requireUser(request, 'member')
+    sendJson(response, 200, await createTestimonial(member, await readJson(request)))
+    return
+  }
+
+  await requireUser(request, 'admin')
+
+  if (request.method === 'PUT') {
+    sendJson(response, 200, await updateTestimonial(await readJson(request)))
+    return
+  }
+
+  sendJson(response, 200, await deleteTestimonial(url.searchParams.get('id') || ''))
+}
+
 async function routeRequest(request, response) {
   const { route, url } = getRoute(request)
 
@@ -230,6 +258,11 @@ async function routeRequest(request, response) {
 
   if (route === 'submissions') {
     await handleSubmissions(request, response, url)
+    return
+  }
+
+  if (route === 'testimonials') {
+    await handleTestimonials(request, response, url)
     return
   }
 

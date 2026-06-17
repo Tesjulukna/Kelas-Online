@@ -23,6 +23,7 @@ const digitalProductsApiPath = '/api/digital-products'
 const membersApiPath = '/api/members'
 const supportApiPath = '/api/support'
 const submissionsApiPath = '/api/submissions'
+const testimonialsApiPath = '/api/testimonials'
 const paymentsApiPath = '/api/payments'
 const settingsApiPath = '/api/settings'
 const backupApiPath = '/api/backup'
@@ -152,6 +153,7 @@ function getDashboardMenuFromUrl(role) {
         'students',
         'payments',
         'submissions',
+        'testimonials',
         'certificates',
         'support',
         'website-settings',
@@ -864,6 +866,27 @@ function cleanSubmissions(value) {
     }))
 }
 
+function cleanTestimonials(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((item) => item?.id && item?.message)
+    .map((item) => ({
+      id: cleanText(item.id),
+      memberId: cleanText(item.memberId || ''),
+      memberName: cleanText(item.memberName || 'Member'),
+      memberAvatar: cleanAvatar(item.memberAvatar || ''),
+      classId: cleanText(item.classId || ''),
+      classTitle: cleanLongText(item.classTitle || 'Kelas', 160),
+      message: cleanLongText(item.message || '', 1200),
+      status: cleanText(item.status || 'pending'),
+      createdAt: cleanText(item.createdAt || ''),
+      updatedAt: cleanText(item.updatedAt || ''),
+    }))
+}
+
 function cleanPayments(value) {
   if (!Array.isArray(value)) {
     return []
@@ -1086,6 +1109,14 @@ async function fetchStoredSubmissions(currentSession) {
   return cleanSubmissions(data.submissions)
 }
 
+async function fetchStoredTestimonials(currentSession) {
+  const data = await requestJson(testimonialsApiPath, {
+    headers: currentSession?.token ? { 'X-Session-Token': currentSession.token } : {},
+  })
+
+  return cleanTestimonials(data.testimonials)
+}
+
 async function fetchStoredPayments(currentSession) {
   if (!currentSession || !['admin', 'member'].includes(currentSession.role)) {
     return []
@@ -1121,6 +1152,7 @@ function App() {
   const [digitalProductAccess, setDigitalProductAccess] = useState([])
   const [supportTickets, setSupportTickets] = useState([])
   const [submissions, setSubmissions] = useState([])
+  const [testimonials, setTestimonials] = useState([])
   const [payments, setPayments] = useState([])
   const [isClassesLoaded, setIsClassesLoaded] = useState(false)
   const [isWebsiteSettingsLoaded, setIsWebsiteSettingsLoaded] = useState(false)
@@ -1410,6 +1442,26 @@ function App() {
   }, [isWebsiteSettingsLoaded])
 
   useEffect(() => {
+    let isCurrent = true
+
+    fetchStoredTestimonials(session)
+      .then((nextTestimonials) => {
+        if (isCurrent) {
+          setTestimonials(nextTestimonials)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setTestimonials((current) => current)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [session])
+
+  useEffect(() => {
     if (!session) {
       return undefined
     }
@@ -1422,11 +1474,12 @@ function App() {
         fetchStoredDigitalProducts(session),
         fetchStoredSupportTickets(session),
         fetchStoredSubmissions(session),
+        fetchStoredTestimonials(session),
         fetchStoredPayments(session),
       ])
 
       requests
-        .then(([nextMembers, productData, nextSupportTickets, nextSubmissions, nextPayments]) => {
+        .then(([nextMembers, productData, nextSupportTickets, nextSubmissions, nextTestimonials, nextPayments]) => {
           if (!isCurrent) {
             return
           }
@@ -1445,6 +1498,7 @@ function App() {
           }
           setSupportTickets(nextSupportTickets)
           setSubmissions(nextSubmissions)
+          setTestimonials(nextTestimonials)
           setPayments(nextPayments)
         })
         .catch(() => {
@@ -1454,6 +1508,7 @@ function App() {
             setDigitalProductAccess((current) => current)
             setSupportTickets((current) => current)
             setSubmissions((current) => current)
+            setTestimonials((current) => current)
             setPayments((current) => current)
           }
         })
@@ -1901,6 +1956,14 @@ function App() {
     return nextSubmissions
   }
 
+  const applyTestimonialsResponse = (data) => {
+    const nextTestimonials = cleanTestimonials(data.testimonials)
+
+    setTestimonials(nextTestimonials)
+    announcePeopleSync()
+    return nextTestimonials
+  }
+
   const handleClassesChange = async (updater) => {
     if (session?.role !== 'admin') {
       throw new Error('Silakan login admin ulang untuk menyimpan kelas.')
@@ -1985,6 +2048,7 @@ function App() {
       productData,
       nextSupportTickets,
       nextSubmissions,
+      nextTestimonials,
       nextPayments,
       nextSettings,
     ] = await Promise.all([
@@ -1993,6 +2057,7 @@ function App() {
       fetchStoredDigitalProducts(session),
       fetchStoredSupportTickets(session),
       fetchStoredSubmissions(session),
+      fetchStoredTestimonials(session),
       fetchStoredPayments(session),
       fetchStoredWebsiteSettings(),
     ])
@@ -2003,6 +2068,7 @@ function App() {
     setDigitalProductAccess(productData.digitalProductAccess)
     setSupportTickets(nextSupportTickets)
     setSubmissions(nextSubmissions)
+    setTestimonials(nextTestimonials)
     setPayments(nextPayments)
     setWebsiteSettings(nextSettings)
     window.sessionStorage.setItem(classesKey, JSON.stringify(nextClasses))
@@ -2155,6 +2221,37 @@ function App() {
     return applySubmissionsResponse(data)
   }
 
+  const handleCreateTestimonial = async (testimonialData) => {
+    if (!session) {
+      throw new Error('Silakan login ulang untuk mengirim testimoni.')
+    }
+
+    const data = await requestJson(testimonialsApiPath, {
+      method: 'POST',
+      body: JSON.stringify(testimonialData),
+    })
+
+    return applyTestimonialsResponse(data)
+  }
+
+  const handleUpdateTestimonial = async (testimonialData) => {
+    const data = await requestJson(testimonialsApiPath, {
+      method: 'PUT',
+      body: JSON.stringify(testimonialData),
+    })
+
+    return applyTestimonialsResponse(data)
+  }
+
+  const handleDeleteTestimonial = async (testimonialId) => {
+    const data = await requestJson(
+      `${testimonialsApiPath}?id=${encodeURIComponent(testimonialId)}`,
+      { method: 'DELETE' },
+    )
+
+    return applyTestimonialsResponse(data)
+  }
+
   const handleUpdateSupportTicket = async (ticketData) => {
     const data = await requestJson(supportApiPath, {
       method: 'PUT',
@@ -2273,6 +2370,7 @@ function App() {
             initialDetail={publicDetailTarget}
             classes={classes}
             digitalProducts={digitalProducts}
+            testimonials={testimonials}
             settings={websiteSettings}
           />
         )}
@@ -2305,6 +2403,7 @@ function App() {
               allowedClassIds={currentMemberAccess}
               supportTickets={supportTickets}
               submissions={submissions}
+              testimonials={testimonials}
               payments={payments}
               focusTarget={memberFocusTarget}
               checkoutClassRequestId={pendingCheckoutClassId}
@@ -2317,6 +2416,7 @@ function App() {
               onCreateSupportTicket={handleCreateSupportTicket}
               onReplySupportTicket={handleReplySupportTicket}
               onCreateSubmission={handleCreateSubmission}
+              onCreateTestimonial={handleCreateTestimonial}
               onCreateTripayCheckout={handleCreateTripayCheckout}
               onCheckoutClassRequestHandled={clearPendingClassCheckout}
             />
@@ -2343,6 +2443,7 @@ function App() {
               members={members}
               supportTickets={supportTickets}
               submissions={submissions}
+              testimonials={testimonials}
               payments={payments}
               websiteSettings={websiteSettings}
               onClassesChange={handleClassesChange}
@@ -2357,6 +2458,8 @@ function App() {
               onUpdateSupportTicket={handleUpdateSupportTicket}
               onDeleteSupportTicket={handleDeleteSupportTicket}
               onUpdateSubmission={handleUpdateSubmission}
+              onUpdateTestimonial={handleUpdateTestimonial}
+              onDeleteTestimonial={handleDeleteTestimonial}
               activeMenu={activeAdminMenu}
               onMenuChange={(menuId) => navigateToDashboardMenu('admin', menuId)}
               isMenuOpen={isDashboardMenuOpen}

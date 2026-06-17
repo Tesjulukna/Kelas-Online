@@ -929,6 +929,7 @@ const backupTables = [
   'material_assets',
   'support_tickets',
   'submissions',
+  'testimonials',
   'member_progress',
   'lynk_orders',
   'tripay_orders',
@@ -1004,6 +1005,7 @@ export async function restoreBackup(payload) {
     ['material_assets', 'id=not.is.null'],
     ['materials', 'id=not.is.null'],
     ['submissions', 'id=not.is.null'],
+    ['testimonials', 'id=not.is.null'],
     ['support_tickets', 'id=not.is.null'],
     ['member_progress', 'member_id=not.is.null'],
     ['tripay_orders', 'id=not.is.null'],
@@ -1021,6 +1023,7 @@ export async function restoreBackup(payload) {
     'material_assets',
     'support_tickets',
     'submissions',
+    'testimonials',
     'member_progress',
     'lynk_orders',
     'tripay_orders',
@@ -1912,6 +1915,122 @@ export async function deleteSubmission(submissionId) {
   })
 
   return fetchSubmissions({ role: 'admin' })
+}
+
+function mapTestimonial(row) {
+  return {
+    id: row.id,
+    memberId: row.member_id || '',
+    memberName: row.member_name || 'Member',
+    memberAvatar: row.member_avatar || '',
+    classId: row.class_id || '',
+    classTitle: row.class_title || 'Kelas',
+    message: row.message || '',
+    status: row.status || 'pending',
+    createdAt: row.created_at || '',
+    updatedAt: row.updated_at || '',
+  }
+}
+
+export async function fetchTestimonials(user = null) {
+  let query = `testimonials?select=*&status=eq.${eq('approved')}&order=created_at.desc,id.desc`
+
+  if (user?.role === 'admin') {
+    query = 'testimonials?select=*&order=created_at.desc,id.desc'
+  } else if (user?.role === 'member') {
+    query = `testimonials?select=*&or=(status.eq.${eq('approved')},member_id.eq.${eq(user.userId)})&order=created_at.desc,id.desc`
+  }
+
+  const rows = await rest(query).catch((error) => {
+    if (error instanceof ApiError && error.statusCode >= 400 && error.statusCode < 500) {
+      return []
+    }
+
+    throw error
+  })
+
+  return {
+    testimonials: (rows || []).map(mapTestimonial),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export async function createTestimonial(user, payload) {
+  if (user.role !== 'member') {
+    throw new ApiError(403, 'Hanya member yang bisa mengirim testimoni.')
+  }
+
+  const classId = cleanText(payload.classId || '', 120)
+  const classTitle = cleanText(payload.classTitle || 'Kelas', 160)
+  const message = cleanText(payload.message || '', 1200)
+
+  if (!classId || !message) {
+    throw new ApiError(400, 'Kelas dan isi testimoni wajib diisi.')
+  }
+
+  const existingRows = await rest(
+    `testimonials?select=id&member_id=eq.${eq(user.userId)}&class_id=eq.${eq(classId)}&limit=1`,
+  ).catch(() => [])
+  const existing = existingRows?.[0]
+  const body = {
+    member_id: user.userId,
+    member_name: cleanText(user.name || 'Member', 120),
+    member_avatar: cleanUrl(user.avatar || ''),
+    class_id: classId,
+    class_title: classTitle,
+    message,
+    status: 'pending',
+    created_at: new Date().toISOString(),
+  }
+
+  if (existing) {
+    await rest(`testimonials?id=eq.${eq(existing.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body,
+    })
+  } else {
+    await rest('testimonials', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: {
+        id: makeId('testimonial'),
+        ...body,
+      },
+    })
+  }
+
+  return fetchTestimonials(user)
+}
+
+export async function updateTestimonial(payload) {
+  const testimonialId = cleanText(payload.id, 120)
+  const status = cleanText(payload.status || 'pending', 40)
+
+  if (!testimonialId) {
+    throw new ApiError(400, 'ID testimoni wajib dikirim.')
+  }
+
+  if (!['pending', 'approved', 'rejected'].includes(status)) {
+    throw new ApiError(422, 'Status testimoni tidak valid.')
+  }
+
+  await rest(`testimonials?id=eq.${eq(testimonialId)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: { status },
+  })
+
+  return fetchTestimonials({ role: 'admin' })
+}
+
+export async function deleteTestimonial(testimonialId) {
+  await rest(`testimonials?id=eq.${eq(cleanText(testimonialId, 120))}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=minimal' },
+  })
+
+  return fetchTestimonials({ role: 'admin' })
 }
 
 export async function trackProgress(user, payload) {

@@ -249,6 +249,7 @@ function MemberPage({
   allowedClassIds = null,
   supportTickets = [],
   submissions = [],
+  testimonials = [],
   payments = [],
   checkoutClassRequestId = '',
   activeMenu,
@@ -259,6 +260,7 @@ function MemberPage({
   onCreateSupportTicket = async () => {},
   onReplySupportTicket = async () => {},
   onCreateSubmission = async () => {},
+  onCreateTestimonial = async () => {},
   onCreateTripayCheckout = async () => {},
   onCheckoutClassRequestHandled = () => {},
   focusTarget = null,
@@ -286,6 +288,7 @@ function MemberPage({
   const [supportSubject, setSupportSubject] = useState('')
   const [supportDraft, setSupportDraft] = useState('')
   const [supportReplyDrafts, setSupportReplyDrafts] = useState({})
+  const [testimonialDraft, setTestimonialDraft] = useState('')
   const [previewImage, setPreviewImage] = useState(null)
   const [activePromptInstruction, setActivePromptInstruction] = useState(null)
   const [checkoutClassId, setCheckoutClassId] = useState('')
@@ -467,6 +470,41 @@ function MemberPage({
     )
 
     return Math.min(100, Math.round((submittedRequiredIds.size / requiredCount) * 100))
+  }
+
+  const selectedCourseProgress = selectedCourse ? getCourseProgress(selectedCourse) : 0
+  const isLastMaterial = Boolean(selectedCourse && materials.length && currentMaterialIndex === materials.length - 1)
+  const selectedCourseHasRequiredTask = materials.some((material) => material.requiresTask)
+  const isSelectedCourseComplete = selectedCourseProgress >= 100 || (isLastMaterial && !selectedCourseHasRequiredTask)
+  const selectedCourseTestimonial = selectedCourse
+    ? testimonials.find((testimonial) =>
+        testimonial.memberId === userId && testimonial.classId === selectedCourse.id,
+      )
+    : null
+  const canSendSelectedCourseTestimonial = Boolean(
+      selectedCourse &&
+      isSelectedCourseComplete &&
+      isLastMaterial &&
+      (!selectedCourseTestimonial || selectedCourseTestimonial.status === 'rejected'),
+  )
+
+  const handleSubmitTestimonial = async () => {
+    if (!selectedCourse || !testimonialDraft.trim()) {
+      onNotify('Isi testimoni dulu.')
+      return
+    }
+
+    try {
+      await onCreateTestimonial({
+        classId: selectedCourse.id,
+        classTitle: selectedCourse.title,
+        message: testimonialDraft.trim(),
+      })
+      setTestimonialDraft('')
+      onNotify('Testimoni terkirim dan menunggu persetujuan admin.')
+    } catch (error) {
+      onNotify(error.message || 'Testimoni belum bisa dikirim.')
+    }
   }
 
   const handleDashboardMenuChange = useCallback((menuId) => {
@@ -1307,6 +1345,46 @@ function MemberPage({
                       </div>
                     </div>
                   )}
+
+                  {isSelectedCourseComplete && isLastMaterial && (
+                    <div className="testimonial-submit-box">
+                      <div>
+                        <p className="eyebrow">Testimoni peserta</p>
+                        <h3>
+                          {selectedCourseTestimonial
+                            ? 'Testimoni sudah dikirim'
+                            : 'Bagikan pengalamanmu'}
+                        </h3>
+                        <p>
+                          {selectedCourseTestimonial
+                            ? selectedCourseTestimonial.status === 'approved'
+                              ? 'Terima kasih. Testimoni kamu sudah tampil di homepage.'
+                              : selectedCourseTestimonial.status === 'rejected'
+                                ? 'Testimoni sebelumnya belum disetujui. Kamu bisa mengirim ulang versi yang lebih rapi.'
+                                : 'Testimoni kamu sedang menunggu persetujuan admin.'
+                            : 'Testimoni akan diperiksa admin sebelum tampil di homepage.'}
+                        </p>
+                      </div>
+                      {canSendSelectedCourseTestimonial && (
+                        <>
+                          <textarea
+                            value={testimonialDraft}
+                            onChange={(event) => setTestimonialDraft(event.target.value)}
+                            placeholder="Tulis kesan, hasil, atau perubahan yang kamu rasakan setelah mengikuti kelas ini."
+                            rows={4}
+                          />
+                          <button
+                            className="btn btn-primary"
+                            type="button"
+                            onClick={handleSubmitTestimonial}
+                          >
+                            <Icon name="send" />
+                            Kirim Testimoni
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </article>
 
@@ -1623,7 +1701,7 @@ function MemberPage({
                 disabled={!selectedPaymentMethodCode || !isPaymentTermsAccepted}
                 onClick={handleCreateSelectedPayment}
               >
-                <Icon name="wallet" />
+                <Icon name="bookOpen" />
                 Buat Pembayaran
               </button>
             </div>
@@ -1841,14 +1919,9 @@ function MemberPage({
                       ) : (
                         <Icon name="download" />
                       )}
-                      <span>{product.status}</span>
                     </span>
                     <span className="member-class-body">
                       <h3>{product.title}</h3>
-                      <p>{product.fileName || 'Produk digital'}</p>
-                      <span className="member-class-next">
-                        {product.description || 'Akses produk dikirim otomatis setelah pembayaran sukses.'}
-                      </span>
                     </span>
                     <span className="available-class-price">
                       <small>{price ? 'Harga produk' : 'Produk gratis'}</small>

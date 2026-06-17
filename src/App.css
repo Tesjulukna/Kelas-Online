@@ -4072,11 +4072,50 @@ img {
   flex-wrap: wrap;
 }
 
+.testimonial-submit-box {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff, #f0fdfa);
+}
+
+.testimonial-submit-box h3,
+.testimonial-submit-box p {
+  margin: 0;
+}
+
+.testimonial-submit-box textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+}
+
+.testimonial-submit-box .btn {
+  justify-self: end;
+}
+
 .icon-left {
   transform: rotate(180deg);
 }
 
 @media (max-width: 760px) {
+  .testimonial-comment-card,
+  .testimonial-admin-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+    padding: 14px;
+  }
+
+  .testimonial-avatar {
+    width: 42px;
+  }
+
+  .testimonial-submit-box .btn {
+    justify-self: stretch;
+    width: 100%;
+  }
+
   .materials-editor-heading {
     align-items: flex-start;
     flex-direction: column;
@@ -6513,6 +6552,147 @@ img {
   grid-column: 1 / -1;
 }
 
+.homepage-testimonials-section {
+  display: grid;
+  gap: 22px;
+}
+
+.testimonial-comment-card {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid rgba(205, 217, 232, 0.9);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+  animation: testimonialFade 0.55s ease both;
+}
+
+.testimonial-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 54px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  color: #2563eb;
+  background: linear-gradient(135deg, #dbeafe, #ccfbf1);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22);
+}
+
+.testimonial-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.testimonial-comment-body {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.testimonial-comment-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.testimonial-comment-heading strong {
+  color: var(--color-heading);
+}
+
+.testimonial-comment-heading small {
+  color: var(--color-muted);
+  font-weight: 800;
+}
+
+.testimonial-comment-body p {
+  margin: 0;
+  color: var(--color-heading);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.testimonial-dots {
+  display: flex;
+  gap: 7px;
+}
+
+.testimonial-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.testimonial-dots button.active {
+  width: 22px;
+  background: #2563eb;
+}
+
+.testimonial-admin-list {
+  display: grid;
+  gap: 12px;
+}
+
+.testimonial-admin-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.testimonial-admin-card p {
+  margin: 8px 0 0;
+  color: var(--color-heading);
+  line-height: 1.65;
+}
+
+.testimonial-admin-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.testimonial-admin-heading mark {
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.testimonial-admin-actions {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+
+@keyframes testimonialFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .public-detail-page {
   display: grid;
   gap: 0;
@@ -8299,6 +8479,59 @@ img {
   display: none;
 }
 
+.digital-product-card,
+.digital-product-card.product-layout-grid,
+.digital-product-card.product-layout-large,
+.digital-product-card.product-layout-compact {
+  grid-template-columns: 132px minmax(0, 1fr) minmax(136px, 0.42fr) minmax(190px, auto);
+  min-height: 124px;
+}
+
+.digital-product-card .member-class-visual,
+.digital-product-card.product-layout-large .member-class-visual,
+.digital-product-card.product-layout-compact .member-class-visual {
+  min-height: 96px;
+  aspect-ratio: 4 / 3;
+}
+
+.digital-product-card .member-class-body {
+  align-self: center;
+}
+
+.digital-product-card .member-class-body h3 {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-heading);
+  font-size: clamp(1rem, 1.4vw, 1.16rem);
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.digital-product-card .available-class-price {
+  align-self: center;
+}
+
+.digital-product-card .available-payment-action {
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.digital-product-card .available-payment-action .expired-payment-notice,
+.digital-product-card .available-payment-action .change-payment-method-button {
+  grid-column: 1 / -1;
+}
+
+.digital-product-card .member-class-button {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+}
+
 .available-class-price {
   display: grid;
   gap: 6px;
@@ -9034,11 +9267,27 @@ img {
     grid-template-columns: 138px minmax(0, 1fr);
   }
 
+  .digital-product-card,
+  .digital-product-card.product-layout-grid,
+  .digital-product-card.product-layout-large,
+  .digital-product-card.product-layout-compact {
+    grid-template-columns: 116px minmax(0, 1fr);
+  }
+
   .member-class-progress,
   .available-class-price,
   .available-payment-action,
   .member-class-button {
     grid-column: 2;
+  }
+
+  .digital-product-card .available-class-price,
+  .digital-product-card .available-payment-action {
+    grid-column: 2;
+  }
+
+  .digital-product-card .available-payment-action {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -9057,11 +9306,31 @@ img {
     aspect-ratio: 16 / 9;
   }
 
+  .digital-product-card,
+  .digital-product-card.product-layout-grid,
+  .digital-product-card.product-layout-large,
+  .digital-product-card.product-layout-compact {
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .digital-product-card .member-class-visual,
+  .digital-product-card.product-layout-large .member-class-visual,
+  .digital-product-card.product-layout-compact .member-class-visual {
+    min-height: 82px;
+    aspect-ratio: 1;
+  }
+
   .member-class-progress,
   .available-class-price,
   .available-payment-action,
   .member-class-button {
     grid-column: auto;
+  }
+
+  .digital-product-card .available-class-price,
+  .digital-product-card .available-payment-action {
+    grid-column: 1 / -1;
   }
 
   .payment-method-grid {

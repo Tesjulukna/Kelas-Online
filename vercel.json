@@ -49,6 +49,10 @@
       "destination": "/api/submissions"
     },
     {
+      "source": "/api/testimonials.php",
+      "destination": "/api/testimonials"
+    },
+    {
       "source": "/api/settings.php",
       "destination": "/api/classes?resource=settings"
     },
