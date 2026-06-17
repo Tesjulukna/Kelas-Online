@@ -6692,10 +6692,31 @@ img {
   gap: 22px;
 }
 
+.public-access-panel .section-heading,
+.public-access-panel .section-heading h2,
+.public-access-panel .section-heading small {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.public-product-access-page {
+  width: min(100%, 620px);
+  padding: 18px 12px 84px;
+}
+
+.public-access-topbar {
+  display: flex;
+  align-items: center;
+  min-height: 54px;
+  margin-bottom: 10px;
+}
+
 .public-access-message {
   display: grid;
   justify-items: center;
   gap: 12px;
+  min-width: 0;
   padding: 26px;
   border: 1px solid rgba(205, 217, 232, 0.9);
   border-radius: 8px;
@@ -6712,6 +6733,8 @@ img {
 .public-access-message h3,
 .public-access-message p {
   margin: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .public-access-actions {
@@ -6719,11 +6742,13 @@ img {
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
+  width: 100%;
 }
 
 .public-access-content {
   display: grid;
   gap: 18px;
+  min-width: 0;
   width: 100%;
   max-width: 560px;
   margin: 0 auto;
@@ -6732,15 +6757,19 @@ img {
 .public-access-content > div {
   display: grid;
   gap: 8px;
+  min-width: 0;
   text-align: center;
 }
 
 .public-access-content h3,
 .public-access-content p {
   margin: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .public-access-content .public-detail-section {
+  min-width: 0;
   padding: 18px;
   border: 1px solid rgba(205, 217, 232, 0.9);
   border-radius: 8px;
@@ -6749,11 +6778,13 @@ img {
 .public-access-content .public-detail-section p:last-child {
   white-space: pre-wrap;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .public-access-download {
   width: 100%;
   justify-self: stretch;
+  min-width: 0;
 }
 
 .public-wishlist-list {

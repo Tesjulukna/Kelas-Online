@@ -3627,6 +3627,15 @@ async function grantDigitalProductAccess({
   const existingAccess = accessRows?.[0]
 
   if (existingAccess) {
+    const nextOrderId = cleanText(orderId, 180)
+    if (nextOrderId && !existingAccess.order_id) {
+      await rest(`digital_product_access?id=eq.${eq(existingAccess.id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: { order_id: nextOrderId },
+      }).catch(() => {})
+      existingAccess.order_id = nextOrderId
+    }
     return { product, granted: false, alreadyHasAccess: true, access: existingAccess }
   }
 
@@ -4000,7 +4009,7 @@ export async function createPublicDigitalProductCheckout(request) {
       source: 'free-public',
       orderId: freeOrderId,
     })
-    const accessUrl = publicProductAccessUrl(request, freeOrderId)
+    const accessUrl = publicProductAccessUrl(request, accessResult.access?.order_id || freeOrderId)
     const deliveryEmailResult = await sendDigitalProductDeliveryEmail({
       buyerName,
       buyerEmail,
