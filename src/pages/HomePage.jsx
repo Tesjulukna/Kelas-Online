@@ -16,6 +16,17 @@ function formatRupiah(value) {
   }).format(amount)
 }
 
+function getPaymentMethodFee(method, amount) {
+  if (!method) {
+    return 0
+  }
+
+  const flatFee = Math.max(0, Math.round(Number(method.feeFlat) || 0))
+  const percentFee = Math.max(0, Number(method.feePercent) || 0)
+
+  return flatFee + Math.max(0, Math.round((Math.max(0, amount) * percentFee) / 100))
+}
+
 function publicCodeFromId(id, takenCodes = new Set()) {
   const source = String(id || 'item')
   let hash = 0x811c9dc5
@@ -136,6 +147,11 @@ function HomePage({
   const selectedProductPrice = selectedProductSalePrice || selectedProductNormalPrice
   const isPublicProductFree = selectedProductPrice <= 0
   const paymentMethods = websiteSettings.paymentMethods || []
+  const selectedPublicPaymentMethod = paymentMethods.find(
+    (method) => method.code === publicCheckoutForm.paymentMethod,
+  )
+  const publicCheckoutFee = getPaymentMethodFee(selectedPublicPaymentMethod, selectedProductPrice)
+  const publicCheckoutTotal = selectedProductPrice + publicCheckoutFee
   const initialDetailType = initialDetail?.type || ''
   const initialDetailId = initialDetail?.id || ''
   const initialDetailAction = initialDetail?.action || ''
@@ -338,6 +354,9 @@ function HomePage({
         isFree={isPublicProductFree}
         isPaymentPickerOpen={isPaymentPickerOpen}
         paymentMethods={paymentMethods}
+        paymentAmount={selectedProductPrice}
+        paymentFee={publicCheckoutFee}
+        paymentTotal={publicCheckoutTotal}
         priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
         status={publicCheckoutStatus}
         onBack={() => openProductDetail(checkoutProduct.id)}
@@ -464,7 +483,6 @@ function HomePage({
                     <Icon name="download" />
                     {product.fileName}
                   </span>
-                  <p>{product.description}</p>
                 </div>
                 <div className="course-meta">
                   <span>Produk digital</span>

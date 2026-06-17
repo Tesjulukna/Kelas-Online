@@ -53,6 +53,9 @@ function CheckoutProduk({
   isFree,
   isPaymentPickerOpen,
   paymentMethods,
+  paymentAmount = 0,
+  paymentFee = 0,
+  paymentTotal = 0,
   priceLabel,
   status,
   onBack,
@@ -138,7 +141,37 @@ function CheckoutProduk({
           <p className="public-checkout-free-note">Produk ini gratis. Isi data penerima, lalu ambil produk tanpa memilih metode pembayaran.</p>
         )}
         {!isFree && form.paymentMethod && (
-          <p className="public-checkout-status">Metode dipilih: {selectedMethodLabel}</p>
+          <>
+            <p className="public-checkout-status">Metode dipilih: {selectedMethodLabel}</p>
+            <div className="payment-breakdown public-checkout-breakdown" aria-live="polite">
+              <span>
+                <small>Harga produk</small>
+                <strong>{priceLabel}</strong>
+              </span>
+              <span>
+                <small>Biaya layanan</small>
+                <strong>
+                  {paymentFee
+                    ? new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        maximumFractionDigits: 0,
+                      }).format(paymentFee)
+                    : 'Gratis'}
+                </strong>
+              </span>
+              <span className="payment-breakdown-total">
+                <small>Total pembayaran</small>
+                <strong>
+                  {new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    maximumFractionDigits: 0,
+                  }).format(paymentTotal || paymentAmount)}
+                </strong>
+              </span>
+            </div>
+          </>
         )}
         <label className="public-checkout-check">
           <input

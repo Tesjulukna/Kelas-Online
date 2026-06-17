@@ -120,7 +120,8 @@ function cleanRichHtml(value, maxLength = 6000) {
     .replace(/\son\w+="[^"]*"/gi, '')
     .replace(/\son\w+='[^']*'/gi, '')
     .replace(/\shref=(["'])\s*javascript:[\s\S]*?\1/gi, '')
-    .replace(/<(?!\/?(p|br|strong|b|em|i|u|ul|ol|li|span|div|a|h2|h3|h4)\b)[^>]*>/gi, '')
+    .replace(/\ssrc=(["'])\s*javascript:[\s\S]*?\1/gi, '')
+    .replace(/<(?!\/?(p|br|strong|b|em|i|u|ul|ol|li|span|div|a|img|h2|h3|h4)\b)[^>]*>/gi, '')
 }
 
 function cleanPromptText(value) {

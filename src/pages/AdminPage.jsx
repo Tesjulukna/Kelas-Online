@@ -399,6 +399,14 @@ function cleanEditorUrl(value) {
   }
 }
 
+function cleanHtmlAttribute(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 function toCsvValue(value) {
   return `"${String(value).replaceAll('"', '""')}"`
 }
@@ -641,6 +649,7 @@ function AdminPage({
   const materialDescriptionRef = useRef(null)
   const materialDescriptionEditorMaterialIdRef = useRef(null)
   const descriptionSelectionRef = useRef(null)
+  const digitalDescriptionImageInputRef = useRef(null)
   const lastMaterialDragTargetRef = useRef('')
 
   const onlineMembers = members.filter((item) => item.isOnline)
@@ -963,6 +972,21 @@ function AdminPage({
     }))
   }
 
+  const insertDigitalDescriptionHtml = (html) => {
+    const textarea = document.querySelector('[data-digital-description-editor="true"]')
+    const description = digitalProductForm.description || ''
+    const start = textarea?.selectionStart ?? description.length
+    const end = textarea?.selectionEnd ?? description.length
+    const nextDescription = `${description.slice(0, start)}${html}${description.slice(end)}`
+
+    setDigitalProductForm((current) => ({ ...current, description: nextDescription }))
+    window.setTimeout(() => {
+      textarea?.focus()
+      const nextCursor = start + html.length
+      textarea?.setSelectionRange(nextCursor, nextCursor)
+    }, 0)
+  }
+
   const applyDigitalDescriptionTool = (tool) => {
     const textarea = document.querySelector('[data-digital-description-editor="true"]')
     const description = digitalProductForm.description || ''
@@ -975,6 +999,9 @@ function AdminPage({
     if (tool === 'bold') replacement = `<strong>${fallback}</strong>`
     if (tool === 'underline') replacement = `<u>${fallback}</u>`
     if (tool === 'heading') replacement = `<h3>${fallback}</h3>`
+    if (tool === 'align-left') replacement = `<div style="text-align: left">${fallback}</div>`
+    if (tool === 'align-center') replacement = `<div style="text-align: center">${fallback}</div>`
+    if (tool === 'align-justify') replacement = `<div style="text-align: justify">${fallback}</div>`
     if (tool === 'list') {
       const rows = fallback
         .split('\n')
@@ -995,10 +1022,33 @@ function AdminPage({
       replacement = `<a href="${safeUrl}" target="_blank" rel="noreferrer">${fallback}</a>`
     }
 
-    const nextDescription = `${description.slice(0, start)}${replacement}${description.slice(end)}`
+    insertDigitalDescriptionHtml(replacement)
+  }
 
-    setDigitalProductForm((current) => ({ ...current, description: nextDescription }))
-    window.setTimeout(() => textarea?.focus(), 0)
+  const handleDigitalDescriptionImageChange = async (event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      onNotify('Gambar deskripsi harus berupa file gambar.')
+      event.target.value = ''
+      return
+    }
+
+    try {
+      onNotify('Mengupload gambar deskripsi...')
+      const imageUrl = await uploadClassImage(file, sessionToken)
+      const altText = cleanHtmlAttribute(file.name.replace(/\.[^.]+$/, '') || 'Gambar produk')
+      insertDigitalDescriptionHtml(`<p><img src="${imageUrl}" alt="${altText}" loading="lazy"></p>`)
+      onNotify('Gambar berhasil ditambahkan ke deskripsi.')
+    } catch (error) {
+      onNotify(error.message || 'Gambar deskripsi tidak bisa diupload.')
+    } finally {
+      event.target.value = ''
+    }
   }
 
   const updateDigitalProductReview = (reviewId, field, value) => {
@@ -2574,6 +2624,16 @@ function AdminPage({
                       <button type="button" onClick={() => applyDigitalDescriptionTool('bold')}>B</button>
                       <button type="button" onClick={() => applyDigitalDescriptionTool('underline')}>U</button>
                       <button type="button" onClick={() => applyDigitalDescriptionTool('heading')}>H</button>
+                      <button type="button" onClick={() => applyDigitalDescriptionTool('align-left')} title="Rata kiri">L</button>
+                      <button type="button" onClick={() => applyDigitalDescriptionTool('align-center')} title="Rata tengah">C</button>
+                      <button type="button" onClick={() => applyDigitalDescriptionTool('align-justify')} title="Justify">J</button>
+                      <button
+                        type="button"
+                        onClick={() => digitalDescriptionImageInputRef.current?.click()}
+                        title="Tambah gambar"
+                      >
+                        <Icon name="image" />
+                      </button>
                       <button type="button" onClick={() => applyDigitalDescriptionTool('list')}><Icon name="menu" /></button>
                       <button type="button" onClick={() => applyDigitalDescriptionTool('link')}><Icon name="link" /></button>
                     </span>
@@ -2585,6 +2645,14 @@ function AdminPage({
                       onChange={handleDigitalProductFormChange}
                       placeholder="Jelaskan isi produk, manfaat, bonus, dan cara aksesnya."
                       rows={9}
+                    />
+                    <input
+                      ref={digitalDescriptionImageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      tabIndex={-1}
+                      onChange={handleDigitalDescriptionImageChange}
                     />
                   </label>
 

@@ -247,6 +247,7 @@ function cleanRichHtml(value, maxLength = 6000) {
     'SPAN',
     'DIV',
     'A',
+    'IMG',
     'H2',
     'H3',
     'H4',
@@ -265,6 +266,18 @@ function cleanRichHtml(value, maxLength = 6000) {
         if (/^\s*javascript:/i.test(href)) {
           node.removeAttribute('href')
         }
+        return
+      }
+
+      if (node.tagName === 'IMG' && attribute.name === 'src') {
+        const src = node.getAttribute('src') || ''
+        if (!/^https?:\/\//i.test(src) && !src.startsWith('data:image/')) {
+          node.removeAttribute('src')
+        }
+        return
+      }
+
+      if (node.tagName === 'IMG' && ['alt', 'loading'].includes(attribute.name)) {
         return
       }
 
@@ -295,6 +308,10 @@ function cleanRichHtml(value, maxLength = 6000) {
     if (node.tagName === 'A' && node.getAttribute('href')) {
       node.setAttribute('target', '_blank')
       node.setAttribute('rel', 'noreferrer')
+    }
+
+    if (node.tagName === 'IMG' && node.getAttribute('src')) {
+      node.setAttribute('loading', 'lazy')
     }
   })
 
