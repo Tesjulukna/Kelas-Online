@@ -233,7 +233,24 @@ function cleanRichHtml(value, maxLength = 6000) {
 
   const template = document.createElement('template')
   template.innerHTML = safeHtml
-  const allowedTags = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL', 'LI', 'SPAN', 'DIV'])
+  const allowedTags = new Set([
+    'P',
+    'BR',
+    'STRONG',
+    'B',
+    'EM',
+    'I',
+    'U',
+    'UL',
+    'OL',
+    'LI',
+    'SPAN',
+    'DIV',
+    'A',
+    'H2',
+    'H3',
+    'H4',
+  ])
   const allowedStyles = new Set(['color', 'text-align'])
 
   template.content.querySelectorAll('*').forEach((node) => {
@@ -243,6 +260,18 @@ function cleanRichHtml(value, maxLength = 6000) {
     }
 
     ;[...node.attributes].forEach((attribute) => {
+      if (node.tagName === 'A' && attribute.name === 'href') {
+        const href = node.getAttribute('href') || ''
+        if (/^\s*javascript:/i.test(href)) {
+          node.removeAttribute('href')
+        }
+        return
+      }
+
+      if (node.tagName === 'A' && ['target', 'rel'].includes(attribute.name)) {
+        return
+      }
+
       if (attribute.name !== 'style') {
         node.removeAttribute(attribute.name)
         return
@@ -262,6 +291,11 @@ function cleanRichHtml(value, maxLength = 6000) {
         node.removeAttribute('style')
       }
     })
+
+    if (node.tagName === 'A' && node.getAttribute('href')) {
+      node.setAttribute('target', '_blank')
+      node.setAttribute('rel', 'noreferrer')
+    }
   })
 
   return template.innerHTML
@@ -592,7 +626,7 @@ function cleanDigitalProducts(value) {
     .map((item) => ({
       id: cleanText(item.id),
       title: cleanLongText(item.title, 160),
-      description: cleanLongText(item.description || '', 600),
+      description: cleanRichHtml(item.description || ''),
       price: Math.max(0, Math.round(Number(item.price) || 0)),
       status: cleanText(item.status || 'Draft'),
       thumbnail: cleanAvatar(item.thumbnail || ''),
@@ -613,6 +647,22 @@ function cleanDigitalProducts(value) {
       whatsappNotification: item.whatsappNotification === true,
       customMessageEnabled: item.customMessageEnabled === true,
       customMessage: cleanLongText(item.customMessage || '', 800),
+      reviews: Array.isArray(item.reviews)
+        ? item.reviews.slice(0, 10).map((review, index) => ({
+            id: cleanText(review.id || `review-${index + 1}`),
+            name: cleanText(review.name || ''),
+            rating: Math.min(5, Math.max(1, Math.round(Number(review.rating) || 5))),
+            message: cleanLongText(review.message || '', 500),
+          })).filter((review) => review.name || review.message)
+        : [],
+      addOns: Array.isArray(item.addOns)
+        ? item.addOns.slice(0, 20).map((addOn, index) => ({
+            id: cleanText(addOn.id || `addon-${index + 1}`),
+            title: cleanLongText(addOn.title || '', 120),
+            price: Math.max(0, Math.round(Number(addOn.price) || 0)),
+            description: cleanLongText(addOn.description || '', 300),
+          })).filter((addOn) => addOn.title)
+        : [],
       blockLayout: cleanText(item.blockLayout || 'default'),
       requireCustomerName: item.requireCustomerName === true,
       requireCustomerPhone: item.requireCustomerPhone === true,

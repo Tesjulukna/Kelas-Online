@@ -313,6 +313,8 @@ function createEmptyDigitalProductForm() {
     whatsappNotification: false,
     customMessageEnabled: false,
     customMessage: '',
+    reviews: [],
+    addOns: [],
     blockLayout: 'default',
     requireCustomerName: false,
     requireCustomerPhone: false,
@@ -320,6 +322,24 @@ function createEmptyDigitalProductForm() {
     tripayProductKey: '',
     showOnHomepage: true,
     highlighted: false,
+  }
+}
+
+function createEmptyDigitalProductReview() {
+  return {
+    id: `review-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: '',
+    rating: 5,
+    message: '',
+  }
+}
+
+function createEmptyDigitalProductAddOn() {
+  return {
+    id: `addon-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: '',
+    price: '0',
+    description: '',
   }
 }
 
@@ -362,6 +382,20 @@ function isYoutubeUrl(value) {
     return ['youtube.com', 'm.youtube.com', 'youtu.be'].includes(host)
   } catch {
     return false
+  }
+}
+
+function cleanEditorUrl(value) {
+  try {
+    const url = new URL(value)
+
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return ''
+    }
+
+    return url.toString().replace(/"/g, '%22')
+  } catch {
+    return ''
   }
 }
 
@@ -929,6 +963,67 @@ function AdminPage({
     }))
   }
 
+  const applyDigitalDescriptionTool = (tool) => {
+    const textarea = document.querySelector('[data-digital-description-editor="true"]')
+    const description = digitalProductForm.description || ''
+    const start = textarea?.selectionStart ?? description.length
+    const end = textarea?.selectionEnd ?? description.length
+    const selected = description.slice(start, end)
+    const fallback = selected || 'Tulis teks di sini'
+    let replacement = fallback
+
+    if (tool === 'bold') replacement = `<strong>${fallback}</strong>`
+    if (tool === 'underline') replacement = `<u>${fallback}</u>`
+    if (tool === 'heading') replacement = `<h3>${fallback}</h3>`
+    if (tool === 'list') {
+      const rows = fallback
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => `<li>${item}</li>`)
+        .join('')
+      replacement = `<ul>${rows || '<li>Item</li>'}</ul>`
+    }
+    if (tool === 'link') {
+      const url = window.prompt('Masukkan link')
+      if (!url) return
+      const safeUrl = cleanEditorUrl(url)
+      if (!safeUrl) {
+        onNotify('Link harus diawali http:// atau https://.')
+        return
+      }
+      replacement = `<a href="${safeUrl}" target="_blank" rel="noreferrer">${fallback}</a>`
+    }
+
+    const nextDescription = `${description.slice(0, start)}${replacement}${description.slice(end)}`
+
+    setDigitalProductForm((current) => ({ ...current, description: nextDescription }))
+    window.setTimeout(() => textarea?.focus(), 0)
+  }
+
+  const updateDigitalProductReview = (reviewId, field, value) => {
+    setDigitalProductForm((current) => ({
+      ...current,
+      reviews: (current.reviews || []).map((review) =>
+        review.id === reviewId ? { ...review, [field]: value } : review,
+      ),
+    }))
+  }
+
+  const updateDigitalProductAddOn = (addOnId, field, value) => {
+    setDigitalProductForm((current) => ({
+      ...current,
+      addOns: (current.addOns || []).map((addOn) =>
+        addOn.id === addOnId
+          ? {
+              ...addOn,
+              [field]: field === 'price' ? parseRupiahValue(value) : value,
+            }
+          : addOn,
+      ),
+    }))
+  }
+
   const handleDigitalProductThumbnailChange = async (event) => {
     const file = event.target.files?.[0]
 
@@ -967,10 +1062,27 @@ function AdminPage({
       price: Math.max(0, Math.round(Number(digitalProductForm.price) || 0)),
       salePrice: Math.max(0, Math.round(Number(digitalProductForm.salePrice) || 0)),
       itemQuantity: Math.max(0, Math.round(Number(digitalProductForm.itemQuantity) || 0)),
+      reviews: (digitalProductForm.reviews || [])
+        .map((review) => ({
+          ...review,
+          rating: Math.min(5, Math.max(1, Math.round(Number(review.rating) || 5))),
+        }))
+        .filter((review) => review.name || review.message),
+      addOns: (digitalProductForm.addOns || [])
+        .map((addOn) => ({
+          ...addOn,
+          price: Math.max(0, Math.round(Number(addOn.price) || 0)),
+        }))
+        .filter((addOn) => addOn.title),
     }
 
     if (!payload.title) {
       onNotify('Nama produk digital wajib diisi.')
+      return
+    }
+
+    if (payload.addVideo && payload.videoUrl && !isYoutubeUrl(payload.videoUrl)) {
+      onNotify('Link video produk harus dari YouTube, YouTube Shorts, atau youtu.be.')
       return
     }
 
@@ -1015,6 +1127,8 @@ function AdminPage({
       whatsappNotification: product.whatsappNotification === true,
       customMessageEnabled: product.customMessageEnabled === true,
       customMessage: product.customMessage || '',
+      reviews: Array.isArray(product.reviews) ? product.reviews : [],
+      addOns: Array.isArray(product.addOns) ? product.addOns : [],
       blockLayout: product.blockLayout || 'default',
       requireCustomerName: product.requireCustomerName === true,
       requireCustomerPhone: product.requireCustomerPhone === true,
@@ -2456,16 +2570,16 @@ function AdminPage({
 
                   <label>
                     Description
-                    <span className="digital-rich-toolbar" aria-hidden="true">
-                      <button type="button">B</button>
-                      <button type="button">U</button>
-                      <button type="button">A</button>
-                      <button type="button"><Icon name="image" /></button>
-                      <button type="button"><Icon name="menu" /></button>
-                      <button type="button"><Icon name="link" /></button>
+                    <span className="digital-rich-toolbar">
+                      <button type="button" onClick={() => applyDigitalDescriptionTool('bold')}>B</button>
+                      <button type="button" onClick={() => applyDigitalDescriptionTool('underline')}>U</button>
+                      <button type="button" onClick={() => applyDigitalDescriptionTool('heading')}>H</button>
+                      <button type="button" onClick={() => applyDigitalDescriptionTool('list')}><Icon name="menu" /></button>
+                      <button type="button" onClick={() => applyDigitalDescriptionTool('link')}><Icon name="link" /></button>
                     </span>
                     <textarea
                       className="digital-description-editor"
+                      data-digital-description-editor="true"
                       name="description"
                       value={digitalProductForm.description}
                       onChange={handleDigitalProductFormChange}
@@ -2625,7 +2739,53 @@ function AdminPage({
                 <section className="digital-builder-card">
                   <div className="digital-builder-card-heading compact">
                     <h3>Add On</h3>
-                    <button type="button" disabled>+ Add New</button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDigitalProductForm((current) => ({
+                          ...current,
+                          addOns: [...(current.addOns || []), createEmptyDigitalProductAddOn()],
+                        }))
+                      }
+                    >
+                      + Add New
+                    </button>
+                  </div>
+                  <div className="digital-repeat-list">
+                    {(digitalProductForm.addOns || []).map((addOn) => (
+                      <div className="digital-repeat-item" key={addOn.id}>
+                        <input
+                          value={addOn.title}
+                          onChange={(event) => updateDigitalProductAddOn(addOn.id, 'title', event.target.value)}
+                          placeholder="Nama add-on"
+                        />
+                        <input
+                          value={addOn.price}
+                          inputMode="numeric"
+                          onChange={(event) => updateDigitalProductAddOn(addOn.id, 'price', event.target.value)}
+                          placeholder="Harga"
+                        />
+                        <textarea
+                          value={addOn.description}
+                          onChange={(event) => updateDigitalProductAddOn(addOn.id, 'description', event.target.value)}
+                          placeholder="Deskripsi add-on"
+                          rows={2}
+                        />
+                        <button
+                          className="text-action"
+                          type="button"
+                          onClick={() =>
+                            setDigitalProductForm((current) => ({
+                              ...current,
+                              addOns: (current.addOns || []).filter((item) => item.id !== addOn.id),
+                            }))
+                          }
+                        >
+                          Hapus add-on
+                        </button>
+                      </div>
+                    ))}
+                    {!digitalProductForm.addOns?.length && <small>Belum ada add-on.</small>}
                   </div>
                 </section>
               </div>
@@ -2633,8 +2793,57 @@ function AdminPage({
               <div className="digital-builder-column">
                 <section className="digital-builder-card">
                   <div className="digital-builder-card-heading compact">
-                    <h3>Review (0/10)</h3>
-                    <button type="button" disabled>+ Add Review</button>
+                    <h3>Review ({digitalProductForm.reviews?.length || 0}/10)</h3>
+                    <button
+                      type="button"
+                      disabled={(digitalProductForm.reviews || []).length >= 10}
+                      onClick={() =>
+                        setDigitalProductForm((current) => ({
+                          ...current,
+                          reviews: [...(current.reviews || []), createEmptyDigitalProductReview()],
+                        }))
+                      }
+                    >
+                      + Add Review
+                    </button>
+                  </div>
+                  <div className="digital-repeat-list">
+                    {(digitalProductForm.reviews || []).map((review) => (
+                      <div className="digital-repeat-item" key={review.id}>
+                        <input
+                          value={review.name}
+                          onChange={(event) => updateDigitalProductReview(review.id, 'name', event.target.value)}
+                          placeholder="Nama reviewer"
+                        />
+                        <select
+                          value={review.rating}
+                          onChange={(event) => updateDigitalProductReview(review.id, 'rating', event.target.value)}
+                        >
+                          {[5, 4, 3, 2, 1].map((rating) => (
+                            <option key={rating} value={rating}>{rating} bintang</option>
+                          ))}
+                        </select>
+                        <textarea
+                          value={review.message}
+                          onChange={(event) => updateDigitalProductReview(review.id, 'message', event.target.value)}
+                          placeholder="Isi review"
+                          rows={3}
+                        />
+                        <button
+                          className="text-action"
+                          type="button"
+                          onClick={() =>
+                            setDigitalProductForm((current) => ({
+                              ...current,
+                              reviews: (current.reviews || []).filter((item) => item.id !== review.id),
+                            }))
+                          }
+                        >
+                          Hapus review
+                        </button>
+                      </div>
+                    ))}
+                    {!digitalProductForm.reviews?.length && <small>Belum ada review.</small>}
                   </div>
                 </section>
 

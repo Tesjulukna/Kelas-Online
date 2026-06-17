@@ -72,6 +72,8 @@ create table if not exists public.digital_products (
   whatsapp_notification boolean not null default false,
   custom_message_enabled boolean not null default false,
   custom_message text not null default '',
+  reviews jsonb not null default '[]'::jsonb,
+  add_ons jsonb not null default '[]'::jsonb,
   block_layout text not null default 'default',
   require_customer_name boolean not null default false,
   require_customer_phone boolean not null default false,
@@ -112,6 +114,8 @@ alter table public.digital_products add column if not exists release_time text n
 alter table public.digital_products add column if not exists whatsapp_notification boolean not null default false;
 alter table public.digital_products add column if not exists custom_message_enabled boolean not null default false;
 alter table public.digital_products add column if not exists custom_message text not null default '';
+alter table public.digital_products add column if not exists reviews jsonb not null default '[]'::jsonb;
+alter table public.digital_products add column if not exists add_ons jsonb not null default '[]'::jsonb;
 alter table public.digital_products add column if not exists block_layout text not null default 'default';
 alter table public.digital_products add column if not exists require_customer_name boolean not null default false;
 alter table public.digital_products add column if not exists require_customer_phone boolean not null default false;

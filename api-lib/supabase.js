@@ -119,7 +119,8 @@ function cleanRichHtml(value, maxLength = 6000) {
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/\son\w+="[^"]*"/gi, '')
     .replace(/\son\w+='[^']*'/gi, '')
-    .replace(/<(?!\/?(p|br|strong|b|em|i|ul|ol|li|span|div)\b)[^>]*>/gi, '')
+    .replace(/\shref=(["'])\s*javascript:[\s\S]*?\1/gi, '')
+    .replace(/<(?!\/?(p|br|strong|b|em|i|u|ul|ol|li|span|div|a|h2|h3|h4)\b)[^>]*>/gi, '')
 }
 
 function cleanPromptText(value) {
@@ -749,6 +750,8 @@ function mapDigitalProduct(row) {
     whatsappNotification: Boolean(row.whatsapp_notification),
     customMessageEnabled: Boolean(row.custom_message_enabled),
     customMessage: row.custom_message || '',
+    reviews: cleanDigitalProductReviews(row.reviews || []),
+    addOns: cleanDigitalProductAddOns(row.add_ons || []),
     blockLayout: row.block_layout || 'default',
     requireCustomerName: Boolean(row.require_customer_name),
     requireCustomerPhone: Boolean(row.require_customer_phone),
@@ -1160,7 +1163,7 @@ function cleanDigitalProductsForDb(value) {
     .map((item, index) => ({
       id: cleanText(item.id || makeId('product'), 120),
       title: cleanText(item.title || `Produk Digital ${index + 1}`, 160),
-      description: cleanText(item.description || '', 600),
+      description: cleanRichHtml(item.description || '', 6000),
       price: cleanNumber(item.price, 0, 1000000000),
       status: cleanText(item.status || 'Draft', 40),
       thumbnail: cleanUrl(item.thumbnail || ''),
@@ -1181,6 +1184,8 @@ function cleanDigitalProductsForDb(value) {
       whatsapp_notification: Boolean(item.whatsappNotification),
       custom_message_enabled: Boolean(item.customMessageEnabled),
       custom_message: cleanText(item.customMessage || '', 800),
+      reviews: cleanDigitalProductReviews(item.reviews || []),
+      add_ons: cleanDigitalProductAddOns(item.addOns || []),
       block_layout: cleanText(item.blockLayout || 'default', 40),
       require_customer_name: Boolean(item.requireCustomerName),
       require_customer_phone: Boolean(item.requireCustomerPhone),
@@ -2993,6 +2998,7 @@ Pembayaran produk digital Anda sudah berhasil.
 Produk: ${order.productTitle}
 ${order.productDescription ? `Deskripsi: ${order.productDescription}` : ''}
 ${order.downloadUrl ? `Link akses/download: ${order.downloadUrl}` : ''}
+${order.customMessage ? `Pesan dari penjual: ${order.customMessage}` : ''}
 ${order.deliveryNote ? `Catatan: ${order.deliveryNote}` : ''}
 
 Simpan email ini untuk mengakses produk Anda kembali.
@@ -3028,6 +3034,7 @@ async function sendDigitalProductDeliveryEmail(order) {
       ${order.productDescription ? `<p><strong>Deskripsi:</strong><br>${escapeHtml(order.productDescription)}</p>` : ''}
       ${downloadButton}
       ${order.downloadUrl ? `<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="${escapeHtml(order.downloadUrl)}">${escapeHtml(order.downloadUrl)}</a></p>` : ''}
+      ${order.customMessage ? `<p><strong>Pesan dari penjual:</strong><br>${escapeHtml(order.customMessage)}</p>` : ''}
       ${order.deliveryNote ? `<p><strong>Catatan:</strong><br>${escapeHtml(order.deliveryNote)}</p>` : ''}
       <p>IbnuCreative Academy</p>
     </div>
@@ -3157,6 +3164,34 @@ async function readAppHtml() {
   }
 
   return '<!doctype html><html lang="id"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>IbnuCreative</title></head><body><div id="root"><p style="font-family:system-ui,sans-serif;padding:24px">Halaman sedang dimuat. Jika tidak terbuka, kembali ke beranda.</p></div></body></html>'
+}
+
+function cleanDigitalProductReviews(value) {
+  const parsedValue = typeof value === 'string' ? parseJson(value, []) : value
+  const source = Array.isArray(parsedValue) ? parsedValue.slice(0, 10) : []
+
+  return source
+    .map((item, index) => ({
+      id: cleanText(item?.id || `review-${index + 1}`, 80),
+      name: cleanText(item?.name || '', 80),
+      rating: cleanNumber(item?.rating, 1, 5),
+      message: cleanText(item?.message || '', 500),
+    }))
+    .filter((item) => item.name || item.message)
+}
+
+function cleanDigitalProductAddOns(value) {
+  const parsedValue = typeof value === 'string' ? parseJson(value, []) : value
+  const source = Array.isArray(parsedValue) ? parsedValue.slice(0, 20) : []
+
+  return source
+    .map((item, index) => ({
+      id: cleanText(item?.id || `addon-${index + 1}`, 80),
+      title: cleanText(item?.title || '', 120),
+      price: cleanNumber(item?.price, 0, 1000000000),
+      description: cleanText(item?.description || '', 300),
+    }))
+    .filter((item) => item.title)
 }
 
 function injectHeadMeta(html, meta) {
@@ -3830,6 +3865,7 @@ export async function createTripayCheckout(request) {
     product_title: checkoutType === 'digital_product' ? checkoutItem.title : '',
     delivery_url: checkoutType === 'digital_product' ? checkoutItem.file_url || '' : '',
     delivery_note: checkoutType === 'digital_product' ? checkoutItem.delivery_note || '' : '',
+    custom_message: checkoutType === 'digital_product' && checkoutItem.custom_message_enabled ? checkoutItem.custom_message || '' : '',
     payment_method: method,
     payment_name: paymentMethodLabel,
     payment_fee: paymentFee,
@@ -3940,6 +3976,7 @@ export async function createPublicDigitalProductCheckout(request) {
       productTitle: cleanText(product.title || 'Produk digital', 160),
       productDescription: cleanText(product.description || '', 800),
       downloadUrl: cleanExternalUrl(product.file_url || ''),
+      customMessage: product.custom_message_enabled ? cleanText(product.custom_message || '', 800) : '',
       deliveryNote: cleanText(product.delivery_note || '', 800),
     })
 
@@ -4025,6 +4062,7 @@ export async function createPublicDigitalProductCheckout(request) {
     product_title: product.title || '',
     product_description: product.description || '',
     delivery_url: product.file_url || '',
+    custom_message: product.custom_message_enabled ? product.custom_message || '' : '',
     delivery_note: product.delivery_note || '',
     buyer_phone: buyerPhone,
     accepted_marketing: acceptedMarketing,
@@ -4213,6 +4251,7 @@ export async function processTripayWebhook(request) {
       productTitle: cleanText(accessResult.product.title || order.class_title || 'Produk digital', 160),
       productDescription: cleanText(accessResult.product.description || orderPayload.product_description || '', 800),
       downloadUrl: cleanExternalUrl(accessResult.product.file_url || orderPayload.delivery_url || ''),
+      customMessage: cleanText(accessResult.product.custom_message_enabled ? accessResult.product.custom_message : orderPayload.custom_message || '', 800),
       deliveryNote: cleanText(accessResult.product.delivery_note || orderPayload.delivery_note || '', 800),
     })
 
