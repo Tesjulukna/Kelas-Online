@@ -105,6 +105,10 @@
       "destination": "/api/public-product-checkout"
     },
     {
+      "source": "/api/public-product-access.php",
+      "destination": "/api/public-product-access"
+    },
+    {
       "source": "/api/tripay-webhook.php",
       "destination": "/api/tripay-webhook"
     },
@@ -119,6 +123,10 @@
     {
       "source": "/produk/:code",
       "destination": "/api/public-page?type=produk&code=:code"
+    },
+    {
+      "source": "/produk-akses/:code",
+      "destination": "/index.html"
     },
     {
       "source": "/((?!api/).*)",

@@ -33,8 +33,11 @@ function getYoutubeEmbedUrl(value) {
 function DetailProduk({
   product,
   priceLabel,
+  wishlistCount = 0,
+  onAddToWishlist,
   onBack,
   onBuy,
+  onOpenWishlist,
   onShare,
 }) {
   if (!product) {
@@ -52,13 +55,19 @@ function DetailProduk({
         <button className="icon-action-button" type="button" onClick={onBack}>
           <Icon name="arrowLeft" />
         </button>
-        <button
-          className="icon-action-button"
-          type="button"
-          onClick={() => onShare(product.title, product.description)}
-        >
-          <Icon name="share" />
-        </button>
+        <div className="public-detail-topbar-actions">
+          <button className="icon-action-button cart-action-button" type="button" onClick={onOpenWishlist}>
+            <Icon name="cart" />
+            {wishlistCount > 0 && <span>{wishlistCount}</span>}
+          </button>
+          <button
+            className="icon-action-button"
+            type="button"
+            onClick={() => onShare(product.title, product.description)}
+          >
+            <Icon name="share" />
+          </button>
+        </div>
       </div>
       <article className="public-detail-hero public-product-detail">
         <div className="public-detail-image">
@@ -121,7 +130,7 @@ function DetailProduk({
         </section>
       )}
       <div className="public-sticky-actions">
-        <button className="btn btn-secondary" type="button">
+        <button className="btn btn-secondary" type="button" onClick={onAddToWishlist}>
           <Icon name="cart" />
           Keranjang
         </button>

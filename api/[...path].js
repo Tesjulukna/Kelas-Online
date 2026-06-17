@@ -15,6 +15,7 @@ import {
   fetchMembers,
   fetchMemberPayments,
   fetchPayments,
+  fetchPublicDigitalProductAccess,
   fetchTripayPaymentMethods,
   fetchSubmissions,
   fetchSupportTickets,
@@ -334,6 +335,16 @@ async function routeRequest(request, response) {
     }
 
     sendJson(response, 200, await createPublicDigitalProductCheckout(request))
+    return
+  }
+
+  if (route === 'public-product-access') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+      return
+    }
+
+    sendJson(response, 200, await fetchPublicDigitalProductAccess(request))
     return
   }
 

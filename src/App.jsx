@@ -29,6 +29,7 @@ const backupApiPath = '/api/backup'
 const tripayPaymentMethodsApiPath = '/api/tripay-payment-methods'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
 const publicProductCheckoutApiPath = '/api/public-product-checkout'
+const publicProductAccessApiPath = '/api/public-product-access'
 const loginApiPath = '/api/login'
 const googleAuthUrlApiPath = '/api/google-auth-url'
 const googleLoginApiPath = '/api/google-login'
@@ -85,6 +86,14 @@ function getPageFromPath(pathname) {
 function getPublicDetailFromPath(pathname) {
   const cleanPath = pathname.replace(/\/+$/, '') || '/'
   const [, type, id, action] = cleanPath.split('/')
+
+  if (type === 'produk-akses' && id) {
+    return {
+      type,
+      id: decodeURIComponent(id),
+      action: '',
+    }
+  }
 
   if ((type === 'kelas' || type === 'produk') && id) {
     return {
@@ -2225,7 +2234,7 @@ function App() {
   const publicDetailTarget = typeof window === 'undefined'
     ? null
     : getPublicDetailFromPath(currentPath.split(/[?#]/)[0] || '/')
-  const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk)\//.test(currentPath.split(/[?#]/)[0] || '/')
+  const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|produk-akses)\//.test(currentPath.split(/[?#]/)[0] || '/')
   const shouldShowSiteFooter = !isPublicDetailPath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
 
   return (
@@ -2253,6 +2262,7 @@ function App() {
             onExplore={goToHomeSection}
             onRequestClassCheckout={requestPublicClassCheckout}
             onPublicProductCheckout={handlePublicProductCheckout}
+            publicProductAccessApiPath={publicProductAccessApiPath}
             initialDetail={publicDetailTarget}
             classes={classes}
             digitalProducts={digitalProducts}

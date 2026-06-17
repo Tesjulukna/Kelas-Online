@@ -3167,6 +3167,12 @@ async function readAppHtml() {
   return '<!doctype html><html lang="id"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>IbnuCreative</title></head><body><div id="root"><p style="font-family:system-ui,sans-serif;padding:24px">Halaman sedang dimuat. Jika tidak terbuka, kembali ke beranda.</p></div></body></html>'
 }
 
+function publicProductAccessUrl(request, orderCode) {
+  const code = cleanText(orderCode || '', 180)
+
+  return code ? absoluteRequestUrl(request, `/produk-akses/${encodeURIComponent(code)}`) : ''
+}
+
 function cleanDigitalProductReviews(value) {
   const parsedValue = typeof value === 'string' ? parseJson(value, []) : value
   const source = Array.isArray(parsedValue) ? parsedValue.slice(0, 10) : []
@@ -3964,19 +3970,21 @@ export async function createPublicDigitalProductCheckout(request) {
   const amount = salePrice > 0 ? salePrice : normalPrice
 
   if (amount <= 0) {
+    const freeOrderId = `FREE-PUBLIC-${product.id}-${Date.now()}`
     const accessResult = await grantDigitalProductAccess({
       productId: product.id,
       buyerEmail,
       buyerName,
       source: 'free-public',
-      orderId: `FREE-PUBLIC-${product.id}-${Date.now()}`,
+      orderId: freeOrderId,
     })
+    const accessUrl = publicProductAccessUrl(request, freeOrderId)
     const deliveryEmailResult = await sendDigitalProductDeliveryEmail({
       buyerName,
       buyerEmail,
       productTitle: cleanText(product.title || 'Produk digital', 160),
       productDescription: cleanText(product.description || '', 800),
-      downloadUrl: cleanExternalUrl(product.file_url || ''),
+      downloadUrl: cleanExternalUrl(accessUrl || product.file_url || ''),
       customMessage: product.custom_message_enabled ? cleanText(product.custom_message || '', 800) : '',
       deliveryNote: cleanText(product.delivery_note || '', 800),
     })
@@ -3984,6 +3992,7 @@ export async function createPublicDigitalProductCheckout(request) {
     return {
       ok: true,
       freeAccessGranted: accessResult.granted,
+      accessUrl,
       emailSent: deliveryEmailResult.sent,
       message: 'Produk gratis sudah dikirim ke email.',
     }
@@ -4013,7 +4022,7 @@ export async function createPublicDigitalProductCheckout(request) {
       },
     ],
     callback_url: config.callbackUrl,
-    return_url: absoluteRequestUrl(request, '/') || config.returnUrl,
+    return_url: publicProductAccessUrl(request, merchantRef) || config.returnUrl,
     expired_time: Math.floor(Date.parse(expiresAt) / 1000),
     signature: tripayCheckoutSignature({
       merchantCode: config.merchantCode,
@@ -4117,6 +4126,111 @@ export async function createPublicDigitalProductCheckout(request) {
     emailSent: emailResult.sent,
     emailError: emailResult.sent ? '' : emailResult.message || '',
     message: 'Checkout produk digital berhasil dibuat.',
+  }
+}
+
+export async function fetchPublicDigitalProductAccess(request) {
+  const url = new URL(request.url || '/', 'http://localhost')
+  const orderCode = cleanText(
+    url.searchParams.get('order') || url.searchParams.get('ref') || url.searchParams.get('merchant_ref') || '',
+    180,
+  )
+
+  if (!orderCode) {
+    throw new ApiError(400, 'Kode akses produk tidak ditemukan.')
+  }
+
+  const orderRows = await rest(
+    `tripay_orders?select=*&or=(merchant_ref.eq.${eq(orderCode)},reference.eq.${eq(orderCode)})&limit=1`,
+  ).catch(() => [])
+  const order = orderRows?.[0]
+
+  if (order) {
+    const payload = parseJson(order.payload, {})
+    const isDigitalProductOrder = cleanText(payload.order_type || '', 60) === 'digital_product'
+
+    if (!isDigitalProductOrder) {
+      throw new ApiError(404, 'Order ini bukan produk digital.')
+    }
+
+    const status = tripayOrderStatus(order)
+    const isPaid = order.access_granted === true || ['processed', 'paid', 'success', 'settlement'].includes(status)
+    const productId = cleanText(payload.product_id || '', 120)
+    const productRows = productId
+      ? await rest(`digital_products?select=*&id=eq.${eq(productId)}&limit=1`).catch(() => [])
+      : []
+    const product = productRows?.[0]
+
+    return {
+      ok: true,
+      paid: isPaid,
+      status,
+      checkoutUrl: cleanExternalUrl(order.checkout_url || ''),
+      orderCode: cleanText(order.reference || order.merchant_ref || order.id, 180),
+      buyerName: cleanText(order.buyer_name || '', 160),
+      product: product
+        ? mapDigitalProduct(product)
+        : {
+            id: productId,
+            title: cleanText(payload.product_title || order.class_title || 'Produk digital', 160),
+            description: cleanRichHtml(payload.product_description || ''),
+            thumbnail: '',
+            fileUrl: cleanExternalUrl(payload.delivery_url || ''),
+            fileName: '',
+            deliveryNote: cleanText(payload.delivery_note || '', 800),
+            customMessage: cleanText(payload.custom_message || '', 800),
+          },
+      delivery: isPaid
+        ? {
+            downloadUrl: cleanExternalUrl(product?.file_url || payload.delivery_url || ''),
+            deliveryNote: cleanText(product?.delivery_note || payload.delivery_note || '', 800),
+            customMessage: cleanText(
+              product?.custom_message_enabled ? product.custom_message : payload.custom_message || '',
+              800,
+            ),
+          }
+        : null,
+      message: isPaid
+        ? 'Pembayaran berhasil. Produk digital sudah bisa diakses.'
+        : 'Pembayaran belum terkonfirmasi. Jika sudah bayar, tunggu callback Tripay beberapa saat lalu cek ulang.',
+    }
+  }
+
+  const accessRows = await rest(
+    `digital_product_access?select=*&order_id=eq.${eq(orderCode)}&status=eq.active&limit=1`,
+  ).catch(() => [])
+  const access = accessRows?.[0]
+
+  if (!access) {
+    throw new ApiError(404, 'Akses produk belum ditemukan.')
+  }
+
+  const productRows = await rest(
+    `digital_products?select=*&id=eq.${eq(access.product_id)}&limit=1`,
+  ).catch(() => [])
+  const product = productRows?.[0]
+
+  return {
+    ok: true,
+    paid: true,
+    status: 'processed',
+    checkoutUrl: '',
+    orderCode,
+    buyerName: cleanText(access.buyer_name || '', 160),
+    product: product ? mapDigitalProduct(product) : {
+      id: cleanText(access.product_id || '', 120),
+      title: cleanText(access.product_title || 'Produk digital', 160),
+      description: '',
+      thumbnail: '',
+      fileUrl: cleanExternalUrl(access.download_url || ''),
+      fileName: '',
+    },
+    delivery: {
+      downloadUrl: cleanExternalUrl(product?.file_url || access.download_url || ''),
+      deliveryNote: cleanText(product?.delivery_note || '', 800),
+      customMessage: cleanText(product?.custom_message_enabled ? product.custom_message : '', 800),
+    },
+    message: 'Produk digital sudah bisa diakses.',
   }
 }
 
@@ -4246,12 +4360,15 @@ export async function processTripayWebhook(request) {
         }),
       },
     })
+    const accessUrl = orderPayload.public_checkout === true
+      ? publicProductAccessUrl(request, order.merchant_ref || reference || order.reference)
+      : ''
     const deliveryEmailResult = await sendDigitalProductDeliveryEmail({
       buyerName: cleanText(order.buyer_name || 'Member', 160),
       buyerEmail: cleanEmail(order.buyer_email || ''),
       productTitle: cleanText(accessResult.product.title || order.class_title || 'Produk digital', 160),
       productDescription: cleanText(accessResult.product.description || orderPayload.product_description || '', 800),
-      downloadUrl: cleanExternalUrl(accessResult.product.file_url || orderPayload.delivery_url || ''),
+      downloadUrl: cleanExternalUrl(accessUrl || accessResult.product.file_url || orderPayload.delivery_url || ''),
       customMessage: cleanText(accessResult.product.custom_message_enabled ? accessResult.product.custom_message : orderPayload.custom_message || '', 800),
       deliveryNote: cleanText(accessResult.product.delivery_note || orderPayload.delivery_note || '', 800),
     })

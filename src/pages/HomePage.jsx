@@ -61,12 +61,37 @@ function notifyRouteChange() {
   window.dispatchEvent(new Event('ibnucreative-route-change'))
 }
 
+const publicWishlistKey = 'ibnucreative.public-wishlist.v1'
+
+function readPublicWishlist() {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(publicWishlistKey) || '[]')
+
+    return Array.isArray(saved) ? saved : []
+  } catch {
+    return []
+  }
+}
+
+function writePublicWishlist(items) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(publicWishlistKey, JSON.stringify(items))
+}
+
 function HomePage({
   isLoggedIn,
   onLogin,
   onExplore,
   onRequestClassCheckout = () => {},
   onPublicProductCheckout = async () => {},
+  publicProductAccessApiPath = '/api/public-product-access',
   initialDetail = null,
   classes = [],
   digitalProducts = [],
@@ -77,6 +102,15 @@ function HomePage({
   const [selectedProductId, setSelectedProductId] = useState('')
   const [checkoutProductId, setCheckoutProductId] = useState('')
   const [isPaymentPickerOpen, setIsPaymentPickerOpen] = useState(false)
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false)
+  const [wishlistItems, setWishlistItems] = useState(() => readPublicWishlist())
+  const [accessOrderCode, setAccessOrderCode] = useState('')
+  const [accessRefreshKey, setAccessRefreshKey] = useState(0)
+  const [productAccessState, setProductAccessState] = useState({
+    isLoading: false,
+    data: null,
+    error: '',
+  })
   const [publicCheckoutForm, setPublicCheckoutForm] = useState({
     buyerName: '',
     buyerEmail: '',
@@ -155,6 +189,7 @@ function HomePage({
   const initialDetailType = initialDetail?.type || ''
   const initialDetailId = initialDetail?.id || ''
   const initialDetailAction = initialDetail?.action || ''
+  const wishlistCount = wishlistItems.length
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -162,6 +197,19 @@ function HomePage({
         setSelectedClassId('')
         setSelectedProductId('')
         setCheckoutProductId('')
+        setAccessOrderCode('')
+        setProductAccessState({ isLoading: false, data: null, error: '' })
+        setIsPaymentPickerOpen(false)
+        return
+      }
+
+      if (initialDetailType === 'produk-akses') {
+        setProductAccessState({ isLoading: true, data: null, error: '' })
+        setAccessOrderCode(initialDetailId)
+        setSelectedClassId('')
+        setSelectedProductId('')
+        setCheckoutProductId('')
+        setIsWishlistOpen(false)
         setIsPaymentPickerOpen(false)
         return
       }
@@ -170,6 +218,7 @@ function HomePage({
         setSelectedClassId(initialDetailId)
         setSelectedProductId('')
         setCheckoutProductId('')
+        setAccessOrderCode('')
       }
 
       if (initialDetailType === 'produk') {
@@ -181,6 +230,7 @@ function HomePage({
           setCheckoutProductId('')
         }
         setSelectedClassId('')
+        setAccessOrderCode('')
       }
     }, 0)
 
@@ -220,6 +270,46 @@ function HomePage({
     }
   }, [checkoutProduct?.publicCode, selectedClass?.publicCode, selectedProduct?.publicCode])
 
+  useEffect(() => {
+    writePublicWishlist(wishlistItems)
+  }, [wishlistItems])
+
+  useEffect(() => {
+    if (!accessOrderCode) {
+      return undefined
+    }
+
+    let isCurrent = true
+    fetch(`${publicProductAccessApiPath}?order=${encodeURIComponent(accessOrderCode)}`)
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Akses produk belum bisa dibuka.')
+        }
+
+        return data
+      })
+      .then((data) => {
+        if (isCurrent) {
+          setProductAccessState({ isLoading: false, data, error: '' })
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setProductAccessState({
+            isLoading: false,
+            data: null,
+            error: error.message || 'Akses produk belum bisa dibuka.',
+          })
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [accessOrderCode, accessRefreshKey, publicProductAccessApiPath])
+
   const openClassDetail = (classId) => {
     const course = homepageClasses.find((item) => item.id === classId || item.publicCode === classId)
 
@@ -247,10 +337,61 @@ function HomePage({
     setSelectedClassId('')
     setSelectedProductId('')
     setCheckoutProductId('')
+    setAccessOrderCode('')
+    setProductAccessState({ isLoading: false, data: null, error: '' })
+    setIsWishlistOpen(false)
     setIsPaymentPickerOpen(false)
     window.history.pushState({}, '', '/')
     notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const openWishlist = () => {
+    setSelectedClassId('')
+    setSelectedProductId('')
+    setCheckoutProductId('')
+    setAccessOrderCode('')
+    setIsWishlistOpen(true)
+    setIsPaymentPickerOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const addWishlistItem = (item, type) => {
+    const isClass = type === 'kelas'
+    const normalPrice = Math.max(0, Math.round(Number(item.price) || 0))
+    const salePrice = Math.max(0, Math.round(Number(item.salePrice) || 0))
+    const price = isClass ? normalPrice : salePrice || normalPrice
+    const nextItem = {
+      id: item.id,
+      publicCode: item.publicCode,
+      type,
+      title: item.title,
+      thumbnail: item.thumbnail || '',
+      label: isClass ? 'Kelas' : 'Produk digital',
+      priceLabel: price ? formatRupiah(price) : 'Gratis',
+    }
+
+    setWishlistItems((current) => {
+      const key = `${type}:${item.id}`
+      const exists = current.some((wishlistItem) => `${wishlistItem.type}:${wishlistItem.id}` === key)
+
+      return exists ? current : [nextItem, ...current].slice(0, 40)
+    })
+  }
+
+  const removeWishlistItem = (item) => {
+    setWishlistItems((current) =>
+      current.filter((wishlistItem) => `${wishlistItem.type}:${wishlistItem.id}` !== `${item.type}:${item.id}`),
+    )
+  }
+
+  const openWishlistItem = (item) => {
+    if (item.type === 'kelas') {
+      openClassDetail(item.publicCode || item.id)
+      return
+    }
+
+    openProductDetail(item.publicCode || item.id)
   }
 
   const openProductCheckout = (productId) => {
@@ -308,6 +449,8 @@ function HomePage({
 
       if (data?.checkoutUrl) {
         window.location.assign(data.checkoutUrl)
+      } else if (data?.accessUrl) {
+        window.location.assign(data.accessUrl)
       } else {
         setPublicCheckoutStatus(data?.message || 'Produk berhasil diproses.')
       }
@@ -320,8 +463,11 @@ function HomePage({
     return (
       <DetailKelas
         course={selectedClass}
+        wishlistCount={wishlistCount}
         onBack={closePublicDetail}
         onBuy={onRequestClassCheckout}
+        onAddToWishlist={() => addWishlistItem(selectedClass, 'kelas')}
+        onOpenWishlist={openWishlist}
         onShare={shareItem}
       />
     )
@@ -334,13 +480,177 @@ function HomePage({
     }))
   }
 
+  if (accessOrderCode) {
+    const accessData = productAccessState.data
+    const accessProduct = accessData?.product
+    const delivery = accessData?.delivery
+    const hasRichDescription = /<\/?[a-z][\s\S]*>/i.test(accessProduct?.description || '')
+
+    return (
+      <section className="public-detail-page public-product-access-page">
+        <div className="public-detail-topbar">
+          <button className="icon-action-button" type="button" onClick={closePublicDetail}>
+            <Icon name="arrowLeft" />
+          </button>
+          <button className="icon-action-button cart-action-button" type="button" onClick={openWishlist}>
+            <Icon name="cart" />
+            {wishlistCount > 0 && <span>{wishlistCount}</span>}
+          </button>
+        </div>
+        <article className="public-checkout-panel public-access-panel">
+          <div className="section-heading">
+            <p className="eyebrow">Akses produk</p>
+            <h2>{accessProduct?.title || 'Produk digital'}</h2>
+            <small>{accessData?.message || 'Memeriksa status pembayaran produk digital.'}</small>
+          </div>
+
+          {productAccessState.isLoading && (
+            <p className="public-checkout-status">Memuat akses produk...</p>
+          )}
+
+          {productAccessState.error && (
+            <div className="public-access-message">
+              <Icon name="shield" />
+              <h3>Akses belum tersedia</h3>
+              <p>{productAccessState.error}</p>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => {
+                  setProductAccessState((current) => ({ ...current, isLoading: true, error: '' }))
+                  setAccessRefreshKey((current) => current + 1)
+                }}
+              >
+                Cek ulang
+              </button>
+            </div>
+          )}
+
+          {accessData && !accessData.paid && (
+            <div className="public-access-message">
+              <Icon name="clock" />
+              <h3>Pembayaran belum terkonfirmasi</h3>
+              <p>{accessData.message}</p>
+              <div className="public-access-actions">
+                {accessData.checkoutUrl && (
+                  <a className="btn btn-primary" href={accessData.checkoutUrl}>
+                    Lanjutkan Pembayaran
+                  </a>
+                )}
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => {
+                    setProductAccessState((current) => ({ ...current, isLoading: true, error: '' }))
+                    setAccessRefreshKey((current) => current + 1)
+                  }}
+                >
+                  Cek Ulang
+                </button>
+              </div>
+            </div>
+          )}
+
+          {accessData?.paid && accessProduct && (
+            <div className="public-access-content">
+              {accessProduct.thumbnail && <img src={accessProduct.thumbnail} alt="" />}
+              <div>
+                <p className="eyebrow">Produk siap diakses</p>
+                <h3>{accessProduct.title}</h3>
+                {hasRichDescription ? (
+                  <div
+                    className="public-rich-description"
+                    dangerouslySetInnerHTML={{ __html: accessProduct.description }}
+                  />
+                ) : (
+                  <p>{accessProduct.description || 'Produk digital Anda sudah siap.'}</p>
+                )}
+              </div>
+              {delivery?.customMessage && (
+                <section className="public-detail-section">
+                  <p className="eyebrow">Pesan penjual</p>
+                  <p>{delivery.customMessage}</p>
+                </section>
+              )}
+              {delivery?.deliveryNote && (
+                <section className="public-detail-section">
+                  <p className="eyebrow">Catatan akses</p>
+                  <p>{delivery.deliveryNote}</p>
+                </section>
+              )}
+              {delivery?.downloadUrl ? (
+                <a className="btn btn-primary public-access-download" href={delivery.downloadUrl}>
+                  Buka Isi Produk
+                  <Icon name="arrowRight" />
+                </a>
+              ) : (
+                <p className="public-checkout-status">
+                  Link produk belum tersedia. Silakan cek email atau hubungi support.
+                </p>
+              )}
+            </div>
+          )}
+        </article>
+      </section>
+    )
+  }
+
+  if (isWishlistOpen) {
+    return (
+      <section className="public-detail-page public-wishlist-page">
+        <div className="public-detail-topbar">
+          <button className="icon-action-button" type="button" onClick={closePublicDetail}>
+            <Icon name="arrowLeft" />
+          </button>
+        </div>
+        <article className="public-checkout-panel public-wishlist-panel">
+          <div className="section-heading">
+            <p className="eyebrow">Wishlist</p>
+            <h2>Keranjang pilihan</h2>
+            <small>{wishlistCount} item tersimpan di browser pengunjung.</small>
+          </div>
+          <div className="public-wishlist-list">
+            {wishlistItems.map((item) => (
+              <article className="public-wishlist-item" key={`${item.type}:${item.id}`}>
+                <span className="public-wishlist-image">
+                  {item.thumbnail ? <img src={item.thumbnail} alt="" /> : <Icon name={item.type === 'kelas' ? 'bookOpen' : 'download'} />}
+                </span>
+                <div>
+                  <small>{item.label}</small>
+                  <strong>{item.title}</strong>
+                  <span>{item.priceLabel}</span>
+                </div>
+                <button className="btn btn-secondary" type="button" onClick={() => openWishlistItem(item)}>
+                  Detail
+                </button>
+                <button className="icon-action-button" type="button" onClick={() => removeWishlistItem(item)}>
+                  <Icon name="x" />
+                </button>
+              </article>
+            ))}
+            {!wishlistItems.length && (
+              <div className="public-access-message">
+                <Icon name="cart" />
+                <h3>Belum ada wishlist</h3>
+                <p>Tambahkan kelas atau produk dari halaman detail.</p>
+              </div>
+            )}
+          </div>
+        </article>
+      </section>
+    )
+  }
+
   if (selectedProduct) {
     return (
       <DetailProduk
         product={selectedProduct}
         priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
+        wishlistCount={wishlistCount}
         onBack={closePublicDetail}
+        onAddToWishlist={() => addWishlistItem(selectedProduct, 'produk')}
         onBuy={openProductCheckout}
+        onOpenWishlist={openWishlist}
         onShare={shareItem}
       />
     )
