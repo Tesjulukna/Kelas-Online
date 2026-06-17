@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/[...path].js": {
+      "includeFiles": "dist/index.html"
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -108,11 +113,11 @@
       "destination": "/api/public-page?type=kelas&code=:code"
     },
     {
-      "source": "/produk/:code",
+      "source": "/produk/:code/checkout",
       "destination": "/api/public-page?type=produk&code=:code"
     },
     {
-      "source": "/produk/:code/checkout",
+      "source": "/produk/:code",
       "destination": "/api/public-page?type=produk&code=:code"
     },
     {

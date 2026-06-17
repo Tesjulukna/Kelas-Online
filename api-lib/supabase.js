@@ -3156,7 +3156,7 @@ async function readAppHtml() {
     }
   }
 
-  return '<!doctype html><html lang="id"><head><title>IbnuCreative</title></head><body><div id="root"></div></body></html>'
+  return '<!doctype html><html lang="id"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>IbnuCreative</title></head><body><div id="root"><p style="font-family:system-ui,sans-serif;padding:24px">Halaman sedang dimuat. Jika tidak terbuka, kembali ke beranda.</p></div></body></html>'
 }
 
 function injectHeadMeta(html, meta) {
