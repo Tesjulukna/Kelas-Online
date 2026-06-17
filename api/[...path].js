@@ -44,6 +44,15 @@ import {
 
 function getRoute(request) {
   const url = new URL(request.url || '/', 'http://localhost')
+  const cleanPublicPath = url.pathname.replace(/\/+$/, '') || '/'
+  const [, publicType, publicCode] = cleanPublicPath.split('/')
+
+  if ((publicType === 'kelas' || publicType === 'produk') && publicCode) {
+    url.searchParams.set('type', publicType)
+    url.searchParams.set('code', publicCode)
+    return { route: 'public-page', url }
+  }
+
   const pathname = url.pathname.replace(/^\/api\/?/, '').replace(/\.php$/i, '')
   const route = pathname.split('/').filter(Boolean)[0] || 'classes'
 
