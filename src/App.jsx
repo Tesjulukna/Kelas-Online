@@ -689,6 +689,13 @@ function cleanDigitalProducts(value) {
             description: cleanLongText(addOn.description || '', 300),
           })).filter((addOn) => addOn.title)
         : [],
+      customerQuestions: Array.isArray(item.customerQuestions)
+        ? item.customerQuestions.slice(0, 20).map((question, index) => ({
+            id: cleanText(question.id || `question-${index + 1}`),
+            label: cleanLongText(question.label || '', 160),
+            required: question.required === true,
+          })).filter((question) => question.label)
+        : [],
       blockLayout: cleanText(item.blockLayout || 'default'),
       requireCustomerName: item.requireCustomerName === true,
       requireCustomerPhone: item.requireCustomerPhone === true,

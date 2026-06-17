@@ -60,6 +60,7 @@ function CheckoutProduk({
   status,
   onBack,
   onChange,
+  onAnswerChange,
   onPaymentPickerToggle,
   onPaymentMethodSelect,
   onShare,
@@ -72,6 +73,7 @@ function CheckoutProduk({
   const selectedMethodLabel =
     paymentMethods.find((method) => method.code === form.paymentMethod)?.label ||
     form.paymentMethod
+  const customerQuestions = Array.isArray(product.customerQuestions) ? product.customerQuestions : []
 
   return (
     <section className="public-detail-page public-checkout-page">
@@ -107,6 +109,20 @@ function CheckoutProduk({
             <input name="buyerPhone" value={form.buyerPhone} onChange={onChange} required />
           </label>
         </div>
+        {customerQuestions.length > 0 && (
+          <div className="public-checkout-grid">
+            {customerQuestions.map((question) => (
+              <label key={question.id}>
+                {question.label}
+                <input
+                  value={form.customAnswers?.[question.id] || ''}
+                  onChange={(event) => onAnswerChange(question.id, event.target.value)}
+                  required={question.required}
+                />
+              </label>
+            ))}
+          </div>
+        )}
         {!isFree ? (
           <>
             <button

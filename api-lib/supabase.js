@@ -753,6 +753,7 @@ function mapDigitalProduct(row) {
     customMessage: row.custom_message || '',
     reviews: cleanDigitalProductReviews(row.reviews || []),
     addOns: cleanDigitalProductAddOns(row.add_ons || []),
+    customerQuestions: cleanDigitalProductQuestions(row.customer_questions || []),
     blockLayout: row.block_layout || 'default',
     requireCustomerName: Boolean(row.require_customer_name),
     requireCustomerPhone: Boolean(row.require_customer_phone),
@@ -1187,6 +1188,7 @@ function cleanDigitalProductsForDb(value) {
       custom_message: cleanText(item.customMessage || '', 800),
       reviews: cleanDigitalProductReviews(item.reviews || []),
       add_ons: cleanDigitalProductAddOns(item.addOns || []),
+      customer_questions: cleanDigitalProductQuestions(item.customerQuestions || []),
       block_layout: cleanText(item.blockLayout || 'default', 40),
       require_customer_name: Boolean(item.requireCustomerName),
       require_customer_phone: Boolean(item.requireCustomerPhone),
@@ -2765,6 +2767,10 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;')
 }
 
+function escapeHtmlWithBreaks(value) {
+  return escapeHtml(value).replace(/\r?\n/g, '<br>')
+}
+
 function buildCredentialsMessage(account) {
   return `Halo ${account.name},
 
@@ -2997,9 +3003,7 @@ function buildDigitalProductDeliveryMessage(order) {
 Pembayaran produk digital Anda sudah berhasil.
 
 Produk: ${order.productTitle}
-${order.productDescription ? `Deskripsi: ${order.productDescription}` : ''}
 ${order.downloadUrl ? `Link akses/download: ${order.downloadUrl}` : ''}
-${order.customMessage ? `Pesan dari penjual: ${order.customMessage}` : ''}
 ${order.deliveryNote ? `Catatan: ${order.deliveryNote}` : ''}
 
 Simpan email ini untuk mengakses produk Anda kembali.
@@ -3032,11 +3036,9 @@ async function sendDigitalProductDeliveryEmail(order) {
       <p>Halo ${escapeHtml(order.buyerName)},</p>
       <p>Pembayaran produk digital Anda sudah berhasil. Silakan akses produk dari link berikut.</p>
       <p><strong>Produk:</strong> ${escapeHtml(order.productTitle)}</p>
-      ${order.productDescription ? `<p><strong>Deskripsi:</strong><br>${escapeHtml(order.productDescription)}</p>` : ''}
       ${downloadButton}
       ${order.downloadUrl ? `<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="${escapeHtml(order.downloadUrl)}">${escapeHtml(order.downloadUrl)}</a></p>` : ''}
-      ${order.customMessage ? `<p><strong>Pesan dari penjual:</strong><br>${escapeHtml(order.customMessage)}</p>` : ''}
-      ${order.deliveryNote ? `<p><strong>Catatan:</strong><br>${escapeHtml(order.deliveryNote)}</p>` : ''}
+      ${order.deliveryNote ? `<p><strong>Catatan akses:</strong><br>${escapeHtmlWithBreaks(order.deliveryNote)}</p>` : ''}
       <p>IbnuCreative Academy</p>
     </div>
   `
@@ -3199,6 +3201,19 @@ function cleanDigitalProductAddOns(value) {
       description: cleanText(item?.description || '', 300),
     }))
     .filter((item) => item.title)
+}
+
+function cleanDigitalProductQuestions(value) {
+  const parsedValue = typeof value === 'string' ? parseJson(value, []) : value
+  const source = Array.isArray(parsedValue) ? parsedValue.slice(0, 20) : []
+
+  return source
+    .map((item, index) => ({
+      id: cleanText(item?.id || `question-${index + 1}`, 80),
+      label: cleanText(item?.label || '', 160),
+      required: Boolean(item?.required),
+    }))
+    .filter((item) => item.label)
 }
 
 function injectHeadMeta(html, meta) {
@@ -3943,6 +3958,13 @@ export async function createPublicDigitalProductCheckout(request) {
   const buyerPhone = cleanPhone(payload.buyerPhone || '')
   const acceptedTerms = payload.acceptedTerms === true
   const acceptedMarketing = payload.acceptedMarketing === true
+  const customAnswers = payload.customAnswers && typeof payload.customAnswers === 'object' && !Array.isArray(payload.customAnswers)
+    ? Object.fromEntries(
+        Object.entries(payload.customAnswers)
+          .map(([key, value]) => [cleanText(key, 100), cleanText(value, 500)])
+          .filter(([key, value]) => key && value),
+      )
+    : {}
 
   if (!productId) {
     throw new ApiError(400, 'ID produk wajib dikirim.')
@@ -4076,6 +4098,7 @@ export async function createPublicDigitalProductCheckout(request) {
     delivery_note: product.delivery_note || '',
     buyer_phone: buyerPhone,
     accepted_marketing: acceptedMarketing,
+    customer_answers: customAnswers,
     payment_method: paymentMethod,
     payment_name: paymentMethodLabel,
     payment_fee: paymentFee,

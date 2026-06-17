@@ -1831,7 +1831,10 @@ function MemberPage({
                 }
 
                 return (
-                  <article className="member-class-card available-class-card digital-product-card" key={product.id}>
+                  <article
+                    className={`member-class-card available-class-card digital-product-card product-layout-${product.blockLayout || 'default'}`}
+                    key={product.id}
+                  >
                     <span className="member-class-visual">
                       {product.thumbnail ? (
                         <img src={product.thumbnail} alt="" />

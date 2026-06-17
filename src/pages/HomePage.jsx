@@ -118,6 +118,7 @@ function HomePage({
     paymentMethod: '',
     acceptedTerms: false,
     acceptedMarketing: false,
+    customAnswers: {},
   })
   const [publicCheckoutStatus, setPublicCheckoutStatus] = useState('')
   const heroStyle = websiteSettings.hero.backgroundImage
@@ -169,6 +170,7 @@ function HomePage({
         price: price ? formatRupiah(price) : 'Gratis',
         fileName: product.fileName || product.platformType || 'Produk digital',
         highlighted: product.highlighted === true,
+        blockLayout: product.blockLayout || 'default',
         description: product.description || 'Produk digital siap diakses otomatis setelah pembayaran berhasil.',
       }
     })
@@ -431,6 +433,16 @@ function HomePage({
     }))
   }
 
+  const handlePublicCheckoutAnswerChange = (questionId, value) => {
+    setPublicCheckoutForm((current) => ({
+      ...current,
+      customAnswers: {
+        ...(current.customAnswers || {}),
+        [questionId]: value,
+      },
+    }))
+  }
+
   const submitPublicProductCheckout = async (event) => {
     event.preventDefault()
 
@@ -484,7 +496,6 @@ function HomePage({
     const accessData = productAccessState.data
     const accessProduct = accessData?.product
     const delivery = accessData?.delivery
-    const hasRichDescription = /<\/?[a-z][\s\S]*>/i.test(accessProduct?.description || '')
 
     return (
       <section className="public-detail-page public-product-access-page">
@@ -553,31 +564,11 @@ function HomePage({
 
           {accessData?.paid && accessProduct && (
             <div className="public-access-content">
-              {accessProduct.thumbnail && <img src={accessProduct.thumbnail} alt="" />}
               <div>
                 <p className="eyebrow">Produk siap diakses</p>
                 <h3>{accessProduct.title}</h3>
-                {hasRichDescription ? (
-                  <div
-                    className="public-rich-description"
-                    dangerouslySetInnerHTML={{ __html: accessProduct.description }}
-                  />
-                ) : (
-                  <p>{accessProduct.description || 'Produk digital Anda sudah siap.'}</p>
-                )}
+                <p>Cek emailmu juga. Kami sudah mengirimkan link akses dan detail produk ke email pembeli.</p>
               </div>
-              {delivery?.customMessage && (
-                <section className="public-detail-section">
-                  <p className="eyebrow">Pesan penjual</p>
-                  <p>{delivery.customMessage}</p>
-                </section>
-              )}
-              {delivery?.deliveryNote && (
-                <section className="public-detail-section">
-                  <p className="eyebrow">Catatan akses</p>
-                  <p>{delivery.deliveryNote}</p>
-                </section>
-              )}
               {delivery?.downloadUrl ? (
                 <a className="btn btn-primary public-access-download" href={delivery.downloadUrl}>
                   Buka Isi Produk
@@ -587,6 +578,12 @@ function HomePage({
                 <p className="public-checkout-status">
                   Link produk belum tersedia. Silakan cek email atau hubungi support.
                 </p>
+              )}
+              {delivery?.deliveryNote && (
+                <section className="public-detail-section">
+                  <p className="eyebrow">Catatan akses</p>
+                  <p>{delivery.deliveryNote}</p>
+                </section>
               )}
             </div>
           )}
@@ -671,6 +668,7 @@ function HomePage({
         status={publicCheckoutStatus}
         onBack={() => openProductDetail(checkoutProduct.id)}
         onChange={handlePublicCheckoutChange}
+        onAnswerChange={handlePublicCheckoutAnswerChange}
         onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
         onPaymentMethodSelect={selectPublicPaymentMethod}
         onShare={shareItem}
@@ -775,7 +773,7 @@ function HomePage({
           <div className="course-grid homepage-product-grid">
             {publicProducts.map((product, index) => (
               <article
-                className={`course-card homepage-course-card homepage-product-card animated-card ${
+                className={`course-card homepage-course-card homepage-product-card product-layout-${product.blockLayout || 'default'} animated-card ${
                   product.highlighted ? 'homepage-card-highlighted' : ''
                 }`}
                 key={product.id || product.title}

@@ -318,6 +318,7 @@ function createEmptyDigitalProductForm() {
     blockLayout: 'default',
     requireCustomerName: false,
     requireCustomerPhone: false,
+    customerQuestions: [],
     lynkProductKey: '',
     tripayProductKey: '',
     showOnHomepage: true,
@@ -340,6 +341,14 @@ function createEmptyDigitalProductAddOn() {
     title: '',
     price: '0',
     description: '',
+  }
+}
+
+function createEmptyDigitalProductQuestion() {
+  return {
+    id: `question-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    label: '',
+    required: false,
   }
 }
 
@@ -1074,6 +1083,15 @@ function AdminPage({
     }))
   }
 
+  const updateDigitalProductQuestion = (questionId, field, value) => {
+    setDigitalProductForm((current) => ({
+      ...current,
+      customerQuestions: (current.customerQuestions || []).map((question) =>
+        question.id === questionId ? { ...question, [field]: value } : question,
+      ),
+    }))
+  }
+
   const handleDigitalProductThumbnailChange = async (event) => {
     const file = event.target.files?.[0]
 
@@ -1124,6 +1142,13 @@ function AdminPage({
           price: Math.max(0, Math.round(Number(addOn.price) || 0)),
         }))
         .filter((addOn) => addOn.title),
+      customerQuestions: (digitalProductForm.customerQuestions || [])
+        .map((question) => ({
+          ...question,
+          label: String(question.label || '').trim(),
+          required: question.required === true,
+        }))
+        .filter((question) => question.label),
     }
 
     if (!payload.title) {
@@ -1182,6 +1207,7 @@ function AdminPage({
       blockLayout: product.blockLayout || 'default',
       requireCustomerName: product.requireCustomerName === true,
       requireCustomerPhone: product.requireCustomerPhone === true,
+      customerQuestions: Array.isArray(product.customerQuestions) ? product.customerQuestions : [],
       lynkProductKey: product.lynkProductKey || '',
       tripayProductKey: product.tripayProductKey || '',
       showOnHomepage: product.showOnHomepage !== false,
@@ -2944,44 +2970,6 @@ function AdminPage({
                     </label>
                   )}
 
-                  <label className="digital-toggle-row">
-                    <span>
-                      Free Rp. 600/transaction
-                      <small>Enable Whatsapp notification</small>
-                    </span>
-                    <input
-                      name="whatsappNotification"
-                      type="checkbox"
-                      checked={digitalProductForm.whatsappNotification}
-                      onChange={handleDigitalProductFormChange}
-                    />
-                  </label>
-
-                  <label className="digital-toggle-row">
-                    <span>
-                      Custom Message
-                      <small>Custom message on customer email</small>
-                    </span>
-                    <input
-                      name="customMessageEnabled"
-                      type="checkbox"
-                      checked={digitalProductForm.customMessageEnabled}
-                      onChange={handleDigitalProductFormChange}
-                    />
-                  </label>
-                  {digitalProductForm.customMessageEnabled && (
-                    <label>
-                      Pesan custom email
-                      <textarea
-                        name="customMessage"
-                        value={digitalProductForm.customMessage}
-                        onChange={handleDigitalProductFormChange}
-                        placeholder="Pesan tambahan yang dikirim ke email pembeli."
-                        rows={4}
-                      />
-                    </label>
-                  )}
-
                   <label>
                     Catatan delivery
                     <textarea
@@ -3061,7 +3049,48 @@ function AdminPage({
                     />
                   </label>
 
-                  <button className="text-action centered" type="button" disabled>
+                  <div className="digital-repeat-list">
+                    {(digitalProductForm.customerQuestions || []).map((question) => (
+                      <div className="digital-repeat-item" key={question.id}>
+                        <input
+                          value={question.label}
+                          onChange={(event) => updateDigitalProductQuestion(question.id, 'label', event.target.value)}
+                          placeholder="Pertanyaan custom, contoh: Username Instagram"
+                        />
+                        <label className="digital-toggle-row compact-toggle">
+                          <span>Wajib diisi</span>
+                          <input
+                            type="checkbox"
+                            checked={question.required}
+                            onChange={(event) => updateDigitalProductQuestion(question.id, 'required', event.target.checked)}
+                          />
+                        </label>
+                        <button
+                          className="text-action"
+                          type="button"
+                          onClick={() =>
+                            setDigitalProductForm((current) => ({
+                              ...current,
+                              customerQuestions: (current.customerQuestions || []).filter((item) => item.id !== question.id),
+                            }))
+                          }
+                        >
+                          Hapus pertanyaan
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    className="text-action centered"
+                    type="button"
+                    onClick={() =>
+                      setDigitalProductForm((current) => ({
+                        ...current,
+                        customerQuestions: [...(current.customerQuestions || []), createEmptyDigitalProductQuestion()],
+                      }))
+                    }
+                  >
                     + Add Another Question
                   </button>
                 </section>
