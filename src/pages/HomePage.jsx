@@ -96,6 +96,9 @@ function HomePage({
     customAnswers: {},
   })
   const [publicCheckoutStatus, setPublicCheckoutStatus] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState('Semua')
+
   const heroStyle = websiteSettings.hero.backgroundImage
     ? { backgroundImage: `url(${JSON.stringify(websiteSettings.hero.backgroundImage)})` }
     : undefined
@@ -104,49 +107,99 @@ function HomePage({
   ))
   const detailProducts = withPublicCodes(digitalProducts.filter((product) => product.status === 'Aktif'))
   const homepageProducts = detailProducts.filter((product) => product.showOnHomepage !== false)
-  const publicCourses = classes.length
-    ? homepageClasses
-        .slice()
-        .sort((first, second) => Number(second.highlighted) - Number(first.highlighted))
-        .map((course) => ({
+
+  const getCategoryForItem = (item) => {
+    const title = (item.title || '').toLowerCase()
+    const desc = (item.description || '').toLowerCase()
+    const text = `${title} ${desc}`
+
+    if (text.includes('ebook') || text.includes('e-book') || text.includes('buku') || text.includes('pdf') || text.includes('panduan') || text.includes('kitab') || text.includes('modul')) {
+      return 'E-Book'
+    }
+    if (text.includes('source code') || text.includes('code') || text.includes('coding') || text.includes('script') || text.includes('php') || text.includes('laravel') || text.includes('html') || text.includes('css') || text.includes('js') || text.includes('react') || text.includes('template')) {
+      return 'Source Code'
+    }
+    if (text.includes('ai') || text.includes('openai') || text.includes('gpt') || text.includes('bot') || text.includes('midjourney') || text.includes('artificial')) {
+      return 'Tools AI'
+    }
+    if (text.includes('marketing') || text.includes('jualan') || text.includes('ads') || text.includes('promo') || text.includes('iklan') || text.includes('funnel') || text.includes('landing page') || text.includes('omset') || text.includes('traffic')) {
+      return 'Digital Marketing'
+    }
+    return 'Lainnya'
+  }
+
+  const getItemMockMetrics = (itemId) => {
+    let code = 0
+    const idStr = String(itemId || '')
+    for (let i = 0; i < idStr.length; i++) {
+      code += idStr.charCodeAt(i)
+    }
+    const rating = (4.7 + (code % 4) * 0.1).toFixed(1)
+    const sales = 100 + (code % 89) * 9 + (code % 3)
+    return { rating, sales }
+  }
+
+  const catalogItems = [
+    ...homepageClasses.map((course) => {
+      const { rating, sales } = getItemMockMetrics(course.id)
+      const currentPrice = course.price ? formatRupiah(course.price) : 'Gratis'
+      const originalPrice = course.price 
+        ? formatRupiah(Math.round(course.price * 1.6 / 1000) * 1000)
+        : null
+      return {
         id: course.id,
+        type: 'kelas',
         publicCode: course.publicCode,
         title: course.title,
-        level: course.status,
-        lessons: course.lessons,
-        icon: 'bookOpen',
         thumbnail: course.thumbnail,
-        mentor: course.mentor,
-        price: course.price ? formatRupiah(course.price) : 'Gratis',
+        price: currentPrice,
+        originalPrice,
+        category: 'Kelas',
+        description: course.description || `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`,
+        lessons: course.lessons,
+        rating,
+        sales,
         highlighted: course.highlighted === true,
-        description: `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`,
-      }))
-    : courseHighlights.map((course) => ({
-        ...course,
-        thumbnail: '',
-        mentor: websiteSettings.courses.fallbackMentor,
-        price: websiteSettings.courses.fallbackPrice,
-      }))
-  const publicProducts = homepageProducts
-    .slice()
-    .sort((first, second) => Number(second.highlighted) - Number(first.highlighted))
-    .map((product) => {
+      }
+    }),
+    ...homepageProducts.map((product) => {
+      const { rating, sales } = getItemMockMetrics(product.id)
       const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
       const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
-      const price = salePrice || normalPrice
-
+      const currentPriceVal = salePrice || normalPrice
+      const price = currentPriceVal ? formatRupiah(currentPriceVal) : 'Gratis'
+      const originalPrice = (salePrice && normalPrice > salePrice)
+        ? formatRupiah(normalPrice)
+        : null
       return {
         id: product.id,
+        type: 'produk',
         publicCode: product.publicCode,
         title: product.title,
         thumbnail: product.thumbnail,
-        price: price ? formatRupiah(price) : 'Gratis',
-        fileName: product.fileName || product.platformType || 'Produk digital',
-        highlighted: product.highlighted === true,
-        blockLayout: product.blockLayout || 'default',
+        price,
+        originalPrice,
+        category: 'Produk Digital',
         description: product.description || 'Produk digital siap diakses otomatis setelah pembayaran berhasil.',
+        fileName: product.fileName || product.platformType || 'Produk digital',
+        rating,
+        sales,
+        highlighted: product.highlighted === true,
       }
     })
+  ].sort((first, second) => Number(second.highlighted) - Number(first.highlighted))
+
+  const filteredCatalogItems = catalogItems.filter((item) => {
+    const matchesSearch =
+      (item.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+
+    const matchesCategory =
+      activeCategory === 'Semua' || item.category === activeCategory
+
+    return matchesSearch && matchesCategory
+  })
+
   const selectedClass = homepageClasses.find((course) => course.id === selectedClassId || course.publicCode === selectedClassId)
   const approvedTestimonials = testimonials.filter((testimonial) => testimonial.status === 'approved')
   const activeTestimonial = approvedTestimonials.length
@@ -627,138 +680,133 @@ function HomePage({
 
   return (
     <>
-      <section className="home-hero modern-hero image-hero" id="home" style={heroStyle}>
-        <div className="home-hero__overlay modern-hero__overlay image-hero__overlay">
-          <div className="home-hero__content modern-hero__content image-hero__content">
-            <p className="eyebrow">{websiteSettings.hero.eyebrow}</p>
-            <h1 className="hero-title-modern">{websiteSettings.hero.title}</h1>
-            <p className="hero-copy">{websiteSettings.hero.description}</p>
-            <div className="hero-actions">
-              <button className="btn btn-primary" type="button" onClick={onLogin}>
-                <Icon name="layoutDashboard" />
-                {isLoggedIn
-                  ? websiteSettings.hero.dashboardButton
-                  : websiteSettings.hero.primaryButton}
+      <div id="courses" style={{ scrollMarginTop: '80px' }}></div>
+      <div id="products" style={{ scrollMarginTop: '80px' }}></div>
+      <section className="content-section modern-section catalog-section" id="catalog">
+        <div className="section-heading reveal-panel centered">
+          <p className="eyebrow">ASET DIGITAL & KELAS PREMIUM</p>
+          <h2>Katalog Produk Pilihan</h2>
+          <p className="section-subheading">Temukan tools, course, template, dan source code premium untuk melipatgandakan omset bisnis Anda.</p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="catalog-search-bar">
+          <div className="search-input-wrapper">
+            <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              placeholder="Cari aset digital, kelas, ebook..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button className="clear-search" onClick={() => setSearchQuery('')} aria-label="Hapus pencarian">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </button>
-              <button
-                className="btn btn-ghost"
-                type="button"
-                onClick={() => onExplore('courses')}
-              >
-                <Icon name="play" />
-                {websiteSettings.hero.secondaryButton}
-              </button>
-            </div>
+            )}
           </div>
         </div>
-      </section>
 
-      <section className="stats-band modern-stats" aria-label="Statistik kelas">
-        {websiteSettings.stats.map((stat, index) => (
-          <div key={`${stat.label}-${index}`}>
-            <Icon name={stat.icon} />
-            <strong>{index === 1 && classes.length ? Math.max(classes.length, Number(stat.value) || 0) : stat.value}</strong>
-            <span>{stat.label}</span>
-          </div>
-        ))}
-      </section>
-
-      {publicCourses.length > 0 && (
-        <section className="content-section modern-section" id="courses">
-          <div className="section-heading reveal-panel">
-            <p className="eyebrow">{websiteSettings.courses.eyebrow}</p>
-            <h2>{websiteSettings.courses.title}</h2>
-          </div>
-          <div className="course-grid">
-            {publicCourses.map((course, index) => (
-              <article
-                className={`course-card homepage-course-card animated-card ${
-                  course.highlighted ? 'homepage-card-highlighted' : ''
-                }`}
-                key={course.id || course.title}
+        {/* Category Tabs */}
+        <div className="category-tabs-track">
+          {['Semua', 'Kelas', 'Produk Digital'].map((cat) => {
+            const count = cat === 'Semua'
+              ? catalogItems.length
+              : catalogItems.filter(item => item.category === cat).length
+            return (
+              <button
+                key={cat}
+                className={`category-tab-btn ${activeCategory === cat ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveCategory(cat)
+                  const catalogElement = document.getElementById('catalog')
+                  if (catalogElement) {
+                    catalogElement.scrollIntoView({ behavior: 'smooth' })
+                  }
+                }}
               >
-                <div className="homepage-course-visual">
-                  {course.thumbnail ? (
-                    <img src={course.thumbnail} alt="" />
-                  ) : (
-                    <Icon name={course.icon || 'bookOpen'} />
-                  )}
-                </div>
-                <div className="homepage-course-body">
-                  <h3>{course.title}</h3>
-                  <span className="homepage-course-mentor">
-                    <Icon name="user" />
-                    {course.mentor}
+                {cat}
+                <span className="tab-count">{count}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Catalog Grid */}
+        <div className="catalog-grid">
+          {filteredCatalogItems.map((item, index) => (
+            <article
+              className={`catalog-card animated-card ${item.highlighted ? 'highlighted' : ''}`}
+              key={`${item.type}-${item.id}`}
+              style={{ '--card-delay': `${index * 0.08}s` }}
+            >
+              <div className="card-media">
+                {item.thumbnail ? (
+                  <img src={item.thumbnail} alt={item.title} loading="lazy" />
+                ) : (
+                  <div className="media-placeholder">
+                    <Icon name={item.type === 'kelas' ? 'bookOpen' : 'download'} />
+                  </div>
+                )}
+                <span className={`card-badge badge-${item.category.toLowerCase().replace(/\s+/g, '-')}`}>
+                  {item.category}
+                </span>
+              </div>
+              <div className="card-content">
+                <div className="card-rating-row">
+                  <span className="rating-stars">
+                    <svg className="star-icon-filled" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fbbc05" stroke="#fbbc05" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }}>
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    {item.rating}
                   </span>
-                  <p>{course.description}</p>
+                  <span className="sales-count">{item.sales} terjual</span>
                 </div>
-                <div className="course-meta">
-                  <span>{course.level}</span>
-                  <span>{course.price}</span>
-                </div>
-                {course.highlighted && <span className="homepage-card-badge">Highlight</span>}
-                <button
-                  className="btn btn-primary homepage-course-button"
-                  type="button"
-                  onClick={() => openClassDetail(course.id)}
-                >
-                  Detail Kelas
-                  <Icon name="arrowRight" />
-                </button>
-                <i style={{ '--card-delay': `${index * 0.12}s` }}></i>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {publicProducts.length > 0 && (
-        <section className="content-section modern-section homepage-products-section" id="products">
-          <div className="section-heading reveal-panel">
-            <p className="eyebrow">Produk digital</p>
-            <h2>Produk digital pilihan</h2>
-          </div>
-          <div className="course-grid homepage-product-grid">
-            {publicProducts.map((product, index) => (
-              <article
-                className={`course-card homepage-course-card homepage-product-card product-layout-${product.blockLayout || 'default'} animated-card ${
-                  product.highlighted ? 'homepage-card-highlighted' : ''
-                }`}
-                key={product.id || product.title}
-              >
-                <div className="homepage-course-visual">
-                  {product.thumbnail ? (
-                    <img src={product.thumbnail} alt="" />
-                  ) : (
-                    <Icon name="download" />
-                  )}
-                </div>
-                <div className="homepage-course-body">
-                  <h3>{product.title}</h3>
-                  <span className="homepage-course-mentor">
-                    <Icon name="download" />
-                    {product.fileName}
+                <h3 className="card-title">{item.title}</h3>
+                <p className="card-desc">{item.description}</p>
+                <div className="card-footer-info">
+                  <span className="info-label">
+                    <Icon name={item.type === 'kelas' ? 'user' : 'download'} />
+                    {item.lessons || item.fileName}
                   </span>
                 </div>
-                <div className="course-meta">
-                  <span>Produk digital</span>
-                  <span>{product.price}</span>
+              </div>
+              <div className="card-price-action">
+                <div className="price-box">
+                  {item.originalPrice && (
+                    <span className="original-price">{item.originalPrice}</span>
+                  )}
+                  <span className="current-price">{item.price}</span>
                 </div>
-                {product.highlighted && <span className="homepage-card-badge">Highlight</span>}
                 <button
-                  className="btn btn-primary homepage-course-button"
+                  className="btn btn-primary card-action-btn"
                   type="button"
-                  onClick={() => openProductDetail(product.id)}
+                  onClick={() => item.type === 'kelas' ? openClassDetail(item.id) : openProductDetail(item.id)}
                 >
-                  Detail Produk
+                  Detail
                   <Icon name="arrowRight" />
                 </button>
-                <i style={{ '--card-delay': `${index * 0.12}s` }}></i>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+              </div>
+            </article>
+          ))}
+          {filteredCatalogItems.length === 0 && (
+            <div className="catalog-empty-state">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="48" height="48" style={{ marginBottom: '16px', opacity: 0.5 }}>
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <h3>Produk Tidak Ditemukan</h3>
+              <p>Coba gunakan kata kunci pencarian lain atau pilih kategori yang berbeda.</p>
+            </div>
+          )}
+        </div>
+      </section>
 
       {activeTestimonial && (
         <section className="content-section modern-section homepage-testimonials-section" id="testimonials">
