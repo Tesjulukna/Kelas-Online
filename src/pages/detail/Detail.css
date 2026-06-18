@@ -131,14 +131,6 @@
   color: #0095f6; /* IG Blue link */
 }
 
-.ig-comment-badge-verified {
-  display: inline-flex;
-  color: #0095f6;
-  width: 13px;
-  height: 13px;
-  align-self: center;
-}
-
 .ig-comment-stars {
   display: inline-flex;
   gap: 1px;

@@ -98,7 +98,7 @@ function DetailProduk({
     return initialReviews.map((rev, index) => ({
       id: rev.id || `rev-initial-${index}`,
       name: rev.name || 'Pembeli Terverifikasi',
-      instagram: rev.instagram || rev.name?.toLowerCase().replace(/\s+/g, '_') || 'buyer_verified',
+      instagram: rev.instagram || rev.name?.toLowerCase().replace(/\s+/g, '_') || 'pembeli',
       avatar: rev.avatar || '',
       rating: Math.min(5, Math.max(1, Number(rev.rating) || 5)),
       message: rev.message || '',
@@ -267,11 +267,6 @@ function DetailProduk({
                   <div className="ig-comment-username-row">
                     <span className="ig-comment-username">
                       @{review.instagram}
-                    </span>
-                    <span className="ig-comment-badge-verified">
-                      <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
-                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                      </svg>
                     </span>
                     <div className="ig-comment-stars">
                       {Array.from({ length: 5 }).map((_, i) => (
