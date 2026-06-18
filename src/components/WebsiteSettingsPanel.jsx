@@ -141,9 +141,24 @@ function SectionHeader({ eyebrow, title, icon }) {
   )
 }
 
+function formatActivityDate(value) {
+  const time = Date.parse(value || '')
+
+  if (!time) {
+    return 'Tanggal belum tersedia'
+  }
+
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(time))
+}
+
 function WebsiteSettingsPanel({
   settings,
   onSave,
+  publicActivities = [],
   onSyncTripayPaymentMethods = async () => [],
   onDownloadBackup,
   onRestoreBackup,
@@ -307,6 +322,13 @@ function WebsiteSettingsPanel({
       title: 'Logo metode pembayaran',
       icon: 'wallet',
       description: 'Upload logo QRIS, virtual account, minimarket, dan e-wallet.',
+    },
+    {
+      id: 'notifications',
+      eyebrow: 'Notifikasi',
+      title: 'Toast aktivitas homepage',
+      icon: 'bell',
+      description: 'Pilih siapa saja yang boleh tampil di notifikasi pembelian/pendaftaran.',
     },
     {
       id: 'schedule',
@@ -671,6 +693,79 @@ function WebsiteSettingsPanel({
               </article>
             ))}
           </div>
+        </div>
+
+        <div className={`settings-section ${activeSectionId === 'notifications' ? 'is-active' : ''}`}>
+          <SectionHeader eyebrow="Notifikasi" title="Toast aktivitas homepage" icon="bell" />
+          <div className="settings-grid">
+            <label className="settings-field settings-checkbox-field">
+              <input
+                type="checkbox"
+                checked={draft.homepageNotifications.enabled}
+                onChange={(event) => updateValue(['homepageNotifications', 'enabled'], event.target.checked)}
+              />
+              <span>Tampilkan notifikasi aktivitas di homepage</span>
+            </label>
+            <label className="settings-field">
+              <span>Mode tampilan</span>
+              <select
+                value={draft.homepageNotifications.mode}
+                onChange={(event) => updateValue(['homepageNotifications', 'mode'], event.target.value)}
+              >
+                <option value="all">Tampilkan semua aktivitas</option>
+                <option value="selected">Pilih manual aktivitas tertentu</option>
+              </select>
+            </label>
+          </div>
+          <div className="settings-section-toolbar">
+            <p>
+              {draft.homepageNotifications.mode === 'selected'
+                ? `${draft.homepageNotifications.selectedActivityIds.length} aktivitas dipilih`
+                : 'Semua aktivitas real yang tersedia bisa tampil secara acak.'}
+            </p>
+          </div>
+          {draft.homepageNotifications.mode === 'selected' && (
+            <div className="settings-list homepage-notification-settings-list">
+              {publicActivities.map((activity) => {
+                const isChecked = draft.homepageNotifications.selectedActivityIds.includes(activity.id)
+                const nextSelectedIds = isChecked
+                  ? draft.homepageNotifications.selectedActivityIds.filter((id) => id !== activity.id)
+                  : [...draft.homepageNotifications.selectedActivityIds, activity.id]
+
+                return (
+                  <label className="settings-row homepage-notification-row" key={activity.id}>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() =>
+                        updateValue(['homepageNotifications', 'selectedActivityIds'], nextSelectedIds)
+                      }
+                    />
+                    <span className="homepage-notification-preview-avatar" aria-hidden="true">
+                      {activity.avatar ? (
+                        <img src={activity.avatar} alt="" />
+                      ) : (
+                        <Icon name={activity.type === 'produk' ? 'cart' : 'bookOpen'} />
+                      )}
+                    </span>
+                    <span className="homepage-notification-preview-copy">
+                      <strong>{activity.name || 'Pelanggan'}</strong>
+                      <small>
+                        {activity.actionText} {activity.itemTitle} - {formatActivityDate(activity.createdAt)}
+                      </small>
+                    </span>
+                  </label>
+                )
+              })}
+              {!publicActivities.length && (
+                <article className="empty-state table-empty">
+                  <Icon name="bell" />
+                  <h3>Belum ada aktivitas</h3>
+                  <p>Aktivitas pembelian, akses produk, atau pendaftaran kelas akan muncul setelah ada data.</p>
+                </article>
+              )}
+            </div>
+          )}
         </div>
 
         <div className={`settings-section ${activeSectionId === 'schedule' ? 'is-active' : ''}`}>

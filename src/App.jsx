@@ -2603,6 +2603,7 @@ function App() {
               submissions={submissions}
               testimonials={testimonials}
               payments={payments}
+              publicActivities={publicActivities}
               websiteSettings={websiteSettings}
               onClassesChange={handleClassesChange}
               onDigitalProductsChange={handleDigitalProductsChange}

@@ -10273,6 +10273,21 @@ img {
   line-height: 1.25;
 }
 
+.settings-checkbox-field {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(216, 227, 241, 0.9);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.settings-checkbox-field input {
+  width: 18px;
+  height: 18px;
+}
+
 .settings-icon-select select {
   padding-right: 28px;
 }
@@ -10362,6 +10377,56 @@ img {
 
 .payment-method-settings-row > strong {
   align-self: center;
+}
+
+.homepage-notification-row {
+  grid-template-columns: auto 44px minmax(0, 1fr);
+  align-items: center;
+  cursor: pointer;
+}
+
+.homepage-notification-row input {
+  width: 18px;
+  height: 18px;
+}
+
+.homepage-notification-preview-avatar {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.homepage-notification-preview-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.homepage-notification-preview-avatar .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.homepage-notification-preview-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.homepage-notification-preview-copy strong,
+.homepage-notification-preview-copy small {
+  overflow-wrap: anywhere;
+}
+
+.homepage-notification-preview-copy small {
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
 .settings-row > strong {

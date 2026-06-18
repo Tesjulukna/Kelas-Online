@@ -58,6 +58,11 @@ export const defaultWebsiteSettings = {
     fallbackPrice: 'Mulai dari kelas pilihan',
     emptyPrice: 'Harga tersedia di dashboard',
   },
+  homepageNotifications: {
+    enabled: true,
+    mode: 'all',
+    selectedActivityIds: [],
+  },
   paymentMethods: [
     { code: 'QRIS', label: 'QRIS', brand: 'qris', logoUrl: '' },
     { code: 'QRIS2', label: 'QRIS 2', brand: 'qris', logoUrl: '' },
@@ -301,6 +306,22 @@ function cleanPaymentMethods(value) {
     .filter(Boolean)
 }
 
+function cleanHomepageNotifications(value = {}) {
+  const mode = ['all', 'selected'].includes(value?.mode) ? value.mode : 'all'
+  const selectedActivityIds = Array.isArray(value?.selectedActivityIds)
+    ? value.selectedActivityIds
+        .map((id) => cleanText(id, 240))
+        .filter(Boolean)
+        .slice(0, 100)
+    : []
+
+  return {
+    enabled: value?.enabled !== false,
+    mode,
+    selectedActivityIds,
+  }
+}
+
 export function cleanWebsiteSettings(value = {}) {
   const source = value && typeof value === 'object' ? value : {}
 
@@ -366,6 +387,7 @@ export function cleanWebsiteSettings(value = {}) {
         90,
       ),
     },
+    homepageNotifications: cleanHomepageNotifications(source.homepageNotifications),
     paymentMethods: cleanPaymentMethods(source.paymentMethods),
     benefits: {
       eyebrow: cleanText(

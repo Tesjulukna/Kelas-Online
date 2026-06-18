@@ -667,6 +667,7 @@ function AdminPage({
   submissions = [],
   testimonials = [],
   payments = [],
+  publicActivities = [],
   websiteSettings,
   onClassesChange,
   onDigitalProductsChange = async () => {},
@@ -4419,6 +4420,7 @@ function AdminPage({
         <WebsiteSettingsPanel
           key={JSON.stringify(websiteSettings)}
           settings={websiteSettings}
+          publicActivities={publicActivities}
           onSave={onWebsiteSettingsChange}
           onSyncTripayPaymentMethods={onSyncTripayPaymentMethods}
           onDownloadBackup={onDownloadBackup}

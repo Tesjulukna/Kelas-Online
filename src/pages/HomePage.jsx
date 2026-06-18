@@ -210,6 +210,7 @@ function HomePage({
 
   const [activeNotification, setActiveNotification] = useState(null)
   const [showNotification, setShowNotification] = useState(false)
+  const notificationSettingsSignature = JSON.stringify(websiteSettings.homepageNotifications || {})
 
   const classesRef = useRef(classes)
   const productsRef = useRef(digitalProducts)
@@ -246,6 +247,13 @@ function HomePage({
       const currentPayments = paymentsRef.current || []
       const currentProductAccess = productAccessRef.current || []
       const currentPublicActivities = publicActivitiesRef.current || []
+      const notificationSettings = JSON.parse(notificationSettingsSignature)
+
+      if (notificationSettings.enabled === false) {
+        setActiveNotification(null)
+        setShowNotification(false)
+        return
+      }
 
       const visibleClasses = currentClasses.filter((c) => c.status === 'Aktif')
       const visibleProducts = currentProducts.filter((p) => p.status === 'Aktif')
@@ -346,7 +354,12 @@ function HomePage({
       })
 
       const uniqueActivities = new Map()
-      currentPublicActivities.forEach((activity) => {
+      const selectedActivityIds = new Set(notificationSettings.selectedActivityIds || [])
+      const allowedPublicActivities = notificationSettings.mode === 'selected'
+        ? currentPublicActivities.filter((activity) => selectedActivityIds.has(activity.id))
+        : currentPublicActivities
+
+      allowedPublicActivities.forEach((activity) => {
         uniqueActivities.set(activity.id, {
           ...activity,
           timeText: getActivityTime(
@@ -366,7 +379,7 @@ function HomePage({
 
       let allActivities = [...uniqueActivities.values()]
 
-      if (allActivities.length === 0) {
+      if (allActivities.length === 0 && notificationSettings.mode !== 'selected') {
         const simulatedNames = [
           'Budi Santoso', 'Dewi Lestari', 'Joko Widodo', 'Siti Aminah',
           'Rian Hidayat', 'Andi Wijaya', 'Sari Wijaya', 'Eko Prasetyo',
@@ -438,7 +451,15 @@ function HomePage({
       clearTimeout(hideTimer)
       clearTimeout(intervalTimer)
     }
-  }, [classes.length, digitalProducts.length, members.length, payments.length, digitalProductAccess.length, publicActivities.length])
+  }, [
+    classes.length,
+    digitalProducts.length,
+    members.length,
+    payments.length,
+    digitalProductAccess.length,
+    publicActivities.length,
+    notificationSettingsSignature,
+  ])
 
   const homepageClasses = withPublicCodes(classes.filter(
     (course) => course.status === 'Aktif' && course.showOnHomepage !== false,
