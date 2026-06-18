@@ -1618,7 +1618,7 @@ function MemberPage({
                   <span className="member-class-body">
                     <h3>{course.title}</h3>
                     <p>
-                      {course.mentor} / {course.lessons}
+                      {course.mentor}
                     </p>
                     <span className="member-class-next">{accessNote}</span>
                   </span>
@@ -1739,6 +1739,18 @@ function MemberPage({
                 <small>Total pembayaran</small>
                 <strong>{formatRupiah(paymentModalTotal)}</strong>
               </span>
+            </div>
+            <div className="secure-payment-note">
+              <span className="secure-payment-icon" aria-hidden="true">
+                <Icon name="lock" />
+              </span>
+              <div>
+                <strong>Secure Payment</strong>
+                <p>
+                  Pembayaran diproses melalui kanal resmi Tripay dan dilindungi enkripsi RSA.
+                  Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.
+                </p>
+              </div>
             </div>
             <label className="payment-terms-check">
               <input

@@ -796,7 +796,7 @@ function HomePage({
                 <div className="card-footer-info">
                   <span className="info-label">
                     <Icon name={item.type === 'kelas' ? 'user' : 'download'} />
-                    {item.lessons || item.fileName}
+                    {item.type === 'kelas' ? `${item.sales} peserta` : item.fileName}
                   </span>
                 </div>
               </div>

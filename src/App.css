@@ -1620,6 +1620,20 @@ mark {
   background: #fbfefd !important;
 }
 
+.description-video-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.description-video-preview iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  border: 0;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
 .digital-platform-box {
   padding: 13px;
   border: 1px dashed #b9ccc7;
@@ -9208,6 +9222,46 @@ img {
 .payment-breakdown-total strong {
   color: #1d4ed8;
   font-size: 1.08rem;
+}
+
+.secure-payment-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 13px 14px;
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  border-radius: 12px;
+  background: #ecfdf5;
+}
+
+.secure-payment-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 999px;
+  color: #047857;
+  background: #d1fae5;
+}
+
+.secure-payment-icon .icon {
+  width: 19px;
+  height: 19px;
+}
+
+.secure-payment-note strong {
+  display: block;
+  color: #065f46;
+  font-weight: 900;
+}
+
+.secure-payment-note p {
+  margin: 3px 0 0;
+  color: #0f766e;
+  font-size: 0.86rem;
+  font-weight: 750;
+  line-height: 1.55;
 }
 
 .payment-terms-check {

@@ -213,6 +213,18 @@ function CheckoutProduk({
                 </strong>
               </span>
             </div>
+            <div className="secure-payment-note">
+              <span className="secure-payment-icon" aria-hidden="true">
+                <Icon name="lock" />
+              </span>
+              <div>
+                <strong>Secure Payment</strong>
+                <p>
+                  Pembayaran diproses melalui kanal resmi Tripay dan dilindungi enkripsi RSA.
+                  Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.
+                </p>
+              </div>
+            </div>
           </>
         )}
         <label className="public-checkout-check">

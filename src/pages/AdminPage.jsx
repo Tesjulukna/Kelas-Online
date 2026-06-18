@@ -431,6 +431,45 @@ function getYoutubeEmbedUrl(value) {
   }
 }
 
+function getYoutubeEmbedsFromText(value) {
+  const seen = new Set()
+
+  return String(value || '')
+    .split(/\s+/)
+    .map((chunk) => chunk.trim().replace(/[),.;]+$/, ''))
+    .map((chunk) => getYoutubeEmbedUrl(chunk))
+    .filter((embedUrl) => {
+      if (!embedUrl || seen.has(embedUrl)) {
+        return false
+      }
+
+      seen.add(embedUrl)
+      return true
+    })
+}
+
+function DescriptionVideoPreview({ value }) {
+  const embedUrls = getYoutubeEmbedsFromText(value)
+
+  if (!embedUrls.length) {
+    return null
+  }
+
+  return (
+    <div className="description-video-preview">
+      {embedUrls.map((embedUrl) => (
+        <iframe
+          key={embedUrl}
+          src={embedUrl}
+          title="Preview video YouTube"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      ))}
+    </div>
+  )
+}
+
 function cleanEditorUrl(value) {
   try {
     const url = new URL(value)
@@ -1093,7 +1132,7 @@ function AdminPage({
         return
       }
 
-      insertClassDescriptionHtml(`<iframe src="${embedUrl}" title="Video YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`)
+      insertClassDescriptionHtml(`\n${url.trim()}\n`)
       return
     }
 
@@ -1158,7 +1197,7 @@ function AdminPage({
         return
       }
 
-      replacement = `<iframe src="${embedUrl}" title="Video YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`
+      replacement = `\n${url.trim()}\n`
     }
 
     insertDigitalDescriptionHtml(replacement)
@@ -2882,6 +2921,7 @@ function AdminPage({
                       placeholder="Jelaskan isi produk, manfaat, bonus, dan cara aksesnya."
                       rows={9}
                     />
+                    <DescriptionVideoPreview value={digitalProductForm.description} />
                     <input
                       ref={digitalDescriptionImageInputRef}
                       type="file"
@@ -4917,6 +4957,7 @@ function AdminPage({
                   placeholder="Jelaskan manfaat, hasil belajar, bonus, dan siapa yang cocok mengikuti kelas ini."
                   rows={7}
                 />
+                <DescriptionVideoPreview value={classForm.description} />
               </label>
               <label>
                 Status
