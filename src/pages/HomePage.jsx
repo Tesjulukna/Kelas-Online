@@ -152,7 +152,6 @@ function HomePage({
         originalPrice,
         category: 'Kelas',
         description: plainTextFromHtml(course.description) || `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`,
-        lessons: course.lessons,
         rating: resolveRating(course, fallbackMetrics.rating),
         sales: resolveCount(course.displayStudents, course.students || fallbackMetrics.sales),
         highlighted: course.highlighted === true,

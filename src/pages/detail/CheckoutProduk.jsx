@@ -218,6 +218,7 @@ function CheckoutProduk({
                 <Icon name="lock" />
               </span>
               <div>
+                <small>secure</small>
                 <strong>Secure Payment</strong>
                 <p>
                   Pembayaran diproses melalui kanal resmi Tripay dan dilindungi enkripsi RSA.

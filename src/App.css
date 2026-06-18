@@ -9256,6 +9256,16 @@ img {
   font-weight: 900;
 }
 
+.secure-payment-note small {
+  display: block;
+  margin-bottom: 2px;
+  color: #059669;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .secure-payment-note p {
   margin: 3px 0 0;
   color: #0f766e;
