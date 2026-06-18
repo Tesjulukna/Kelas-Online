@@ -2825,42 +2825,40 @@ function SiteFooter({ onHomeSection, onInfoPage, onLogin, isLoggedIn, settings }
           </div>
         </div>
 
-        <nav className="footer-links" aria-label="Navigasi footer">
-          {safeSettings.footer.links.map((item) => (
-            <button
-              type="button"
-              onClick={() => onHomeSection(item.sectionId)}
-              key={item.sectionId}
-            >
-              {item.label}
+        <div className="footer-nav-col">
+          <h4 className="footer-col-title">Informasi</h4>
+          <nav className="footer-links" aria-label="Navigasi informasi footer">
+            <button type="button" onClick={() => onInfoPage('about')}>
+              Tentang Kami
             </button>
-          ))}
-          <button type="button" onClick={onLogin}>
-            {isLoggedIn
-              ? safeSettings.header.dashboardLabel
-              : safeSettings.header.loginLabel}
-          </button>
-          <button type="button" onClick={() => onInfoPage('about')}>
-            Tentang Kami
-          </button>
-          <button type="button" onClick={() => onInfoPage('contact')}>
-            Kontak Support
-          </button>
-          <button type="button" onClick={() => onInfoPage('privacy')}>
-            Kebijakan Privasi
-          </button>
-          <button type="button" onClick={() => onInfoPage('terms')}>
-            Ketentuan Layanan
-          </button>
-        </nav>
+            <button type="button" onClick={() => onInfoPage('contact')}>
+              Kontak Support
+            </button>
+          </nav>
+        </div>
 
-        <div className="footer-contact">
-          {safeSettings.footer.contactItems.map((item, index) => (
-            <span key={`${item.text}-${index}`}>
-              <Icon name={item.icon} />
-              {item.text}
-            </span>
-          ))}
+        <div className="footer-nav-col">
+          <h4 className="footer-col-title">Kebijakan</h4>
+          <nav className="footer-links" aria-label="Navigasi kebijakan footer">
+            <button type="button" onClick={() => onInfoPage('privacy')}>
+              Kebijakan Privasi
+            </button>
+            <button type="button" onClick={() => onInfoPage('terms')}>
+              Ketentuan Layanan
+            </button>
+          </nav>
+        </div>
+
+        <div className="footer-contact-col">
+          <h4 className="footer-col-title">Bantuan & Layanan</h4>
+          <div className="footer-contact">
+            {safeSettings.footer.contactItems.map((item, index) => (
+              <span key={`${item.text}-${index}`}>
+                <Icon name={item.icon} />
+                {item.text}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
       <div className="site-footer-bottom">
