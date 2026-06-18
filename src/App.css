@@ -3052,7 +3052,7 @@ body,
 #root,
 .app-shell {
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 main,
@@ -10440,6 +10440,9 @@ img {
 }
 
 @supports not (overflow: clip) {
+  html,
+  body,
+  #root,
   .app-shell {
     overflow-x: visible;
   }
