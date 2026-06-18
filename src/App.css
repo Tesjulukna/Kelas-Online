@@ -12469,4 +12469,149 @@ img {
   }
 }
 
+/* Responsive class create/edit modal */
+.class-modal-backdrop {
+  z-index: 10000 !important;
+  place-items: start center !important;
+  align-items: start !important;
+  min-height: 100dvh !important;
+  padding: clamp(12px, 2vw, 24px) !important;
+  overflow-y: auto !important;
+}
+
+.class-editor {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  gap: 0 !important;
+  width: min(1080px, calc(100vw - 32px)) !important;
+  max-height: calc(100dvh - 32px) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 16px !important;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.22) !important;
+}
+
+.class-editor > .modal-heading {
+  position: relative !important;
+  z-index: 3 !important;
+  padding: 18px 22px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+}
+
+.class-editor > .modal-heading h2 {
+  margin: 0 !important;
+  font-size: clamp(1.35rem, 2vw, 1.9rem) !important;
+  line-height: 1.15 !important;
+}
+
+.class-editor > .modal-heading button {
+  flex: 0 0 auto !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+}
+
+.class-editor-form {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  align-items: start !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 22px !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  border: 0 !important;
+  background: #ffffff !important;
+}
+
+.class-editor-form .thumbnail-field {
+  align-self: start !important;
+}
+
+.class-description-field {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+}
+
+.class-description-field .digital-rich-toolbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 12px !important;
+  border: 1px solid #dbe4ef !important;
+  border-bottom: 0 !important;
+  border-radius: 12px 12px 0 0 !important;
+  background: #ecfdf9 !important;
+}
+
+.class-description-field .digital-description-editor {
+  min-height: clamp(280px, 44vh, 580px) !important;
+  max-height: none !important;
+  resize: vertical !important;
+  border-radius: 0 0 12px 12px !important;
+  line-height: 1.7 !important;
+}
+
+.class-description-field .description-video-preview {
+  margin-top: 12px !important;
+}
+
+.class-editor > .modal-actions {
+  position: relative !important;
+  z-index: 3 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  padding: 16px 22px !important;
+  border-top: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 -12px 30px rgba(15, 23, 42, 0.06) !important;
+}
+
+@media (max-width: 760px) {
+  .class-modal-backdrop {
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .class-editor {
+    width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 14px !important;
+  }
+
+  .class-editor > .modal-heading {
+    align-items: flex-start !important;
+    gap: 10px !important;
+    padding: 14px !important;
+  }
+
+  .class-editor-form {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    padding: 14px !important;
+  }
+
+  .class-description-field .digital-rich-toolbar {
+    gap: 6px !important;
+    padding: 10px !important;
+  }
+
+  .class-description-field .digital-description-editor {
+    min-height: 320px !important;
+  }
+
+  .class-editor > .modal-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    padding: 12px 14px !important;
+  }
+}
+
 

@@ -4895,8 +4895,8 @@ function AdminPage({
         </div>
       )}
       {isClassModalOpen && (
-        <div className="modal-backdrop" role="presentation">
-          <form className="crud-editor" onSubmit={handleSubmitClass}>
+        <div className="modal-backdrop class-modal-backdrop" role="presentation">
+          <form className="crud-editor class-editor" onSubmit={handleSubmitClass}>
             <div className="modal-heading">
               <div>
                 <p className="eyebrow">Kelola kelas</p>
@@ -4913,7 +4913,7 @@ function AdminPage({
                 <Icon name="x" />
               </button>
             </div>
-            <div className="crud-form modal-form">
+            <div className="crud-form modal-form class-editor-form">
               <div className="thumbnail-field">
                 <span className="thumbnail-preview" aria-hidden="true">
                   {classForm.thumbnail ? (
@@ -4943,7 +4943,7 @@ function AdminPage({
                   required
                 />
               </label>
-              <label>
+              <label className="class-description-field full-field">
                 Deskripsi kelas
                 <span className="digital-rich-toolbar">
                   <button type="button" onClick={() => applyClassDescriptionTool('bold')}>B</button>
@@ -4963,7 +4963,7 @@ function AdminPage({
                   value={classForm.description}
                   onChange={handleClassFormChange}
                   placeholder="Jelaskan manfaat, hasil belajar, bonus, dan siapa yang cocok mengikuti kelas ini."
-                  rows={7}
+                  rows={12}
                 />
                 <DescriptionVideoPreview value={classForm.description} />
               </label>
