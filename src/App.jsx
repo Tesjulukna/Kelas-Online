@@ -1836,16 +1836,26 @@ function App() {
   useEffect(() => {
     let isCurrent = true
 
-    fetchStoredDigitalProducts(null)
-      .then((productData) => {
+    Promise.allSettled([
+      fetchStoredDigitalProducts(null),
+      fetchStoredMembers(),
+    ])
+      .then(([productResult, memberResult]) => {
         if (!isCurrent) {
           return
         }
 
-        setDigitalProducts(productData.digitalProducts)
+        if (productResult.status === 'fulfilled') {
+          setDigitalProducts(productResult.value.digitalProducts)
+          setDigitalProductAccess(productResult.value.digitalProductAccess)
+        }
+
+        if (memberResult.status === 'fulfilled') {
+          setMembers(memberResult.value)
+        }
       })
       .catch(() => {
-        // Homepage remains usable if product data is temporarily unavailable.
+        // Homepage remains usable if public activity data is temporarily unavailable.
       })
 
     return () => {

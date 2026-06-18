@@ -332,14 +332,14 @@ function HomePage({
 
     const initialTimer = setTimeout(() => {
       showNextNotification()
-    }, 5000)
+    }, 2500)
 
     return () => {
       clearTimeout(initialTimer)
       clearTimeout(hideTimer)
       clearTimeout(intervalTimer)
     }
-  }, [])
+  }, [classes.length, digitalProducts.length, members.length, payments.length, digitalProductAccess.length])
 
   const homepageClasses = withPublicCodes(classes.filter(
     (course) => course.status === 'Aktif' && course.showOnHomepage !== false,
