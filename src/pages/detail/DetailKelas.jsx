@@ -71,18 +71,13 @@ function DetailKelas({
         </div>
       </div>
 
-      <article className="public-detail-hero">
-        <div className="public-detail-image">
+      <article className="public-detail-hero public-course-detail">
+        <div className={`public-detail-image ${course.thumbnail ? 'has-image' : ''}`}>
           {course.thumbnail ? (
             <img src={course.thumbnail} alt={course.title} />
           ) : (
             <Icon name="bookOpen" />
           )}
-          <div className="play-button-overlay" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ffffff" width="24" height="24" style={{ display: 'block' }}>
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-          </div>
         </div>
 
         <div className="public-detail-copy">

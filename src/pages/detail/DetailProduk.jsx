@@ -88,7 +88,7 @@ function DetailProduk({
       </div>
 
       <article className="public-detail-hero public-product-detail">
-        <div className="public-detail-image">
+        <div className={`public-detail-image ${product.thumbnail ? 'has-image' : ''}`}>
           {product.thumbnail ? (
             <img src={product.thumbnail} alt={product.title} />
           ) : (

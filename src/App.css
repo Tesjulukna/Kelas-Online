@@ -12282,3 +12282,191 @@ img {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   }
 }
+
+/* Course Detail Layout Modifications (Single Column & Snug Thumbnail) */
+.public-course-detail {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 24px !important;
+}
+
+.public-course-detail .public-detail-image {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 680px !important; /* visual limit so vertical/square banners are not oversized */
+  margin: 0 auto !important; /* center it */
+  aspect-ratio: 16 / 9 !important; /* default aspect ratio for placeholders */
+  background: #f8fafc !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06) !important;
+  border: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Override container styles when there is a real thumbnail image */
+.public-course-detail .public-detail-image.has-image {
+  aspect-ratio: auto !important;
+  height: auto !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: block !important;
+}
+
+.public-course-detail .public-detail-image.has-image img {
+  width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  object-fit: contain !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06) !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.public-course-detail .public-detail-copy {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.play-button-overlay {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+  border-radius: 50% !important;
+  width: 64px !important;
+  height: 64px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 5 !important;
+  pointer-events: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border: 2px solid rgba(255, 255, 255, 0.4) !important;
+  transition: all 0.2s ease !important;
+}
+
+.public-detail-image:hover .play-button-overlay {
+  background: rgba(37, 99, 235, 0.8) !important;
+  transform: translate(-50%, -50%) scale(1.1) !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Final public detail layout guard: keep thumbnail and info card separated. */
+.public-detail-page .public-course-detail,
+.public-detail-page .public-product-detail {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 28px !important;
+  width: 100% !important;
+  max-width: 760px !important;
+  margin: 0 auto 28px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.public-detail-page .public-course-detail .public-detail-image,
+.public-detail-page .public-product-detail .public-detail-image {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1 !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: min(100%, 560px) !important;
+  max-width: 560px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 auto !important;
+  aspect-ratio: auto !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.public-detail-page .public-course-detail .public-detail-image:not(.has-image),
+.public-detail-page .public-product-detail .public-detail-image:not(.has-image) {
+  display: grid !important;
+  min-height: 260px !important;
+  place-items: center !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  background: #f8fafc !important;
+}
+
+.public-detail-page .public-course-detail .public-detail-image img,
+.public-detail-page .public-product-detail .public-detail-image img {
+  position: static !important;
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 520px !important;
+  object-fit: contain !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  background: #f8fafc !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08) !important;
+}
+
+.public-detail-page .public-course-detail .public-detail-copy,
+.public-detail-page .public-product-detail .public-detail-copy {
+  position: static !important;
+  z-index: 2 !important;
+  display: grid !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 30px !important;
+  transform: none !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.06) !important;
+  text-align: left !important;
+  align-items: start !important;
+  justify-items: start !important;
+  overflow: visible !important;
+}
+
+.public-detail-page .play-button-overlay {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .public-detail-page .public-course-detail,
+  .public-detail-page .public-product-detail {
+    gap: 18px !important;
+    max-width: 100% !important;
+  }
+
+  .public-detail-page .public-course-detail .public-detail-image,
+  .public-detail-page .public-product-detail .public-detail-image {
+    width: min(100%, 460px) !important;
+    max-width: 460px !important;
+  }
+
+  .public-detail-page .public-course-detail .public-detail-image img,
+  .public-detail-page .public-product-detail .public-detail-image img {
+    max-height: 430px !important;
+    border-radius: 14px !important;
+  }
+
+  .public-detail-page .public-course-detail .public-detail-copy,
+  .public-detail-page .public-product-detail .public-detail-copy {
+    padding: 22px !important;
+    border-radius: 14px !important;
+  }
+}
+
+
