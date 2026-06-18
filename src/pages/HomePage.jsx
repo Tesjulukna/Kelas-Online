@@ -73,25 +73,41 @@ function plainTextFromHtml(value) {
     .trim()
 }
 
-function formatActivityDate(value) {
-  const time = Date.parse(value || '')
+function formatIndonesianDate(value) {
+  if (!value) {
+    return 'Tanggal belum tersedia'
+  }
 
+  const matches = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (matches) {
+    const year = matches[1]
+    const monthIndex = parseInt(matches[2], 10) - 1
+    const day = parseInt(matches[3], 10)
+    const months = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ]
+    if (monthIndex >= 0 && monthIndex < 12) {
+      return `${day} ${months[monthIndex]} ${year}`
+    }
+  }
+
+  const time = Date.parse(value)
   if (!time) {
     return 'Tanggal belum tersedia'
   }
 
-  return new Intl.DateTimeFormat('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(time))
+  try {
+    return new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date(time))
+  } catch {
+    return 'Tanggal belum tersedia'
+  }
 }
 
-function getActivityTime(value, prefix) {
-  const dateText = formatActivityDate(value)
-
-  return dateText === 'Tanggal belum tersedia' ? dateText : `${prefix} ${dateText}`
-}
 
 const publicWishlistKey = 'ibnucreative.public-wishlist.v1'
 
@@ -195,6 +211,13 @@ function HomePage({
     let hideTimer = null
     let intervalTimer = null
 
+    const getRandomPastDate = (daysAgoMax = 30) => {
+      const date = new Date()
+      const daysAgo = Math.floor(Math.random() * daysAgoMax) + 1
+      date.setDate(date.getDate() - daysAgo)
+      return date.toISOString().slice(0, 10)
+    }
+
     const showNextNotification = () => {
       const currentClasses = classesRef.current || []
       const currentProducts = productsRef.current || []
@@ -245,7 +268,9 @@ function HomePage({
             itemTitle,
             type: isProduct ? 'produk' : 'kelas',
             createdAt,
-            timeText: getActivityTime(createdAt, isProduct ? 'Beli' : 'Daftar'),
+            timeText: isProduct
+              ? `Membeli pada ${formatIndonesianDate(createdAt)}`
+              : `Terdaftar pada ${formatIndonesianDate(createdAt)}`,
           })
         })
 
@@ -266,7 +291,7 @@ function HomePage({
           itemTitle,
           type: 'produk',
           createdAt: access.createdAt,
-          timeText: getActivityTime(access.createdAt, 'Akses'),
+          timeText: `Membeli pada ${formatIndonesianDate(access.createdAt)}`,
         })
       })
 
@@ -293,7 +318,7 @@ function HomePage({
             itemTitle: course.title,
             type: 'kelas',
             createdAt: member.joinedAt,
-            timeText: getActivityTime(member.joinedAt, 'Daftar'),
+            timeText: `Terdaftar pada ${formatIndonesianDate(member.joinedAt)}`,
           })
         })
       })
@@ -305,9 +330,46 @@ function HomePage({
           uniqueActivities.set(key, activity)
         }
       })
-      const allActivities = [...uniqueActivities.values()]
-        .sort((first, second) => (Date.parse(second.createdAt || '') || 0) - (Date.parse(first.createdAt || '') || 0))
-        .slice(0, 30)
+
+      let allActivities = [...uniqueActivities.values()]
+
+      if (allActivities.length === 0) {
+        const simulatedNames = [
+          'Budi Santoso', 'Dewi Lestari', 'Joko Widodo', 'Siti Aminah',
+          'Rian Hidayat', 'Andi Wijaya', 'Sari Wijaya', 'Eko Prasetyo',
+          'Rina Rahmawati', 'Deni Setiawan', 'Aditya Nugraha', 'Mega Utami',
+          'Fajar Siddiq', 'Indah Permatasari', 'Yusuf Habibie'
+        ]
+
+        const itemsPool = [
+          ...visibleClasses.map(c => ({ item: c, type: 'kelas' })),
+          ...visibleProducts.map(p => ({ item: p, type: 'produk' }))
+        ]
+
+        if (itemsPool.length > 0) {
+          for (let i = 0; i < 15; i++) {
+            const name = simulatedNames[i % simulatedNames.length]
+            const poolItem = itemsPool[(i * 3 + 7) % itemsPool.length]
+            const date = getRandomPastDate(30)
+            const isProduct = poolItem.type === 'produk'
+
+            allActivities.push({
+              id: `simulated:${i}:${poolItem.item.id}`,
+              name,
+              avatar: '',
+              actionText: isProduct ? 'membeli produk digital' : 'mendaftar kelas',
+              itemTitle: poolItem.item.title,
+              type: poolItem.type,
+              createdAt: date,
+              timeText: isProduct
+                ? `Membeli pada ${formatIndonesianDate(date)}`
+                : `Terdaftar pada ${formatIndonesianDate(date)}`,
+            })
+          }
+        }
+      }
+
+      allActivities.sort((first, second) => (Date.parse(second.createdAt || '') || 0) - (Date.parse(first.createdAt || '') || 0))
 
       if (allActivities.length === 0) {
         intervalTimer = setTimeout(showNextNotification, 12000)
