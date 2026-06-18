@@ -97,6 +97,19 @@ function writePublicWishlist(items) {
   window.localStorage.setItem(publicWishlistKey, JSON.stringify(items))
 }
 
+function getInitialDetailState(initialDetail) {
+  const type = initialDetail?.type || ''
+  const id = initialDetail?.id || ''
+  const action = initialDetail?.action || ''
+
+  return {
+    selectedClassId: type === 'kelas' ? id : '',
+    selectedProductId: type === 'produk' && action !== 'checkout' ? id : '',
+    checkoutProductId: type === 'produk' && action === 'checkout' ? id : '',
+    accessOrderCode: type === 'produk-akses' ? id : '',
+  }
+}
+
 function HomePage({
   onRequestClassCheckout = () => {},
   onPublicProductCheckout = async () => {},
@@ -110,13 +123,14 @@ function HomePage({
   members = [],
 }) {
   const websiteSettings = cleanWebsiteSettings(settings)
-  const [selectedClassId, setSelectedClassId] = useState('')
-  const [selectedProductId, setSelectedProductId] = useState('')
-  const [checkoutProductId, setCheckoutProductId] = useState('')
+  const initialState = getInitialDetailState(initialDetail)
+  const [selectedClassId, setSelectedClassId] = useState(initialState.selectedClassId)
+  const [selectedProductId, setSelectedProductId] = useState(initialState.selectedProductId)
+  const [checkoutProductId, setCheckoutProductId] = useState(initialState.checkoutProductId)
   const [isPaymentPickerOpen, setIsPaymentPickerOpen] = useState(false)
   const [isWishlistOpen, setIsWishlistOpen] = useState(false)
   const [wishlistItems, setWishlistItems] = useState(() => readPublicWishlist())
-  const [accessOrderCode, setAccessOrderCode] = useState('')
+  const [accessOrderCode, setAccessOrderCode] = useState(initialState.accessOrderCode)
   const [accessRefreshKey, setAccessRefreshKey] = useState(0)
   const [productAccessState, setProductAccessState] = useState({
     isLoading: false,

@@ -2596,8 +2596,6 @@ function App() {
         <SiteFooter
           onHomeSection={goToHomeSection}
           onInfoPage={goToPublicInfoPage}
-          onLogin={session ? goToDashboard : goToLogin}
-          isLoggedIn={Boolean(session)}
           settings={websiteSettings}
         />
       )}
@@ -2795,7 +2793,7 @@ function PublicInfoPage({ page, settings, onLogin }) {
   )
 }
 
-function SiteFooter({ onHomeSection, onInfoPage, onLogin, isLoggedIn, settings }) {
+function SiteFooter({ onHomeSection, onInfoPage, settings }) {
   const year = new Date().getFullYear()
   const safeSettings = cleanWebsiteSettings(settings)
 
