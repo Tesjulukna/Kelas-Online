@@ -11165,3 +11165,352 @@ img {
   }
 }
 
+/* Custom Premium Button Polish */
+.btn {
+  border-radius: 10px !important; /* Soft, modern corners */
+  font-family: 'Poppins', var(--font-sans);
+  font-weight: 600 !important;
+  letter-spacing: 0.01em;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.btn:hover {
+  transform: translateY(-2px) scale(1.01) !important;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.15) !important;
+}
+
+.btn:active {
+  transform: translateY(-0.5px) scale(0.99) !important;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; /* Premium Blue Gradient */
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25) !important;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35) !important;
+}
+
+.btn-secondary {
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02) !important;
+}
+
+.btn-secondary:hover {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+.btn-ghost {
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  color: #ffffff !important;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Modern Details Page Layout Override */
+.public-detail-page {
+  width: min(100%, 1040px) !important;
+  margin: 0 auto 100px !important;
+  padding: 0 24px 96px !important;
+}
+
+.public-detail-topbar {
+  position: static !important;
+  height: 60px !important;
+  padding: 12px 0 !important;
+  pointer-events: auto !important;
+  margin-bottom: 12px !important;
+}
+
+.public-detail-topbar .icon-action-button {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 99px !important;
+  width: 40px !important;
+  height: 40px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  color: #475569 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03) !important;
+}
+
+.public-detail-topbar .icon-action-button:hover {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.public-detail-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr) !important;
+  gap: 32px !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  padding: 0 0 28px !important;
+  margin-bottom: 28px !important;
+}
+
+.public-detail-image {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.06) !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  aspect-ratio: 16 / 10.5 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.public-detail-image img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.public-detail-image .icon {
+  width: 60px !important;
+  height: 60px !important;
+  margin: 0 !important;
+  color: #2563eb !important;
+}
+
+.public-detail-copy {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.04) !important;
+  padding: 32px !important;
+  align-items: start !important;
+  justify-items: start !important;
+  text-align: left !important;
+  align-content: start !important;
+  gap: 16px !important;
+}
+
+.public-detail-copy h1 {
+  font-size: 2.1rem !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  line-height: 1.25 !important;
+  max-width: 100% !important;
+}
+
+.public-detail-copy p,
+.public-rich-description {
+  font-size: 0.94rem !important;
+  line-height: 1.65 !important;
+  color: #475569 !important;
+  max-width: 100% !important;
+}
+
+.public-detail-meta {
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  margin-top: 12px !important;
+  width: 100% !important;
+}
+
+.public-detail-meta span {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  min-height: 32px !important;
+  padding: 0 14px !important;
+  border-radius: 99px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.01) !important;
+}
+
+.public-detail-meta span:nth-child(2) {
+  background: #f0f6ff !important;
+  border-color: #bfdbfe !important;
+  color: #2563eb !important;
+  font-weight: 800 !important;
+  font-size: 0.84rem !important;
+}
+
+/* Video & Sections Override */
+.public-video-section {
+  padding: 0 !important;
+  margin: 0 0 28px !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.06) !important;
+  border: 1px solid #e2e8f0 !important;
+  aspect-ratio: 16 / 9 !important;
+}
+
+.public-video-section iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
+
+.public-detail-section {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.03) !important;
+  padding: 28px !important;
+  margin: 0 0 28px !important;
+}
+
+.public-detail-section .eyebrow {
+  font-size: 0.75rem !important;
+  font-weight: 800 !important;
+  color: #2563eb !important;
+  letter-spacing: 0.05em !important;
+  margin-bottom: 16px !important;
+}
+
+.public-addon-list,
+.public-review-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 16px !important;
+  margin-top: 12px !important;
+}
+
+.public-addon-item,
+.public-review-item {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 18px !important;
+  display: grid !important;
+  gap: 8px !important;
+  align-content: start !important;
+}
+
+.public-addon-item strong,
+.public-review-item strong {
+  font-size: 0.98rem !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.public-addon-item span {
+  font-size: 0.94rem !important;
+  font-weight: 800 !important;
+  color: #10b981 !important;
+}
+
+.public-addon-item p,
+.public-review-item p {
+  margin: 0 !important;
+  font-size: 0.86rem !important;
+  line-height: 1.5 !important;
+  color: #64748b !important;
+}
+
+.public-review-item .review-rating-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+.public-review-item .stars {
+  color: #fbbc05 !important;
+  display: flex !important;
+  gap: 3px !important;
+}
+
+.public-review-item .stars .star-icon {
+  width: 14px !important;
+  height: 14px !important;
+  fill: currentColor !important;
+}
+
+/* Sticky Action Bar overrides */
+.public-sticky-actions {
+  position: fixed !important;
+  right: 24px !important;
+  bottom: 20px !important;
+  left: 24px !important;
+  max-width: 1040px !important;
+  margin: 0 auto !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  z-index: 99 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) !important;
+  gap: 12px !important;
+  padding: 12px 18px !important;
+}
+
+.public-sticky-actions .btn {
+  min-height: 44px !important;
+  font-size: 0.92rem !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 760px) {
+  .public-detail-page {
+    padding: 0 12px 112px !important;
+    margin-bottom: 60px !important;
+  }
+  
+  .public-detail-topbar {
+    padding: 8px 0 !important;
+  }
+
+  .public-detail-hero {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .public-detail-image {
+    aspect-ratio: 16 / 10 !important;
+  }
+
+  .public-detail-copy {
+    padding: 22px !important;
+  }
+
+  .public-detail-copy h1 {
+    font-size: 1.65rem !important;
+  }
+
+  .public-addon-list,
+  .public-review-list {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .public-sticky-actions {
+    right: 12px !important;
+    left: 12px !important;
+    bottom: 12px !important;
+    border-radius: 12px !important;
+    padding: 10px !important;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) !important;
+  }
+}
+
+
