@@ -701,6 +701,10 @@ function cleanClasses(value) {
         status: cleanText(item.status || 'Draft'),
         revenue: cleanText(item.revenue || 'Rp 0'),
         price: Math.max(0, Math.round(Number(item.price) || 0)),
+        salePrice:
+          item.salePrice === '' || item.salePrice === null || item.salePrice === undefined
+            ? ''
+            : Math.max(0, Math.round(Number(item.salePrice) || 0)),
         lynkProductKey: cleanLongText(item.lynkProductKey || '', 160),
         tripayProductKey: cleanLongText(item.tripayProductKey || '', 160),
         thumbnail: cleanAvatar(item.thumbnail),
@@ -2480,6 +2484,7 @@ function App() {
             digitalProducts={digitalProducts}
             testimonials={testimonials}
             settings={websiteSettings}
+            members={members}
           />
         )}
         {page === 'login' && (

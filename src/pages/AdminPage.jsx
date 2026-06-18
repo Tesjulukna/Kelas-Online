@@ -264,6 +264,7 @@ function createEmptyClassForm() {
     rating: '',
     status: 'Aktif',
     price: '0',
+    salePrice: '0',
     lynkProductKey: '',
     tripayProductKey: '',
     thumbnail: '',
@@ -2167,6 +2168,10 @@ function AdminPage({
           : Math.min(5, Math.max(0, Number(classForm.rating) || 0)),
       status: classForm.status,
       price: Math.max(0, Number(classForm.price) || 0),
+      salePrice:
+        classForm.salePrice === ''
+          ? ''
+          : Math.max(0, Number(classForm.salePrice) || 0),
       lynkProductKey: classForm.lynkProductKey.trim(),
       tripayProductKey: classForm.tripayProductKey.trim(),
       thumbnail: classForm.thumbnail,
@@ -2215,6 +2220,7 @@ function AdminPage({
       rating: item.rating ?? '',
       status: item.status,
       price: parseRupiahValue(item.price),
+      salePrice: parseRupiahValue(item.salePrice),
       lynkProductKey: item.lynkProductKey ?? '',
       tripayProductKey: item.tripayProductKey ?? '',
       thumbnail: item.thumbnail ?? '',
@@ -4973,7 +4979,7 @@ function AdminPage({
                 </select>
               </label>
               <label className="price-field">
-                Harga kelas
+                Harga normal (Coret)
                 <input
                   name="price"
                   type="number"
@@ -4986,7 +4992,24 @@ function AdminPage({
                 <span>
                   {Number(classForm.price) > 0
                     ? formatRupiah(classForm.price)
-                  : 'Kosong atau 0 = kelas gratis'}
+                    : 'Kosong atau 0 = kelas gratis'}
+                </span>
+              </label>
+              <label className="price-field">
+                Harga promo (Sale Price)
+                <input
+                  name="salePrice"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={classForm.salePrice}
+                  onChange={handleClassFormChange}
+                  placeholder="0"
+                />
+                <span>
+                  {Number(classForm.salePrice) > 0
+                    ? formatRupiah(classForm.salePrice)
+                    : 'Kosong atau 0 = tidak menggunakan harga promo'}
                 </span>
               </label>
               <div className="digital-metric-grid">

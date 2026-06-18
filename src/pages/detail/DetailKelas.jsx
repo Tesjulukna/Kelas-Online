@@ -31,8 +31,11 @@ function DetailKelas({
 
   const websiteSettings = cleanWebsiteSettings(settings)
 
-  const originalPrice = course.price 
-    ? formatRupiah(Math.round(course.price * 1.6 / 1000) * 1000)
+  const salePrice = Math.max(0, Math.round(Number(course.salePrice) || 0))
+  const normalPrice = Math.max(0, Math.round(Number(course.price) || 0))
+  const paidPrice = salePrice || normalPrice
+  const originalPrice = (salePrice && normalPrice > salePrice)
+    ? formatRupiah(normalPrice)
     : null
 
   const toggleAccordion = (id) => {
@@ -117,7 +120,7 @@ function DetailKelas({
               </span>
             )}
             <strong style={{ fontSize: '1.8rem', color: '#0f172a', fontWeight: '800' }}>
-              {course.price ? formatRupiah(course.price) : 'Gratis'}
+              {paidPrice ? formatRupiah(paidPrice) : 'Gratis'}
             </strong>
           </div>
         </div>

@@ -1586,7 +1586,9 @@ function MemberPage({
           </div>
           <div className="learning-list">
             {availableCourses.map((course) => {
-              const price = Math.max(0, Math.round(Number(course.price) || 0))
+              const normalPrice = Math.max(0, Math.round(Number(course.price) || 0))
+              const salePrice = Math.max(0, Math.round(Number(course.salePrice) || 0))
+              const price = salePrice || normalPrice
               const isCheckingOut = checkoutClassId === course.id
               const pendingPayment = activePaymentsByClass.get(course.id)
               const expiredPayment = expiredPaymentsByClass.get(course.id)
@@ -1625,6 +1627,11 @@ function MemberPage({
                   <span className="available-class-price">
                     <small>{price ? 'Harga kelas' : 'Kelas gratis'}</small>
                     <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
+                    {salePrice > 0 && normalPrice > salePrice && (
+                      <small className="struck-price" style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: '0.85em', marginLeft: '6px' }}>
+                        {formatRupiah(normalPrice)}
+                      </small>
+                    )}
                   </span>
                   <span className="available-payment-action">
                     {showExpiredNotice && (

@@ -277,16 +277,34 @@ function cleanClasses(value) {
       return {
         id,
         title,
+        description: cleanRichHtml(item.description || ''),
         students: cleanNumber(item.students, 0, 1000000),
+        displayStudents:
+          item.displayStudents === '' || item.displayStudents === null || item.displayStudents === undefined
+            ? ''
+            : cleanNumber(item.displayStudents, 0, 1000000),
+        rating:
+          item.rating === '' || item.rating === null || item.rating === undefined
+            ? ''
+            : cleanNumber(item.rating, 0, 5),
         status: cleanText(item.status || 'Aktif', 40),
         revenue: cleanText(item.revenue || 'Rp 0', 60),
+        price: cleanNumber(item.price, 0, 1000000000),
+        salePrice:
+          item.salePrice === '' || item.salePrice === null || item.salePrice === undefined
+            ? ''
+            : cleanNumber(item.salePrice, 0, 1000000000),
         lynkProductKey: cleanText(item.lynkProductKey || '', 180),
+        tripayProductKey: cleanText(item.tripayProductKey || '', 180),
         thumbnail: cleanImage(item.thumbnail),
         mentor: cleanText(item.mentor || 'Ibnu Creative', 80),
         progress: cleanNumber(item.progress, 0, 100),
         next: cleanText(item.next || 'Lanjutkan modul berikutnya', 120),
         liveAt: cleanText(item.liveAt || 'Jadwal menyusul', 120),
         lessons: cleanText(item.lessons || '12 materi', 60),
+        showOnHomepage: item.showOnHomepage !== false,
+        showOnMember: item.showOnMember !== false,
+        highlighted: item.highlighted === true,
         materials: cleanMaterials(item.materials, id, title),
       }
     })

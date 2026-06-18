@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Icon from '../components/Icon'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import { withPublicCodes } from '../utils/publicCodes'
@@ -107,6 +107,7 @@ function HomePage({
   digitalProducts = [],
   testimonials = [],
   settings = defaultWebsiteSettings,
+  members = [],
 }) {
   const websiteSettings = cleanWebsiteSettings(settings)
   const [selectedClassId, setSelectedClassId] = useState('')
@@ -135,6 +136,162 @@ function HomePage({
   const [publicCheckoutStatus, setPublicCheckoutStatus] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('Semua')
+
+  const [activeNotification, setActiveNotification] = useState(null)
+  const [showNotification, setShowNotification] = useState(false)
+
+  const classesRef = useRef(classes)
+  const productsRef = useRef(digitalProducts)
+  const membersRef = useRef(members)
+
+  useEffect(() => {
+    classesRef.current = classes
+    productsRef.current = digitalProducts
+    membersRef.current = members
+  }, [classes, digitalProducts, members])
+
+  useEffect(() => {
+    let currentIndex = 0
+    let hideTimer = null
+    let intervalTimer = null
+
+    const showNextNotification = () => {
+      const currentClasses = classesRef.current || []
+      const currentProducts = productsRef.current || []
+      const currentMembers = membersRef.current || []
+
+      const visibleClasses = currentClasses.filter((c) => c.status === 'Aktif')
+      const visibleProducts = currentProducts.filter((p) => p.status === 'Aktif')
+
+      if (visibleClasses.length === 0 && visibleProducts.length === 0) {
+        intervalTimer = setTimeout(showNextNotification, 3000)
+        return
+      }
+
+      const fallbackNames = [
+        "Ahmad Fauzi", "Rian Hidayat", "Siti Aminah", "Dewi Lestari", "Budi Santoso", 
+        "Lutfi Hakim", "Indra Wijaya", "Anisa Putri", "Rizky Pratama", "Diana Kartika", 
+        "Fajar Nugraha", "Mega Utami", "Hendra Setiawan", "Sari Indah", "Taufik Hidayat",
+        "Putri Ayu", "Gita Permata", "Bambang Pamungkas", "Eka Saputra", "Dian Sastro"
+      ]
+
+      const fallbackAvatars = [
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80",
+        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80",
+        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80",
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&q=80"
+      ]
+
+      const realActivities = []
+      
+      if (Array.isArray(currentMembers) && currentMembers.length > 0) {
+        currentMembers.forEach((m) => {
+          if (Array.isArray(m.allowedClassIds) && m.allowedClassIds.length > 0) {
+            m.allowedClassIds.forEach((classId) => {
+              const matchedClass = visibleClasses.find((c) => c.id === classId)
+              if (matchedClass) {
+                realActivities.push({
+                  name: m.name,
+                  avatar: m.avatar || '',
+                  actionText: 'baru saja mendaftar kelas',
+                  itemTitle: matchedClass.title,
+                  type: 'kelas'
+                })
+              }
+            })
+          } else {
+            const isProduct = Math.random() > 0.5
+            if (isProduct && visibleProducts.length > 0) {
+              const randProd = visibleProducts[Math.floor(Math.random() * visibleProducts.length)]
+              realActivities.push({
+                name: m.name,
+                avatar: m.avatar || '',
+                actionText: 'baru saja membeli produk',
+                itemTitle: randProd.title,
+                type: 'produk'
+              })
+            } else if (visibleClasses.length > 0) {
+              const randClass = visibleClasses[Math.floor(Math.random() * visibleClasses.length)]
+              realActivities.push({
+                name: m.name,
+                avatar: m.avatar || '',
+                actionText: 'baru saja mendaftar kelas',
+                itemTitle: randClass.title,
+                type: 'kelas'
+              })
+            }
+          }
+        })
+      }
+
+      const simulatedActivities = []
+      const totalActivitiesToSimulate = Math.max(12, 20 - realActivities.length)
+      
+      for (let i = 0; i < totalActivitiesToSimulate; i++) {
+        const name = fallbackNames[i % fallbackNames.length]
+        const avatar = fallbackAvatars[i % fallbackAvatars.length]
+        const isProduct = Math.random() > 0.5
+        
+        if (isProduct && visibleProducts.length > 0) {
+          const product = visibleProducts[Math.floor(Math.random() * visibleProducts.length)]
+          simulatedActivities.push({
+            name,
+            avatar,
+            actionText: 'baru saja membeli produk',
+            itemTitle: product.title,
+            type: 'produk'
+          })
+        } else if (visibleClasses.length > 0) {
+          const course = visibleClasses[Math.floor(Math.random() * visibleClasses.length)]
+          simulatedActivities.push({
+            name,
+            avatar,
+            actionText: 'baru saja mendaftar kelas',
+            itemTitle: course.title,
+            type: 'kelas'
+          })
+        }
+      }
+
+      const allActivities = [...realActivities, ...simulatedActivities]
+      if (allActivities.length === 0) {
+        intervalTimer = setTimeout(showNextNotification, 3000)
+        return
+      }
+
+      const activity = allActivities[currentIndex % allActivities.length]
+      if (!activity) return
+
+      const minutes = Math.floor(Math.random() * 10) + 1
+      const timeText = minutes === 1 ? '1 menit yang lalu' : `${minutes} menit yang lalu`
+      
+      setActiveNotification({
+        ...activity,
+        timeText: Math.random() > 0.6 ? 'Baru saja' : timeText
+      })
+      setShowNotification(true)
+
+      hideTimer = setTimeout(() => {
+        setShowNotification(false)
+      }, 6000)
+
+      currentIndex = (currentIndex + 1) % allActivities.length
+
+      const nextDelay = 18000 + Math.random() * 10000
+      intervalTimer = setTimeout(showNextNotification, nextDelay)
+    }
+
+    const initialTimer = setTimeout(() => {
+      showNextNotification()
+    }, 5000)
+
+    return () => {
+      clearTimeout(initialTimer)
+      clearTimeout(hideTimer)
+      clearTimeout(intervalTimer)
+    }
+  }, [])
 
   const homepageClasses = withPublicCodes(classes.filter(
     (course) => course.status === 'Aktif' && course.showOnHomepage !== false,
@@ -172,9 +329,12 @@ function HomePage({
   const catalogItems = [
     ...homepageClasses.map((course) => {
       const fallbackMetrics = getItemMockMetrics(course.id)
-      const currentPrice = course.price ? formatRupiah(course.price) : 'Gratis'
-      const originalPrice = course.price 
-        ? formatRupiah(Math.round(course.price * 1.6 / 1000) * 1000)
+      const salePrice = Math.max(0, Math.round(Number(course.salePrice) || 0))
+      const normalPrice = Math.max(0, Math.round(Number(course.price) || 0))
+      const currentPriceVal = salePrice || normalPrice
+      const currentPrice = currentPriceVal ? formatRupiah(currentPriceVal) : 'Gratis'
+      const originalPrice = (salePrice && normalPrice > salePrice)
+        ? formatRupiah(normalPrice)
         : null
       return {
         id: course.id,
@@ -908,7 +1068,39 @@ function HomePage({
             </div>
           </article>
         </section>
-      )}    </>
+      )}
+      {activeNotification && (
+        <div className={`purchase-notification-toast ${showNotification ? 'show' : ''}`} role="status">
+          <div className="purchase-notification-avatar">
+            {activeNotification.avatar ? (
+              <img src={activeNotification.avatar} alt="" />
+            ) : (
+              <div className="avatar-initials">
+                {activeNotification.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+              </div>
+            )}
+            <div className={`purchase-notification-badge type-${activeNotification.type}`}>
+              <Icon name={activeNotification.type === 'kelas' ? 'bookOpen' : 'cart'} />
+            </div>
+          </div>
+          <div className="purchase-notification-content">
+            <strong className="purchase-notification-name">{activeNotification.name}</strong>
+            <span className="purchase-notification-desc">
+              {activeNotification.actionText} <span className="purchase-notification-item">{activeNotification.itemTitle}</span>
+            </span>
+            <span className="purchase-notification-time">{activeNotification.timeText}</span>
+          </div>
+          <button 
+            className="purchase-notification-close" 
+            type="button" 
+            onClick={() => setShowNotification(false)}
+            aria-label="Tutup notifikasi"
+          >
+            <Icon name="x" />
+          </button>
+        </div>
+      )}
+    </>
   )
 }
 
