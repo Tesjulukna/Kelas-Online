@@ -114,15 +114,37 @@ function cleanText(value, maxLength = 80) {
     .slice(0, maxLength)
 }
 
+function sanitizeRichHtmlIframes(value) {
+  return String(value ?? '').replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, (iframe) => {
+    const srcMatch = iframe.match(/\ssrc=(["'])(.*?)\1/i)
+    const titleMatch = iframe.match(/\stitle=(["'])(.*?)\1/i)
+    const src = srcMatch?.[2] || ''
+
+    try {
+      const parsed = new URL(src)
+      const host = parsed.hostname.replace(/^www\./, '')
+
+      if (!['youtube.com', 'youtube-nocookie.com'].includes(host) || !parsed.pathname.startsWith('/embed/')) {
+        return ''
+      }
+
+      const title = cleanText(titleMatch?.[2] || 'Video YouTube', 120).replace(/"/g, '&quot;')
+      return `<iframe src="${parsed.href}" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`
+    } catch {
+      return ''
+    }
+  })
+}
+
 function cleanRichHtml(value, maxLength = 6000) {
-  return String(value ?? '')
+  return sanitizeRichHtmlIframes(value)
     .slice(0, maxLength)
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/\son\w+="[^"]*"/gi, '')
     .replace(/\son\w+='[^']*'/gi, '')
     .replace(/\shref=(["'])\s*javascript:[\s\S]*?\1/gi, '')
     .replace(/\ssrc=(["'])\s*javascript:[\s\S]*?\1/gi, '')
-    .replace(/<(?!\/?(p|br|strong|b|em|i|u|ul|ol|li|span|div|a|img|h2|h3|h4)\b)[^>]*>/gi, '')
+    .replace(/<(?!\/?(p|br|strong|b|em|i|u|ul|ol|li|span|div|a|img|iframe|h2|h3|h4)\b)[^>]*>/gi, '')
 }
 
 function cleanPromptText(value) {

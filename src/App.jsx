@@ -259,6 +259,7 @@ function cleanRichHtml(value, maxLength = 6000) {
     'DIV',
     'A',
     'IMG',
+    'IFRAME',
     'H2',
     'H3',
     'H4',
@@ -289,6 +290,24 @@ function cleanRichHtml(value, maxLength = 6000) {
       }
 
       if (node.tagName === 'IMG' && ['alt', 'loading'].includes(attribute.name)) {
+        return
+      }
+
+      if (node.tagName === 'IFRAME' && attribute.name === 'src') {
+        const src = node.getAttribute('src') || ''
+        try {
+          const parsed = new URL(src)
+          const host = parsed.hostname.replace(/^www\./, '')
+          if (!['youtube.com', 'youtube-nocookie.com'].includes(host) || !parsed.pathname.startsWith('/embed/')) {
+            node.replaceWith(document.createTextNode(''))
+          }
+        } catch {
+          node.replaceWith(document.createTextNode(''))
+        }
+        return
+      }
+
+      if (node.tagName === 'IFRAME' && ['title', 'allow', 'allowfullscreen'].includes(attribute.name)) {
         return
       }
 

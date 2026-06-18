@@ -401,6 +401,36 @@ function isYoutubeUrl(value) {
   }
 }
 
+function getYoutubeEmbedUrl(value) {
+  if (!value) {
+    return ''
+  }
+
+  try {
+    const url = new URL(value)
+    const host = url.hostname.replace(/^www\./, '')
+    let videoId = ''
+
+    if (host === 'youtu.be') {
+      videoId = url.pathname.split('/').filter(Boolean)[0] || ''
+    }
+
+    if (['youtube.com', 'm.youtube.com'].includes(host)) {
+      if (url.pathname.startsWith('/shorts/')) {
+        videoId = url.pathname.split('/').filter(Boolean)[1] || ''
+      } else if (url.pathname.startsWith('/embed/')) {
+        videoId = url.pathname.split('/').filter(Boolean)[1] || ''
+      } else {
+        videoId = url.searchParams.get('v') || ''
+      }
+    }
+
+    return videoId ? `https://www.youtube.com/embed/${encodeURIComponent(videoId)}` : ''
+  } catch {
+    return ''
+  }
+}
+
 function cleanEditorUrl(value) {
   try {
     const url = new URL(value)
@@ -1054,6 +1084,19 @@ function AdminPage({
     }
     const [prefix, suffix] = wrappers[tool] || ['', '']
 
+    if (tool === 'youtube') {
+      const url = window.prompt('Masukkan link YouTube atau Shorts')
+      const embedUrl = getYoutubeEmbedUrl(url)
+
+      if (!embedUrl) {
+        onNotify('Link video harus dari YouTube, YouTube Shorts, atau youtu.be.')
+        return
+      }
+
+      insertClassDescriptionHtml(`<iframe src="${embedUrl}" title="Video YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`)
+      return
+    }
+
     insertClassDescriptionHtml(`${prefix}${content}${suffix}`)
   }
 
@@ -1105,6 +1148,17 @@ function AdminPage({
         return
       }
       replacement = `<a href="${safeUrl}" target="_blank" rel="noreferrer">${fallback}</a>`
+    }
+    if (tool === 'youtube') {
+      const url = window.prompt('Masukkan link YouTube atau Shorts')
+      const embedUrl = getYoutubeEmbedUrl(url)
+
+      if (!embedUrl) {
+        onNotify('Link video harus dari YouTube, YouTube Shorts, atau youtu.be.')
+        return
+      }
+
+      replacement = `<iframe src="${embedUrl}" title="Video YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`
     }
 
     insertDigitalDescriptionHtml(replacement)
@@ -2812,6 +2866,9 @@ function AdminPage({
                         title="Tambah gambar"
                       >
                         <Icon name="image" />
+                      </button>
+                      <button type="button" onClick={() => applyDigitalDescriptionTool('youtube')} title="Tambah video YouTube">
+                        <Icon name="youtube" />
                       </button>
                       <button type="button" onClick={() => applyDigitalDescriptionTool('list')}><Icon name="menu" /></button>
                       <button type="button" onClick={() => applyDigitalDescriptionTool('link')}><Icon name="link" /></button>
@@ -4847,6 +4904,7 @@ function AdminPage({
                   <button type="button" onClick={() => applyClassDescriptionTool('align-left')} title="Rata kiri">L</button>
                   <button type="button" onClick={() => applyClassDescriptionTool('align-center')} title="Rata tengah">C</button>
                   <button type="button" onClick={() => applyClassDescriptionTool('align-justify')} title="Justify">J</button>
+                  <button type="button" onClick={() => applyClassDescriptionTool('youtube')} title="Tambah video YouTube"><Icon name="youtube" /></button>
                   <button type="button" onClick={() => applyClassDescriptionTool('list')}><Icon name="menu" /></button>
                   <button type="button" onClick={() => applyClassDescriptionTool('link')}><Icon name="link" /></button>
                 </span>

@@ -6863,6 +6863,16 @@ img {
   border-radius: 8px;
 }
 
+.public-rich-description iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 220px;
+  border: 0;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
 .public-detail-section {
   display: grid;
   gap: 14px;
