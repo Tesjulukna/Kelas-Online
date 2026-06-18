@@ -383,8 +383,13 @@ function HomePage({
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const replaceProductCheckoutWithDetail = (productId) => {
+  const navigateBackFromProductCheckout = (productId) => {
     const product = detailProducts.find((item) => item.id === productId || item.publicCode === productId)
+
+    if (window.history.state?.checkoutFromProductDetail && window.history.length > 1) {
+      window.history.back()
+      return
+    }
 
     setSelectedProductId(productId)
     setSelectedClassId('')
@@ -482,7 +487,7 @@ function HomePage({
     setSelectedProductId('')
     setIsPaymentPickerOpen(false)
     window.history.pushState(
-      { publicDetailFromApp: true },
+      { publicDetailFromApp: true, checkoutFromProductDetail: true },
       '',
       `/produk/${encodeURIComponent(product?.publicCode || productId)}/checkout`,
     )
@@ -701,7 +706,7 @@ function HomePage({
           paymentTotal={publicCheckoutTotal}
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
           status={publicCheckoutStatus}
-          onBack={() => replaceProductCheckoutWithDetail(checkoutProduct.id)}
+          onBack={() => navigateBackFromProductCheckout(checkoutProduct.id)}
           onChange={handlePublicCheckoutChange}
           onAnswerChange={handlePublicCheckoutAnswerChange}
           onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
