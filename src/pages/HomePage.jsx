@@ -73,6 +73,26 @@ function plainTextFromHtml(value) {
     .trim()
 }
 
+function formatActivityDate(value) {
+  const time = Date.parse(value || '')
+
+  if (!time) {
+    return 'Tanggal belum tersedia'
+  }
+
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(time))
+}
+
+function getActivityTime(value, prefix) {
+  const dateText = formatActivityDate(value)
+
+  return dateText === 'Tanggal belum tersedia' ? dateText : `${prefix} ${dateText}`
+}
+
 const publicWishlistKey = 'ibnucreative.public-wishlist.v1'
 
 function readPublicWishlist() {
@@ -121,6 +141,8 @@ function HomePage({
   testimonials = [],
   settings = defaultWebsiteSettings,
   members = [],
+  payments = [],
+  digitalProductAccess = [],
 }) {
   const websiteSettings = cleanWebsiteSettings(settings)
   const initialState = getInitialDetailState(initialDetail)
@@ -157,12 +179,16 @@ function HomePage({
   const classesRef = useRef(classes)
   const productsRef = useRef(digitalProducts)
   const membersRef = useRef(members)
+  const paymentsRef = useRef(payments)
+  const productAccessRef = useRef(digitalProductAccess)
 
   useEffect(() => {
     classesRef.current = classes
     productsRef.current = digitalProducts
     membersRef.current = members
-  }, [classes, digitalProducts, members])
+    paymentsRef.current = payments
+    productAccessRef.current = digitalProductAccess
+  }, [classes, digitalProducts, members, payments, digitalProductAccess])
 
   useEffect(() => {
     let currentIndex = 0
@@ -173,6 +199,8 @@ function HomePage({
       const currentClasses = classesRef.current || []
       const currentProducts = productsRef.current || []
       const currentMembers = membersRef.current || []
+      const currentPayments = paymentsRef.current || []
+      const currentProductAccess = productAccessRef.current || []
 
       const visibleClasses = currentClasses.filter((c) => c.status === 'Aktif')
       const visibleProducts = currentProducts.filter((p) => p.status === 'Aktif')
@@ -182,108 +210,114 @@ function HomePage({
         return
       }
 
-      const fallbackNames = [
-        "Ahmad Fauzi", "Rian Hidayat", "Siti Aminah", "Dewi Lestari", "Budi Santoso", 
-        "Lutfi Hakim", "Indra Wijaya", "Anisa Putri", "Rizky Pratama", "Diana Kartika", 
-        "Fajar Nugraha", "Mega Utami", "Hendra Setiawan", "Sari Indah", "Taufik Hidayat",
-        "Putri Ayu", "Gita Permata", "Bambang Pamungkas", "Eka Saputra", "Dian Sastro"
-      ]
-
-      const fallbackAvatars = [
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80",
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80",
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80",
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&q=80"
-      ]
-
+      const membersById = new Map(currentMembers.map((member) => [member.id, member]))
+      const membersByEmail = new Map(
+        currentMembers
+          .filter((member) => member.email)
+          .map((member) => [String(member.email).toLowerCase(), member]),
+      )
       const realActivities = []
-      
-      if (Array.isArray(currentMembers) && currentMembers.length > 0) {
-        currentMembers.forEach((m) => {
-          if (Array.isArray(m.allowedClassIds) && m.allowedClassIds.length > 0) {
-            m.allowedClassIds.forEach((classId) => {
-              const matchedClass = visibleClasses.find((c) => c.id === classId)
-              if (matchedClass) {
-                realActivities.push({
-                  name: m.name,
-                  avatar: m.avatar || '',
-                  actionText: 'baru saja mendaftar kelas',
-                  itemTitle: matchedClass.title,
-                  type: 'kelas'
-                })
-              }
-            })
-          } else {
-            const isProduct = Math.random() > 0.5
-            if (isProduct && visibleProducts.length > 0) {
-              const randProd = visibleProducts[Math.floor(Math.random() * visibleProducts.length)]
-              realActivities.push({
-                name: m.name,
-                avatar: m.avatar || '',
-                actionText: 'baru saja membeli produk',
-                itemTitle: randProd.title,
-                type: 'produk'
-              })
-            } else if (visibleClasses.length > 0) {
-              const randClass = visibleClasses[Math.floor(Math.random() * visibleClasses.length)]
-              realActivities.push({
-                name: m.name,
-                avatar: m.avatar || '',
-                actionText: 'baru saja mendaftar kelas',
-                itemTitle: randClass.title,
-                type: 'kelas'
-              })
-            }
-          }
+
+      currentPayments
+        .filter((payment) => {
+          const status = String(payment.status || '').toLowerCase()
+          return payment.accessGranted || ['paid', 'success', 'settlement', 'capture'].includes(status)
         })
-      }
+        .forEach((payment) => {
+          const member = membersById.get(payment.memberId) || membersByEmail.get(String(payment.buyerEmail || '').toLowerCase())
+          const isProduct = payment.itemType === 'digital_product' || Boolean(payment.productId)
+          const product = visibleProducts.find((item) => item.id === payment.productId)
+          const course = visibleClasses.find((item) => item.id === payment.classId)
+          const itemTitle = isProduct
+            ? payment.productTitle || product?.title
+            : payment.classTitle || course?.title
 
-      const simulatedActivities = []
-      const totalActivitiesToSimulate = Math.max(12, 20 - realActivities.length)
-      
-      for (let i = 0; i < totalActivitiesToSimulate; i++) {
-        const name = fallbackNames[i % fallbackNames.length]
-        const avatar = fallbackAvatars[i % fallbackAvatars.length]
-        const isProduct = Math.random() > 0.5
-        
-        if (isProduct && visibleProducts.length > 0) {
-          const product = visibleProducts[Math.floor(Math.random() * visibleProducts.length)]
-          simulatedActivities.push({
-            name,
-            avatar,
-            actionText: 'baru saja membeli produk',
-            itemTitle: product.title,
-            type: 'produk'
+          if (!itemTitle) {
+            return
+          }
+
+          const createdAt = payment.updatedAt || payment.createdAt
+          realActivities.push({
+            id: `payment:${payment.id}`,
+            name: member?.name || payment.buyerName || 'Pelanggan',
+            avatar: member?.avatar || '',
+            actionText: isProduct ? 'membeli produk digital' : 'mendaftar kelas',
+            itemTitle,
+            type: isProduct ? 'produk' : 'kelas',
+            createdAt,
+            timeText: getActivityTime(createdAt, isProduct ? 'Beli' : 'Daftar'),
           })
-        } else if (visibleClasses.length > 0) {
-          const course = visibleClasses[Math.floor(Math.random() * visibleClasses.length)]
-          simulatedActivities.push({
-            name,
-            avatar,
-            actionText: 'baru saja mendaftar kelas',
-            itemTitle: course.title,
-            type: 'kelas'
-          })
+        })
+
+      currentProductAccess.forEach((access) => {
+        const product = visibleProducts.find((item) => item.id === access.productId)
+        const member = membersById.get(access.memberId) || membersByEmail.get(String(access.buyerEmail || '').toLowerCase())
+        const itemTitle = access.productTitle || product?.title
+
+        if (!itemTitle) {
+          return
         }
-      }
 
-      const allActivities = [...realActivities, ...simulatedActivities]
+        realActivities.push({
+          id: `access:${access.id}`,
+          name: member?.name || access.buyerName || 'Pelanggan',
+          avatar: member?.avatar || '',
+          actionText: 'mengakses produk digital',
+          itemTitle,
+          type: 'produk',
+          createdAt: access.createdAt,
+          timeText: getActivityTime(access.createdAt, 'Akses'),
+        })
+      })
+
+      currentMembers.forEach((member) => {
+        if (!Array.isArray(member.allowedClassIds) || !member.allowedClassIds.length) {
+          return
+        }
+
+        member.allowedClassIds.forEach((classId) => {
+          const course = visibleClasses.find((item) => item.id === classId)
+          const isAlreadyFromPayment = realActivities.some(
+            (activity) => activity.type === 'kelas' && activity.itemTitle === course?.title && activity.name === member.name,
+          )
+
+          if (!course || isAlreadyFromPayment) {
+            return
+          }
+
+          realActivities.push({
+            id: `member-class:${member.id}:${classId}`,
+            name: member.name || 'Member',
+            avatar: member.avatar || '',
+            actionText: 'mengakses kelas',
+            itemTitle: course.title,
+            type: 'kelas',
+            createdAt: member.joinedAt,
+            timeText: getActivityTime(member.joinedAt, 'Daftar'),
+          })
+        })
+      })
+
+      const uniqueActivities = new Map()
+      realActivities.forEach((activity) => {
+        const key = activity.id || `${activity.type}:${activity.name}:${activity.itemTitle}:${activity.createdAt}`
+        if (!uniqueActivities.has(key)) {
+          uniqueActivities.set(key, activity)
+        }
+      })
+      const allActivities = [...uniqueActivities.values()]
+        .sort((first, second) => (Date.parse(second.createdAt || '') || 0) - (Date.parse(first.createdAt || '') || 0))
+        .slice(0, 30)
+
       if (allActivities.length === 0) {
-        intervalTimer = setTimeout(showNextNotification, 3000)
+        intervalTimer = setTimeout(showNextNotification, 12000)
         return
       }
 
       const activity = allActivities[currentIndex % allActivities.length]
       if (!activity) return
 
-      const minutes = Math.floor(Math.random() * 10) + 1
-      const timeText = minutes === 1 ? '1 menit yang lalu' : `${minutes} menit yang lalu`
-      
-      setActiveNotification({
-        ...activity,
-        timeText: Math.random() > 0.6 ? 'Baru saja' : timeText
-      })
+      setActiveNotification(activity)
       setShowNotification(true)
 
       hideTimer = setTimeout(() => {

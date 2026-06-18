@@ -2485,6 +2485,8 @@ function App() {
             testimonials={testimonials}
             settings={websiteSettings}
             members={members}
+            payments={payments}
+            digitalProductAccess={digitalProductAccess}
           />
         )}
         {page === 'login' && (
