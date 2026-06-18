@@ -1615,8 +1615,8 @@ export async function fetchPayments() {
 export async function fetchPublicActivities() {
   const [paymentsData, accessRows, memberRows, classRows, productRows] = await Promise.all([
     fetchPayments().catch(() => ({ payments: [] })),
-    rest('digital_product_access?select=*&order=created_at.desc&limit=100').catch(() => []),
-    rest('accounts?select=id,name,email,avatar,allowed_class_ids,joined_at,created_at,updated_at,status,role&role=eq.member&status=eq.Aktif&limit=300').catch(() => []),
+    rest('digital_product_access?select=*&order=created_at.desc&limit=1000').catch(() => []),
+    rest('accounts?select=id,name,email,avatar,allowed_class_ids,joined_at,created_at,updated_at,status,role&role=eq.member&status=eq.Aktif&limit=1000').catch(() => []),
     rest('classes?select=id,title,lynk_product_key,tripay_product_key,status&order=updated_at.desc,id.asc').catch(() => []),
     rest('digital_products?select=id,title,lynk_product_key,tripay_product_key,status&order=updated_at.desc,id.asc').catch(() => []),
   ])
@@ -1726,16 +1726,53 @@ export async function fetchPublicActivities() {
             return
           }
 
+          const directClassTitle = !isProduct && payment.classId
+            ? classTitleByKey.get(normalizeLookupKey(payment.classId))
+            : ''
+          const directProductTitle = isProduct && payment.productId
+            ? productTitleByKey.get(normalizeLookupKey(payment.productId))
+            : ''
+
           pushActivity({
             id: `payment:${payment.id}`,
             name: member?.name || payment.buyerName,
             avatar: member?.avatar || '',
             actionText: isProduct ? 'membeli produk digital' : 'mendaftar kelas',
-            itemTitle: resolvePaymentTitle(payment, isProduct),
+            itemTitle: directProductTitle || directClassTitle || resolvePaymentTitle(payment, isProduct),
             type: isProduct ? 'produk' : 'kelas',
             createdAt,
           })
     })
+
+  ;(memberRows || []).forEach((member) => {
+    const memberId = cleanText(member.id || '', 120)
+    const allowedClassIds = parseJson(member.allowed_class_ids, null)
+
+    if (!memberId || !Array.isArray(allowedClassIds) || !allowedClassIds.length) {
+      return
+    }
+
+    allowedClassIds
+      .map((classId) => cleanText(classId, 120))
+      .filter(Boolean)
+      .forEach((classId) => {
+        const title = classTitleByKey.get(normalizeLookupKey(classId))
+
+        if (!title) {
+          return
+        }
+
+        pushActivity({
+          id: `member-class:${memberId}:${classId}`,
+          name: member.name,
+          avatar: member.avatar || '',
+          actionText: 'mengakses kelas',
+          itemTitle: title,
+          type: 'kelas',
+          createdAt: member.joined_at || member.created_at || member.updated_at || '',
+        })
+      })
+  })
 
   ;(accessRows || []).forEach((row) => {
     const access = mapDigitalProductAccess(row)
@@ -1765,11 +1802,21 @@ export async function fetchPublicActivities() {
     })
   })
 
+  const uniqueActivities = new Map()
+  activities
+    .filter((activity) => activity.name && activity.itemTitle)
+    .forEach((activity) => {
+      const key = activity.id || `${activity.type}:${activity.name}:${activity.itemTitle}:${activity.createdAt}`
+
+      if (!uniqueActivities.has(key)) {
+        uniqueActivities.set(key, activity)
+      }
+    })
+
   return {
-    activities: activities
-      .filter((activity) => activity.name && activity.itemTitle)
+    activities: [...uniqueActivities.values()]
       .sort((first, second) => (Date.parse(second.createdAt || '') || 0) - (Date.parse(first.createdAt || '') || 0))
-      .slice(0, 30)
+      .slice(0, 300)
       .sort(() => Math.random() - 0.5),
     updatedAt: new Date().toISOString(),
   }

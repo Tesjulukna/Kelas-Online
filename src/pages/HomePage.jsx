@@ -282,8 +282,8 @@ function HomePage({
           const product = visibleProducts.find((item) => item.id === payment.productId)
           const course = visibleClasses.find((item) => item.id === payment.classId)
           const itemTitle = isProduct
-            ? payment.productTitle || product?.title
-            : payment.classTitle || course?.title
+            ? product?.title || payment.productTitle
+            : course?.title || payment.classTitle
 
           if (!itemTitle) {
             return
@@ -418,7 +418,7 @@ function HomePage({
       allActivities = shuffleItems(
         allActivities
           .sort((first, second) => (Date.parse(second.createdAt || '') || 0) - (Date.parse(first.createdAt || '') || 0))
-          .slice(0, 30),
+          .slice(0, 300),
       )
 
       if (allActivities.length === 0) {

@@ -312,7 +312,7 @@ function cleanHomepageNotifications(value = {}) {
     ? value.selectedActivityIds
         .map((id) => cleanText(id, 240))
         .filter(Boolean)
-        .slice(0, 100)
+        .slice(0, 300)
     : []
 
   return {
