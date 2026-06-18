@@ -1606,6 +1606,80 @@ export async function fetchPayments() {
   }
 }
 
+export async function fetchPublicActivities() {
+  const [paymentsData, accessRows, memberRows] = await Promise.all([
+    fetchPayments().catch(() => ({ payments: [] })),
+    rest('digital_product_access?select=*&order=created_at.desc&limit=100').catch(() => []),
+    rest('accounts?select=id,name,email,avatar,allowed_class_ids,joined_at,created_at,updated_at,status,role&role=eq.member&status=eq.Aktif&limit=300').catch(() => []),
+  ])
+  const membersById = new Map((memberRows || []).map((member) => [member.id, member]))
+  const membersByEmail = new Map(
+    (memberRows || [])
+      .filter((member) => member.email)
+      .map((member) => [String(member.email).toLowerCase(), member]),
+  )
+  const activities = []
+
+  ;(paymentsData.payments || [])
+    .filter((payment) => {
+      const status = String(payment.status || '').toLowerCase()
+      return payment.accessGranted || ['paid', 'processed', 'success', 'settlement', 'capture'].includes(status)
+    })
+    .forEach((payment) => {
+      const isProduct = payment.itemType === 'digital_product' || Boolean(payment.productId)
+      const member = membersById.get(payment.memberId) || membersByEmail.get(String(payment.buyerEmail || '').toLowerCase())
+      const itemTitle = isProduct ? payment.productTitle || payment.classTitle : payment.classTitle
+      const createdAt = payment.updatedAt || payment.createdAt
+
+      if (!itemTitle) {
+        return
+      }
+
+      activities.push({
+        id: cleanText(`payment:${payment.id}`, 240),
+        name: cleanText(member?.name || payment.buyerName || 'Pelanggan', 160),
+        avatar: cleanUrl(member?.avatar || ''),
+        actionText: isProduct ? 'membeli produk digital' : 'mendaftar kelas',
+        itemTitle: cleanText(itemTitle, 180),
+        type: isProduct ? 'produk' : 'kelas',
+        createdAt: cleanText(createdAt || '', 60),
+      })
+    })
+
+  ;(accessRows || []).forEach((row) => {
+    const access = mapDigitalProductAccess(row)
+    const member = membersById.get(access.memberId) || membersByEmail.get(String(access.buyerEmail || '').toLowerCase())
+    const isDuplicate = activities.some(
+      (activity) =>
+        activity.type === 'produk' &&
+        activity.itemTitle === access.productTitle &&
+        activity.createdAt === access.createdAt,
+    )
+
+    if (!access.productTitle || isDuplicate) {
+      return
+    }
+
+    activities.push({
+      id: cleanText(`access:${access.id}`, 240),
+      name: cleanText(member?.name || access.buyerName || 'Pelanggan', 160),
+      avatar: cleanUrl(member?.avatar || ''),
+      actionText: 'mengakses produk digital',
+      itemTitle: cleanText(access.productTitle, 180),
+      type: 'produk',
+      createdAt: cleanText(access.createdAt || '', 60),
+    })
+  })
+
+  return {
+    activities: activities
+      .filter((activity) => activity.name && activity.itemTitle)
+      .sort((first, second) => (Date.parse(second.createdAt || '') || 0) - (Date.parse(first.createdAt || '') || 0))
+      .slice(0, 30),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
 async function expireTripayOrderIfNeeded(row) {
   const payload = parseOrderPayload(row.payload)
   const status = tripayOrderStatus(row, payload)

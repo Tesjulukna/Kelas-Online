@@ -17,6 +17,7 @@ import {
   fetchMembers,
   fetchMemberPayments,
   fetchPayments,
+  fetchPublicActivities,
   fetchPublicDigitalProductAccess,
   fetchTripayPaymentMethods,
   fetchSubmissions,
@@ -378,6 +379,16 @@ async function routeRequest(request, response) {
     }
 
     sendJson(response, 200, await fetchPublicDigitalProductAccess(request))
+    return
+  }
+
+  if (route === 'public-activity') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+      return
+    }
+
+    sendJson(response, 200, await fetchPublicActivities())
     return
   }
 

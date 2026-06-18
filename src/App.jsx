@@ -31,6 +31,7 @@ const tripayPaymentMethodsApiPath = '/api/tripay-payment-methods'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
 const publicProductCheckoutApiPath = '/api/public-product-checkout'
 const publicProductAccessApiPath = '/api/public-product-access'
+const publicActivityApiPath = '/api/public-activity'
 const loginApiPath = '/api/login'
 const googleAuthUrlApiPath = '/api/google-auth-url'
 const googleLoginApiPath = '/api/google-login'
@@ -1007,6 +1008,24 @@ function cleanPayments(value) {
     }))
 }
 
+function cleanPublicActivities(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((item) => item?.id && item?.itemTitle)
+    .map((item) => ({
+      id: cleanText(item.id),
+      name: cleanText(item.name || 'Pelanggan'),
+      avatar: cleanAvatar(item.avatar || ''),
+      actionText: cleanLongText(item.actionText || '', 180),
+      itemTitle: cleanLongText(item.itemTitle || '', 180),
+      type: cleanText(item.type || 'kelas'),
+      createdAt: cleanText(item.createdAt || ''),
+    }))
+}
+
 function readClasses() {
   if (typeof window === 'undefined') {
     return seedClasses()
@@ -1213,6 +1232,12 @@ async function fetchStoredPayments(currentSession) {
   return cleanPayments(data.payments)
 }
 
+async function fetchPublicActivities() {
+  const data = await requestJson(publicActivityApiPath)
+
+  return cleanPublicActivities(data.activities)
+}
+
 function App() {
   const [currentPath, setCurrentPath] = useState(() =>
     typeof window === 'undefined' ? '/' : `${window.location.pathname}${window.location.search}${window.location.hash}`,
@@ -1240,6 +1265,7 @@ function App() {
   const [submissions, setSubmissions] = useState([])
   const [testimonials, setTestimonials] = useState([])
   const [payments, setPayments] = useState([])
+  const [publicActivities, setPublicActivities] = useState([])
   const [isClassesLoaded, setIsClassesLoaded] = useState(false)
   const [isWebsiteSettingsLoaded, setIsWebsiteSettingsLoaded] = useState(false)
   const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(false)
@@ -1839,8 +1865,9 @@ function App() {
     Promise.allSettled([
       fetchStoredDigitalProducts(null),
       fetchStoredMembers(),
+      fetchPublicActivities(),
     ])
-      .then(([productResult, memberResult]) => {
+      .then(([productResult, memberResult, publicActivityResult]) => {
         if (!isCurrent) {
           return
         }
@@ -1852,6 +1879,10 @@ function App() {
 
         if (memberResult.status === 'fulfilled') {
           setMembers(memberResult.value)
+        }
+
+        if (publicActivityResult.status === 'fulfilled') {
+          setPublicActivities(publicActivityResult.value)
         }
       })
       .catch(() => {
@@ -2497,6 +2528,7 @@ function App() {
             members={members}
             payments={payments}
             digitalProductAccess={digitalProductAccess}
+            publicActivities={publicActivities}
           />
         )}
         {page === 'login' && (

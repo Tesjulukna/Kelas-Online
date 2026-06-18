@@ -108,6 +108,11 @@ function formatIndonesianDate(value) {
   }
 }
 
+function getActivityTime(value, prefix) {
+  const dateText = formatIndonesianDate(value)
+
+  return dateText === 'Tanggal belum tersedia' ? dateText : `${prefix} ${dateText}`
+}
 
 const publicWishlistKey = 'ibnucreative.public-wishlist.v1'
 
@@ -159,6 +164,7 @@ function HomePage({
   members = [],
   payments = [],
   digitalProductAccess = [],
+  publicActivities = [],
 }) {
   const websiteSettings = cleanWebsiteSettings(settings)
   const initialState = getInitialDetailState(initialDetail)
@@ -197,6 +203,7 @@ function HomePage({
   const membersRef = useRef(members)
   const paymentsRef = useRef(payments)
   const productAccessRef = useRef(digitalProductAccess)
+  const publicActivitiesRef = useRef(publicActivities)
 
   useEffect(() => {
     classesRef.current = classes
@@ -204,7 +211,8 @@ function HomePage({
     membersRef.current = members
     paymentsRef.current = payments
     productAccessRef.current = digitalProductAccess
-  }, [classes, digitalProducts, members, payments, digitalProductAccess])
+    publicActivitiesRef.current = publicActivities
+  }, [classes, digitalProducts, members, payments, digitalProductAccess, publicActivities])
 
   useEffect(() => {
     let currentIndex = 0
@@ -224,11 +232,12 @@ function HomePage({
       const currentMembers = membersRef.current || []
       const currentPayments = paymentsRef.current || []
       const currentProductAccess = productAccessRef.current || []
+      const currentPublicActivities = publicActivitiesRef.current || []
 
       const visibleClasses = currentClasses.filter((c) => c.status === 'Aktif')
       const visibleProducts = currentProducts.filter((p) => p.status === 'Aktif')
 
-      if (visibleClasses.length === 0 && visibleProducts.length === 0) {
+      if (visibleClasses.length === 0 && visibleProducts.length === 0 && currentPublicActivities.length === 0) {
         intervalTimer = setTimeout(showNextNotification, 3000)
         return
       }
@@ -324,6 +333,17 @@ function HomePage({
       })
 
       const uniqueActivities = new Map()
+      currentPublicActivities.forEach((activity) => {
+        uniqueActivities.set(activity.id, {
+          ...activity,
+          timeText: getActivityTime(
+            activity.createdAt,
+            activity.type === 'produk'
+              ? activity.actionText.includes('akses') ? 'Akses' : 'Beli'
+              : 'Daftar',
+          ),
+        })
+      })
       realActivities.forEach((activity) => {
         const key = activity.id || `${activity.type}:${activity.name}:${activity.itemTitle}:${activity.createdAt}`
         if (!uniqueActivities.has(key)) {
@@ -401,7 +421,7 @@ function HomePage({
       clearTimeout(hideTimer)
       clearTimeout(intervalTimer)
     }
-  }, [classes.length, digitalProducts.length, members.length, payments.length, digitalProductAccess.length])
+  }, [classes.length, digitalProducts.length, members.length, payments.length, digitalProductAccess.length, publicActivities.length])
 
   const homepageClasses = withPublicCodes(classes.filter(
     (course) => course.status === 'Aktif' && course.showOnHomepage !== false,
