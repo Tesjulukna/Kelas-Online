@@ -11419,6 +11419,17 @@ img {
   color: #2563eb !important;
 }
 
+@media (min-width: 921px) {
+  .public-detail-hero {
+    align-items: start !important;
+  }
+
+  .public-detail-image {
+    position: sticky !important;
+    top: 104px !important;
+  }
+}
+
 .public-detail-copy {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;

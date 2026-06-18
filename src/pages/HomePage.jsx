@@ -384,6 +384,22 @@ function HomePage({
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const replaceProductCheckoutWithDetail = (productId) => {
+    const product = detailProducts.find((item) => item.id === productId || item.publicCode === productId)
+
+    setSelectedProductId(productId)
+    setSelectedClassId('')
+    setCheckoutProductId('')
+    setIsPaymentPickerOpen(false)
+    window.history.replaceState(
+      { publicDetailFromApp: true },
+      '',
+      `/produk/${encodeURIComponent(product?.publicCode || productId)}`,
+    )
+    notifyRouteChange()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const closePublicDetail = () => {
     if (window.history.state?.publicDetailFromApp && window.history.length > 1) {
       window.history.back()
@@ -686,7 +702,7 @@ function HomePage({
           paymentTotal={publicCheckoutTotal}
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
           status={publicCheckoutStatus}
-          onBack={() => openProductDetail(checkoutProduct.id)}
+          onBack={() => replaceProductCheckoutWithDetail(checkoutProduct.id)}
           onChange={handlePublicCheckoutChange}
           onAnswerChange={handlePublicCheckoutAnswerChange}
           onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
