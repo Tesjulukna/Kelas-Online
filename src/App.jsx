@@ -600,7 +600,10 @@ function seedClasses() {
   return adminClassSeed.map((item, index) => ({
     ...item,
     id: `admin-class-${index + 1}`,
+    description: item.description ?? '',
     thumbnail: item.thumbnail ?? '',
+    displayStudents: item.displayStudents ?? '',
+    rating: item.rating ?? '',
     mentor: item.mentor ?? 'Ibnu Creative',
     progress: item.progress ?? [72, 46, 88][index] ?? 35,
     next: item.next ?? 'Lanjutkan modul berikutnya',
@@ -626,7 +629,16 @@ function cleanClasses(value) {
       return {
         id: classId,
         title: cleanText(item.title),
+        description: cleanRichHtml(item.description || ''),
         students: Math.max(0, Number(item.students) || 0),
+        displayStudents:
+          item.displayStudents === '' || item.displayStudents === null || item.displayStudents === undefined
+            ? ''
+            : Math.max(0, Math.round(Number(item.displayStudents) || 0)),
+        rating:
+          item.rating === '' || item.rating === null || item.rating === undefined
+            ? ''
+            : Math.min(5, Math.max(0, Number(item.rating) || 0)),
         status: cleanText(item.status || 'Draft'),
         revenue: cleanText(item.revenue || 'Rp 0'),
         price: Math.max(0, Math.round(Number(item.price) || 0)),
@@ -658,6 +670,14 @@ function cleanDigitalProducts(value) {
       title: cleanLongText(item.title, 160),
       description: cleanRichHtml(item.description || ''),
       price: Math.max(0, Math.round(Number(item.price) || 0)),
+      displaySales:
+        item.displaySales === '' || item.displaySales === null || item.displaySales === undefined
+          ? ''
+          : Math.max(0, Math.round(Number(item.displaySales) || 0)),
+      rating:
+        item.rating === '' || item.rating === null || item.rating === undefined
+          ? ''
+          : Math.min(5, Math.max(0, Number(item.rating) || 0)),
       status: cleanText(item.status || 'Draft'),
       thumbnail: cleanAvatar(item.thumbnail || ''),
       addVideo: item.addVideo === true,

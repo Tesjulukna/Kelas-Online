@@ -258,7 +258,10 @@ function createEmptyClassForm() {
   return {
     id: `admin-class-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     title: '',
+    description: '',
     students: 0,
+    displayStudents: '',
+    rating: '',
     status: 'Aktif',
     price: '0',
     lynkProductKey: '',
@@ -295,6 +298,8 @@ function createEmptyDigitalProductForm() {
     title: '',
     description: '',
     price: '0',
+    displaySales: '',
+    rating: '',
     status: 'Aktif',
     thumbnail: '',
     addVideo: false,
@@ -1016,6 +1021,42 @@ function AdminPage({
     }))
   }
 
+  const insertClassDescriptionHtml = (html) => {
+    const textarea = document.querySelector('[data-class-description-editor="true"]')
+    const description = classForm.description || ''
+    const start = textarea?.selectionStart ?? description.length
+    const end = textarea?.selectionEnd ?? description.length
+    const nextDescription = `${description.slice(0, start)}${html}${description.slice(end)}`
+
+    setClassForm((current) => ({ ...current, description: nextDescription }))
+    window.setTimeout(() => {
+      textarea?.focus()
+      textarea?.setSelectionRange(start + html.length, start + html.length)
+    }, 0)
+  }
+
+  const applyClassDescriptionTool = (tool) => {
+    const textarea = document.querySelector('[data-class-description-editor="true"]')
+    const description = classForm.description || ''
+    const start = textarea?.selectionStart ?? description.length
+    const end = textarea?.selectionEnd ?? description.length
+    const selected = description.slice(start, end)
+    const content = selected || 'Teks'
+    const wrappers = {
+      bold: [`<strong>`, `</strong>`],
+      underline: [`<u>`, `</u>`],
+      heading: [`<h3>`, `</h3>`],
+      'align-left': [`<p style="text-align:left">`, `</p>`],
+      'align-center': [`<p style="text-align:center">`, `</p>`],
+      'align-justify': [`<p style="text-align:justify">`, `</p>`],
+      list: [`<ul><li>`, `</li></ul>`],
+      link: [`<a href="https://">`, `</a>`],
+    }
+    const [prefix, suffix] = wrappers[tool] || ['', '']
+
+    insertClassDescriptionHtml(`${prefix}${content}${suffix}`)
+  }
+
   const insertDigitalDescriptionHtml = (html) => {
     const textarea = document.querySelector('[data-digital-description-editor="true"]')
     const description = digitalProductForm.description || ''
@@ -1163,6 +1204,14 @@ function AdminPage({
         `digital-product-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       title: digitalProductForm.title.trim(),
       price: Math.max(0, Math.round(Number(digitalProductForm.price) || 0)),
+      displaySales:
+        digitalProductForm.displaySales === ''
+          ? ''
+          : Math.max(0, Math.round(Number(digitalProductForm.displaySales) || 0)),
+      rating:
+        digitalProductForm.rating === ''
+          ? ''
+          : Math.min(5, Math.max(0, Number(digitalProductForm.rating) || 0)),
       salePrice: Math.max(0, Math.round(Number(digitalProductForm.salePrice) || 0)),
       itemQuantity: Math.max(0, Math.round(Number(digitalProductForm.itemQuantity) || 0)),
       reviews: (digitalProductForm.reviews || [])
@@ -1218,6 +1267,8 @@ function AdminPage({
       title: product.title,
       description: product.description || '',
       price: product.price || '0',
+      displaySales: product.displaySales ?? '',
+      rating: product.rating ?? '',
       status: product.status || 'Aktif',
       thumbnail: product.thumbnail || '',
       addVideo: product.addVideo === true,
@@ -1328,6 +1379,8 @@ function AdminPage({
       [name]:
         type === 'checkbox'
           ? checked
+          : ['displayStudents', 'rating'].includes(name)
+            ? value
           : name === 'students' || name === 'progress'
           ? Number(value)
           : name === 'price'
@@ -2009,7 +2062,16 @@ function AdminPage({
     const nextClass = {
       id: editingClassId ?? classForm.id,
       title: classForm.title.trim(),
+      description: classForm.description || '',
       students: existingClass?.students ?? 0,
+      displayStudents:
+        classForm.displayStudents === ''
+          ? ''
+          : Math.max(0, Math.round(Number(classForm.displayStudents) || 0)),
+      rating:
+        classForm.rating === ''
+          ? ''
+          : Math.min(5, Math.max(0, Number(classForm.rating) || 0)),
       status: classForm.status,
       price: Math.max(0, Number(classForm.price) || 0),
       lynkProductKey: classForm.lynkProductKey.trim(),
@@ -2054,7 +2116,10 @@ function AdminPage({
     setClassForm({
       id: item.id,
       title: item.title,
+      description: item.description ?? '',
       students: item.students,
+      displayStudents: item.displayStudents ?? '',
+      rating: item.rating ?? '',
       status: item.status,
       price: parseRupiahValue(item.price),
       lynkProductKey: item.lynkProductKey ?? '',
@@ -2704,6 +2769,33 @@ function AdminPage({
                       required
                     />
                   </label>
+
+                  <div className="digital-metric-grid">
+                    <label>
+                      Produk terjual tampilan
+                      <input
+                        name="displaySales"
+                        type="number"
+                        min="0"
+                        value={digitalProductForm.displaySales}
+                        onChange={handleDigitalProductFormChange}
+                        placeholder="Kosong = jumlah asli"
+                      />
+                    </label>
+                    <label>
+                      Rating tampilan
+                      <input
+                        name="rating"
+                        type="number"
+                        min="0"
+                        max="5"
+                        step="0.1"
+                        value={digitalProductForm.rating}
+                        onChange={handleDigitalProductFormChange}
+                        placeholder="Kosong = otomatis"
+                      />
+                    </label>
+                  </div>
 
                   <label>
                     Description
@@ -4747,6 +4839,28 @@ function AdminPage({
                 />
               </label>
               <label>
+                Deskripsi kelas
+                <span className="digital-rich-toolbar">
+                  <button type="button" onClick={() => applyClassDescriptionTool('bold')}>B</button>
+                  <button type="button" onClick={() => applyClassDescriptionTool('underline')}>U</button>
+                  <button type="button" onClick={() => applyClassDescriptionTool('heading')}>H</button>
+                  <button type="button" onClick={() => applyClassDescriptionTool('align-left')} title="Rata kiri">L</button>
+                  <button type="button" onClick={() => applyClassDescriptionTool('align-center')} title="Rata tengah">C</button>
+                  <button type="button" onClick={() => applyClassDescriptionTool('align-justify')} title="Justify">J</button>
+                  <button type="button" onClick={() => applyClassDescriptionTool('list')}><Icon name="menu" /></button>
+                  <button type="button" onClick={() => applyClassDescriptionTool('link')}><Icon name="link" /></button>
+                </span>
+                <textarea
+                  className="digital-description-editor"
+                  data-class-description-editor="true"
+                  name="description"
+                  value={classForm.description}
+                  onChange={handleClassFormChange}
+                  placeholder="Jelaskan manfaat, hasil belajar, bonus, dan siapa yang cocok mengikuti kelas ini."
+                  rows={7}
+                />
+              </label>
+              <label>
                 Status
                 <select
                   name="status"
@@ -4776,6 +4890,32 @@ function AdminPage({
                   : 'Kosong atau 0 = kelas gratis'}
                 </span>
               </label>
+              <div className="digital-metric-grid">
+                <label>
+                  Jumlah peserta tampilan
+                  <input
+                    name="displayStudents"
+                    type="number"
+                    min="0"
+                    value={classForm.displayStudents}
+                    onChange={handleClassFormChange}
+                    placeholder="Kosong = jumlah asli"
+                  />
+                </label>
+                <label>
+                  Rating tampilan
+                  <input
+                    name="rating"
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={classForm.rating}
+                    onChange={handleClassFormChange}
+                    placeholder="Kosong = otomatis"
+                  />
+                </label>
+              </div>
               <label className="digital-toggle-row">
                 <span>Tampilkan di homepage</span>
                 <input

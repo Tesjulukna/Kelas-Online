@@ -681,7 +681,10 @@ function mapClass(row, materials) {
   return {
     id: row.id,
     title: row.title,
+    description: row.description || '',
     students: Number(row.students) || 0,
+    displayStudents: row.display_students ?? '',
+    rating: row.rating ?? '',
     status: row.status,
     revenue: row.revenue,
     price: Number(row.price) || 0,
@@ -734,6 +737,8 @@ function mapDigitalProduct(row) {
     title: row.title,
     description: row.description || '',
     price: Number(row.price) || 0,
+    displaySales: row.display_sales ?? '',
+    rating: row.rating ?? '',
     status: row.status || 'Draft',
     thumbnail: row.thumbnail || '',
     addVideo: Boolean(row.add_video),
@@ -1079,7 +1084,16 @@ function cleanClassesForDb(value) {
         classRow: {
           id: classId,
           title: cleanText(item.title || `Kelas ${classIndex + 1}`, 160),
+          description: cleanRichHtml(item.description || '', 6000),
           students: cleanNumber(item.students, 0, 1000000),
+          display_students:
+            item.displayStudents === '' || item.displayStudents === null || item.displayStudents === undefined
+              ? null
+              : cleanNumber(item.displayStudents, 0, 1000000),
+          rating:
+            item.rating === '' || item.rating === null || item.rating === undefined
+              ? null
+              : Math.min(5, Math.max(0, Number(item.rating) || 0)),
           status: cleanText(item.status || 'Aktif', 40),
           revenue: cleanText(item.revenue || 'Rp 0', 80),
           price: cleanNumber(item.price, 0, 1000000000),
@@ -1174,6 +1188,14 @@ function cleanDigitalProductsForDb(value) {
       title: cleanText(item.title || `Produk Digital ${index + 1}`, 160),
       description: cleanRichHtml(item.description || '', 6000),
       price: cleanNumber(item.price, 0, 1000000000),
+      display_sales:
+        item.displaySales === '' || item.displaySales === null || item.displaySales === undefined
+          ? null
+          : cleanNumber(item.displaySales, 0, 1000000),
+      rating:
+        item.rating === '' || item.rating === null || item.rating === undefined
+          ? null
+          : Math.min(5, Math.max(0, Number(item.rating) || 0)),
       status: cleanText(item.status || 'Draft', 40),
       thumbnail: cleanUrl(item.thumbnail || ''),
       add_video: Boolean(item.addVideo),
@@ -1258,7 +1280,7 @@ export async function replaceClasses(classes) {
       : assetRows
 
   try {
-    await rest('classes?select=show_on_homepage,show_on_member,highlighted&limit=1')
+    await rest('classes?select=description,display_students,rating,show_on_homepage,show_on_member,highlighted&limit=1')
   } catch {
     throw new ApiError(
       500,
@@ -1311,6 +1333,8 @@ export async function replaceDigitalProducts(request, products) {
       })
     } catch (error) {
       if (
+        String(error?.message || '').includes('display_sales') ||
+        String(error?.message || '').includes('rating') ||
         String(error?.message || '').includes('show_on_homepage') ||
         String(error?.message || '').includes('show_on_member') ||
         String(error?.message || '').includes('highlighted')
@@ -3373,7 +3397,7 @@ export async function renderPublicDetailPage(request, response, { type, code }) 
   const cleanCode = cleanText(code || '', 20)
   const publicPath = `/${itemType}/${encodeURIComponent(cleanCode)}`
   const rows = itemType === 'kelas'
-    ? await rest(`classes?select=id,title,mentor,lessons,price,status,thumbnail&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
+    ? await rest(`classes?select=id,title,description,mentor,lessons,price,status,thumbnail&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
     : await rest(`digital_products?select=id,title,description,price,sale_price,status,thumbnail,file_name,platform_type&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
   const item = withPublicCodes(rows || []).find((row) => row.public_code === cleanCode || row.id === cleanCode)
 
@@ -3394,7 +3418,7 @@ export async function renderPublicDetailPage(request, response, { type, code }) 
     : cleanNumber(item.sale_price, 0, 1000000000) || cleanNumber(item.price, 0, 1000000000)
   const priceText = amount ? `Harga ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount)}.` : 'Gratis.'
   const description = itemType === 'kelas'
-    ? `${item.mentor || 'Mentor IbnuCreative'} membimbing kelas ini. ${priceText}`
+    ? `${cleanText(String(item.description || '').replace(/<[^>]*>/g, ' '), 180) || `${item.mentor || 'Mentor IbnuCreative'} membimbing kelas ini`}. ${priceText}`
     : `${item.description || item.file_name || item.platform_type || 'Produk digital IbnuCreative'}. ${priceText}`
   const html = injectHeadMeta(await readAppHtml(), {
     title: cleanText(item.title || (itemType === 'kelas' ? 'Detail kelas' : 'Detail produk'), 160),

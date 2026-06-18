@@ -30,7 +30,10 @@ create table if not exists public.accounts (
 create table if not exists public.classes (
   id text primary key,
   title text not null,
+  description text not null default '',
   students integer not null default 0,
+  display_students integer,
+  rating numeric(2,1),
   status text not null default 'Aktif',
   revenue text not null default 'Rp 0',
   price integer not null default 0,
@@ -54,6 +57,8 @@ create table if not exists public.digital_products (
   title text not null,
   description text not null default '',
   price integer not null default 0,
+  display_sales integer,
+  rating numeric(2,1),
   status text not null default 'Draft',
   thumbnail text not null default '',
   add_video boolean not null default false,
@@ -104,6 +109,8 @@ create table if not exists public.digital_product_access (
 );
 
 alter table public.digital_products add column if not exists add_video boolean not null default false;
+alter table public.digital_products add column if not exists display_sales integer;
+alter table public.digital_products add column if not exists rating numeric(2,1);
 alter table public.digital_products add column if not exists video_url text not null default '';
 alter table public.digital_products add column if not exists platform_type text not null default 'upload';
 alter table public.digital_products add column if not exists pay_what_you_want boolean not null default false;
@@ -319,6 +326,9 @@ create index if not exists digital_product_access_email_index on public.digital_
 create index if not exists digital_product_access_product_index on public.digital_product_access(product_id);
 
 alter table public.classes add column if not exists price integer not null default 0;
+alter table public.classes add column if not exists description text not null default '';
+alter table public.classes add column if not exists display_students integer;
+alter table public.classes add column if not exists rating numeric(2,1);
 alter table public.classes add column if not exists tripay_product_key text not null default '';
 alter table public.classes add column if not exists show_on_homepage boolean not null default true;
 alter table public.classes add column if not exists show_on_member boolean not null default true;

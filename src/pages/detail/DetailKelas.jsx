@@ -44,6 +44,7 @@ function DetailKelas({
     : benefits)
 
   const scheduleSteps = websiteSettings.schedule.steps || []
+  const hasRichDescription = /<\/?[a-z][\s\S]*>/i.test(course.description || '')
 
   return (
     <section className="public-detail-page">
@@ -86,7 +87,14 @@ function DetailKelas({
             Kelas Premium
           </span>
           <h1>{course.title}</h1>
-          <p>{course.description || `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`}</p>
+          {hasRichDescription ? (
+            <div
+              className="public-rich-description"
+              dangerouslySetInnerHTML={{ __html: course.description }}
+            />
+          ) : (
+            <p>{course.description || `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`}</p>
+          )}
           
           <div className="public-detail-meta">
             <span>

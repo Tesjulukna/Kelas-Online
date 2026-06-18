@@ -32,6 +32,13 @@ function notifyRouteChange() {
   window.dispatchEvent(new Event('ibnucreative-route-change'))
 }
 
+function plainTextFromHtml(value) {
+  return String(value || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 const publicWishlistKey = 'ibnucreative.public-wishlist.v1'
 
 function readPublicWishlist() {
@@ -112,9 +119,25 @@ function HomePage({
     return { rating, sales }
   }
 
+  const resolveRating = (item, fallbackRating) => {
+    const rating = Number(item.rating)
+
+    return item.rating === '' || item.rating === null || item.rating === undefined || Number.isNaN(rating)
+      ? fallbackRating
+      : Math.min(5, Math.max(0, rating)).toFixed(1)
+  }
+
+  const resolveCount = (value, fallbackCount) => {
+    const count = Number(value)
+
+    return value === '' || value === null || value === undefined || Number.isNaN(count)
+      ? fallbackCount
+      : Math.max(0, Math.round(count))
+  }
+
   const catalogItems = [
     ...homepageClasses.map((course) => {
-      const { rating, sales } = getItemMockMetrics(course.id)
+      const fallbackMetrics = getItemMockMetrics(course.id)
       const currentPrice = course.price ? formatRupiah(course.price) : 'Gratis'
       const originalPrice = course.price 
         ? formatRupiah(Math.round(course.price * 1.6 / 1000) * 1000)
@@ -128,15 +151,15 @@ function HomePage({
         price: currentPrice,
         originalPrice,
         category: 'Kelas',
-        description: course.description || `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`,
+        description: plainTextFromHtml(course.description) || `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`,
         lessons: course.lessons,
-        rating,
-        sales,
+        rating: resolveRating(course, fallbackMetrics.rating),
+        sales: resolveCount(course.displayStudents, course.students || fallbackMetrics.sales),
         highlighted: course.highlighted === true,
       }
     }),
     ...homepageProducts.map((product) => {
-      const { rating, sales } = getItemMockMetrics(product.id)
+      const fallbackMetrics = getItemMockMetrics(product.id)
       const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
       const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
       const currentPriceVal = salePrice || normalPrice
@@ -153,10 +176,10 @@ function HomePage({
         price,
         originalPrice,
         category: 'Produk Digital',
-        description: product.description || 'Produk digital siap diakses otomatis setelah pembayaran berhasil.',
+        description: plainTextFromHtml(product.description) || 'Produk digital siap diakses otomatis setelah pembayaran berhasil.',
         fileName: product.fileName || product.platformType || 'Produk digital',
-        rating,
-        sales,
+        rating: resolveRating(product, fallbackMetrics.rating),
+        sales: resolveCount(product.displaySales, fallbackMetrics.sales),
         highlighted: product.highlighted === true,
       }
     })
