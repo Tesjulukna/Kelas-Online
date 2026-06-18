@@ -6996,7 +6996,7 @@ img {
 .public-wishlist-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 220 !important;
   display: grid;
   place-items: center;
   padding: 18px;
@@ -7005,6 +7005,8 @@ img {
 }
 
 .public-wishlist-modal {
+  position: relative;
+  z-index: 221;
   width: min(100%, 620px);
   max-height: min(720px, calc(100vh - 36px));
   overflow: hidden;
