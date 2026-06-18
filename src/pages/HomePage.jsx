@@ -1084,6 +1084,7 @@ function HomePage({
     return (
       <>
         <DetailProduk
+          key={selectedProduct.id}
           product={selectedProduct}
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
           wishlistCount={wishlistCount}

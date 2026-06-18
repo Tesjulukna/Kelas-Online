@@ -1467,6 +1467,188 @@ mark {
   padding: 12px;
 }
 
+.digital-review-admin-summary {
+  display: grid;
+  gap: 8px;
+}
+
+.digital-review-admin-summary > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #dbe7e3;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.digital-review-admin-summary strong,
+.digital-review-admin-summary small {
+  overflow-wrap: anywhere;
+}
+
+.digital-review-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.54);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.digital-review-modal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(980px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow: hidden;
+  border: 1px solid rgba(205, 217, 232, 0.94);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24);
+}
+
+.digital-review-modal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.digital-review-modal-heading h3 {
+  margin: 0;
+  color: var(--color-heading);
+}
+
+.digital-review-modal-heading small {
+  color: var(--color-muted);
+}
+
+.digital-review-modal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px;
+  background: #f8fafc;
+}
+
+.digital-review-admin-list,
+.digital-review-add-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dbe4ef;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.digital-review-admin-list h4,
+.digital-review-add-panel h4 {
+  margin: 0;
+  color: var(--color-heading);
+}
+
+.digital-review-admin-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.digital-review-admin-avatar {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.digital-review-admin-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.digital-review-admin-avatar .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.digital-review-admin-fields {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.digital-review-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.digital-review-admin-item input,
+.digital-review-admin-item select,
+.digital-review-admin-item textarea,
+.digital-review-add-panel input,
+.digital-review-add-panel select,
+.digital-review-add-panel textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-heading);
+  background: #fbfcfd;
+  font: inherit;
+}
+
+.digital-review-admin-item input,
+.digital-review-admin-item select,
+.digital-review-add-panel input,
+.digital-review-add-panel select {
+  min-height: 40px;
+  padding: 0 11px;
+}
+
+.digital-review-admin-item textarea,
+.digital-review-add-panel textarea {
+  resize: vertical;
+  padding: 11px;
+}
+
+.digital-review-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 22px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.digital-review-empty .icon {
+  width: 28px;
+  height: 28px;
+}
+
 .digital-upload-field {
   align-items: start;
 }
@@ -1961,6 +2143,10 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .digital-review-modal-body {
+    grid-template-columns: 1fr;
+  }
+
   .digital-product-detail-hero,
   .digital-product-detail-grid {
     grid-template-columns: 1fr;
@@ -1989,6 +2175,36 @@ textarea:focus-visible {
 
   .digital-builder-topbar .btn {
     flex: 1 1 0;
+  }
+
+  .digital-review-modal-backdrop {
+    padding: 10px;
+  }
+
+  .digital-review-modal {
+    max-height: calc(100dvh - 20px);
+    border-radius: 14px;
+  }
+
+  .digital-review-modal-heading {
+    align-items: flex-start;
+  }
+
+  .digital-review-modal-body {
+    padding: 12px;
+  }
+
+  .digital-review-admin-item {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .digital-review-admin-item > .text-action {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .digital-review-admin-grid {
+    grid-template-columns: 1fr;
   }
 
   .digital-price-row,

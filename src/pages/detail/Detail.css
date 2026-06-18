@@ -1,0 +1,510 @@
+/* Instagram-Style Comment Section Styles */
+.ig-reviews-container {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+}
+
+.ig-reviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.ig-reviews-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ig-summary-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.ig-summary-stars .star-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.ig-summary-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ig-summary-count {
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+/* Button to add/list review */
+.btn-ig-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ig-action:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+.btn-ig-action .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* IG Comment Feed Item */
+.ig-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ig-comment-item {
+  display: flex;
+  gap: 14px;
+  position: relative;
+  align-items: flex-start;
+  padding: 4px 0;
+}
+
+.ig-comment-avatar-wrapper {
+  flex-shrink: 0;
+}
+
+.ig-comment-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #e2e8f0;
+  background: #f1f5f9;
+}
+
+.ig-comment-avatar-fallback {
+  display: grid;
+  place-items: center;
+  color: #2563eb;
+  font-weight: 800;
+}
+
+.ig-comment-body {
+  flex-grow: 1;
+  text-align: left;
+}
+
+.ig-comment-username-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.ig-comment-username {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ig-comment-username:hover {
+  color: #0095f6; /* IG Blue link */
+}
+
+.ig-comment-badge-verified {
+  display: inline-flex;
+  color: #0095f6;
+  width: 13px;
+  height: 13px;
+  align-self: center;
+}
+
+.ig-comment-stars {
+  display: inline-flex;
+  gap: 1px;
+}
+
+.ig-comment-stars .star-icon {
+  width: 10px;
+  height: 10px;
+}
+
+.ig-comment-text {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #1e293b;
+  margin: 2px 0 0 0;
+  word-break: break-word;
+}
+
+/* Meta info under comment text */
+.ig-comment-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 0.76rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.ig-comment-meta-row span {
+  display: inline-block;
+}
+
+.ig-comment-likes-count {
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.ig-meta-action-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ig-meta-action-btn:hover {
+  color: #0f172a;
+}
+
+/* IG Heart Button column */
+.ig-comment-heart-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.ig-comment-heart-btn:hover {
+  transform: scale(1.15);
+  color: #ed4956;
+}
+
+.ig-comment-heart-btn.liked {
+  color: #ed4956;
+  animation: heartBumble 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.ig-comment-heart-btn .icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+@keyframes heartBumble {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+/* Popup and Modal Styling */
+.review-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.review-modal-card {
+  width: 100%;
+  max-width: 500px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  max-height: min(720px, calc(100vh - 36px));
+  animation: modalScaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.review-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+}
+
+.review-modal-header h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.review-modal-close-btn {
+  background: none;
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.review-modal-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.review-modal-close-btn .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Modal Body Scrollable List */
+.review-modal-body {
+  padding: 22px;
+  overflow-y: auto;
+  flex-grow: 1;
+  overscroll-behavior: contain;
+}
+
+.review-modal-footer {
+  padding: 16px 22px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  background: #f8fafc;
+}
+
+/* Modal specific tweaks */
+.modal-review-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Form Styles */
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  text-align: left;
+}
+
+/* Avatar Upload styling */
+.avatar-upload-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.avatar-upload-preview-container {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 2px dashed #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+}
+
+.avatar-upload-preview-container:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.avatar-upload-preview-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  gap: 4px;
+}
+
+.avatar-upload-placeholder .icon {
+  width: 22px;
+  height: 22px;
+  color: #64748b;
+}
+
+.avatar-upload-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.avatar-upload-preview-container:hover .avatar-upload-overlay {
+  opacity: 1;
+}
+
+/* Fields Layout */
+.form-grid-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: #ffffff;
+  color: #0f172a;
+  transition: all 0.2s ease;
+}
+
+.form-field input:focus,
+.form-field textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.form-field textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Rating Picker Section */
+.rating-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.rating-picker-stars {
+  display: flex;
+  gap: 6px;
+}
+
+.rating-star-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #cbd5e1;
+  transition: transform 0.15s ease, color 0.1s ease;
+}
+
+.rating-star-btn:hover {
+  transform: scale(1.2);
+}
+
+.rating-star-btn.active {
+  color: #fbbc05;
+}
+
+.rating-star-btn .star-icon {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* Double Modal Stacking Overrides */
+.review-modal-card.stacked {
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
+  border-color: #cbd5e1;
+}
+
+/* CSS specific for detail page alignment */
+.public-detail-section {
+  text-align: left;
+}
+.public-detail-section .eyebrow {
+  margin-bottom: 12px;
+}

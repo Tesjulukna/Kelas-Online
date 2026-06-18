@@ -765,7 +765,12 @@ function cleanDigitalProducts(value) {
         ? item.reviews.slice(0, 10).map((review, index) => ({
             id: cleanText(review.id || `review-${index + 1}`),
             name: cleanText(review.name || ''),
+            instagram: cleanText(String(review.instagram || '').replace(/^@/, '')),
+            avatar: cleanAvatar(review.avatar || ''),
             rating: Math.min(5, Math.max(1, Math.round(Number(review.rating) || 5))),
+            date: cleanText(review.date || ''),
+            time: cleanText(review.time || ''),
+            likes: Math.max(0, Math.round(Number(review.likes) || 0)),
             message: cleanLongText(review.message || '', 500),
           })).filter((review) => review.name || review.message)
         : [],

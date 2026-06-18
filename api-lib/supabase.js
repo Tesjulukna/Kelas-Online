@@ -3615,7 +3615,12 @@ function cleanDigitalProductReviews(value) {
     .map((item, index) => ({
       id: cleanText(item?.id || `review-${index + 1}`, 80),
       name: cleanText(item?.name || '', 80),
+      instagram: cleanText(String(item?.instagram || '').replace(/^@/, ''), 80),
+      avatar: cleanUrl(item?.avatar || ''),
       rating: cleanNumber(item?.rating, 1, 5),
+      date: cleanText(item?.date || '', 40),
+      time: cleanText(item?.time || '', 20),
+      likes: cleanNumber(item?.likes, 0, 1000000),
       message: cleanText(item?.message || '', 500),
     }))
     .filter((item) => item.name || item.message)

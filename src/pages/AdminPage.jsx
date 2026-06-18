@@ -335,10 +335,17 @@ function createEmptyDigitalProductForm() {
 }
 
 function createEmptyDigitalProductReview() {
+  const now = new Date()
+
   return {
     id: `review-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     name: '',
+    instagram: '',
+    avatar: '',
     rating: 5,
+    date: now.toISOString().slice(0, 10),
+    time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+    likes: '0',
     message: '',
   }
 }
@@ -698,6 +705,8 @@ function AdminPage({
   )
   const [editingDigitalProductId, setEditingDigitalProductId] = useState(null)
   const [isDigitalProductBuilderOpen, setIsDigitalProductBuilderOpen] = useState(false)
+  const [isDigitalReviewManagerOpen, setIsDigitalReviewManagerOpen] = useState(false)
+  const [digitalReviewDraft, setDigitalReviewDraft] = useState(() => createEmptyDigitalProductReview())
   const [memberForm, setMemberForm] = useState(() => createEmptyMemberForm())
   const [editingMemberId, setEditingMemberId] = useState(null)
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false)
@@ -1078,6 +1087,8 @@ function AdminPage({
   const resetDigitalProductForm = () => {
     setDigitalProductForm(createEmptyDigitalProductForm())
     setEditingDigitalProductId(null)
+    setIsDigitalReviewManagerOpen(false)
+    setDigitalReviewDraft(createEmptyDigitalProductReview())
   }
 
   const handleDigitalProductFormChange = (event) => {
@@ -1240,6 +1251,55 @@ function AdminPage({
     }))
   }
 
+  const updateDigitalReviewDraft = (field, value) => {
+    setDigitalReviewDraft((current) => ({
+      ...current,
+      [field]: field === 'likes' ? parseRupiahValue(value) : value,
+    }))
+  }
+
+  const openDigitalReviewManager = () => {
+    setDigitalReviewDraft(createEmptyDigitalProductReview())
+    setIsDigitalReviewManagerOpen(true)
+  }
+
+  const addDigitalProductReview = () => {
+    const name = digitalReviewDraft.name.trim()
+    const message = digitalReviewDraft.message.trim()
+
+    if (!name || !message) {
+      onNotify('Nama reviewer dan isi ulasan wajib diisi.')
+      return
+    }
+
+    setDigitalProductForm((current) => ({
+      ...current,
+      reviews: [
+        {
+          ...digitalReviewDraft,
+          id: digitalReviewDraft.id || `review-${Date.now()}`,
+          name,
+          instagram: digitalReviewDraft.instagram.trim().replace(/^@/, ''),
+          avatar: digitalReviewDraft.avatar.trim(),
+          rating: Math.min(5, Math.max(1, Math.round(Number(digitalReviewDraft.rating) || 5))),
+          date: digitalReviewDraft.date || new Date().toISOString().slice(0, 10),
+          time: digitalReviewDraft.time || '10:00',
+          likes: Math.max(0, Math.round(Number(digitalReviewDraft.likes) || 0)),
+          message,
+        },
+        ...(current.reviews || []),
+      ].slice(0, 10),
+    }))
+    setDigitalReviewDraft(createEmptyDigitalProductReview())
+  }
+
+  const removeDigitalProductReview = (reviewId) => {
+    setDigitalProductForm((current) => ({
+      ...current,
+      reviews: (current.reviews || []).filter((item) => item.id !== reviewId),
+    }))
+  }
+
   const updateDigitalProductAddOn = (addOnId, field, value) => {
     setDigitalProductForm((current) => ({
       ...current,
@@ -1312,7 +1372,14 @@ function AdminPage({
       reviews: (digitalProductForm.reviews || [])
         .map((review) => ({
           ...review,
+          name: String(review.name || '').trim(),
+          instagram: String(review.instagram || '').trim().replace(/^@/, ''),
+          avatar: String(review.avatar || '').trim(),
           rating: Math.min(5, Math.max(1, Math.round(Number(review.rating) || 5))),
+          date: String(review.date || '').trim(),
+          time: String(review.time || '').trim(),
+          likes: Math.max(0, Math.round(Number(review.likes) || 0)),
+          message: String(review.message || '').trim(),
         }))
         .filter((review) => review.name || review.message),
       addOns: (digitalProductForm.addOns || [])
@@ -3173,52 +3240,17 @@ function AdminPage({
                     <h3>Review ({digitalProductForm.reviews?.length || 0}/10)</h3>
                     <button
                       type="button"
-                      disabled={(digitalProductForm.reviews || []).length >= 10}
-                      onClick={() =>
-                        setDigitalProductForm((current) => ({
-                          ...current,
-                          reviews: [...(current.reviews || []), createEmptyDigitalProductReview()],
-                        }))
-                      }
+                      onClick={openDigitalReviewManager}
                     >
                       + Add Review
                     </button>
                   </div>
-                  <div className="digital-repeat-list">
-                    {(digitalProductForm.reviews || []).map((review) => (
-                      <div className="digital-repeat-item" key={review.id}>
-                        <input
-                          value={review.name}
-                          onChange={(event) => updateDigitalProductReview(review.id, 'name', event.target.value)}
-                          placeholder="Nama reviewer"
-                        />
-                        <select
-                          value={review.rating}
-                          onChange={(event) => updateDigitalProductReview(review.id, 'rating', event.target.value)}
-                        >
-                          {[5, 4, 3, 2, 1].map((rating) => (
-                            <option key={rating} value={rating}>{rating} bintang</option>
-                          ))}
-                        </select>
-                        <textarea
-                          value={review.message}
-                          onChange={(event) => updateDigitalProductReview(review.id, 'message', event.target.value)}
-                          placeholder="Isi review"
-                          rows={3}
-                        />
-                        <button
-                          className="text-action"
-                          type="button"
-                          onClick={() =>
-                            setDigitalProductForm((current) => ({
-                              ...current,
-                              reviews: (current.reviews || []).filter((item) => item.id !== review.id),
-                            }))
-                          }
-                        >
-                          Hapus review
-                        </button>
-                      </div>
+                  <div className="digital-review-admin-summary">
+                    {(digitalProductForm.reviews || []).slice(0, 3).map((review) => (
+                      <span key={review.id}>
+                        <strong>{review.name || 'Reviewer'}</strong>
+                        <small>{review.rating || 5} bintang</small>
+                      </span>
                     ))}
                     {!digitalProductForm.reviews?.length && <small>Belum ada review.</small>}
                   </div>
@@ -3405,6 +3437,174 @@ function AdminPage({
                 </section>
               </div>
             </div>
+
+            {isDigitalReviewManagerOpen && (
+              <div
+                className="digital-review-modal-backdrop"
+                role="presentation"
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget) {
+                    setIsDigitalReviewManagerOpen(false)
+                  }
+                }}
+              >
+                <section className="digital-review-modal" role="dialog" aria-modal="true" aria-labelledby="digital-review-manager-title">
+                  <div className="digital-review-modal-heading">
+                    <div>
+                      <p className="eyebrow">Review produk</p>
+                      <h3 id="digital-review-manager-title">Kelola ulasan pembeli</h3>
+                      <small>{digitalProductForm.reviews?.length || 0} dari 10 ulasan tersimpan.</small>
+                    </div>
+                    <button
+                      className="icon-action-button"
+                      type="button"
+                      onClick={() => setIsDigitalReviewManagerOpen(false)}
+                      aria-label="Tutup kelola review"
+                    >
+                      <Icon name="x" />
+                    </button>
+                  </div>
+
+                  <div className="digital-review-modal-body">
+                    <div className="digital-review-admin-list">
+                      <h4>List ulasan</h4>
+                      {(digitalProductForm.reviews || []).map((review) => (
+                        <article className="digital-review-admin-item" key={review.id}>
+                          <span className="digital-review-admin-avatar" aria-hidden="true">
+                            {review.avatar ? <img src={review.avatar} alt="" /> : <Icon name="user" />}
+                          </span>
+                          <div className="digital-review-admin-fields">
+                            <div className="digital-review-admin-grid">
+                              <input
+                                value={review.name}
+                                onChange={(event) => updateDigitalProductReview(review.id, 'name', event.target.value)}
+                                placeholder="Nama reviewer"
+                              />
+                              <input
+                                value={review.instagram || ''}
+                                onChange={(event) => updateDigitalProductReview(review.id, 'instagram', event.target.value)}
+                                placeholder="@username"
+                              />
+                              <select
+                                value={review.rating}
+                                onChange={(event) => updateDigitalProductReview(review.id, 'rating', event.target.value)}
+                              >
+                                {[5, 4, 3, 2, 1].map((rating) => (
+                                  <option key={rating} value={rating}>{rating} bintang</option>
+                                ))}
+                              </select>
+                              <input
+                                type="number"
+                                min="0"
+                                value={review.likes || 0}
+                                onChange={(event) => updateDigitalProductReview(review.id, 'likes', parseRupiahValue(event.target.value))}
+                                placeholder="Likes"
+                              />
+                              <input
+                                type="date"
+                                value={review.date || ''}
+                                onChange={(event) => updateDigitalProductReview(review.id, 'date', event.target.value)}
+                              />
+                              <input
+                                type="time"
+                                value={review.time || ''}
+                                onChange={(event) => updateDigitalProductReview(review.id, 'time', event.target.value)}
+                              />
+                            </div>
+                            <input
+                              value={review.avatar || ''}
+                              onChange={(event) => updateDigitalProductReview(review.id, 'avatar', event.target.value)}
+                              placeholder="Link foto profil reviewer"
+                            />
+                            <textarea
+                              value={review.message}
+                              onChange={(event) => updateDigitalProductReview(review.id, 'message', event.target.value)}
+                              placeholder="Isi ulasan"
+                              rows={3}
+                            />
+                          </div>
+                          <button
+                            className="text-action"
+                            type="button"
+                            onClick={() => removeDigitalProductReview(review.id)}
+                          >
+                            Hapus
+                          </button>
+                        </article>
+                      ))}
+                      {!digitalProductForm.reviews?.length && (
+                        <div className="digital-review-empty">
+                          <Icon name="message" />
+                          <strong>Belum ada ulasan</strong>
+                          <small>Tambahkan ulasan manual dari form di bawah.</small>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="digital-review-add-panel">
+                      <h4>Tambah ulasan</h4>
+                      <div className="digital-review-admin-grid">
+                        <input
+                          value={digitalReviewDraft.name}
+                          onChange={(event) => updateDigitalReviewDraft('name', event.target.value)}
+                          placeholder="Nama reviewer"
+                        />
+                        <input
+                          value={digitalReviewDraft.instagram}
+                          onChange={(event) => updateDigitalReviewDraft('instagram', event.target.value)}
+                          placeholder="@username Instagram"
+                        />
+                        <select
+                          value={digitalReviewDraft.rating}
+                          onChange={(event) => updateDigitalReviewDraft('rating', event.target.value)}
+                        >
+                          {[5, 4, 3, 2, 1].map((rating) => (
+                            <option key={rating} value={rating}>{rating} bintang</option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          min="0"
+                          value={digitalReviewDraft.likes}
+                          onChange={(event) => updateDigitalReviewDraft('likes', event.target.value)}
+                          placeholder="Jumlah likes"
+                        />
+                        <input
+                          type="date"
+                          value={digitalReviewDraft.date}
+                          onChange={(event) => updateDigitalReviewDraft('date', event.target.value)}
+                        />
+                        <input
+                          type="time"
+                          value={digitalReviewDraft.time}
+                          onChange={(event) => updateDigitalReviewDraft('time', event.target.value)}
+                        />
+                      </div>
+                      <input
+                        value={digitalReviewDraft.avatar}
+                        onChange={(event) => updateDigitalReviewDraft('avatar', event.target.value)}
+                        placeholder="Link foto profil reviewer"
+                      />
+                      <textarea
+                        value={digitalReviewDraft.message}
+                        onChange={(event) => updateDigitalReviewDraft('message', event.target.value)}
+                        placeholder="Tulis isi ulasan"
+                        rows={4}
+                      />
+                      <button
+                        className="btn btn-primary"
+                        type="button"
+                        onClick={addDigitalProductReview}
+                        disabled={(digitalProductForm.reviews || []).length >= 10}
+                      >
+                        <Icon name="message" />
+                        Tambahkan Ulasan
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            )}
           </form>
         ) : (
           <section className="panel digital-products-admin-panel">

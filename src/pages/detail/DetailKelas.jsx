@@ -34,7 +34,7 @@ function DetailKelas({
   const salePrice = Math.max(0, Math.round(Number(course.salePrice) || 0))
   const normalPrice = Math.max(0, Math.round(Number(course.price) || 0))
   const paidPrice = salePrice || normalPrice
-  const originalPrice = (salePrice && normalPrice > salePrice)
+  const originalPrice = salePrice && normalPrice > salePrice
     ? formatRupiah(normalPrice)
     : null
 
@@ -42,9 +42,9 @@ function DetailKelas({
     setOpenAccordion((current) => (current === id ? null : id))
   }
 
-  const benefitItems = (websiteSettings.benefits.items && websiteSettings.benefits.items.length
+  const benefitItems = websiteSettings.benefits.items && websiteSettings.benefits.items.length
     ? websiteSettings.benefits.items
-    : benefits)
+    : benefits
 
   const scheduleSteps = websiteSettings.schedule.steps || []
   const hasRichDescription = /<\/?[a-z][\s\S]*>/i.test(course.description || '')
@@ -93,7 +93,7 @@ function DetailKelas({
           ) : (
             <p>{course.description || `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`}</p>
           )}
-          
+
           <div className="public-detail-meta">
             <span>
               <Icon name="user" style={{ marginRight: '4px', width: '12px' }} />
@@ -121,10 +121,7 @@ function DetailKelas({
         </div>
       </article>
 
-      {/* Accordion Section */}
       <div className="detail-accordion-group">
-
-        {/* Benefit Accordion */}
         <div className={`detail-accordion-item ${openAccordion === 'benefit' ? 'open' : ''}`}>
           <button
             className="detail-accordion-trigger"
@@ -135,8 +132,8 @@ function DetailKelas({
             <span className="detail-accordion-trigger-left">
               <span className="detail-accordion-icon-wrap">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
               </span>
               <span className="detail-accordion-label">
@@ -146,7 +143,7 @@ function DetailKelas({
             </span>
             <span className="detail-accordion-chevron">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-                <polyline points="6 9 12 15 18 9"/>
+                <polyline points="6 9 12 15 18 9" />
               </svg>
             </span>
           </button>
@@ -167,7 +164,6 @@ function DetailKelas({
           </div>
         </div>
 
-        {/* Alur Belajar Accordion */}
         <div className={`detail-accordion-item ${openAccordion === 'schedule' ? 'open' : ''}`}>
           <button
             className="detail-accordion-trigger"
@@ -178,8 +174,8 @@ function DetailKelas({
             <span className="detail-accordion-trigger-left">
               <span className="detail-accordion-icon-wrap">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
-                  <polyline points="9 11 12 14 22 4"/>
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                  <polyline points="9 11 12 14 22 4" />
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                 </svg>
               </span>
               <span className="detail-accordion-label">
@@ -189,7 +185,7 @@ function DetailKelas({
             </span>
             <span className="detail-accordion-chevron">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-                <polyline points="6 9 12 15 18 9"/>
+                <polyline points="6 9 12 15 18 9" />
               </svg>
             </span>
           </button>
@@ -213,7 +209,6 @@ function DetailKelas({
             </div>
           </div>
         </div>
-
       </div>
 
       <div className="public-sticky-actions">
