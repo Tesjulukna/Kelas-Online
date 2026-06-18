@@ -1493,6 +1493,9 @@ function paymentPublic(row, source) {
     firstPayloadValue(payload, ['product_title', 'data.product_title']),
     180,
   )
+  const classIds = parseJson(row.class_ids, [])
+  const productKey = cleanText(row.product_key || firstPayloadValue(payload, ['product_key', 'data.product_key']), 240)
+  const productName = cleanText(row.product_name || firstPayloadValue(payload, ['product_name', 'data.product_name']), 240)
 
   return {
     id: `${source}:${row.id}`,
@@ -1505,11 +1508,14 @@ function paymentPublic(row, source) {
     buyerEmail: cleanEmail(row.buyer_email || ''),
     memberId: cleanText(row.member_id || '', 120),
     classId: cleanText(row.class_id || '', 120),
+    classIds: Array.isArray(classIds) ? classIds.map((classId) => cleanText(classId, 120)).filter(Boolean) : [],
     itemType: orderType === 'digital_product' ? 'digital_product' : 'class',
     productId,
     productTitle,
+    productKey,
+    productName,
     classTitle: cleanText(
-      productTitle || row.class_title || row.product_name || row.product_key || 'Kelas',
+      productTitle || row.class_title || productName || productKey || 'Kelas',
       180,
     ),
     amount,
@@ -1620,7 +1626,7 @@ export async function fetchPublicActivities() {
       .filter((member) => member.email)
       .map((member) => [String(member.email).toLowerCase(), member]),
   )
-  const normalizeLookupKey = (value) => cleanText(value || '', 220).toLowerCase().trim()
+  const normalizeLookupKey = (value) => normalizeLynkKey(value) || cleanText(value || '', 220).toLowerCase().trim()
   const classTitleByKey = new Map()
   const productTitleByKey = new Map()
   const addLookup = (map, row) => {
@@ -1660,13 +1666,37 @@ export async function fetchPublicActivities() {
         ]
 
     for (const candidate of candidates) {
-      const title = map.get(normalizeLookupKey(candidate))
+      const candidateKey = normalizeLookupKey(candidate)
+      const title = map.get(candidateKey)
       if (title) {
         return title
+      }
+
+      if (candidateKey.length >= 4) {
+        for (const [key, mappedTitle] of map.entries()) {
+          if (key.length >= 4 && (candidateKey.includes(key) || key.includes(candidateKey))) {
+            return mappedTitle
+          }
+        }
       }
     }
 
     return cleanText(isProduct ? payment.productTitle || payment.classTitle : payment.classTitle, 180)
+  }
+  const pushActivity = ({ id, name, avatar, actionText, itemTitle, type, createdAt }) => {
+    if (!itemTitle) {
+      return
+    }
+
+    activities.push({
+      id: cleanText(id, 240),
+      name: cleanText(name || 'Pelanggan', 160),
+      avatar: cleanUrl(avatar || ''),
+      actionText,
+      itemTitle: cleanText(itemTitle, 180),
+      type,
+      createdAt: cleanText(createdAt || '', 60),
+    })
   }
   const activities = []
 
@@ -1676,24 +1706,35 @@ export async function fetchPublicActivities() {
       return payment.accessGranted || ['paid', 'processed', 'success', 'settlement', 'capture'].includes(status)
     })
     .forEach((payment) => {
-      const isProduct = payment.itemType === 'digital_product' || Boolean(payment.productId)
+          const isProduct = payment.itemType === 'digital_product' || Boolean(payment.productId)
           const member = membersById.get(payment.memberId) || membersByEmail.get(String(payment.buyerEmail || '').toLowerCase())
-          const itemTitle = resolvePaymentTitle(payment, isProduct)
           const createdAt = payment.updatedAt || payment.createdAt
+          const classIds = Array.isArray(payment.classIds) ? payment.classIds : []
 
-      if (!itemTitle) {
-        return
-      }
+          if (!isProduct && classIds.length) {
+            classIds.forEach((classId) => {
+              pushActivity({
+                id: `payment:${payment.id}:${classId}`,
+                name: member?.name || payment.buyerName,
+                avatar: member?.avatar || '',
+                actionText: 'mendaftar kelas',
+                itemTitle: classTitleByKey.get(normalizeLookupKey(classId)) || resolvePaymentTitle({ ...payment, classId }, false),
+                type: 'kelas',
+                createdAt,
+              })
+            })
+            return
+          }
 
-      activities.push({
-        id: cleanText(`payment:${payment.id}`, 240),
-        name: cleanText(member?.name || payment.buyerName || 'Pelanggan', 160),
-        avatar: cleanUrl(member?.avatar || ''),
-        actionText: isProduct ? 'membeli produk digital' : 'mendaftar kelas',
-        itemTitle: cleanText(itemTitle, 180),
-        type: isProduct ? 'produk' : 'kelas',
-        createdAt: cleanText(createdAt || '', 60),
-      })
+          pushActivity({
+            id: `payment:${payment.id}`,
+            name: member?.name || payment.buyerName,
+            avatar: member?.avatar || '',
+            actionText: isProduct ? 'membeli produk digital' : 'mendaftar kelas',
+            itemTitle: resolvePaymentTitle(payment, isProduct),
+            type: isProduct ? 'produk' : 'kelas',
+            createdAt,
+          })
     })
 
   ;(accessRows || []).forEach((row) => {
