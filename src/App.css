@@ -9508,20 +9508,11 @@ img {
   opacity: 0.68;
 }
 
-.google-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  color: #4285f4;
-  font-weight: 900;
-  background:
-    linear-gradient(#ffffff, #ffffff) padding-box,
-    conic-gradient(#4285f4 0 25%, #34a853 0 50%, #fbbc05 0 75%, #ea4335 0) border-box;
-  border: 2px solid transparent;
-  font-family: Arial, sans-serif;
-  line-height: 1;
+.google-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .mobile-list-meta {
