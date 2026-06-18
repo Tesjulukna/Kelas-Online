@@ -999,6 +999,38 @@ function HomePage({
     </div>
   ) : null
 
+  const activityToast = activeNotification ? (
+    <div className={`purchase-notification-toast ${showNotification ? 'show' : ''}`} role="status">
+      <div className="purchase-notification-avatar">
+        {activeNotification.avatar ? (
+          <img src={activeNotification.avatar} alt="" />
+        ) : (
+          <div className="avatar-initials">
+            {activeNotification.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+          </div>
+        )}
+        <div className={`purchase-notification-badge type-${activeNotification.type}`}>
+          <Icon name={activeNotification.type === 'kelas' ? 'bookOpen' : 'cart'} />
+        </div>
+      </div>
+      <div className="purchase-notification-content">
+        <strong className="purchase-notification-name">{activeNotification.name}</strong>
+        <span className="purchase-notification-desc">
+          {activeNotification.actionText} <span className="purchase-notification-item">{activeNotification.itemTitle}</span>
+        </span>
+        <span className="purchase-notification-time">{activeNotification.timeText}</span>
+      </div>
+      <button
+        className="purchase-notification-close"
+        type="button"
+        onClick={() => setShowNotification(false)}
+        aria-label="Tutup notifikasi"
+      >
+        <Icon name="x" />
+      </button>
+    </div>
+  ) : null
+
   if (selectedClass) {
     return (
       <>
@@ -1013,6 +1045,7 @@ function HomePage({
           settings={websiteSettings}
         />
         {wishlistPopup}
+        {activityToast}
       </>
     )
   }
@@ -1029,6 +1062,7 @@ function HomePage({
           }}
         />
         {wishlistPopup}
+        {activityToast}
       </>
     )
   }
@@ -1047,6 +1081,7 @@ function HomePage({
           onShare={shareItem}
         />
         {wishlistPopup}
+        {activityToast}
       </>
     )
   }
@@ -1077,6 +1112,7 @@ function HomePage({
           onSubmit={submitPublicProductCheckout}
         />
         {wishlistPopup}
+        {activityToast}
       </>
     )
   }
@@ -1237,37 +1273,7 @@ function HomePage({
           </article>
         </section>
       )}
-      {activeNotification && (
-        <div className={`purchase-notification-toast ${showNotification ? 'show' : ''}`} role="status">
-          <div className="purchase-notification-avatar">
-            {activeNotification.avatar ? (
-              <img src={activeNotification.avatar} alt="" />
-            ) : (
-              <div className="avatar-initials">
-                {activeNotification.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-              </div>
-            )}
-            <div className={`purchase-notification-badge type-${activeNotification.type}`}>
-              <Icon name={activeNotification.type === 'kelas' ? 'bookOpen' : 'cart'} />
-            </div>
-          </div>
-          <div className="purchase-notification-content">
-            <strong className="purchase-notification-name">{activeNotification.name}</strong>
-            <span className="purchase-notification-desc">
-              {activeNotification.actionText} <span className="purchase-notification-item">{activeNotification.itemTitle}</span>
-            </span>
-            <span className="purchase-notification-time">{activeNotification.timeText}</span>
-          </div>
-          <button 
-            className="purchase-notification-close" 
-            type="button" 
-            onClick={() => setShowNotification(false)}
-            aria-label="Tutup notifikasi"
-          >
-            <Icon name="x" />
-          </button>
-        </div>
-      )}
+      {activityToast}
     </>
   )
 }
