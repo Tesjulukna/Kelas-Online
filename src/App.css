@@ -6993,6 +6993,44 @@ img {
   gap: 12px;
 }
 
+.public-wishlist-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(6px);
+}
+
+.public-wishlist-modal {
+  width: min(100%, 620px);
+  max-height: min(720px, calc(100vh - 36px));
+  overflow: hidden;
+  border: 1px solid rgba(205, 217, 232, 0.9);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.24);
+}
+
+.public-wishlist-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.public-wishlist-modal .section-heading {
+  min-width: 0;
+}
+
+.public-wishlist-modal .public-wishlist-list {
+  max-height: min(520px, calc(100vh - 190px));
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .public-wishlist-item {
   display: grid;
   grid-template-columns: 74px minmax(0, 1fr) auto auto;
@@ -10521,6 +10559,21 @@ img {
     padding: 16px;
   }
 
+  .public-wishlist-modal-backdrop {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .public-wishlist-modal {
+    width: 100%;
+    max-height: min(78vh, 680px);
+    border-radius: 12px 12px 0 0;
+  }
+
+  .public-wishlist-modal .public-wishlist-list {
+    max-height: calc(78vh - 130px);
+  }
+
   .public-wishlist-item {
     grid-template-columns: 58px minmax(0, 1fr);
   }
@@ -11513,4 +11566,316 @@ img {
   }
 }
 
+/* ============================================================
+   Detail Page — Accordion Group (Benefit & Alur Belajar)
+   ============================================================ */
+.detail-accordion-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 28px;
+}
 
+.detail-accordion-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.detail-accordion-item.open {
+  border-color: #bfdbfe;
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.08);
+}
+
+/* Trigger Button */
+.detail-accordion-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 18px 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  gap: 12px;
+  text-align: left;
+  transition: background 0.2s ease;
+}
+
+.detail-accordion-trigger:hover {
+  background: #f8fafc;
+}
+
+.detail-accordion-item.open .detail-accordion-trigger {
+  background: #f0f6ff;
+}
+
+.detail-accordion-trigger-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Icon container */
+.detail-accordion-icon-wrap {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.detail-accordion-item.open .detail-accordion-icon-wrap {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+}
+
+/* Label area */
+.detail-accordion-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.detail-accordion-label strong {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #0f172a;
+  display: block;
+}
+
+.detail-accordion-label small {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Chevron */
+.detail-accordion-chevron {
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.detail-accordion-item.open .detail-accordion-chevron {
+  transform: rotate(180deg);
+  color: #2563eb;
+}
+
+/* Body (animated open/close) */
+.detail-accordion-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+  padding: 0 20px;
+}
+
+.detail-accordion-item.open .detail-accordion-body {
+  max-height: 1200px;
+  padding: 0 20px 20px;
+}
+
+/* Optional schedule description text */
+.accordion-schedule-desc {
+  font-size: 0.9rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+
+/* Benefit Grid & Cards (reused inside accordion) */
+.details-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.details-benefit-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.details-benefit-card:hover {
+  transform: translateY(-2px);
+  background: #ffffff;
+  border-color: #bfdbfe;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.06);
+}
+
+.details-benefit-icon-wrapper {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  color: #2563eb;
+  border-radius: 9px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.details-benefit-card:hover .details-benefit-icon-wrapper {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+}
+
+.details-benefit-icon-wrapper .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.details-benefit-content h3 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.details-benefit-content p {
+  font-size: 0.84rem;
+  color: #475569;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Schedule Timeline inside accordion */
+.details-schedule-timeline {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 0;
+}
+
+.details-schedule-step {
+  flex: 1 1 140px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 22px 16px 16px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  transition: all 0.25s ease;
+}
+
+.details-schedule-step:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.03);
+}
+
+.step-number-badge {
+  position: absolute;
+  top: -11px;
+  left: 16px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  width: 22px;
+  height: 22px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3);
+  border: 2px solid #ffffff;
+}
+
+.details-schedule-step-icon {
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+}
+
+.details-schedule-step:hover .details-schedule-step-icon {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.details-schedule-step-icon .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.details-schedule-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.details-schedule-step-content .step-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.details-schedule-step-content strong {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+/* Mobile adjustments */
+@media (max-width: 760px) {
+  .detail-accordion-trigger {
+    padding: 15px 16px;
+  }
+
+  .detail-accordion-item.open .detail-accordion-body {
+    padding: 0 16px 16px;
+  }
+
+  .details-benefit-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .details-benefit-card {
+    padding: 14px;
+  }
+
+  .details-schedule-timeline {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .details-schedule-step {
+    flex: 1 1 auto;
+    padding: 20px 14px 14px;
+  }
+}

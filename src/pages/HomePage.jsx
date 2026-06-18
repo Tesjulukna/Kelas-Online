@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import Icon from '../components/Icon'
-import { benefits, courseHighlights } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import { withPublicCodes } from '../utils/publicCodes'
 import CheckoutProduk from './detail/CheckoutProduk'
@@ -58,9 +57,6 @@ function writePublicWishlist(items) {
 }
 
 function HomePage({
-  isLoggedIn,
-  onLogin,
-  onExplore,
   onRequestClassCheckout = () => {},
   onPublicProductCheckout = async () => {},
   publicProductAccessApiPath = '/api/public-product-access',
@@ -99,34 +95,11 @@ function HomePage({
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('Semua')
 
-  const heroStyle = websiteSettings.hero.backgroundImage
-    ? { backgroundImage: `url(${JSON.stringify(websiteSettings.hero.backgroundImage)})` }
-    : undefined
   const homepageClasses = withPublicCodes(classes.filter(
     (course) => course.status === 'Aktif' && course.showOnHomepage !== false,
   ))
   const detailProducts = withPublicCodes(digitalProducts.filter((product) => product.status === 'Aktif'))
   const homepageProducts = detailProducts.filter((product) => product.showOnHomepage !== false)
-
-  const getCategoryForItem = (item) => {
-    const title = (item.title || '').toLowerCase()
-    const desc = (item.description || '').toLowerCase()
-    const text = `${title} ${desc}`
-
-    if (text.includes('ebook') || text.includes('e-book') || text.includes('buku') || text.includes('pdf') || text.includes('panduan') || text.includes('kitab') || text.includes('modul')) {
-      return 'E-Book'
-    }
-    if (text.includes('source code') || text.includes('code') || text.includes('coding') || text.includes('script') || text.includes('php') || text.includes('laravel') || text.includes('html') || text.includes('css') || text.includes('js') || text.includes('react') || text.includes('template')) {
-      return 'Source Code'
-    }
-    if (text.includes('ai') || text.includes('openai') || text.includes('gpt') || text.includes('bot') || text.includes('midjourney') || text.includes('artificial')) {
-      return 'Tools AI'
-    }
-    if (text.includes('marketing') || text.includes('jualan') || text.includes('ads') || text.includes('promo') || text.includes('iklan') || text.includes('funnel') || text.includes('landing page') || text.includes('omset') || text.includes('traffic')) {
-      return 'Digital Marketing'
-    }
-    return 'Lainnya'
-  }
 
   const getItemMockMetrics = (itemId) => {
     let code = 0
@@ -421,13 +394,7 @@ function HomePage({
   }
 
   const openWishlist = () => {
-    setSelectedClassId('')
-    setSelectedProductId('')
-    setCheckoutProductId('')
-    setAccessOrderCode('')
     setIsWishlistOpen(true)
-    setIsPaymentPickerOpen(false)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const addWishlistItem = (item, type) => {
@@ -460,6 +427,8 @@ function HomePage({
   }
 
   const openWishlistItem = (item) => {
+    setIsWishlistOpen(false)
+
     if (item.type === 'kelas') {
       openClassDetail(item.publicCode || item.id)
       return
@@ -556,20 +525,6 @@ function HomePage({
     }
   }
 
-  if (selectedClass) {
-    return (
-      <DetailKelas
-        course={selectedClass}
-        wishlistCount={wishlistCount}
-        onBack={closePublicDetail}
-        onBuy={onRequestClassCheckout}
-        onAddToWishlist={() => addWishlistItem(selectedClass, 'kelas')}
-        onOpenWishlist={openWishlist}
-        onShare={shareItem}
-      />
-    )
-  }
-
   const selectPublicPaymentMethod = (paymentMethod) => {
     setPublicCheckoutForm((current) => ({
       ...current,
@@ -577,104 +532,147 @@ function HomePage({
     }))
   }
 
-  if (accessOrderCode) {
+  const wishlistPopup = isWishlistOpen ? (
+    <div
+      className="public-wishlist-modal-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          setIsWishlistOpen(false)
+        }
+      }}
+    >
+      <article
+        className="public-checkout-panel public-wishlist-panel public-wishlist-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="public-wishlist-title"
+      >
+        <div className="public-wishlist-modal-header">
+          <div className="section-heading">
+            <p className="eyebrow">Wishlist</p>
+            <h2 id="public-wishlist-title">Keranjang pilihan</h2>
+            <small>{wishlistCount} item tersimpan di browser pengunjung.</small>
+          </div>
+          <button
+            className="icon-action-button"
+            type="button"
+            aria-label="Tutup keranjang"
+            onClick={() => setIsWishlistOpen(false)}
+          >
+            <Icon name="x" />
+          </button>
+        </div>
+        <div className="public-wishlist-list">
+          {wishlistItems.map((item) => (
+            <article className="public-wishlist-item" key={`${item.type}:${item.id}`}>
+              <span className="public-wishlist-image">
+                {item.thumbnail ? <img src={item.thumbnail} alt="" /> : <Icon name={item.type === 'kelas' ? 'bookOpen' : 'download'} />}
+              </span>
+              <div>
+                <small>{item.label}</small>
+                <strong>{item.title}</strong>
+                <span>{item.priceLabel}</span>
+              </div>
+              <button className="btn btn-secondary" type="button" onClick={() => openWishlistItem(item)}>
+                Detail
+              </button>
+              <button className="icon-action-button" type="button" onClick={() => removeWishlistItem(item)}>
+                <Icon name="x" />
+              </button>
+            </article>
+          ))}
+          {!wishlistItems.length && (
+            <div className="public-access-message">
+              <Icon name="cart" />
+              <h3>Belum ada wishlist</h3>
+              <p>Tambahkan kelas atau produk dari halaman detail.</p>
+            </div>
+          )}
+        </div>
+      </article>
+    </div>
+  ) : null
+
+  if (selectedClass) {
     return (
-      <ProductAccessPage
-        accessState={productAccessState}
-        onBack={closePublicDetail}
-        onRetry={() => {
-          setProductAccessState((current) => ({ ...current, isLoading: true, error: '' }))
-          setAccessRefreshKey((current) => current + 1)
-        }}
-      />
+      <>
+        <DetailKelas
+          course={selectedClass}
+          wishlistCount={wishlistCount}
+          onBack={closePublicDetail}
+          onBuy={onRequestClassCheckout}
+          onAddToWishlist={() => addWishlistItem(selectedClass, 'kelas')}
+          onOpenWishlist={openWishlist}
+          onShare={shareItem}
+          settings={websiteSettings}
+        />
+        {wishlistPopup}
+      </>
     )
   }
 
-  if (isWishlistOpen) {
+  if (accessOrderCode) {
     return (
-      <section className="public-detail-page public-wishlist-page">
-        <div className="public-detail-topbar">
-          <button className="icon-action-button" type="button" onClick={closePublicDetail}>
-            <Icon name="arrowLeft" />
-          </button>
-        </div>
-        <article className="public-checkout-panel public-wishlist-panel">
-          <div className="section-heading">
-            <p className="eyebrow">Wishlist</p>
-            <h2>Keranjang pilihan</h2>
-            <small>{wishlistCount} item tersimpan di browser pengunjung.</small>
-          </div>
-          <div className="public-wishlist-list">
-            {wishlistItems.map((item) => (
-              <article className="public-wishlist-item" key={`${item.type}:${item.id}`}>
-                <span className="public-wishlist-image">
-                  {item.thumbnail ? <img src={item.thumbnail} alt="" /> : <Icon name={item.type === 'kelas' ? 'bookOpen' : 'download'} />}
-                </span>
-                <div>
-                  <small>{item.label}</small>
-                  <strong>{item.title}</strong>
-                  <span>{item.priceLabel}</span>
-                </div>
-                <button className="btn btn-secondary" type="button" onClick={() => openWishlistItem(item)}>
-                  Detail
-                </button>
-                <button className="icon-action-button" type="button" onClick={() => removeWishlistItem(item)}>
-                  <Icon name="x" />
-                </button>
-              </article>
-            ))}
-            {!wishlistItems.length && (
-              <div className="public-access-message">
-                <Icon name="cart" />
-                <h3>Belum ada wishlist</h3>
-                <p>Tambahkan kelas atau produk dari halaman detail.</p>
-              </div>
-            )}
-          </div>
-        </article>
-      </section>
+      <>
+        <ProductAccessPage
+          accessState={productAccessState}
+          onBack={closePublicDetail}
+          onRetry={() => {
+            setProductAccessState((current) => ({ ...current, isLoading: true, error: '' }))
+            setAccessRefreshKey((current) => current + 1)
+          }}
+        />
+        {wishlistPopup}
+      </>
     )
   }
 
   if (selectedProduct) {
     return (
-      <DetailProduk
-        product={selectedProduct}
-        priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
-        wishlistCount={wishlistCount}
-        onBack={closePublicDetail}
-        onAddToWishlist={() => addWishlistItem(selectedProduct, 'produk')}
-        onBuy={openProductCheckout}
-        onOpenWishlist={openWishlist}
-        onShare={shareItem}
-      />
+      <>
+        <DetailProduk
+          product={selectedProduct}
+          priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
+          wishlistCount={wishlistCount}
+          onBack={closePublicDetail}
+          onAddToWishlist={() => addWishlistItem(selectedProduct, 'produk')}
+          onBuy={openProductCheckout}
+          onOpenWishlist={openWishlist}
+          onShare={shareItem}
+        />
+        {wishlistPopup}
+      </>
     )
   }
 
   if (checkoutProduct) {
     return (
-      <CheckoutProduk
-        product={checkoutProduct}
-        form={publicCheckoutForm}
-        checkoutCustomer={checkoutCustomer}
-        isMemberCheckout={isMemberCheckout}
-        memberNeedsPhone={memberNeedsCheckoutPhone}
-        isFree={isPublicProductFree}
-        isPaymentPickerOpen={isPaymentPickerOpen}
-        paymentMethods={paymentMethods}
-        paymentAmount={selectedProductPrice}
-        paymentFee={publicCheckoutFee}
-        paymentTotal={publicCheckoutTotal}
-        priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
-        status={publicCheckoutStatus}
-        onBack={() => openProductDetail(checkoutProduct.id)}
-        onChange={handlePublicCheckoutChange}
-        onAnswerChange={handlePublicCheckoutAnswerChange}
-        onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
-        onPaymentMethodSelect={selectPublicPaymentMethod}
-        onShare={shareItem}
-        onSubmit={submitPublicProductCheckout}
-      />
+      <>
+        <CheckoutProduk
+          product={checkoutProduct}
+          form={publicCheckoutForm}
+          checkoutCustomer={checkoutCustomer}
+          isMemberCheckout={isMemberCheckout}
+          memberNeedsPhone={memberNeedsCheckoutPhone}
+          isFree={isPublicProductFree}
+          isPaymentPickerOpen={isPaymentPickerOpen}
+          paymentMethods={paymentMethods}
+          paymentAmount={selectedProductPrice}
+          paymentFee={publicCheckoutFee}
+          paymentTotal={publicCheckoutTotal}
+          priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
+          status={publicCheckoutStatus}
+          onBack={() => openProductDetail(checkoutProduct.id)}
+          onChange={handlePublicCheckoutChange}
+          onAnswerChange={handlePublicCheckoutAnswerChange}
+          onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
+          onPaymentMethodSelect={selectPublicPaymentMethod}
+          onShare={shareItem}
+          onSubmit={submitPublicProductCheckout}
+        />
+        {wishlistPopup}
+      </>
     )
   }
 
@@ -844,52 +842,7 @@ function HomePage({
             </div>
           </article>
         </section>
-      )}
-
-      <section className="content-section split-section modern-section" id="benefits">
-        <div className="section-heading reveal-panel">
-          <p className="eyebrow">{websiteSettings.benefits.eyebrow}</p>
-          <h2>{websiteSettings.benefits.title}</h2>
-        </div>
-        <div className="benefit-list">
-          {(websiteSettings.benefits.items.length
-            ? websiteSettings.benefits.items
-            : benefits
-          ).map((benefit) => (
-            <article className="benefit-item animated-card" key={benefit.title}>
-              <Icon name={benefit.icon} />
-              <div>
-                <h3>{benefit.title}</h3>
-                <p>{benefit.description}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="content-section schedule-section modern-section" id="schedule">
-        <div className="schedule-copy reveal-panel">
-          <p className="eyebrow">{websiteSettings.schedule.eyebrow}</p>
-          <h2>{websiteSettings.schedule.title}</h2>
-          <p>{websiteSettings.schedule.description}</p>
-        </div>
-        <article className="schedule-board animated-card">
-          {websiteSettings.schedule.steps.map((step, index) => (
-            <div key={`${step.title}-${index}`}>
-              <Icon name={step.icon} />
-              <span>{step.label}</span>
-              <strong>{step.title}</strong>
-            </div>
-          ))}
-          <button className="btn btn-primary" type="button" onClick={onLogin}>
-            <Icon name="layoutDashboard" />
-            {isLoggedIn
-              ? websiteSettings.schedule.dashboardButton
-              : websiteSettings.schedule.loginButton}
-          </button>
-        </article>
-      </section>
-    </>
+      )}    </>
   )
 }
 
