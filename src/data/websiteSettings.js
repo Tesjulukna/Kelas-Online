@@ -62,6 +62,7 @@ export const defaultWebsiteSettings = {
     enabled: true,
     mode: 'all',
     selectedActivityIds: [],
+    customActivities: [],
   },
   paymentMethods: [
     { code: 'QRIS', label: 'QRIS', brand: 'qris', logoUrl: '' },
@@ -314,11 +315,36 @@ function cleanHomepageNotifications(value = {}) {
         .filter(Boolean)
         .slice(0, 300)
     : []
+  const customActivities = Array.isArray(value?.customActivities)
+    ? value.customActivities
+        .map((activity, index) => {
+          const itemType = activity?.type === 'produk' || activity?.itemType === 'produk'
+            ? 'produk'
+            : 'kelas'
+
+          return {
+            id: cleanText(activity?.id || `custom-activity-${index + 1}`, 240),
+            name: cleanText(activity?.name || '', 160),
+            avatar: cleanUrl(activity?.avatar || '', 2000),
+            actionText: cleanText(
+              activity?.actionText || (itemType === 'produk' ? 'membeli produk digital' : 'mendaftar kelas'),
+              80,
+            ),
+            itemTitle: cleanText(activity?.itemTitle || '', 180),
+            itemId: cleanText(activity?.itemId || '', 160),
+            type: itemType,
+            createdAt: cleanText(activity?.createdAt || '', 80),
+          }
+        })
+        .filter((activity) => activity.name && activity.itemTitle)
+        .slice(0, 100)
+    : []
 
   return {
     enabled: value?.enabled !== false,
     mode,
     selectedActivityIds,
+    customActivities,
   }
 }
 

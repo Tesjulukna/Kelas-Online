@@ -355,9 +355,16 @@ function HomePage({
 
       const uniqueActivities = new Map()
       const selectedActivityIds = new Set(notificationSettings.selectedActivityIds || [])
+      const customPublicActivities = Array.isArray(notificationSettings.customActivities)
+        ? notificationSettings.customActivities
+        : []
+      const notificationActivityPool = [
+        ...customPublicActivities,
+        ...currentPublicActivities,
+      ]
       const allowedPublicActivities = notificationSettings.mode === 'selected'
-        ? currentPublicActivities.filter((activity) => selectedActivityIds.has(activity.id))
-        : currentPublicActivities
+        ? notificationActivityPool.filter((activity) => selectedActivityIds.has(activity.id))
+        : notificationActivityPool
 
       allowedPublicActivities.forEach((activity) => {
         uniqueActivities.set(activity.id, {
@@ -999,8 +1006,14 @@ function HomePage({
     </div>
   ) : null
 
+  const isDetailNotificationPosition = Boolean(
+    selectedClass || selectedProduct || checkoutProduct || accessOrderCode,
+  )
   const activityToast = activeNotification ? (
-    <div className={`purchase-notification-toast ${showNotification ? 'show' : ''}`} role="status">
+    <div
+      className={`purchase-notification-toast ${isDetailNotificationPosition ? 'purchase-notification-toast--detail' : ''} ${showNotification ? 'show' : ''}`}
+      role="status"
+    >
       <div className="purchase-notification-avatar">
         {activeNotification.avatar ? (
           <img src={activeNotification.avatar} alt="" />

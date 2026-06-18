@@ -155,10 +155,37 @@ function formatActivityDate(value) {
   }).format(new Date(time))
 }
 
+function getDateTimeLocalValue(value = new Date().toISOString()) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return localDate.toISOString().slice(0, 16)
+}
+
+function makeCustomActivityId() {
+  return `custom-activity-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+}
+
+function createCustomActivityForm(itemValue = '') {
+  return {
+    name: '',
+    avatar: '',
+    itemValue,
+    actionKind: 'purchase',
+    createdAt: getDateTimeLocalValue(),
+  }
+}
+
 function WebsiteSettingsPanel({
   settings,
   onSave,
   publicActivities = [],
+  classes = [],
+  digitalProducts = [],
   onSyncTripayPaymentMethods = async () => [],
   onDownloadBackup,
   onRestoreBackup,
@@ -170,6 +197,38 @@ function WebsiteSettingsPanel({
   const [isRestoring, setIsRestoring] = useState(false)
   const [isSyncingPayments, setIsSyncingPayments] = useState(false)
   const [activeSectionId, setActiveSectionId] = useState('')
+  const [isCustomActivityOpen, setIsCustomActivityOpen] = useState(false)
+  const [customActivityForm, setCustomActivityForm] = useState(() =>
+    createCustomActivityForm(),
+  )
+
+  const notificationItemOptions = [
+    ...classes
+      .filter((course) => course?.id && course?.title)
+      .map((course) => ({
+        value: `kelas:${course.id}`,
+        type: 'kelas',
+        id: course.id,
+        title: course.title,
+        label: `Kelas - ${course.title}`,
+      })),
+    ...digitalProducts
+      .filter((product) => product?.id && product?.title)
+      .map((product) => ({
+        value: `produk:${product.id}`,
+        type: 'produk',
+        id: product.id,
+        title: product.title,
+        label: `Produk - ${product.title}`,
+      })),
+  ]
+  const customActivities = draft.homepageNotifications.customActivities || []
+  const notificationPreviewActivities = [
+    ...customActivities,
+    ...publicActivities.filter(
+      (activity) => !customActivities.some((custom) => custom.id === activity.id),
+    ),
+  ]
 
   const updateValue = (path, value) => {
     setDraft((current) => writeNestedValue(current, path, value))
@@ -255,6 +314,88 @@ function WebsiteSettingsPanel({
       event.target.value = ''
       setIsRestoring(false)
     }
+  }
+
+  const openCustomActivityModal = () => {
+    setCustomActivityForm(createCustomActivityForm(notificationItemOptions[0]?.value || ''))
+    setIsCustomActivityOpen(true)
+  }
+
+  const updateCustomActivityForm = (key, value) => {
+    setCustomActivityForm((current) => ({
+      ...current,
+      [key]: value,
+    }))
+  }
+
+  const addCustomActivity = () => {
+    const selectedItem = notificationItemOptions.find(
+      (item) => item.value === customActivityForm.itemValue,
+    )
+    const name = customActivityForm.name.trim()
+
+    if (!name) {
+      onNotify('Nama orang wajib diisi.')
+      return
+    }
+
+    if (!selectedItem) {
+      onNotify('Pilih kelas atau produk terlebih dahulu.')
+      return
+    }
+
+    const createdDate = customActivityForm.createdAt
+      ? new Date(customActivityForm.createdAt)
+      : new Date()
+    const createdAt = Number.isNaN(createdDate.getTime())
+      ? new Date().toISOString()
+      : createdDate.toISOString()
+    const actionText = customActivityForm.actionKind === 'access'
+      ? selectedItem.type === 'produk' ? 'mengakses produk digital' : 'mengakses kelas'
+      : selectedItem.type === 'produk' ? 'membeli produk digital' : 'mendaftar kelas'
+    const activity = {
+      id: makeCustomActivityId(),
+      name,
+      avatar: customActivityForm.avatar.trim(),
+      actionText,
+      itemTitle: selectedItem.title,
+      itemId: selectedItem.id,
+      type: selectedItem.type,
+      createdAt,
+    }
+
+    setDraft((current) => {
+      const next = cloneSettings(current)
+      next.homepageNotifications.customActivities = [
+        activity,
+        ...(next.homepageNotifications.customActivities || []),
+      ].slice(0, 100)
+
+      if (next.homepageNotifications.mode === 'selected') {
+        next.homepageNotifications.selectedActivityIds = [
+          activity.id,
+          ...(next.homepageNotifications.selectedActivityIds || []),
+        ].slice(0, 300)
+      }
+
+      return next
+    })
+    setIsCustomActivityOpen(false)
+    onNotify('Aktivitas custom ditambahkan. Klik Simpan Perubahan agar tersimpan.')
+  }
+
+  const removeCustomActivity = (activityId) => {
+    setDraft((current) => {
+      const next = cloneSettings(current)
+      next.homepageNotifications.customActivities = (
+        next.homepageNotifications.customActivities || []
+      ).filter((activity) => activity.id !== activityId)
+      next.homepageNotifications.selectedActivityIds = (
+        next.homepageNotifications.selectedActivityIds || []
+      ).filter((id) => id !== activityId)
+
+      return next
+    })
   }
 
   const handleSyncTripayPaymentMethods = async () => {
@@ -723,10 +864,46 @@ function WebsiteSettingsPanel({
                 ? `${draft.homepageNotifications.selectedActivityIds.length} aktivitas dipilih`
                 : 'Semua aktivitas real yang tersedia bisa tampil secara acak.'}
             </p>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={openCustomActivityModal}
+            >
+              <Icon name="user" />
+              Tambah orang
+            </button>
           </div>
+          {customActivities.length > 0 && (
+            <div className="settings-list homepage-custom-activity-list">
+              {customActivities.map((activity) => (
+                <article className="settings-row homepage-custom-activity-row" key={activity.id}>
+                  <span className="homepage-notification-preview-avatar" aria-hidden="true">
+                    {activity.avatar ? (
+                      <img src={activity.avatar} alt="" />
+                    ) : (
+                      <Icon name={activity.type === 'produk' ? 'cart' : 'bookOpen'} />
+                    )}
+                  </span>
+                  <span className="homepage-notification-preview-copy">
+                    <strong>{activity.name}</strong>
+                    <small>
+                      {activity.actionText} {activity.itemTitle} - {formatActivityDate(activity.createdAt)}
+                    </small>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeCustomActivity(activity.id)}
+                    aria-label={`Hapus aktivitas ${activity.name}`}
+                  >
+                    <Icon name="x" />
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
           {draft.homepageNotifications.mode === 'selected' && (
             <div className="settings-list homepage-notification-settings-list">
-              {publicActivities.map((activity) => {
+              {notificationPreviewActivities.map((activity) => {
                 const isChecked = draft.homepageNotifications.selectedActivityIds.includes(activity.id)
                 const nextSelectedIds = isChecked
                   ? draft.homepageNotifications.selectedActivityIds.filter((id) => id !== activity.id)
@@ -757,7 +934,7 @@ function WebsiteSettingsPanel({
                   </label>
                 )
               })}
-              {!publicActivities.length && (
+              {!notificationPreviewActivities.length && (
                 <article className="empty-state table-empty">
                   <Icon name="bell" />
                   <h3>Belum ada aktivitas</h3>
@@ -946,6 +1123,123 @@ function WebsiteSettingsPanel({
                 <button className="btn btn-primary" type="submit" disabled={isSaving}>
                   <Icon name="settings" />
                   {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {isCustomActivityOpen && (
+          <div
+            className="settings-mini-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setIsCustomActivityOpen(false)
+              }
+            }}
+          >
+            <div
+              className="settings-mini-modal custom-activity-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="custom-activity-title"
+            >
+              <div className="settings-mini-modal-heading">
+                <div>
+                  <p className="eyebrow">Toast aktivitas</p>
+                  <h3 id="custom-activity-title">Tambah orang</h3>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Tutup tambah orang"
+                  onClick={() => setIsCustomActivityOpen(false)}
+                >
+                  <Icon name="x" />
+                </button>
+              </div>
+
+              <div className="custom-activity-preview">
+                <span className="homepage-notification-preview-avatar" aria-hidden="true">
+                  {customActivityForm.avatar ? (
+                    <img src={customActivityForm.avatar} alt="" />
+                  ) : (
+                    <Icon name="user" />
+                  )}
+                </span>
+                <div>
+                  <strong>{customActivityForm.name || 'Nama pelanggan'}</strong>
+                  <small>Preview foto dan nama yang akan tampil di toast.</small>
+                </div>
+              </div>
+
+              <div className="settings-grid custom-activity-form-grid">
+                <TextField
+                  label="Nama orang"
+                  value={customActivityForm.name}
+                  onChange={(value) => updateCustomActivityForm('name', value)}
+                  placeholder="Contoh: Rina Wijaya"
+                />
+                <TextField
+                  label="Link gambar profil"
+                  value={customActivityForm.avatar}
+                  onChange={(value) => updateCustomActivityForm('avatar', value)}
+                  placeholder="https://..."
+                />
+                <label className="settings-field">
+                  <span>Tanggal dan waktu</span>
+                  <input
+                    type="datetime-local"
+                    value={customActivityForm.createdAt}
+                    onChange={(event) => updateCustomActivityForm('createdAt', event.target.value)}
+                  />
+                </label>
+                <label className="settings-field">
+                  <span>Aktivitas</span>
+                  <select
+                    value={customActivityForm.actionKind}
+                    onChange={(event) => updateCustomActivityForm('actionKind', event.target.value)}
+                  >
+                    <option value="purchase">Pembelian / pendaftaran</option>
+                    <option value="access">Akses produk / kelas</option>
+                  </select>
+                </label>
+                <label className="settings-field custom-activity-product-select">
+                  <span>Pilih kelas atau produk</span>
+                  <select
+                    value={customActivityForm.itemValue}
+                    onChange={(event) => updateCustomActivityForm('itemValue', event.target.value)}
+                  >
+                    {notificationItemOptions.map((item) => (
+                      <option value={item.value} key={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {!notificationItemOptions.length && (
+                <p className="custom-activity-note">
+                  Belum ada kelas atau produk yang bisa dipilih.
+                </p>
+              )}
+
+              <div className="settings-mini-modal-actions">
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => setIsCustomActivityOpen(false)}
+                >
+                  Batal
+                </button>
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  onClick={addCustomActivity}
+                  disabled={!notificationItemOptions.length}
+                >
+                  <Icon name="user" />
+                  Tambahkan
                 </button>
               </div>
             </div>

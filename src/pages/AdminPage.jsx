@@ -4421,6 +4421,8 @@ function AdminPage({
           key={JSON.stringify(websiteSettings)}
           settings={websiteSettings}
           publicActivities={publicActivities}
+          classes={classes}
+          digitalProducts={digitalProducts}
           onSave={onWebsiteSettingsChange}
           onSyncTripayPaymentMethods={onSyncTripayPaymentMethods}
           onDownloadBackup={onDownloadBackup}
