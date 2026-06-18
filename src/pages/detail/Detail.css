@@ -5,6 +5,9 @@
   border-radius: 16px;
   padding: 24px;
   margin-top: 24px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
 
@@ -77,6 +80,8 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ig-comment-item {
@@ -85,6 +90,8 @@
   position: relative;
   align-items: flex-start;
   padding: 4px 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ig-comment-avatar-wrapper {
@@ -108,23 +115,33 @@
 }
 
 .ig-comment-body {
-  flex-grow: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .ig-comment-username-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 2px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ig-comment-username {
+  min-width: 0;
+  max-width: 100%;
   font-size: 0.88rem;
   font-weight: 700;
   color: #0f172a;
   cursor: pointer;
   transition: color 0.15s ease;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .ig-comment-username:hover {
@@ -133,6 +150,7 @@
 
 .ig-comment-stars {
   display: inline-flex;
+  flex-shrink: 0;
   gap: 1px;
 }
 
@@ -146,6 +164,9 @@
   line-height: 1.45;
   color: #1e293b;
   margin: 2px 0 0 0;
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -153,11 +174,14 @@
 .ig-comment-meta-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 6px;
   font-size: 0.76rem;
   color: #64748b;
   font-weight: 500;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ig-comment-meta-row span {
@@ -495,8 +519,49 @@
 
 /* CSS specific for detail page alignment */
 .public-detail-section {
+  max-width: 100%;
+  min-width: 0;
   text-align: left;
 }
 .public-detail-section .eyebrow {
   margin-bottom: 12px;
+}
+
+@media (max-width: 560px) {
+  .ig-reviews-container {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .ig-reviews-header {
+    align-items: flex-start;
+  }
+
+  .ig-reviews-summary {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    min-width: 0;
+  }
+
+  .ig-comment-item {
+    gap: 10px;
+  }
+
+  .ig-comment-avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .ig-comment-username-row {
+    gap: 5px 7px;
+  }
+
+  .ig-comment-text {
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  .ig-comment-heart-btn {
+    padding: 2px;
+  }
 }
