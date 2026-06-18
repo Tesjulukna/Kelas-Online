@@ -114,6 +114,19 @@ function getActivityTime(value, prefix) {
   return dateText === 'Tanggal belum tersedia' ? dateText : `${prefix} ${dateText}`
 }
 
+function shuffleItems(items) {
+  const shuffled = [...items]
+
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    const randomIndex = Math.floor(Math.random() * (index + 1))
+    const current = shuffled[index]
+    shuffled[index] = shuffled[randomIndex]
+    shuffled[randomIndex] = current
+  }
+
+  return shuffled
+}
+
 const publicWishlistKey = 'ibnucreative.public-wishlist.v1'
 
 function readPublicWishlist() {
@@ -389,7 +402,11 @@ function HomePage({
         }
       }
 
-      allActivities.sort((first, second) => (Date.parse(second.createdAt || '') || 0) - (Date.parse(first.createdAt || '') || 0))
+      allActivities = shuffleItems(
+        allActivities
+          .sort((first, second) => (Date.parse(second.createdAt || '') || 0) - (Date.parse(first.createdAt || '') || 0))
+          .slice(0, 30),
+      )
 
       if (allActivities.length === 0) {
         intervalTimer = setTimeout(showNextNotification, 12000)
