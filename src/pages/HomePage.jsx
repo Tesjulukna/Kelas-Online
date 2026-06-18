@@ -341,6 +341,20 @@ function HomePage({
       return
     }
 
+    if (window.history.state?.returnToMemberProducts) {
+      setSelectedClassId('')
+      setSelectedProductId('')
+      setCheckoutProductId('')
+      setAccessOrderCode('')
+      setProductAccessState({ isLoading: false, data: null, error: '' })
+      setIsWishlistOpen(false)
+      setIsPaymentPickerOpen(false)
+      window.history.pushState({}, '', '/member?menu=digital-products')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
     setSelectedClassId('')
     setSelectedProductId('')
     setCheckoutProductId('')

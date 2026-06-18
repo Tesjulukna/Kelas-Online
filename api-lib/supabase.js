@@ -15,6 +15,7 @@ const maxVideoUploadMb = Number(process.env.MAX_VIDEO_UPLOAD_MB || 80)
 const loginAttemptWindowMs = 15 * 60 * 1000
 const loginAttemptBlockMs = 15 * 60 * 1000
 const maxLoginAttempts = 5
+const testimonialMaxLength = 350
 
 class ApiError extends Error {
   constructor(statusCode, message) {
@@ -693,6 +694,7 @@ function mapClass(row, materials) {
     liveAt: row.live_at,
     lessons: row.lessons,
     showOnHomepage: row.show_on_homepage !== false,
+    showOnMember: row.show_on_member !== false,
     highlighted: Boolean(row.highlighted),
     materials,
   }
@@ -760,6 +762,7 @@ function mapDigitalProduct(row) {
     lynkProductKey: row.lynk_product_key || '',
     tripayProductKey: row.tripay_product_key || '',
     showOnHomepage: row.show_on_homepage !== false,
+    showOnMember: row.show_on_member !== false,
     highlighted: Boolean(row.highlighted),
     createdAt: row.created_at || '',
     updatedAt: row.updated_at || '',
@@ -1089,6 +1092,7 @@ function cleanClassesForDb(value) {
           live_at: cleanText(item.liveAt || 'Jadwal menyusul', 160),
           lessons: cleanText(item.lessons || `${materials.length} materi`, 80),
           show_on_homepage: item.showOnHomepage !== false,
+          show_on_member: item.showOnMember !== false,
           highlighted: Boolean(item.highlighted),
         },
         materials: materials
@@ -1198,6 +1202,7 @@ function cleanDigitalProductsForDb(value) {
       lynk_product_key: cleanText(item.lynkProductKey || '', 180),
       tripay_product_key: cleanText(item.tripayProductKey || '', 180),
       show_on_homepage: item.showOnHomepage !== false,
+      show_on_member: item.showOnMember !== false,
       highlighted: Boolean(item.highlighted),
     }))
 }
@@ -1253,7 +1258,7 @@ export async function replaceClasses(classes) {
       : assetRows
 
   try {
-    await rest('classes?select=show_on_homepage,highlighted&limit=1')
+    await rest('classes?select=show_on_homepage,show_on_member,highlighted&limit=1')
   } catch {
     throw new ApiError(
       500,
@@ -1307,6 +1312,7 @@ export async function replaceDigitalProducts(request, products) {
     } catch (error) {
       if (
         String(error?.message || '').includes('show_on_homepage') ||
+        String(error?.message || '').includes('show_on_member') ||
         String(error?.message || '').includes('highlighted')
       ) {
         throw new ApiError(
@@ -1962,10 +1968,15 @@ export async function createTestimonial(user, payload) {
 
   const classId = cleanText(payload.classId || '', 120)
   const classTitle = cleanText(payload.classTitle || 'Kelas', 160)
-  const message = cleanText(payload.message || '', 1200)
+  const rawMessage = cleanText(payload.message || '', 1200)
+  const message = cleanText(rawMessage, testimonialMaxLength)
 
   if (!classId || !message) {
     throw new ApiError(400, 'Kelas dan isi testimoni wajib diisi.')
+  }
+
+  if (rawMessage.length > testimonialMaxLength) {
+    throw new ApiError(422, `Testimoni maksimal ${testimonialMaxLength} karakter.`)
   }
 
   const existingRows = await rest(
@@ -2011,7 +2022,7 @@ export async function updateTestimonial(payload) {
     throw new ApiError(400, 'ID testimoni wajib dikirim.')
   }
 
-  if (!['pending', 'approved', 'rejected'].includes(status)) {
+  if (!['pending', 'approved', 'rejected', 'hidden'].includes(status)) {
     throw new ApiError(422, 'Status testimoni tidak valid.')
   }
 

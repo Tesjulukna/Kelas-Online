@@ -607,6 +607,7 @@ function seedClasses() {
     liveAt: item.liveAt ?? 'Jumat, 29 Mei 2026, 20.00 WITA',
     lessons: item.lessons ?? `${16 + index * 4} materi`,
     showOnHomepage: item.showOnHomepage !== false,
+    showOnMember: item.showOnMember !== false,
     highlighted: item.highlighted === true,
     materials: createSeedMaterials(item, index),
   }))
@@ -638,6 +639,7 @@ function cleanClasses(value) {
         liveAt: cleanText(item.liveAt || 'Jadwal menyusul'),
         lessons: cleanText(item.lessons || '12 materi'),
         showOnHomepage: item.showOnHomepage !== false,
+        showOnMember: item.showOnMember !== false,
         highlighted: item.highlighted === true,
         materials: cleanMaterials(item.materials, classId, item.title),
       }
@@ -704,6 +706,7 @@ function cleanDigitalProducts(value) {
       lynkProductKey: cleanLongText(item.lynkProductKey || '', 160),
       tripayProductKey: cleanLongText(item.tripayProductKey || '', 160),
       showOnHomepage: item.showOnHomepage !== false,
+      showOnMember: item.showOnMember !== false,
       highlighted: item.highlighted === true,
       createdAt: cleanText(item.createdAt || ''),
       updatedAt: cleanText(item.updatedAt || ''),

@@ -11,6 +11,7 @@ const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
 const expiredPaymentNoticeKey = 'ibnucreative.expiredPaymentNotices.v1'
 const uploadFileApiPath = '/api/upload-file'
+const testimonialMaxLength = 350
 
 function scopedStorageKey(baseKey, userId = '') {
   return userId ? `${baseKey}.${userId}` : baseKey
@@ -272,12 +273,15 @@ function MemberPage({
   const tripayPaymentMethods = safeWebsiteSettings.paymentMethods
   const courses = classes.filter((course) => course.status === 'Aktif')
   const allActiveCourses = allClasses.filter((course) => course.status === 'Aktif')
-  const activeDigitalProducts = withPublicCodes(digitalProducts.filter((product) => product.status === 'Aktif'))
+  const memberVisibleCourses = allActiveCourses.filter((course) => course.showOnMember !== false)
+  const activeDigitalProducts = withPublicCodes(digitalProducts.filter(
+    (product) => product.status === 'Aktif' && product.showOnMember !== false,
+  ))
   const ownedDigitalProductIds = new Set(digitalProductAccess.map((access) => access.productId))
   const accessibleClassIds = Array.isArray(allowedClassIds)
     ? new Set(allowedClassIds)
     : new Set(allActiveCourses.map((course) => course.id))
-  const availableCourses = allActiveCourses.filter((course) => !accessibleClassIds.has(course.id))
+  const availableCourses = memberVisibleCourses.filter((course) => !accessibleClassIds.has(course.id))
   const [selectedCourseId, setSelectedCourseId] = useState(null)
   const [selectedDigitalProductId, setSelectedDigitalProductId] = useState(null)
   const [digitalProductCartIds, setDigitalProductCartIds] = useState([])
@@ -495,8 +499,15 @@ function MemberPage({
   )
 
   const handleSubmitTestimonial = async () => {
-    if (!selectedCourse || !testimonialDraft.trim()) {
+    const nextTestimonial = testimonialDraft.trim()
+
+    if (!selectedCourse || !nextTestimonial) {
       onNotify('Isi testimoni dulu.')
+      return
+    }
+
+    if (nextTestimonial.length > testimonialMaxLength) {
+      onNotify(`Testimoni maksimal ${testimonialMaxLength} karakter.`)
       return
     }
 
@@ -504,7 +515,7 @@ function MemberPage({
       await onCreateTestimonial({
         classId: selectedCourse.id,
         classTitle: selectedCourse.title,
-        message: testimonialDraft.trim(),
+        message: nextTestimonial,
       })
       setTestimonialDraft('')
       onNotify('Testimoni terkirim dan menunggu persetujuan admin.')
@@ -742,7 +753,18 @@ function MemberPage({
       : '')
 
     if (accessUrl) {
-      window.location.assign(accessUrl)
+      const nextUrl = new URL(accessUrl, window.location.origin)
+
+      window.history.pushState(
+        {
+          publicDetailFromApp: true,
+          returnToMemberProducts: true,
+        },
+        '',
+        nextUrl.pathname + nextUrl.search + nextUrl.hash,
+      )
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       return true
     }
 
@@ -1411,10 +1433,14 @@ function MemberPage({
                         <>
                           <textarea
                             value={testimonialDraft}
-                            onChange={(event) => setTestimonialDraft(event.target.value)}
+                            maxLength={testimonialMaxLength}
+                            onChange={(event) => setTestimonialDraft(event.target.value.slice(0, testimonialMaxLength))}
                             placeholder="Tulis kesan, hasil, atau perubahan yang kamu rasakan setelah mengikuti kelas ini."
                             rows={4}
                           />
+                          <small className="testimonial-character-count">
+                            {testimonialDraft.length}/{testimonialMaxLength} karakter
+                          </small>
                           <button
                             className="btn btn-primary"
                             type="button"

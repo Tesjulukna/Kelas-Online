@@ -270,6 +270,7 @@ function createEmptyClassForm() {
     liveAt: '',
     lessons: '',
     showOnHomepage: true,
+    showOnMember: true,
     highlighted: false,
     materials: [createEmptyMaterial()],
   }
@@ -322,6 +323,7 @@ function createEmptyDigitalProductForm() {
     lynkProductKey: '',
     tripayProductKey: '',
     showOnHomepage: true,
+    showOnMember: true,
     highlighted: false,
   }
 }
@@ -676,10 +678,21 @@ function AdminPage({
   const handleModerateTestimonial = async (testimonial, status) => {
     try {
       await onUpdateTestimonial({ id: testimonial.id, status })
-      onNotify(status === 'approved' ? 'Testimoni disetujui.' : 'Testimoni ditolak.')
+      onNotify(status === 'approved'
+        ? 'Testimoni ditampilkan di homepage.'
+        : status === 'hidden'
+          ? 'Testimoni disembunyikan dari homepage.'
+          : 'Testimoni ditolak.')
     } catch (error) {
       onNotify(error.message || 'Status testimoni belum bisa diubah.')
     }
+  }
+
+  const handleToggleTestimonialVisibility = (testimonial) => {
+    handleModerateTestimonial(
+      testimonial,
+      testimonial.status === 'approved' ? 'hidden' : 'approved',
+    )
   }
 
   const handleRemoveTestimonial = async (testimonial) => {
@@ -1233,6 +1246,7 @@ function AdminPage({
       lynkProductKey: product.lynkProductKey || '',
       tripayProductKey: product.tripayProductKey || '',
       showOnHomepage: product.showOnHomepage !== false,
+      showOnMember: product.showOnMember !== false,
       highlighted: product.highlighted === true,
     })
     setEditingDigitalProductId(product.id)
@@ -1282,6 +1296,7 @@ function AdminPage({
         title: `${product.title} Copy`,
         status: 'Draft',
         showOnHomepage: false,
+        showOnMember: false,
         highlighted: false,
       }
 
@@ -1294,9 +1309,10 @@ function AdminPage({
 
   const showDigitalProductAnalysis = (product, accessCount) => {
     const homepageLabel = product.showOnHomepage !== false ? 'tampil di homepage' : 'disembunyikan dari homepage'
+    const memberLabel = product.showOnMember !== false ? 'tampil di member' : 'disembunyikan dari member'
     const statusLabel = product.status || 'Draft'
 
-    onNotify(`${product.title}: ${accessCount} pembeli, status ${statusLabel}, ${homepageLabel}.`)
+    onNotify(`${product.title}: ${accessCount} pembeli, status ${statusLabel}, ${homepageLabel}, ${memberLabel}.`)
   }
 
   const openCreateClass = () => {
@@ -1306,11 +1322,13 @@ function AdminPage({
   }
 
   const handleClassFormChange = (event) => {
-    const { name, value } = event.target
+    const { name, type, checked, value } = event.target
     setClassForm((current) => ({
       ...current,
       [name]:
-        name === 'students' || name === 'progress'
+        type === 'checkbox'
+          ? checked
+          : name === 'students' || name === 'progress'
           ? Number(value)
           : name === 'price'
             ? parseRupiahValue(value)
@@ -2003,6 +2021,7 @@ function AdminPage({
       liveAt: existingClass?.liveAt ?? '',
       lessons: `${materials.length} materi`,
       showOnHomepage: classForm.showOnHomepage !== false,
+      showOnMember: classForm.showOnMember !== false,
       highlighted: classForm.highlighted === true,
       materials,
     }
@@ -2047,6 +2066,7 @@ function AdminPage({
       liveAt: item.liveAt ?? '',
       lessons: item.lessons ?? '',
       showOnHomepage: item.showOnHomepage !== false,
+      showOnMember: item.showOnMember !== false,
       highlighted: item.highlighted === true,
       materials: item.materials?.length
         ? item.materials.map((material) => ({
@@ -2091,6 +2111,7 @@ function AdminPage({
         students: 0,
         status: 'Draft',
         showOnHomepage: false,
+        showOnMember: false,
         highlighted: false,
         materials: (item.materials || []).map((material, index) => ({
           ...material,
@@ -2107,9 +2128,10 @@ function AdminPage({
 
   const showClassAnalysis = (item) => {
     const homepageLabel = item.showOnHomepage !== false ? 'tampil di homepage' : 'disembunyikan dari homepage'
+    const memberLabel = item.showOnMember !== false ? 'tampil di member' : 'disembunyikan dari member'
     const statusLabel = item.status || 'Draft'
 
-    onNotify(`${item.title}: ${item.students || 0} peserta, status ${statusLabel}, ${homepageLabel}.`)
+    onNotify(`${item.title}: ${item.students || 0} peserta, status ${statusLabel}, ${homepageLabel}, ${memberLabel}.`)
   }
 
   const confirmDeleteClass = async () => {
@@ -2494,6 +2516,9 @@ function AdminPage({
                       <mark className={item.showOnHomepage === false ? 'muted-mark' : ''}>
                         {item.showOnHomepage === false ? 'Hidden home' : 'Show home'}
                       </mark>
+                      <mark className={item.showOnMember === false ? 'muted-mark' : ''}>
+                        {item.showOnMember === false ? 'Hidden member' : 'Show member'}
+                      </mark>
                       {item.highlighted && <mark>Highlight</mark>}
                     </span>
                   </span>
@@ -2527,9 +2552,23 @@ function AdminPage({
                               : 'Kelas disembunyikan dari homepage.',
                           )
                         }
-                      >
-                        {item.showOnHomepage === false ? 'Show' : 'Hide'}
-                      </button>
+                          >
+                            {item.showOnHomepage === false ? 'Show homepage' : 'Hide homepage'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateClassQuickAction(
+                                item.id,
+                                { showOnMember: item.showOnMember === false },
+                                item.showOnMember === false
+                                  ? 'Kelas ditampilkan di Kelas Tersedia member.'
+                                  : 'Kelas disembunyikan dari Kelas Tersedia member.',
+                              )
+                            }
+                          >
+                            {item.showOnMember === false ? 'Show member' : 'Hide member'}
+                          </button>
                       <button
                         type="button"
                         onClick={() =>
@@ -2849,6 +2888,32 @@ function AdminPage({
                       <option>Draft</option>
                       <option>Nonaktif</option>
                     </select>
+                  </label>
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Tampilkan di homepage
+                      <small>Produk muncul di landing page publik.</small>
+                    </span>
+                    <input
+                      name="showOnHomepage"
+                      type="checkbox"
+                      checked={digitalProductForm.showOnHomepage !== false}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Tampilkan di Produk Digital member
+                      <small>Produk muncul di menu Produk Digital setelah member login.</small>
+                    </span>
+                    <input
+                      name="showOnMember"
+                      type="checkbox"
+                      checked={digitalProductForm.showOnMember !== false}
+                      onChange={handleDigitalProductFormChange}
+                    />
                   </label>
                 </section>
 
@@ -3179,6 +3244,9 @@ function AdminPage({
                         <mark className={product.showOnHomepage === false ? 'muted-mark' : ''}>
                           {product.showOnHomepage === false ? 'Hidden home' : 'Show home'}
                         </mark>
+                        <mark className={product.showOnMember === false ? 'muted-mark' : ''}>
+                          {product.showOnMember === false ? 'Hidden member' : 'Show member'}
+                        </mark>
                         {product.highlighted && <mark>Highlight</mark>}
                       </span>
                     </span>
@@ -3204,7 +3272,21 @@ function AdminPage({
                               )
                             }
                           >
-                            {product.showOnHomepage === false ? 'Show' : 'Hide'}
+                            {product.showOnHomepage === false ? 'Show homepage' : 'Hide homepage'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateDigitalProductQuickAction(
+                                product.id,
+                                { showOnMember: product.showOnMember === false },
+                                product.showOnMember === false
+                                  ? 'Produk ditampilkan di Produk Digital member.'
+                                  : 'Produk disembunyikan dari Produk Digital member.',
+                              )
+                            }
+                          >
+                            {product.showOnMember === false ? 'Show member' : 'Hide member'}
                           </button>
                           <button
                             type="button"
@@ -3809,6 +3891,15 @@ function AdminPage({
                   <small>{testimonial.classTitle}</small>
                   <p>{testimonial.message}</p>
                   <div className="row-actions testimonial-admin-actions">
+                    <button
+                      className="testimonial-visibility-button"
+                      type="button"
+                      title={testimonial.status === 'approved' ? 'Sembunyikan dari homepage' : 'Tampilkan di homepage'}
+                      aria-label={testimonial.status === 'approved' ? 'Sembunyikan testimoni dari homepage' : 'Tampilkan testimoni di homepage'}
+                      onClick={() => handleToggleTestimonialVisibility(testimonial)}
+                    >
+                      <Icon name={testimonial.status === 'approved' ? 'eyeOff' : 'eye'} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleModerateTestimonial(testimonial, 'approved')}
@@ -4682,8 +4773,26 @@ function AdminPage({
                 <span>
                   {Number(classForm.price) > 0
                     ? formatRupiah(classForm.price)
-                    : 'Kosong atau 0 = kelas gratis'}
+                  : 'Kosong atau 0 = kelas gratis'}
                 </span>
+              </label>
+              <label className="digital-toggle-row">
+                <span>Tampilkan di homepage</span>
+                <input
+                  name="showOnHomepage"
+                  type="checkbox"
+                  checked={classForm.showOnHomepage !== false}
+                  onChange={handleClassFormChange}
+                />
+              </label>
+              <label className="digital-toggle-row">
+                <span>Tampilkan di Kelas Tersedia member</span>
+                <input
+                  name="showOnMember"
+                  type="checkbox"
+                  checked={classForm.showOnMember !== false}
+                  onChange={handleClassFormChange}
+                />
               </label>
               <label>
                 Mentor
