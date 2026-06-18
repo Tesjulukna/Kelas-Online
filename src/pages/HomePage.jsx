@@ -766,7 +766,9 @@ function HomePage({
                     </svg>
                     {item.rating}
                   </span>
-                  <span className="sales-count">{item.sales} terjual</span>
+                  <span className="sales-count">
+                    {item.sales} {item.type === 'kelas' ? 'peserta' : 'terjual'}
+                  </span>
                 </div>
                 <h3 className="card-title">{item.title}</h3>
                 <p className="card-desc">{item.description}</p>

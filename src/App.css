@@ -10795,6 +10795,8 @@ img {
   gap: 8px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .category-tab-btn:hover {
@@ -11103,6 +11105,10 @@ img {
   .category-tabs-track::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 999px;
+  }
+  .category-tab-btn {
+    font-size: 0.8rem;
+    padding: 6px 12px;
   }
 
   /* Mobile card specific scaling */
