@@ -7,6 +7,40 @@ import DetailKelas from './detail/DetailKelas'
 import DetailProduk from './detail/DetailProduk'
 import ProductAccessPage from './detail/ProductAccessPage'
 
+function CatalogCardMedia({ item }) {
+  const [isSquare, setIsSquare] = useState(false)
+
+  const handleLoad = (e) => {
+    const { naturalWidth, naturalHeight } = e.target
+    if (naturalWidth && naturalHeight) {
+      const ratio = naturalWidth / naturalHeight
+      if (Math.abs(ratio - 1) < 0.15) {
+        setIsSquare(true)
+      }
+    }
+  }
+
+  return (
+    <div className={`card-media ${isSquare ? 'is-square' : ''}`}>
+      {item.thumbnail ? (
+        <img
+          src={item.thumbnail}
+          alt={item.title}
+          loading="lazy"
+          onLoad={handleLoad}
+        />
+      ) : (
+        <div className="media-placeholder">
+          <Icon name={item.type === 'kelas' ? 'bookOpen' : 'download'} />
+        </div>
+      )}
+      <span className={`card-badge badge-${item.category.toLowerCase().replace(/\s+/g, '-')}`}>
+        {item.category}
+      </span>
+    </div>
+  )
+}
+
 function formatRupiah(value) {
   const amount = Math.max(0, Math.round(Number(value) || 0))
 
@@ -783,22 +817,11 @@ function HomePage({
         <div className="catalog-grid">
           {filteredCatalogItems.map((item, index) => (
             <article
-              className={`catalog-card animated-card ${item.highlighted ? 'highlighted' : ''}`}
+              className={`catalog-card animated-card card-type-${item.type} ${item.highlighted ? 'highlighted' : ''}`}
               key={`${item.type}-${item.id}`}
               style={{ '--card-delay': `${index * 0.08}s` }}
             >
-              <div className="card-media">
-                {item.thumbnail ? (
-                  <img src={item.thumbnail} alt={item.title} loading="lazy" />
-                ) : (
-                  <div className="media-placeholder">
-                    <Icon name={item.type === 'kelas' ? 'bookOpen' : 'download'} />
-                  </div>
-                )}
-                <span className={`card-badge badge-${item.category.toLowerCase().replace(/\s+/g, '-')}`}>
-                  {item.category}
-                </span>
-              </div>
+              <CatalogCardMedia item={item} />
               <div className="card-content">
                 <div className="card-rating-row">
                   <span className="rating-stars">

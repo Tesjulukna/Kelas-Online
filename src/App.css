@@ -11056,6 +11056,25 @@ img {
   overflow: hidden;
 }
 
+/* Class-specific aspect ratio and image containment to prevent cropping of banner text */
+.card-type-kelas .card-media {
+  aspect-ratio: 16/9;
+}
+
+.card-type-kelas .card-media img {
+  object-fit: contain;
+  padding: 4px;
+}
+
+/* 1:1 aspect ratio override for square thumbnails */
+.card-media.is-square {
+  aspect-ratio: 1/1 !important;
+}
+
+.card-media.is-square img {
+  object-fit: cover;
+}
+
 .card-media img {
   width: 100%;
   height: 100%;
@@ -11065,6 +11084,13 @@ img {
 
 .catalog-card:hover .card-media img {
   transform: scale(1.04);
+}
+
+/* Hide participant count below class card description on desktop */
+@media (min-width: 769px) {
+  .card-type-kelas .card-footer-info {
+    display: none !important;
+  }
 }
 
 .media-placeholder {
