@@ -432,6 +432,31 @@ function isMissingPhoneColumnError(error) {
   )
 }
 
+function isMissingColumnError(error, column) {
+  const message = String(error?.message || '').toLowerCase()
+  const columnName = String(column || '').toLowerCase()
+
+  return message.includes(columnName) && (
+    message.includes('column') ||
+    message.includes('schema cache') ||
+    message.includes('could not find') ||
+    message.includes('does not exist')
+  )
+}
+
+async function hasTableColumn(table, column) {
+  try {
+    await rest(`${table}?select=${column}&limit=1`)
+    return true
+  } catch (error) {
+    if (isMissingColumnError(error, column)) {
+      return false
+    }
+
+    throw error
+  }
+}
+
 async function restAccountWrite(path, options = {}) {
   try {
     return await rest(path, options)
@@ -1347,25 +1372,47 @@ export async function replaceClasses(classes) {
         })
       : assetRows
 
-  try {
-    await rest('classes?select=description,display_students,rating,sale_price,purchase_button_label,register_button_label,show_on_homepage,show_on_member,highlighted&limit=1')
-  } catch {
-    throw new ApiError(
-      500,
-      'Kolom kelas untuk homepage belum ada di Supabase. Jalankan schema.sql terbaru dulu, lalu ulangi.',
-    )
-  }
+  const optionalClassColumns = [
+    'description',
+    'display_students',
+    'rating',
+    'sale_price',
+    'purchase_button_label',
+    'register_button_label',
+    'show_on_homepage',
+    'show_on_member',
+    'highlighted',
+  ]
+  const classColumnSupport = Object.fromEntries(
+    await Promise.all(
+      optionalClassColumns.map(async (column) => [
+        column,
+        await hasTableColumn('classes', column),
+      ]),
+    ),
+  )
+  const safeClassRows = classRows.map((row) => {
+    const nextRow = { ...row }
+
+    optionalClassColumns.forEach((column) => {
+      if (!classColumnSupport[column]) {
+        delete nextRow[column]
+      }
+    })
+
+    return nextRow
+  })
 
   await rest('classes?id=not.is.null', {
     method: 'DELETE',
     headers: { Prefer: 'return=minimal' },
   })
 
-  if (classRows.length) {
+  if (safeClassRows.length) {
     await rest('classes', {
       method: 'POST',
       headers: { Prefer: 'return=minimal' },
-      body: classRows,
+      body: safeClassRows,
     })
   }
 
@@ -1735,7 +1782,7 @@ export async function fetchPublicActivities() {
 
     return cleanText(isProduct ? payment.productTitle || payment.classTitle : payment.classTitle, 180)
   }
-  const pushActivity = ({ id, name, avatar, actionText, itemTitle, type, createdAt }) => {
+  const pushActivity = ({ id, name, avatar, actionText, itemTitle, itemId, type, createdAt }) => {
     if (!itemTitle) {
       return
     }
@@ -1746,6 +1793,7 @@ export async function fetchPublicActivities() {
       avatar: cleanUrl(avatar || ''),
       actionText,
       itemTitle: cleanText(itemTitle, 180),
+      itemId: cleanText(itemId || '', 160),
       type,
       createdAt: cleanText(createdAt || '', 60),
     })
@@ -1771,6 +1819,7 @@ export async function fetchPublicActivities() {
                 avatar: member?.avatar || '',
                 actionText: 'mendaftar kelas',
                 itemTitle: classTitleByKey.get(normalizeLookupKey(classId)) || resolvePaymentTitle({ ...payment, classId }, false),
+                itemId: classId,
                 type: 'kelas',
                 createdAt,
               })
@@ -1791,6 +1840,7 @@ export async function fetchPublicActivities() {
             avatar: member?.avatar || '',
             actionText: isProduct ? 'membeli produk digital' : 'mendaftar kelas',
             itemTitle: directProductTitle || directClassTitle || resolvePaymentTitle(payment, isProduct),
+            itemId: isProduct ? payment.productId : payment.classId,
             type: isProduct ? 'produk' : 'kelas',
             createdAt,
           })
@@ -1820,6 +1870,7 @@ export async function fetchPublicActivities() {
           avatar: member.avatar || '',
           actionText: 'mengakses kelas',
           itemTitle: title,
+          itemId: classId,
           type: 'kelas',
           createdAt: member.joined_at || member.created_at || member.updated_at || '',
         })
@@ -1849,6 +1900,7 @@ export async function fetchPublicActivities() {
       avatar: cleanUrl(member?.avatar || ''),
       actionText: 'mengakses produk digital',
       itemTitle: cleanText(resolvedProductTitle, 180),
+      itemId: cleanText(access.productId, 160),
       type: 'produk',
       createdAt: cleanText(access.createdAt || '', 60),
     })
@@ -3732,8 +3784,8 @@ export async function renderPublicDetailPage(request, response, { type, code }) 
   const cleanCode = cleanText(code || '', 20)
   const publicPath = `/${itemType}/${encodeURIComponent(cleanCode)}`
   const rows = itemType === 'kelas'
-    ? await rest(`classes?select=id,title,description,mentor,lessons,price,sale_price,status,thumbnail&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
-    : await rest(`digital_products?select=id,title,description,price,sale_price,status,thumbnail,file_name,platform_type&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
+    ? await rest(`classes?select=*&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
+    : await rest(`digital_products?select=*&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
   const item = withPublicCodes(rows || []).find((row) => row.public_code === cleanCode || row.id === cleanCode)
 
   if (!item) {

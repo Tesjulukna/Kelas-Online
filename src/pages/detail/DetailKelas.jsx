@@ -1,7 +1,16 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import Icon from '../../components/Icon'
 import { benefits } from '../../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../../data/websiteSettings'
+
+const StableRichDescription = memo(function StableRichDescription({ html }) {
+  return (
+    <div
+      className="public-rich-description"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+})
 
 function formatRupiah(value) {
   const amount = Math.max(0, Math.round(Number(value) || 0))
@@ -92,10 +101,7 @@ function DetailKelas({
           </span>
           <h1>{course.title}</h1>
           {hasRichDescription ? (
-            <div
-              className="public-rich-description"
-              dangerouslySetInnerHTML={{ __html: course.description }}
-            />
+            <StableRichDescription html={course.description} />
           ) : (
             <p>{course.description || `${course.mentor} membimbing kelas ini dengan materi praktik yang mudah diikuti dari dashboard belajar.`}</p>
           )}

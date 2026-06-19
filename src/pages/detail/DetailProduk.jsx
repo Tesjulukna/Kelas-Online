@@ -1,8 +1,28 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import Icon from '../../components/Icon'
 import './Detail.css'
 
 const productReviewLikesKey = 'ibnucreative.product-review-likes.v1'
+
+const StableRichDescription = memo(function StableRichDescription({ html }) {
+  return (
+    <div
+      className="public-rich-description"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+})
+
+const StableYoutubeFrame = memo(function StableYoutubeFrame({ src, title }) {
+  return (
+    <iframe
+      src={src}
+      title={title}
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowFullScreen
+    />
+  )
+})
 
 function readLikedReviewIds(productId = '') {
   if (typeof window === 'undefined' || !productId) {
@@ -279,10 +299,7 @@ function DetailProduk({
           </span>
           <h1>{product.title}</h1>
           {hasRichDescription ? (
-            <div
-              className="public-rich-description"
-              dangerouslySetInnerHTML={{ __html: product.description }}
-            />
+            <StableRichDescription html={product.description} />
           ) : (
             <p>{product.description || 'Produk digital siap diakses otomatis setelah pembayaran berhasil.'}</p>
           )}
@@ -310,12 +327,7 @@ function DetailProduk({
 
       {embedUrl && (
         <section className="public-video-section">
-          <iframe
-            src={embedUrl}
-            title={`Video ${product.title}`}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
+          <StableYoutubeFrame src={embedUrl} title={`Video ${product.title}`} />
         </section>
       )}
 

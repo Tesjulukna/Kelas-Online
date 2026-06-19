@@ -219,6 +219,12 @@ function HomePage({
   const paymentsRef = useRef(payments)
   const productAccessRef = useRef(digitalProductAccess)
   const publicActivitiesRef = useRef(publicActivities)
+  const detailSelectionRef = useRef({
+    selectedClassId,
+    selectedProductId,
+    checkoutProductId,
+    accessOrderCode,
+  })
 
   useEffect(() => {
     classesRef.current = classes
@@ -227,7 +233,33 @@ function HomePage({
     paymentsRef.current = payments
     productAccessRef.current = digitalProductAccess
     publicActivitiesRef.current = publicActivities
-  }, [classes, digitalProducts, members, payments, digitalProductAccess, publicActivities])
+    detailSelectionRef.current = {
+      selectedClassId,
+      selectedProductId,
+      checkoutProductId,
+      accessOrderCode,
+    }
+  }, [
+    classes,
+    digitalProducts,
+    members,
+    payments,
+    digitalProductAccess,
+    publicActivities,
+    selectedClassId,
+    selectedProductId,
+    checkoutProductId,
+    accessOrderCode,
+  ])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setActiveNotification(null)
+      setShowNotification(false)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [selectedClassId, selectedProductId, checkoutProductId, accessOrderCode])
 
   useEffect(() => {
     let currentIndex = 0
@@ -256,8 +288,59 @@ function HomePage({
         return
       }
 
-      const visibleClasses = currentClasses.filter((c) => c.status === 'Aktif')
-      const visibleProducts = currentProducts.filter((p) => p.status === 'Aktif')
+      const visibleClasses = withPublicCodes(currentClasses.filter((c) => c.status === 'Aktif'))
+      const visibleProducts = withPublicCodes(currentProducts.filter((p) => p.status === 'Aktif'))
+      const currentDetailSelection = detailSelectionRef.current || {}
+      const detailClass = currentDetailSelection.selectedClassId
+        ? visibleClasses.find(
+            (item) =>
+              item.id === currentDetailSelection.selectedClassId ||
+              item.publicCode === currentDetailSelection.selectedClassId,
+          )
+        : null
+      const detailProductId =
+        currentDetailSelection.selectedProductId || currentDetailSelection.checkoutProductId
+      const detailProduct = detailProductId
+        ? visibleProducts.find((item) => item.id === detailProductId || item.publicCode === detailProductId)
+        : null
+      const detailContext = detailClass
+        ? { type: 'kelas', item: detailClass, itemId: detailClass.id, itemCode: detailClass.publicCode, title: detailClass.title }
+        : detailProduct
+          ? { type: 'produk', item: detailProduct, itemId: detailProduct.id, itemCode: detailProduct.publicCode, title: detailProduct.title }
+          : null
+      const normalizeActivityText = (value) =>
+        String(value || '')
+          .toLowerCase()
+          .replace(/\s+/g, ' ')
+          .trim()
+      const activityMatchesDetail = (activity) => {
+        if (!detailContext) {
+          return true
+        }
+
+        if (activity.type !== detailContext.type) {
+          return false
+        }
+
+        const activityIds = [
+          activity.itemId,
+          activity.itemCode,
+          activity.publicCode,
+          activity.classId,
+          activity.productId,
+        ]
+          .map((value) => String(value || '').trim())
+          .filter(Boolean)
+        const detailIds = [detailContext.itemId, detailContext.itemCode]
+          .map((value) => String(value || '').trim())
+          .filter(Boolean)
+
+        if (activityIds.some((activityId) => detailIds.includes(activityId))) {
+          return true
+        }
+
+        return normalizeActivityText(activity.itemTitle) === normalizeActivityText(detailContext.title)
+      }
 
       if (visibleClasses.length === 0 && visibleProducts.length === 0 && currentPublicActivities.length === 0) {
         intervalTimer = setTimeout(showNextNotification, 3000)
@@ -285,6 +368,10 @@ function HomePage({
           const itemTitle = isProduct
             ? product?.title || payment.productTitle
             : course?.title || payment.classTitle
+          const itemId = isProduct
+            ? product?.id || payment.productId
+            : course?.id || payment.classId
+          const itemCode = isProduct ? product?.publicCode : course?.publicCode
 
           if (!itemTitle) {
             return
@@ -297,6 +384,8 @@ function HomePage({
             avatar: member?.avatar || '',
             actionText: isProduct ? 'membeli produk digital' : 'mendaftar kelas',
             itemTitle,
+            itemId,
+            itemCode,
             type: isProduct ? 'produk' : 'kelas',
             createdAt,
             timeText: isProduct
@@ -320,6 +409,8 @@ function HomePage({
           avatar: member?.avatar || '',
           actionText: 'mengakses produk digital',
           itemTitle,
+          itemId: product?.id || access.productId,
+          itemCode: product?.publicCode,
           type: 'produk',
           createdAt: access.createdAt,
           timeText: `Membeli pada ${formatIndonesianDate(access.createdAt)}`,
@@ -347,6 +438,8 @@ function HomePage({
             avatar: member.avatar || '',
             actionText: 'mengakses kelas',
             itemTitle: course.title,
+            itemId: course.id,
+            itemCode: course.publicCode,
             type: 'kelas',
             createdAt: member.joinedAt,
             timeText: `Terdaftar pada ${formatIndonesianDate(member.joinedAt)}`,
@@ -385,7 +478,7 @@ function HomePage({
         }
       })
 
-      let allActivities = [...uniqueActivities.values()]
+      let allActivities = [...uniqueActivities.values()].filter(activityMatchesDetail)
 
       if (allActivities.length === 0 && notificationSettings.mode !== 'selected') {
         const simulatedNames = [
@@ -395,10 +488,12 @@ function HomePage({
           'Fajar Siddiq', 'Indah Permatasari', 'Yusuf Habibie'
         ]
 
-        const itemsPool = [
-          ...visibleClasses.map(c => ({ item: c, type: 'kelas' })),
-          ...visibleProducts.map(p => ({ item: p, type: 'produk' }))
-        ]
+        const itemsPool = detailContext
+          ? [{ item: detailContext.item, type: detailContext.type }]
+          : [
+              ...visibleClasses.map(c => ({ item: c, type: 'kelas' })),
+              ...visibleProducts.map(p => ({ item: p, type: 'produk' })),
+            ]
 
         if (itemsPool.length > 0) {
           for (let i = 0; i < 15; i++) {
@@ -413,6 +508,8 @@ function HomePage({
               avatar: '',
               actionText: isProduct ? 'membeli produk digital' : 'mendaftar kelas',
               itemTitle: poolItem.item.title,
+              itemId: poolItem.item.id,
+              itemCode: poolItem.item.publicCode,
               type: poolItem.type,
               createdAt: date,
               timeText: isProduct
