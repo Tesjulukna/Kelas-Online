@@ -10,6 +10,7 @@ const resizeHandles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 
 function QrPreview({ element, data }) {
   const qr = createQrMatrix(getCertificateVerificationUrl(data))
+  const codeText = data.ID_SERTIFIKAT || data.QR_CODE || ''
 
   return (
     <div
@@ -18,14 +19,19 @@ function QrPreview({ element, data }) {
       style={{
         background: element.background || '#ffffff',
         color: element.color || '#111827',
-        gridTemplateColumns: `repeat(${qr.size}, 1fr)`,
       }}
     >
-      {qr.modules.flatMap((row, rowIndex) =>
-        row.map((isDark, colIndex) => (
-          <i className={isDark ? 'active' : ''} key={`${rowIndex}-${colIndex}`}></i>
-        )),
-      )}
+      <span
+        className="template-qr-matrix"
+        style={{ gridTemplateColumns: `repeat(${qr.size}, 1fr)` }}
+      >
+        {qr.modules.flatMap((row, rowIndex) =>
+          row.map((isDark, colIndex) => (
+            <i className={isDark ? 'active' : ''} key={`${rowIndex}-${colIndex}`}></i>
+          )),
+        )}
+      </span>
+      <small>{codeText}</small>
     </div>
   )
 }

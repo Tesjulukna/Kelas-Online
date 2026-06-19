@@ -162,7 +162,7 @@ export function createQrElement(overrides = {}) {
     x: 910,
     y: 585,
     width: 120,
-    height: 120,
+    height: 150,
     rotation: 0,
     opacity: 1,
     zIndex: 30,
@@ -450,12 +450,17 @@ function drawLetterSpacedText(context, text, x, y, letterSpacing = 0) {
 
 function drawQr(context, element, data) {
   const qr = createQrMatrix(getCertificateVerificationUrl(data))
+  const codeText = String(data.ID_SERTIFIKAT || data.QR_CODE || '').trim()
   const quietZone = 4
   const cells = qr.size + quietZone * 2
-  const boxSize = Math.min(element.width, element.height)
+  const captionHeight = codeText
+    ? Math.min(30, Math.max(17, element.height * 0.18))
+    : 0
+  const qrAreaHeight = Math.max(36, element.height - captionHeight)
+  const boxSize = Math.min(element.width, qrAreaHeight)
   const cellSize = boxSize / cells
   const offsetX = (element.width - boxSize) / 2
-  const offsetY = (element.height - boxSize) / 2
+  const offsetY = (qrAreaHeight - boxSize) / 2
 
   context.fillStyle = element.background || '#ffffff'
   context.fillRect(0, 0, element.width, element.height)
@@ -473,6 +478,22 @@ function drawQr(context, element, data) {
       }
     })
   })
+
+  if (codeText) {
+    let fontSize = Math.min(14, Math.max(8, captionHeight * 0.44))
+
+    context.fillStyle = element.color || '#111827'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.font = `700 ${fontSize}px Arial`
+
+    while (fontSize > 7 && context.measureText(codeText).width > element.width - 8) {
+      fontSize -= 1
+      context.font = `700 ${fontSize}px Arial`
+    }
+
+    context.fillText(codeText, element.width / 2, qrAreaHeight + captionHeight / 2)
+  }
 }
 
 function drawRoundedRect(context, x, y, width, height, radius) {

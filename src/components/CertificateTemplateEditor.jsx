@@ -306,9 +306,9 @@ function CertificateTemplateEditor({
     if (placeholder === '{{QR_CODE}}') {
       addElement(createQrElement({
         x: Math.max(40, Math.round(draft.width - 180)),
-        y: Math.max(40, Math.round(draft.height - 180)),
+        y: Math.max(40, Math.round(draft.height - 210)),
         width: 130,
-        height: 130,
+        height: 160,
       }))
       return
     }
