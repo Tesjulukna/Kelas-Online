@@ -153,30 +153,45 @@ function VerificationMark({ certificateId }) {
   )
 }
 
-function CertificatePreview({ certificate, siteName = 'Ibnu Creative' }) {
+function CertificatePreview({ certificate, siteName = 'Ibnu Creative', brandLogo = '', brandIcon = 'spark' }) {
+  const mentorName = certificate.mentorName || 'Ramdialta Ibnu Sajara, S.Pd'
   return (
     <div className="certificate-preview" aria-label={`Preview sertifikat ${certificate.classTitle}`}>
       <div className="certificate-preview-topline">
-        <span>{siteName}</span>
-        <span>Certificate of Completion</span>
+        <div className="certificate-logo-group">
+          {brandLogo ? (
+            <img className="certificate-logo-img" src={brandLogo} alt={siteName} />
+          ) : (
+            <div className="certificate-logo-fallback">
+              <Icon name={brandIcon || 'spark'} />
+              <span>{siteName}</span>
+            </div>
+          )}
+        </div>
+        <span className="certificate-badge-title">Certificate of Completion</span>
       </div>
       <div className="certificate-preview-body">
         <p className="eyebrow">Sertifikat kelulusan</p>
         <h3>{certificate.participantName}</h3>
         <p className="certificate-preview-copy">
-          Telah menyelesaikan kelas online
+          telah menyelesaikan seluruh materi dan persyaratan kelas
         </p>
         <h4>{certificate.classTitle}</h4>
-        <div className="certificate-preview-meta">
-          <span>
-            <small>Tanggal selesai</small>
-            {formatCertificateDate(certificate.completedAt)}
-          </span>
-          <span>
-            <small>Mentor</small>
-            {certificate.mentorName}
-          </span>
-        </div>
+      </div>
+      <div className="certificate-preview-meta">
+        <span>
+          <small>Tanggal selesai</small>
+          <strong>{formatCertificateDate(certificate.completedAt)}</strong>
+        </span>
+        <span>
+          <small>Mentor</small>
+          <div className="certificate-esign-container">
+            <svg viewBox="0 0 120 48" className="certificate-esign-svg" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M 12 32 C 18 12, 28 8, 32 26 C 36 38, 42 34, 46 22 C 50 10, 54 12, 58 28 C 62 38, 70 18, 78 26 C 84 32, 90 28, 98 22 C 104 18, 108 24, 102 28 C 96 32, 85 30, 75 30 C 65 30, 45 30, 20 30" />
+            </svg>
+            <strong>{mentorName}</strong>
+          </div>
+        </span>
       </div>
       <div className="certificate-preview-footer">
         <div>
@@ -976,6 +991,8 @@ function MemberPage({
     downloadCertificatePdf({
       certificate,
       siteName: safeWebsiteSettings.siteName,
+      brandLogo: safeWebsiteSettings.brandLogo,
+      brandIcon: safeWebsiteSettings.brandIcon,
       verificationUrl,
     })
     onNotify('Sertifikat PDF mulai diunduh.')
@@ -2557,6 +2574,8 @@ function MemberPage({
                         <CertificatePreview
                           certificate={certificate}
                           siteName={safeWebsiteSettings.siteName}
+                          brandLogo={safeWebsiteSettings.brandLogo}
+                          brandIcon={safeWebsiteSettings.brandIcon}
                         />
                         <div className="certificate-actions">
                           <button

@@ -5,7 +5,7 @@
       "title": "Batch Desain Konten",
       "students": 128,
       "status": "Draft",
-      "revenue": "Rp 38,4 jt",
+      "revenue": "Rp 0",
       "price": 0,
       "lynkProductKey": "",
       "tripayProductKey": "",
@@ -14,7 +14,7 @@
       "progress": 72,
       "next": "Lanjutkan modul berikutnya",
       "liveAt": "Jumat, 29 Mei 2026, 20.00 WITA",
-      "lessons": "16 materi",
+      "lessons": "2 materi",
       "materials": [
         {
           "id": "admin-class-1-material-1",
@@ -674,5 +674,5 @@
       ]
     }
   },
-  "updatedAt": "2026-06-19T05:06:11.363Z"
+  "updatedAt": "2026-06-19T05:17:24.043Z"
 }
