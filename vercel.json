@@ -53,6 +53,10 @@
       "destination": "/api/testimonials"
     },
     {
+      "source": "/api/certificates.php",
+      "destination": "/api/certificates"
+    },
+    {
       "source": "/api/settings.php",
       "destination": "/api/classes?resource=settings"
     },

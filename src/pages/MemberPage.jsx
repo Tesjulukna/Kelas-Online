@@ -4,6 +4,7 @@ import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
 import { memberMenuItems } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
+import { downloadCertificatePdf } from '../lib/certificatePdf'
 import { uploadStorageFile } from '../lib/storageUpload'
 import { withPublicCodes } from '../utils/publicCodes'
 
@@ -107,6 +108,85 @@ function formatRupiah(value) {
     currency: 'IDR',
     maximumFractionDigits: 0,
   }).format(amount)
+}
+
+function formatCertificateDate(value) {
+  const time = Date.parse(value || '')
+
+  if (!time) {
+    return new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+  }
+
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(time))
+}
+
+function VerificationMark({ certificateId }) {
+  const seed = String(certificateId || 'CERTIFICATE')
+  let hash = 0
+
+  for (const character of seed) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0
+  }
+
+  return (
+    <span className="certificate-qr" aria-hidden="true">
+      {Array.from({ length: 49 }).map((_, index) => {
+        const row = Math.floor(index / 7)
+        const col = index % 7
+        const finder =
+          (row < 2 && col < 2) ||
+          (row < 2 && col > 4) ||
+          (row > 4 && col < 2)
+        const active = finder || ((hash >> (index % 24)) & 1) === 1
+
+        return <i className={active ? 'active' : ''} key={index}></i>
+      })}
+    </span>
+  )
+}
+
+function CertificatePreview({ certificate, siteName = 'Ibnu Creative' }) {
+  return (
+    <div className="certificate-preview" aria-label={`Preview sertifikat ${certificate.classTitle}`}>
+      <div className="certificate-preview-topline">
+        <span>{siteName}</span>
+        <span>Certificate of Completion</span>
+      </div>
+      <div className="certificate-preview-body">
+        <p className="eyebrow">Sertifikat kelulusan</p>
+        <h3>{certificate.participantName}</h3>
+        <p className="certificate-preview-copy">
+          Telah menyelesaikan kelas online
+        </p>
+        <h4>{certificate.classTitle}</h4>
+        <div className="certificate-preview-meta">
+          <span>
+            <small>Tanggal selesai</small>
+            {formatCertificateDate(certificate.completedAt)}
+          </span>
+          <span>
+            <small>Mentor</small>
+            {certificate.mentorName}
+          </span>
+        </div>
+      </div>
+      <div className="certificate-preview-footer">
+        <div>
+          <small>ID Sertifikat</small>
+          <strong>{certificate.certificateId}</strong>
+        </div>
+        <VerificationMark certificateId={certificate.certificateId} />
+      </div>
+    </div>
+  )
 }
 
 function readDismissedExpiredPaymentNotices(userId = '') {
@@ -252,6 +332,8 @@ function MemberPage({
   supportTickets = [],
   submissions = [],
   testimonials = [],
+  certificates = [],
+  certificateNameChangeRequests = [],
   payments = [],
   checkoutClassRequestId = '',
   activeMenu,
@@ -262,7 +344,10 @@ function MemberPage({
   onCreateSupportTicket = async () => {},
   onReplySupportTicket = async () => {},
   onCreateSubmission = async () => {},
+  onTrackProgress = async () => {},
   onCreateTestimonial = async () => {},
+  onCreateCertificate = async () => {},
+  onRequestCertificateNameChange = async () => {},
   onCreateTripayCheckout = async () => {},
   onOpenPublicProductDetail = null,
   onCheckoutClassRequestHandled = () => {},
@@ -302,10 +387,15 @@ function MemberPage({
   const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('')
   const [isPaymentTermsAccepted, setIsPaymentTermsAccepted] = useState(false)
   const [isChangingPaymentMethod, setIsChangingPaymentMethod] = useState(false)
+  const [certificateNameDrafts, setCertificateNameDrafts] = useState({})
+  const [certificateChangeDrafts, setCertificateChangeDrafts] = useState({})
+  const [selectedCertificateId, setSelectedCertificateId] = useState('')
   const [dismissedExpiredPayments, setDismissedExpiredPayments] = useState(() =>
     readDismissedExpiredPaymentNotices(userId),
   )
   const handledCheckoutRequestRef = useRef('')
+  const coursesRef = useRef(courses)
+  const onTrackProgressRef = useRef(onTrackProgress)
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
   const selectedDigitalProduct = activeDigitalProducts.find(
@@ -314,6 +404,16 @@ function MemberPage({
   const digitalProductAccessByProduct = useMemo(
     () => new Map(digitalProductAccess.map((access) => [access.productId, access])),
     [digitalProductAccess],
+  )
+  const certificatesByClass = useMemo(
+    () => new Map(certificates.map((certificate) => [certificate.classId, certificate])),
+    [certificates],
+  )
+  const certificateRequestsByRow = useMemo(
+    () => new Map(
+      certificateNameChangeRequests.map((request) => [request.certificateRowId, request]),
+    ),
+    [certificateNameChangeRequests],
   )
   const materials = selectedCourse?.materials ?? []
   const currentMaterialIndex = Math.min(
@@ -416,11 +516,35 @@ function MemberPage({
     }
   }, [payments])
 
+  useEffect(() => {
+    coursesRef.current = courses
+  }, [courses])
+
+  useEffect(() => {
+    onTrackProgressRef.current = onTrackProgress
+  }, [onTrackProgress])
+
   const rememberCoursePosition = useCallback((courseId, materialIndex) => {
+    const course = coursesRef.current.find((item) => item.id === courseId)
+    const material = course?.materials?.[materialIndex]
+
     setCourseProgress((current) => ({
       ...current,
       [courseId]: Math.max(Number(current[courseId]) || 0, materialIndex),
     }))
+
+    if (course && material) {
+      onTrackProgressRef.current({
+        classId: course.id,
+        classTitle: course.title,
+        materialId: material.id,
+        materialTitle: material.title,
+        materialIndex,
+        materialCount: course.materials?.length || 1,
+      }).catch(() => {
+        // Local progress remains available even if the network drops.
+      })
+    }
   }, [])
 
   useEffect(() => {
@@ -467,7 +591,17 @@ function MemberPage({
     const requiredCount = requiredMaterials.length
 
     if (!requiredCount) {
-      return 0
+      const materialCount = Math.max(0, course.materials?.length || 0)
+      const lastViewedIndex = Math.max(0, Number(courseProgress[course.id]) || 0)
+
+      if (!materialCount) {
+        return 0
+      }
+
+      return Math.min(
+        100,
+        Math.round(((lastViewedIndex + 1) / materialCount) * 100),
+      )
     }
 
     const submittedRequiredIds = new Set(
@@ -782,8 +916,105 @@ function MemberPage({
     }
   }
 
-  const handleDownloadCertificate = () => {
-    onNotify('Sertifikat demo siap diunduh dari backend produksi.')
+  const handleCertificateNameDraftChange = (courseId, value) => {
+    setCertificateNameDrafts((current) => ({
+      ...current,
+      [courseId]: value.slice(0, 120),
+    }))
+  }
+
+  const handleCertificateChangeDraftChange = (certificateId, field, value) => {
+    setCertificateChangeDrafts((current) => ({
+      ...current,
+      [certificateId]: {
+        ...(current[certificateId] || {}),
+        [field]: field === 'reason' ? value.slice(0, 600) : value.slice(0, 120),
+      },
+    }))
+  }
+
+  const handleGenerateCertificate = async (course) => {
+    const progress = getCourseProgress(course)
+    const participantName = String(
+      certificateNameDrafts[course.id] || loginName || '',
+    ).trim()
+
+    if (progress < 100) {
+      onNotify('Sertifikat baru bisa dibuat setelah progress kelas 100%.')
+      return
+    }
+
+    if (participantName.length < 3) {
+      onNotify('Isi nama lengkap untuk sertifikat minimal 3 karakter.')
+      return
+    }
+
+    try {
+      const data = await onCreateCertificate({
+        classId: course.id,
+        participantName,
+      })
+      const certificate = data.certificate || data.certificates?.find((item) => item.classId === course.id)
+
+      if (certificate) {
+        setSelectedCertificateId(certificate.id)
+      }
+      onNotify(data.message || 'Sertifikat berhasil dibuat.')
+    } catch (error) {
+      onNotify(error.message || 'Sertifikat belum bisa dibuat.')
+    }
+  }
+
+  const handleDownloadCertificate = (certificate) => {
+    if (!certificate?.certificateId) {
+      onNotify('Sertifikat belum tersedia.')
+      return
+    }
+
+    const verificationUrl = `${window.location.origin}/sertifikat/${encodeURIComponent(certificate.certificateId)}`
+
+    downloadCertificatePdf({
+      certificate,
+      siteName: safeWebsiteSettings.siteName,
+      verificationUrl,
+    })
+    onNotify('Sertifikat PDF mulai diunduh.')
+  }
+
+  const handleOpenCertificateVerification = (certificate) => {
+    if (!certificate?.certificateId) {
+      return
+    }
+
+    window.open(`/sertifikat/${encodeURIComponent(certificate.certificateId)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleSubmitCertificateNameChange = async (certificate) => {
+    const draft = certificateChangeDrafts[certificate.id] || {}
+    const newName = String(draft.newName || '').trim()
+    const reason = String(draft.reason || '').trim()
+
+    if (!newName || !reason) {
+      onNotify('Isi nama baru dan alasan perubahan.')
+      return
+    }
+
+    try {
+      const data = await onRequestCertificateNameChange({
+        certificateId: certificate.id,
+        oldName: certificate.participantName,
+        newName,
+        reason,
+      })
+
+      setCertificateChangeDrafts((current) => ({
+        ...current,
+        [certificate.id]: {},
+      }))
+      onNotify(data.message || 'Permintaan ubah nama berhasil dikirim.')
+    } catch (error) {
+      onNotify(error.message || 'Permintaan ubah nama belum bisa dikirim.')
+    }
   }
 
   const openDigitalProductAccessPage = useCallback((product, data = null) => {
@@ -2226,35 +2457,214 @@ function MemberPage({
       )}
 
       {activeMenu === 'certificates' && (
-        <section className="panel">
+        <section className="panel certificate-panel">
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Sertifikat</p>
-              <h2>Sertifikat proyek</h2>
+              <h2>Sertifikat kelulusan kelas</h2>
+              <small>
+                Sertifikat bisa dibuat setelah progress kelas mencapai 100%.
+              </small>
             </div>
           </div>
-          <div className="menu-card-grid">
-            {(completedCourses.length ? completedCourses : courses.slice(0, 2)).map((course) => (
-              <article className="action-card" key={course.id}>
-                {course.thumbnail ? (
-                  <img className="certificate-thumb" src={course.thumbnail} alt="" />
-                ) : (
-                  <Icon name="certificate" />
-                )}
-                <h3>{course.title}</h3>
-                <p>Sertifikat siap setelah seluruh tugas final disetujui mentor.</p>
-                <button
-                  className="btn btn-secondary"
-                  type="button"
-                  onClick={handleDownloadCertificate}
+          <div className="certificate-summary-grid">
+            <article>
+              <Icon name="checkCircle" />
+              <strong>{completedCourses.length}</strong>
+              <span>Kelas selesai</span>
+            </article>
+            <article>
+              <Icon name="certificate" />
+              <strong>{certificates.length}</strong>
+              <span>Sertifikat dibuat</span>
+            </article>
+            <article>
+              <Icon name="clock" />
+              <strong>
+                {certificateNameChangeRequests.filter((request) => request.status === 'pending').length}
+              </strong>
+              <span>Menunggu admin</span>
+            </article>
+          </div>
+          <div className="certificate-course-list">
+            {courses.map((course) => {
+              const progress = getCourseProgress(course)
+              const certificate = certificatesByClass.get(course.id)
+              const request = certificate ? certificateRequestsByRow.get(certificate.id) : null
+              const nameDraft = certificateNameDrafts[course.id] ?? loginName ?? ''
+              const changeDraft = certificate ? certificateChangeDrafts[certificate.id] || {} : {}
+              const isSelected = selectedCertificateId === certificate?.id
+              const canCreate = progress >= 100
+
+              return (
+                <article
+                  className={`certificate-course-card ${certificate ? 'has-certificate' : ''}`}
+                  key={course.id}
                 >
-                  <Icon name="arrowRight" />
-                  Unduh
-                </button>
-              </article>
-            ))}
+                  <div className="certificate-course-media">
+                    {course.thumbnail ? (
+                      <img src={course.thumbnail} alt="" loading="lazy" />
+                    ) : (
+                      <Icon name="bookOpen" />
+                    )}
+                  </div>
+                  <div className="certificate-course-content">
+                    <div className="certificate-course-heading">
+                      <div>
+                        <p className="eyebrow">{course.mentor || 'Ibnu Creative'}</p>
+                        <h3>{course.title}</h3>
+                      </div>
+                      <span className={canCreate ? 'status-pill success' : 'status-pill'}>
+                        {progress}% selesai
+                      </span>
+                    </div>
+
+                    {!certificate && (
+                      <div className="certificate-create-box">
+                        {canCreate ? (
+                          <>
+                            <label>
+                              Nama lengkap pada sertifikat
+                              <input
+                                type="text"
+                                value={nameDraft}
+                                onChange={(event) =>
+                                  handleCertificateNameDraftChange(course.id, event.target.value)
+                                }
+                                placeholder="Contoh: Ramdilata Ibnu Sajara"
+                              />
+                            </label>
+                            <button
+                              className="btn btn-primary"
+                              type="button"
+                              onClick={() => handleGenerateCertificate(course)}
+                            >
+                              <Icon name="certificate" />
+                              Buat Sertifikat
+                            </button>
+                          </>
+                        ) : (
+                          <div className="certificate-locked-note">
+                            <Icon name="lock" />
+                            <span>Selesaikan semua tugas wajib sampai 100% untuk membuka sertifikat.</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {certificate && (
+                      <div className="certificate-issued-box">
+                        <CertificatePreview
+                          certificate={certificate}
+                          siteName={safeWebsiteSettings.siteName}
+                        />
+                        <div className="certificate-actions">
+                          <button
+                            className="btn btn-primary"
+                            type="button"
+                            onClick={() => handleDownloadCertificate(certificate)}
+                          >
+                            <Icon name="download" />
+                            Download PDF
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            type="button"
+                            onClick={() => handleOpenCertificateVerification(certificate)}
+                          >
+                            <Icon name="shield" />
+                            Verifikasi
+                          </button>
+                          <button
+                            className="btn btn-ghost"
+                            type="button"
+                            onClick={() => setSelectedCertificateId(isSelected ? '' : certificate.id)}
+                          >
+                            <Icon name="userPen" />
+                            Ubah Nama
+                          </button>
+                        </div>
+
+                        {request && (
+                          <div className={`certificate-request-status status-${request.status}`}>
+                            <strong>
+                              {request.status === 'approved'
+                                ? 'Perubahan nama disetujui'
+                                : request.status === 'rejected'
+                                  ? 'Perubahan nama ditolak'
+                                  : 'Menunggu persetujuan admin'}
+                            </strong>
+                            <span>
+                              {request.oldName} ke {request.newName}
+                            </span>
+                            {request.adminNote && <small>Catatan admin: {request.adminNote}</small>}
+                          </div>
+                        )}
+
+                        {isSelected && !request && !certificate.nameChangeUsed && (
+                          <div className="certificate-change-form">
+                            <label>
+                              Nama lama
+                              <input type="text" value={certificate.participantName} disabled />
+                            </label>
+                            <label>
+                              Nama baru
+                              <input
+                                type="text"
+                                value={changeDraft.newName || ''}
+                                onChange={(event) =>
+                                  handleCertificateChangeDraftChange(
+                                    certificate.id,
+                                    'newName',
+                                    event.target.value,
+                                  )
+                                }
+                                placeholder="Nama baru sesuai identitas"
+                              />
+                            </label>
+                            <label className="wide">
+                              Alasan perubahan
+                              <textarea
+                                value={changeDraft.reason || ''}
+                                onChange={(event) =>
+                                  handleCertificateChangeDraftChange(
+                                    certificate.id,
+                                    'reason',
+                                    event.target.value,
+                                  )
+                                }
+                                rows="3"
+                                placeholder="Contoh: Ada kesalahan penulisan nama."
+                              ></textarea>
+                            </label>
+                            <p>
+                              Kesempatan ubah nama hanya 1 kali dan akan menunggu persetujuan admin.
+                            </p>
+                            <button
+                              className="btn btn-primary"
+                              type="button"
+                              onClick={() => handleSubmitCertificateNameChange(certificate)}
+                            >
+                              <Icon name="send" />
+                              Ajukan Perubahan
+                            </button>
+                          </div>
+                        )}
+
+                        {isSelected && !request && certificate.nameChangeUsed && (
+                          <div className="certificate-locked-note">
+                            <Icon name="lock" />
+                            <span>Kesempatan ubah nama sertifikat sudah digunakan.</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
             {!courses.length && (
-              <article className="action-card">
+              <article className="empty-state">
                 <Icon name="certificate" />
                 <h3>Sertifikat belum tersedia</h3>
                 <p>Sertifikat akan muncul setelah member menyelesaikan kelas aktif.</p>

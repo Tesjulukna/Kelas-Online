@@ -4,6 +4,7 @@ import Icon from './components/Icon'
 import ProfileEditor from './components/ProfileEditor'
 import ProfileMenu from './components/ProfileMenu'
 import AdminPage from './pages/AdminPage'
+import CertificateVerifyPage from './pages/CertificateVerifyPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import MemberPage from './pages/MemberPage'
@@ -24,6 +25,7 @@ const membersApiPath = '/api/members'
 const supportApiPath = '/api/support'
 const submissionsApiPath = '/api/submissions'
 const testimonialsApiPath = '/api/testimonials'
+const certificatesApiPath = '/api/certificates'
 const paymentsApiPath = '/api/payments'
 const settingsApiPath = '/api/settings'
 const backupApiPath = '/api/backup'
@@ -109,6 +111,13 @@ function getPublicDetailFromPath(pathname) {
   return null
 }
 
+function getPublicCertificateIdFromPath(pathname) {
+  const cleanPath = pathname.replace(/\/+$/, '') || '/'
+  const [, type, id] = cleanPath.split('/')
+
+  return type === 'sertifikat' && id ? decodeURIComponent(id) : ''
+}
+
 function getInitialPage(session) {
   if (typeof window === 'undefined') {
     return session?.role ?? 'home'
@@ -124,7 +133,8 @@ function getInitialPage(session) {
     session?.role &&
     page !== session.role &&
     !publicInfoPages.includes(page) &&
-    !getPublicDetailFromPath(window.location.pathname)
+    !getPublicDetailFromPath(window.location.pathname) &&
+    !getPublicCertificateIdFromPath(window.location.pathname)
   ) {
     window.history.replaceState({}, '', pagePaths[session.role] ?? pagePaths.home)
     return session.role
@@ -992,6 +1002,58 @@ function cleanTestimonials(value) {
     }))
 }
 
+function cleanCertificates(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((item) => item?.id && item?.certificateId)
+    .map((item) => ({
+      id: cleanText(item.id),
+      certificateId: cleanLongText(item.certificateId || '', 80),
+      memberId: cleanText(item.memberId || ''),
+      memberName: cleanLongText(item.memberName || 'Member', 160),
+      classId: cleanText(item.classId || ''),
+      classTitle: cleanLongText(item.classTitle || 'Kelas', 180),
+      mentorName: cleanLongText(item.mentorName || 'Ibnu Creative', 140),
+      participantName: cleanLongText(item.participantName || item.memberName || 'Member', 160),
+      completedAt: cleanText(item.completedAt || ''),
+      issuedAt: cleanText(item.issuedAt || ''),
+      nameChangeUsed: item.nameChangeUsed === true,
+      version: Math.max(1, Math.round(Number(item.version) || 1)),
+      revokedAt: cleanText(item.revokedAt || ''),
+      createdAt: cleanText(item.createdAt || ''),
+      updatedAt: cleanText(item.updatedAt || ''),
+    }))
+}
+
+function cleanCertificateNameChangeRequests(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((item) => item?.id)
+    .map((item) => ({
+      id: cleanText(item.id),
+      certificateRowId: cleanText(item.certificateRowId || ''),
+      publicCertificateId: cleanLongText(item.publicCertificateId || '', 80),
+      memberId: cleanText(item.memberId || ''),
+      memberName: cleanLongText(item.memberName || 'Member', 160),
+      classId: cleanText(item.classId || ''),
+      classTitle: cleanLongText(item.classTitle || 'Kelas', 180),
+      oldName: cleanLongText(item.oldName || '', 160),
+      newName: cleanLongText(item.newName || '', 160),
+      reason: cleanLongText(item.reason || '', 700),
+      status: cleanText(item.status || 'pending'),
+      adminNote: cleanLongText(item.adminNote || '', 500),
+      reviewedAt: cleanText(item.reviewedAt || ''),
+      createdAt: cleanText(item.createdAt || ''),
+      updatedAt: cleanText(item.updatedAt || ''),
+    }))
+}
+
 function cleanPayments(value) {
   if (!Array.isArray(value)) {
     return []
@@ -1240,6 +1302,27 @@ async function fetchStoredTestimonials(currentSession) {
   return cleanTestimonials(data.testimonials)
 }
 
+async function fetchStoredCertificates(currentSession) {
+  if (!currentSession || !['admin', 'member'].includes(currentSession.role)) {
+    return {
+      certificates: [],
+      certificateNameChangeRequests: [],
+    }
+  }
+
+  const data = await requestJson(certificatesApiPath).catch(() => ({
+    certificates: [],
+    certificateNameChangeRequests: [],
+  }))
+
+  return {
+    certificates: cleanCertificates(data.certificates),
+    certificateNameChangeRequests: cleanCertificateNameChangeRequests(
+      data.certificateNameChangeRequests,
+    ),
+  }
+}
+
 async function fetchStoredPayments(currentSession) {
   if (!currentSession || !['admin', 'member'].includes(currentSession.role)) {
     return []
@@ -1282,6 +1365,8 @@ function App() {
   const [supportTickets, setSupportTickets] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [testimonials, setTestimonials] = useState([])
+  const [certificates, setCertificates] = useState([])
+  const [certificateNameChangeRequests, setCertificateNameChangeRequests] = useState([])
   const [payments, setPayments] = useState([])
   const [publicActivities, setPublicActivities] = useState([])
   const [isClassesLoaded, setIsClassesLoaded] = useState(false)
@@ -1325,7 +1410,8 @@ function App() {
         currentSession?.role &&
         nextPage !== currentSession.role &&
         !publicInfoPages.includes(nextPage) &&
-        !getPublicDetailFromPath(window.location.pathname)
+        !getPublicDetailFromPath(window.location.pathname) &&
+        !getPublicCertificateIdFromPath(window.location.pathname)
       ) {
         nextPage = currentSession.role
         window.history.replaceState({}, '', pagePaths[currentSession.role] ?? pagePaths.home)
@@ -1605,11 +1691,20 @@ function App() {
         fetchStoredSupportTickets(session),
         fetchStoredSubmissions(session),
         fetchStoredTestimonials(session),
+        fetchStoredCertificates(session),
         fetchStoredPayments(session),
       ])
 
       requests
-        .then(([nextMembers, productData, nextSupportTickets, nextSubmissions, nextTestimonials, nextPayments]) => {
+        .then(([
+          nextMembers,
+          productData,
+          nextSupportTickets,
+          nextSubmissions,
+          nextTestimonials,
+          certificateData,
+          nextPayments,
+        ]) => {
           if (!isCurrent) {
             return
           }
@@ -1629,6 +1724,8 @@ function App() {
           setSupportTickets(nextSupportTickets)
           setSubmissions(nextSubmissions)
           setTestimonials(nextTestimonials)
+          setCertificates(certificateData.certificates)
+          setCertificateNameChangeRequests(certificateData.certificateNameChangeRequests)
           setPayments(nextPayments)
         })
         .catch(() => {
@@ -1639,6 +1736,8 @@ function App() {
             setSupportTickets((current) => current)
             setSubmissions((current) => current)
             setTestimonials((current) => current)
+            setCertificates((current) => current)
+            setCertificateNameChangeRequests((current) => current)
             setPayments((current) => current)
           }
         })
@@ -2126,6 +2225,23 @@ function App() {
     return nextTestimonials
   }
 
+  const applyCertificatesResponse = (data) => {
+    const nextCertificates = cleanCertificates(data.certificates)
+    const nextRequests = cleanCertificateNameChangeRequests(
+      data.certificateNameChangeRequests,
+    )
+
+    setCertificates(nextCertificates)
+    setCertificateNameChangeRequests(nextRequests)
+    announcePeopleSync()
+    return {
+      certificates: nextCertificates,
+      certificateNameChangeRequests: nextRequests,
+      certificate: data.certificate ? cleanCertificates([data.certificate])[0] : null,
+      message: data.message || '',
+    }
+  }
+
   const handleClassesChange = async (updater) => {
     if (session?.role !== 'admin') {
       throw new Error('Silakan login admin ulang untuk menyimpan kelas.')
@@ -2383,6 +2499,17 @@ function App() {
     return applySubmissionsResponse(data)
   }
 
+  const handleTrackProgress = async (progressData) => {
+    if (session?.role !== 'member') {
+      return { ok: false }
+    }
+
+    return requestJson('/api/progress', {
+      method: 'POST',
+      body: JSON.stringify(progressData),
+    })
+  }
+
   const handleUpdateSubmission = async (submissionData) => {
     const data = await requestJson(submissionsApiPath, {
       method: 'PUT',
@@ -2421,6 +2548,51 @@ function App() {
     )
 
     return applyTestimonialsResponse(data)
+  }
+
+  const handleCreateCertificate = async (certificateData) => {
+    if (!session) {
+      throw new Error('Silakan login ulang untuk membuat sertifikat.')
+    }
+
+    const data = await requestJson(certificatesApiPath, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'create',
+        ...certificateData,
+      }),
+    })
+
+    return applyCertificatesResponse(data)
+  }
+
+  const handleRequestCertificateNameChange = async (requestData) => {
+    if (!session) {
+      throw new Error('Silakan login ulang untuk mengajukan perubahan nama.')
+    }
+
+    const data = await requestJson(certificatesApiPath, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'request_name_change',
+        ...requestData,
+      }),
+    })
+
+    return applyCertificatesResponse(data)
+  }
+
+  const handleReviewCertificateNameChange = async (requestData) => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk meninjau sertifikat.')
+    }
+
+    const data = await requestJson(certificatesApiPath, {
+      method: 'PUT',
+      body: JSON.stringify(requestData),
+    })
+
+    return applyCertificatesResponse(data)
   }
 
   const handleUpdateSupportTicket = async (ticketData) => {
@@ -2517,8 +2689,12 @@ function App() {
   const publicDetailTarget = typeof window === 'undefined'
     ? null
     : getPublicDetailFromPath(currentPath.split(/[?#]/)[0] || '/')
+  const publicCertificateId = typeof window === 'undefined'
+    ? ''
+    : getPublicCertificateIdFromPath(currentPath.split(/[?#]/)[0] || '/')
   const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|produk-akses)\//.test(currentPath.split(/[?#]/)[0] || '/')
-  const shouldShowSiteFooter = !isPublicDetailPath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
+  const isPublicCertificatePath = Boolean(publicCertificateId)
+  const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
 
   return (
     <div className="app-shell">
@@ -2538,7 +2714,14 @@ function App() {
         onOpenNotification={openNotificationTarget}
       />
       <main>
-        {page === 'home' && (
+        {page === 'home' && publicCertificateId && (
+          <CertificateVerifyPage
+            certificateId={publicCertificateId}
+            apiPath={certificatesApiPath}
+            settings={websiteSettings}
+          />
+        )}
+        {page === 'home' && !publicCertificateId && (
           <HomePage
             isLoggedIn={Boolean(session)}
             onLogin={goToDashboard}
@@ -2589,6 +2772,8 @@ function App() {
               supportTickets={supportTickets}
               submissions={submissions}
               testimonials={testimonials}
+              certificates={certificates}
+              certificateNameChangeRequests={certificateNameChangeRequests}
               payments={payments}
               focusTarget={memberFocusTarget}
               checkoutClassRequestId={pendingCheckoutClassId}
@@ -2601,7 +2786,10 @@ function App() {
               onCreateSupportTicket={handleCreateSupportTicket}
               onReplySupportTicket={handleReplySupportTicket}
               onCreateSubmission={handleCreateSubmission}
+              onTrackProgress={handleTrackProgress}
               onCreateTestimonial={handleCreateTestimonial}
+              onCreateCertificate={handleCreateCertificate}
+              onRequestCertificateNameChange={handleRequestCertificateNameChange}
               onCreateTripayCheckout={handleCreateTripayCheckout}
               onOpenPublicProductDetail={openPublicProductDetail}
               onCheckoutClassRequestHandled={clearPendingClassCheckout}
@@ -2630,6 +2818,8 @@ function App() {
               supportTickets={supportTickets}
               submissions={submissions}
               testimonials={testimonials}
+              certificates={certificates}
+              certificateNameChangeRequests={certificateNameChangeRequests}
               payments={payments}
               publicActivities={publicActivities}
               websiteSettings={websiteSettings}
@@ -2647,6 +2837,7 @@ function App() {
               onUpdateSubmission={handleUpdateSubmission}
               onUpdateTestimonial={handleUpdateTestimonial}
               onDeleteTestimonial={handleDeleteTestimonial}
+              onReviewCertificateNameChange={handleReviewCertificateNameChange}
               activeMenu={activeAdminMenu}
               onMenuChange={(menuId) => navigateToDashboardMenu('admin', menuId)}
               isMenuOpen={isDashboardMenuOpen}

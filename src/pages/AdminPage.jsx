@@ -683,6 +683,8 @@ function AdminPage({
   supportTickets = [],
   submissions = [],
   testimonials = [],
+  certificates = [],
+  certificateNameChangeRequests = [],
   payments = [],
   publicActivities = [],
   websiteSettings,
@@ -700,6 +702,7 @@ function AdminPage({
   onUpdateSubmission = async () => {},
   onUpdateTestimonial = async () => {},
   onDeleteTestimonial = async () => {},
+  onReviewCertificateNameChange = async () => {},
   activeMenu,
   onMenuChange,
   isMenuOpen,
@@ -770,6 +773,27 @@ function AdminPage({
   ).length
   const pendingTestimonials = testimonials.filter((item) => item.status === 'pending').length
   const approvedTestimonials = testimonials.filter((item) => item.status === 'approved').length
+  const pendingCertificateNameRequests = certificateNameChangeRequests.filter(
+    (request) => request.status === 'pending',
+  )
+  const reviewedCertificateNameRequests = certificateNameChangeRequests.filter(
+    (request) => request.status !== 'pending',
+  )
+  const handleReviewCertificateNameChange = async (request, status) => {
+    try {
+      const data = await onReviewCertificateNameChange({
+        id: request.id,
+        status,
+        adminNote: status === 'approved'
+          ? 'Perubahan nama disetujui admin.'
+          : 'Perubahan nama ditolak admin.',
+      })
+
+      onNotify(data.message || 'Permintaan perubahan nama ditinjau.')
+    } catch (error) {
+      onNotify(error.message || 'Permintaan perubahan nama belum bisa ditinjau.')
+    }
+  }
   const handleModerateTestimonial = async (testimonial, status) => {
     try {
       await onUpdateTestimonial({ id: testimonial.id, status })
@@ -4544,33 +4568,184 @@ function AdminPage({
       )}
 
       {activeMenu === 'certificates' && (
-        <section className="panel">
+        <section className="panel admin-certificate-panel">
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Sertifikat</p>
-              <h2>Kelola kelulusan member</h2>
+              <h2>Kelola sertifikat member</h2>
+              <small>
+                Review permintaan perubahan nama dan pantau sertifikat yang sudah terbit.
+              </small>
             </div>
           </div>
-          <div className="menu-card-grid">
-            <article className="action-card">
+          <div className="certificate-summary-grid admin-summary-grid">
+            <article>
               <Icon name="certificate" />
-              <h3>Sertifikat siap review</h3>
-              <p>
-                {Math.max(0, submissions.length - pendingSubmissions)} tugas sudah
-                melewati review mentor.
-              </p>
-              <button
-                className="btn btn-secondary"
-                type="button"
-                onClick={() => {
-                  setActionStatus('Data sertifikat member dibuka.')
-                  onNotify('Membuka kelola sertifikat.')
-                }}
-              >
-                <Icon name="arrowRight" />
-                Kelola Sertifikat
-              </button>
+              <strong>{certificates.length}</strong>
+              <span>Sertifikat terbit</span>
             </article>
+            <article>
+              <Icon name="clock" />
+              <strong>{pendingCertificateNameRequests.length}</strong>
+              <span>Menunggu review</span>
+            </article>
+            <article>
+              <Icon name="checkCircle" />
+              <strong>{reviewedCertificateNameRequests.filter((item) => item.status === 'approved').length}</strong>
+              <span>Disetujui</span>
+            </article>
+            <article>
+              <Icon name="x" />
+              <strong>{reviewedCertificateNameRequests.filter((item) => item.status === 'rejected').length}</strong>
+              <span>Ditolak</span>
+            </article>
+          </div>
+
+          <div className="admin-certificate-layout">
+            <section className="admin-certificate-card">
+              <div className="subsection-heading">
+                <div>
+                  <p className="eyebrow">Approval</p>
+                  <h3>Permintaan ubah nama</h3>
+                </div>
+                <span>{pendingCertificateNameRequests.length} pending</span>
+              </div>
+              <div className="admin-table certificate-request-table" role="table" aria-label="Permintaan ubah nama sertifikat">
+                <div className="table-row table-head" role="row">
+                  <span role="columnheader">Peserta</span>
+                  <span role="columnheader">Kelas</span>
+                  <span role="columnheader">Perubahan</span>
+                  <span role="columnheader">Alasan</span>
+                  <span role="columnheader">Aksi</span>
+                </div>
+                {pendingCertificateNameRequests.map((request) => (
+                  <div className="table-row" role="row" key={request.id}>
+                    <span data-label="Peserta" role="cell">
+                      <strong>{request.memberName}</strong>
+                      <small>{request.publicCertificateId}</small>
+                    </span>
+                    <span data-label="Kelas" role="cell">{request.classTitle}</span>
+                    <span data-label="Perubahan" role="cell">
+                      <small>{request.oldName}</small>
+                      <strong>{request.newName}</strong>
+                    </span>
+                    <span data-label="Alasan" role="cell">{request.reason}</span>
+                    <span className="row-actions" data-label="Aksi" role="cell">
+                      <button type="button" onClick={() => handleReviewCertificateNameChange(request, 'approved')}>
+                        Setujui
+                      </button>
+                      <button type="button" onClick={() => handleReviewCertificateNameChange(request, 'rejected')}>
+                        Tolak
+                      </button>
+                    </span>
+                  </div>
+                ))}
+                {!pendingCertificateNameRequests.length && (
+                  <article className="empty-state table-empty">
+                    <Icon name="checkCircle" />
+                    <h3>Tidak ada permintaan pending</h3>
+                    <p>Permintaan perubahan nama dari peserta akan muncul di sini.</p>
+                  </article>
+                )}
+              </div>
+            </section>
+
+            <section className="admin-certificate-card">
+              <div className="subsection-heading">
+                <div>
+                  <p className="eyebrow">Riwayat</p>
+                  <h3>Riwayat perubahan nama</h3>
+                </div>
+                <span>{certificateNameChangeRequests.length} request</span>
+              </div>
+              <div className="admin-table certificate-history-table" role="table" aria-label="Riwayat perubahan nama sertifikat">
+                <div className="table-row table-head" role="row">
+                  <span role="columnheader">Sertifikat</span>
+                  <span role="columnheader">Peserta</span>
+                  <span role="columnheader">Nama Baru</span>
+                  <span role="columnheader">Status</span>
+                  <span role="columnheader">Tanggal</span>
+                </div>
+                {certificateNameChangeRequests.map((request) => (
+                  <div className="table-row" role="row" key={request.id}>
+                    <span data-label="Sertifikat" role="cell">{request.publicCertificateId}</span>
+                    <span data-label="Peserta" role="cell">{request.memberName}</span>
+                    <span data-label="Nama Baru" role="cell">{request.newName}</span>
+                    <span data-label="Status" role="cell">
+                      <mark>{request.status === 'approved' ? 'Disetujui' : request.status === 'rejected' ? 'Ditolak' : 'Pending'}</mark>
+                    </span>
+                    <span data-label="Tanggal" role="cell">
+                      {request.reviewedAt
+                        ? formatRelativeActivity(request.reviewedAt)
+                        : formatRelativeActivity(request.createdAt)}
+                    </span>
+                  </div>
+                ))}
+                {!certificateNameChangeRequests.length && (
+                  <article className="empty-state table-empty">
+                    <Icon name="fileText" />
+                    <h3>Belum ada riwayat</h3>
+                    <p>Riwayat approval perubahan nama akan tersimpan permanen di sini.</p>
+                  </article>
+                )}
+              </div>
+            </section>
+
+            <section className="admin-certificate-card wide">
+              <div className="subsection-heading">
+                <div>
+                  <p className="eyebrow">Database</p>
+                  <h3>Sertifikat terbit</h3>
+                </div>
+                <span>{certificates.length} sertifikat</span>
+              </div>
+              <div className="admin-table issued-certificate-table" role="table" aria-label="Sertifikat terbit">
+                <div className="table-row table-head" role="row">
+                  <span role="columnheader">ID</span>
+                  <span role="columnheader">Peserta</span>
+                  <span role="columnheader">Kelas</span>
+                  <span role="columnheader">Terbit</span>
+                  <span role="columnheader">Aksi</span>
+                </div>
+                {certificates.map((certificate) => (
+                  <div className="table-row" role="row" key={certificate.id}>
+                    <span data-label="ID" role="cell">
+                      <strong>{certificate.certificateId}</strong>
+                      <small>Versi {certificate.version}</small>
+                    </span>
+                    <span data-label="Peserta" role="cell">
+                      <strong>{certificate.participantName}</strong>
+                      <small>{certificate.memberName}</small>
+                    </span>
+                    <span data-label="Kelas" role="cell">{certificate.classTitle}</span>
+                    <span data-label="Terbit" role="cell">
+                      {formatRelativeActivity(certificate.issuedAt || certificate.createdAt)}
+                    </span>
+                    <span className="row-actions" data-label="Aksi" role="cell">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(
+                            `/sertifikat/${encodeURIComponent(certificate.certificateId)}`,
+                            '_blank',
+                            'noopener,noreferrer',
+                          )
+                        }
+                      >
+                        Verifikasi
+                      </button>
+                    </span>
+                  </div>
+                ))}
+                {!certificates.length && (
+                  <article className="empty-state table-empty">
+                    <Icon name="certificate" />
+                    <h3>Belum ada sertifikat terbit</h3>
+                    <p>Sertifikat akan tercatat saat member membuat sertifikat dari dashboard.</p>
+                  </article>
+                )}
+              </div>
+            </section>
           </div>
         </section>
       )}

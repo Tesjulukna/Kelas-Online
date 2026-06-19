@@ -1028,6 +1028,8 @@ const backupTables = [
   'support_tickets',
   'submissions',
   'testimonials',
+  'certificates',
+  'certificate_name_change_requests',
   'member_progress',
   'lynk_orders',
   'tripay_orders',
@@ -1105,6 +1107,8 @@ export async function restoreBackup(payload) {
     ['materials', 'id=not.is.null'],
     ['submissions', 'id=not.is.null'],
     ['testimonials', 'id=not.is.null'],
+    ['certificate_name_change_requests', 'id=not.is.null'],
+    ['certificates', 'id=not.is.null'],
     ['support_tickets', 'id=not.is.null'],
     ['member_progress', 'member_id=not.is.null'],
     ['tripay_orders', 'id=not.is.null'],
@@ -1124,6 +1128,8 @@ export async function restoreBackup(payload) {
     'support_tickets',
     'submissions',
     'testimonials',
+    'certificates',
+    'certificate_name_change_requests',
     'member_progress',
     'lynk_orders',
     'tripay_orders',
@@ -2547,6 +2553,15 @@ export async function trackProgress(user, payload) {
     throw new ApiError(400, 'Data progress materi tidak lengkap.')
   }
 
+  const existingProgressRows = await rest(
+    `member_progress?select=progress_percent&member_id=eq.${eq(user.userId)}&class_id=eq.${eq(classId)}&limit=1`,
+  ).catch(() => [])
+  const progressPercent = cleanNumber(
+    payload.progressPercent ?? existingProgressRows?.[0]?.progress_percent ?? 0,
+    0,
+    100,
+  )
+
   await rest('member_progress?on_conflict=member_id,class_id', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
@@ -2558,12 +2573,457 @@ export async function trackProgress(user, payload) {
       material_title: cleanText(payload.materialTitle || 'Materi', 160),
       material_index: materialIndex,
       material_count: materialCount,
-      progress_percent: 0,
+      progress_percent: progressPercent,
       last_activity_at: new Date().toISOString(),
     },
   })
 
   return { ok: true, updatedAt: new Date().toISOString() }
+}
+
+function certificatePublic(row) {
+  return {
+    id: cleanText(row.id || '', 160),
+    certificateId: cleanText(row.certificate_id || '', 80),
+    memberId: cleanText(row.member_id || '', 120),
+    memberName: cleanText(row.member_name || 'Member', 160),
+    classId: cleanText(row.class_id || '', 120),
+    classTitle: cleanText(row.class_title || 'Kelas', 180),
+    mentorName: cleanText(row.mentor_name || 'Ibnu Creative', 140),
+    participantName: cleanText(row.participant_name || row.member_name || 'Member', 160),
+    completedAt: cleanText(row.completed_at || '', 80),
+    issuedAt: cleanText(row.issued_at || row.created_at || '', 80),
+    nameChangeUsed: row.name_change_used === true,
+    version: cleanNumber(row.version || 1, 1, 1000),
+    revokedAt: cleanText(row.revoked_at || '', 80),
+    createdAt: cleanText(row.created_at || '', 80),
+    updatedAt: cleanText(row.updated_at || '', 80),
+  }
+}
+
+function certificateNameChangePublic(row) {
+  return {
+    id: cleanText(row.id || '', 160),
+    certificateRowId: cleanText(row.certificate_row_id || row.certificate_id || '', 160),
+    publicCertificateId: cleanText(row.public_certificate_id || '', 80),
+    memberId: cleanText(row.member_id || '', 120),
+    memberName: cleanText(row.member_name || 'Member', 160),
+    classId: cleanText(row.class_id || '', 120),
+    classTitle: cleanText(row.class_title || 'Kelas', 180),
+    oldName: cleanText(row.old_name || '', 160),
+    newName: cleanText(row.new_name || '', 160),
+    reason: cleanText(row.reason || '', 700),
+    status: cleanText(row.status || 'pending', 40),
+    adminNote: cleanText(row.admin_note || '', 500),
+    reviewedAt: cleanText(row.reviewed_at || '', 80),
+    createdAt: cleanText(row.created_at || '', 80),
+    updatedAt: cleanText(row.updated_at || '', 80),
+  }
+}
+
+function isMissingCertificateTableError(error) {
+  const message = String(error?.message || '').toLowerCase()
+
+  return ['certificates', 'certificate_name_change_requests'].some((table) =>
+    message.includes(table),
+  ) && (
+    message.includes('relation') ||
+    message.includes('table') ||
+    message.includes('schema cache') ||
+    message.includes('does not exist')
+  )
+}
+
+function certificateTableSetupError(error) {
+  if (isMissingCertificateTableError(error)) {
+    throw new ApiError(
+      500,
+      'Tabel sertifikat belum siap di Supabase. Jalankan supabase/schema.sql terbaru dulu.',
+    )
+  }
+
+  throw error
+}
+
+async function fetchCertificateRowsForUser(user) {
+  try {
+    if (user.role === 'admin') {
+      const [certificateRows, requestRows] = await Promise.all([
+        rest('certificates?select=*&order=issued_at.desc,created_at.desc'),
+        rest('certificate_name_change_requests?select=*&order=created_at.desc,id.desc'),
+      ])
+
+      return {
+        certificates: (certificateRows || []).map(certificatePublic),
+        certificateNameChangeRequests: (requestRows || []).map(certificateNameChangePublic),
+        updatedAt: new Date().toISOString(),
+      }
+    }
+
+    const [certificateRows, requestRows] = await Promise.all([
+      rest(
+        `certificates?select=*&member_id=eq.${eq(user.userId)}&order=issued_at.desc,created_at.desc`,
+      ),
+      rest(
+        `certificate_name_change_requests?select=*&member_id=eq.${eq(user.userId)}&order=created_at.desc,id.desc`,
+      ),
+    ])
+
+    return {
+      certificates: (certificateRows || []).map(certificatePublic),
+      certificateNameChangeRequests: (requestRows || []).map(certificateNameChangePublic),
+      updatedAt: new Date().toISOString(),
+    }
+  } catch (error) {
+    certificateTableSetupError(error)
+  }
+}
+
+export async function fetchCertificates(user) {
+  return fetchCertificateRowsForUser(user)
+}
+
+async function findCertificateByAnyId(value) {
+  const certificateId = cleanText(value || '', 160)
+
+  if (!certificateId) {
+    return null
+  }
+
+  const rows = await rest(
+    `certificates?select=*&or=(id.eq.${eq(certificateId)},certificate_id.eq.${eq(certificateId)})&limit=1`,
+  ).catch((error) => {
+    certificateTableSetupError(error)
+  })
+
+  return rows?.[0] || null
+}
+
+async function uniqueCertificateId() {
+  const year = new Date().getFullYear()
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const code = `IBNU-${year}-${randomBytes(4).toString('hex').toUpperCase()}`
+    const rows = await rest(
+      `certificates?select=id&certificate_id=eq.${eq(code)}&limit=1`,
+    ).catch((error) => {
+      certificateTableSetupError(error)
+    })
+
+    if (!rows?.length) {
+      return code
+    }
+  }
+
+  return `IBNU-${year}-${Date.now().toString(36).toUpperCase()}`
+}
+
+async function getClassCompletionForCertificate(user, classId) {
+  const [classRows, materialRows, progressRows, submissionRows] = await Promise.all([
+    rest(`classes?select=*&id=eq.${eq(classId)}&limit=1`),
+    rest(
+      `materials?select=id,sort_order,requires_task&class_id=eq.${eq(classId)}&order=sort_order.asc,id.asc`,
+    ).catch(() => []),
+    rest(
+      `member_progress?select=*&member_id=eq.${eq(user.userId)}&class_id=eq.${eq(classId)}&limit=1`,
+    ).catch(() => []),
+    rest(
+      `submissions?select=material_id&member_id=eq.${eq(user.userId)}&class_id=eq.${eq(classId)}`,
+    ).catch(() => []),
+  ])
+  const course = classRows?.[0]
+
+  if (!course) {
+    throw new ApiError(404, 'Kelas tidak ditemukan.')
+  }
+
+  if (course.status !== 'Aktif') {
+    throw new ApiError(422, 'Sertifikat hanya tersedia untuk kelas aktif.')
+  }
+
+  const allowedClassIds = Array.isArray(user.allowedClassIds) ? user.allowedClassIds : null
+
+  if (allowedClassIds && !allowedClassIds.includes(course.id)) {
+    throw new ApiError(403, 'Kelas ini belum ada di akun member.')
+  }
+
+  const progress = progressRows?.[0] || null
+  const requiredMaterialIds = (materialRows || [])
+    .filter((material) => material.requires_task)
+    .map((material) => material.id)
+  const submittedMaterialIds = new Set(
+    (submissionRows || []).map((submission) => submission.material_id).filter(Boolean),
+  )
+  const requiredDone =
+    requiredMaterialIds.length > 0 &&
+    requiredMaterialIds.every((materialId) => submittedMaterialIds.has(materialId))
+  const progressDone = Number(progress?.progress_percent || 0) >= 100
+  const allMaterialsVisited =
+    !requiredMaterialIds.length &&
+    Number(progress?.material_count || 0) > 0 &&
+    Number(progress?.material_index || 0) >= Number(progress?.material_count || 0) - 1
+  const completedAt =
+    progress?.last_activity_at ||
+    progress?.updated_at ||
+    (requiredDone ? new Date().toISOString() : '')
+
+  return {
+    course,
+    complete: requiredDone || progressDone || allMaterialsVisited,
+    completedAt,
+  }
+}
+
+export async function createCertificate(user, payload) {
+  if (user.role !== 'member') {
+    throw new ApiError(403, 'Hanya member yang bisa membuat sertifikat.')
+  }
+
+  const classId = cleanText(payload.classId || '', 120)
+  const participantName = cleanText(payload.participantName || payload.name || '', 120)
+
+  if (!classId) {
+    throw new ApiError(400, 'Pilih kelas untuk membuat sertifikat.')
+  }
+
+  if (participantName.length < 3) {
+    throw new ApiError(422, 'Nama lengkap sertifikat minimal 3 karakter.')
+  }
+
+  const existingRows = await rest(
+    `certificates?select=*&member_id=eq.${eq(user.userId)}&class_id=eq.${eq(classId)}&limit=1`,
+  ).catch((error) => {
+    certificateTableSetupError(error)
+  })
+  const existingCertificate = existingRows?.[0]
+
+  if (existingCertificate) {
+    return {
+      ok: true,
+      certificate: certificatePublic(existingCertificate),
+      message: 'Sertifikat kelas ini sudah pernah dibuat.',
+      ...(await fetchCertificateRowsForUser(user)),
+    }
+  }
+
+  const completion = await getClassCompletionForCertificate(user, classId)
+
+  if (!completion.complete) {
+    throw new ApiError(422, 'Sertifikat baru bisa dibuat setelah progress kelas 100%.')
+  }
+
+  const now = new Date().toISOString()
+  const certificateId = await uniqueCertificateId()
+
+  await rest('certificates', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: {
+      id: makeId('certificate'),
+      certificate_id: certificateId,
+      member_id: user.userId,
+      member_name: cleanText(user.name || 'Member', 160),
+      class_id: classId,
+      class_title: cleanText(completion.course.title || 'Kelas', 180),
+      mentor_name: cleanText(completion.course.mentor || 'Ibnu Creative', 140),
+      participant_name: participantName,
+      completed_at: completion.completedAt || now,
+      issued_at: now,
+      name_change_used: false,
+      version: 1,
+      revoked_at: '',
+    },
+  }).catch((error) => {
+    certificateTableSetupError(error)
+  })
+
+  const rows = await rest(
+    `certificates?select=*&certificate_id=eq.${eq(certificateId)}&limit=1`,
+  )
+
+  return {
+    ok: true,
+    certificate: certificatePublic(rows?.[0] || {}),
+    message: 'Sertifikat berhasil dibuat.',
+    ...(await fetchCertificateRowsForUser(user)),
+  }
+}
+
+export async function requestCertificateNameChange(user, payload) {
+  if (user.role !== 'member') {
+    throw new ApiError(403, 'Hanya member yang bisa mengajukan perubahan nama.')
+  }
+
+  const certificateLookup = cleanText(payload.certificateId || payload.id || '', 160)
+  const newName = cleanText(payload.newName || '', 120)
+  const oldName = cleanText(payload.oldName || '', 120)
+  const reason = cleanText(payload.reason || '', 600)
+
+  if (!certificateLookup || !newName || !reason) {
+    throw new ApiError(400, 'Nama baru dan alasan perubahan wajib diisi.')
+  }
+
+  if (newName.length < 3) {
+    throw new ApiError(422, 'Nama baru minimal 3 karakter.')
+  }
+
+  if (reason.length < 8) {
+    throw new ApiError(422, 'Alasan perubahan minimal 8 karakter.')
+  }
+
+  const certificate = await findCertificateByAnyId(certificateLookup)
+
+  if (!certificate) {
+    throw new ApiError(404, 'Sertifikat tidak ditemukan.')
+  }
+
+  if (certificate.member_id !== user.userId) {
+    throw new ApiError(403, 'Sertifikat ini bukan milik akun Anda.')
+  }
+
+  if (certificate.name_change_used === true) {
+    throw new ApiError(422, 'Kesempatan ubah nama sertifikat sudah digunakan.')
+  }
+
+  const existingRequests = await rest(
+    `certificate_name_change_requests?select=id&certificate_row_id=eq.${eq(certificate.id)}&limit=1`,
+  ).catch((error) => {
+    certificateTableSetupError(error)
+  })
+
+  if (existingRequests?.length) {
+    throw new ApiError(422, 'Permintaan ubah nama untuk sertifikat ini sudah pernah dibuat.')
+  }
+
+  const requestId = makeId('cert-name')
+  const now = new Date().toISOString()
+
+  await rest('certificate_name_change_requests', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      id: requestId,
+      certificate_row_id: certificate.id,
+      public_certificate_id: certificate.certificate_id,
+      member_id: user.userId,
+      member_name: cleanText(user.name || 'Member', 160),
+      class_id: certificate.class_id,
+      class_title: certificate.class_title,
+      old_name: oldName || certificate.participant_name,
+      new_name: newName,
+      reason,
+      status: 'pending',
+      admin_note: '',
+      reviewed_at: '',
+      created_at: now,
+    },
+  }).catch((error) => {
+    certificateTableSetupError(error)
+  })
+
+  await rest(`certificates?id=eq.${eq(certificate.id)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      name_change_used: true,
+    },
+  })
+
+  return {
+    ok: true,
+    message: 'Permintaan ubah nama dikirim dan menunggu persetujuan admin.',
+    ...(await fetchCertificateRowsForUser(user)),
+  }
+}
+
+export async function reviewCertificateNameChange(user, payload) {
+  if (user.role !== 'admin') {
+    throw new ApiError(403, 'Hanya admin yang bisa meninjau perubahan nama.')
+  }
+
+  const requestId = cleanText(payload.id || payload.requestId || '', 160)
+  const status = cleanText(payload.status || '', 40)
+  const adminNote = cleanText(payload.adminNote || '', 500)
+
+  if (!requestId || !['approved', 'rejected'].includes(status)) {
+    throw new ApiError(400, 'Status review perubahan nama tidak valid.')
+  }
+
+  const requestRows = await rest(
+    `certificate_name_change_requests?select=*&id=eq.${eq(requestId)}&limit=1`,
+  ).catch((error) => {
+    certificateTableSetupError(error)
+  })
+  const changeRequest = requestRows?.[0]
+
+  if (!changeRequest) {
+    throw new ApiError(404, 'Permintaan perubahan nama tidak ditemukan.')
+  }
+
+  if (changeRequest.status !== 'pending') {
+    throw new ApiError(422, 'Permintaan perubahan nama ini sudah ditinjau.')
+  }
+
+  const now = new Date().toISOString()
+
+  if (status === 'approved') {
+    const certificate = await findCertificateByAnyId(changeRequest.certificate_row_id)
+
+    if (!certificate) {
+      throw new ApiError(404, 'Sertifikat tujuan tidak ditemukan.')
+    }
+
+    await rest(`certificates?id=eq.${eq(certificate.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: {
+        participant_name: changeRequest.new_name,
+        version: cleanNumber(certificate.version || 1, 1, 1000) + 1,
+      },
+    })
+  }
+
+  await rest(`certificate_name_change_requests?id=eq.${eq(requestId)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      status,
+      admin_note: adminNote,
+      reviewed_at: now,
+    },
+  })
+
+  return {
+    ok: true,
+    message: status === 'approved'
+      ? 'Nama sertifikat berhasil diperbarui.'
+      : 'Permintaan ubah nama ditolak.',
+    ...(await fetchCertificateRowsForUser(user)),
+  }
+}
+
+export async function fetchCertificateVerification(certificateId) {
+  const lookup = cleanText(certificateId || '', 160)
+
+  if (!lookup) {
+    throw new ApiError(400, 'ID sertifikat wajib diisi.')
+  }
+
+  const certificate = await findCertificateByAnyId(lookup)
+
+  if (!certificate || certificate.revoked_at) {
+    return {
+      valid: false,
+      certificate: null,
+      message: 'Sertifikat tidak ditemukan atau sudah tidak aktif.',
+    }
+  }
+
+  return {
+    valid: true,
+    certificate: certificatePublic(certificate),
+    message: 'Sertifikat valid dan tercatat di database.',
+  }
 }
 
 function clientIpFromRequest(request) {

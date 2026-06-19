@@ -249,6 +249,44 @@ create table if not exists public.testimonials (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.certificates (
+  id text primary key,
+  certificate_id text not null unique,
+  member_id text not null default '',
+  member_name text not null default '',
+  class_id text not null default '',
+  class_title text not null default '',
+  mentor_name text not null default 'Ibnu Creative',
+  participant_name text not null default '',
+  completed_at text not null default '',
+  issued_at text not null default '',
+  name_change_used boolean not null default false,
+  version integer not null default 1,
+  revoked_at text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (member_id, class_id)
+);
+
+create table if not exists public.certificate_name_change_requests (
+  id text primary key,
+  certificate_row_id text not null references public.certificates(id) on delete cascade,
+  public_certificate_id text not null default '',
+  member_id text not null default '',
+  member_name text not null default '',
+  class_id text not null default '',
+  class_title text not null default '',
+  old_name text not null default '',
+  new_name text not null default '',
+  reason text not null default '',
+  status text not null default 'pending',
+  admin_note text not null default '',
+  reviewed_at text not null default '',
+  created_at text not null default '',
+  updated_at timestamptz not null default now(),
+  unique (certificate_row_id)
+);
+
 create table if not exists public.member_progress (
   member_id text not null,
   class_id text not null,
@@ -340,6 +378,11 @@ create index if not exists submission_material_index on public.submissions(mater
 create index if not exists testimonial_status_index on public.testimonials(status);
 create index if not exists testimonial_member_index on public.testimonials(member_id);
 create index if not exists testimonial_class_index on public.testimonials(class_id);
+create index if not exists certificate_public_id_index on public.certificates(certificate_id);
+create index if not exists certificate_member_index on public.certificates(member_id);
+create index if not exists certificate_class_index on public.certificates(class_id);
+create index if not exists certificate_change_status_index on public.certificate_name_change_requests(status);
+create index if not exists certificate_change_member_index on public.certificate_name_change_requests(member_id);
 create index if not exists member_progress_activity_index on public.member_progress(last_activity_at);
 create index if not exists lynk_order_email_index on public.lynk_orders(buyer_email);
 create index if not exists tripay_order_reference_index on public.tripay_orders(reference);
@@ -400,6 +443,14 @@ drop trigger if exists testimonials_updated_at on public.testimonials;
 create trigger testimonials_updated_at before update on public.testimonials
 for each row execute function public.set_updated_at();
 
+drop trigger if exists certificates_updated_at on public.certificates;
+create trigger certificates_updated_at before update on public.certificates
+for each row execute function public.set_updated_at();
+
+drop trigger if exists certificate_name_change_requests_updated_at on public.certificate_name_change_requests;
+create trigger certificate_name_change_requests_updated_at before update on public.certificate_name_change_requests
+for each row execute function public.set_updated_at();
+
 drop trigger if exists member_progress_updated_at on public.member_progress;
 create trigger member_progress_updated_at before update on public.member_progress
 for each row execute function public.set_updated_at();
@@ -435,6 +486,8 @@ alter table public.login_attempts enable row level security;
 alter table public.support_tickets enable row level security;
 alter table public.submissions enable row level security;
 alter table public.testimonials enable row level security;
+alter table public.certificates enable row level security;
+alter table public.certificate_name_change_requests enable row level security;
 alter table public.member_progress enable row level security;
 alter table public.lynk_orders enable row level security;
 alter table public.tripay_orders enable row level security;

@@ -3,6 +3,7 @@ import {
   createBackup,
   createGoogleAuthUrl,
   createMember,
+  createCertificate,
   createSubmission,
   createPublicDigitalProductCheckout,
   createSupportTicket,
@@ -13,6 +14,8 @@ import {
   deleteSupportTicket,
   deleteTestimonial,
   fetchClasses,
+  fetchCertificateVerification,
+  fetchCertificates,
   fetchDigitalProducts,
   fetchMembers,
   fetchMemberPayments,
@@ -37,7 +40,9 @@ import {
   replaceClasses,
   replaceDigitalProducts,
   replaceWebsiteSettings,
+  requestCertificateNameChange,
   requireUser,
+  reviewCertificateNameChange,
   restoreBackup,
   sendJson,
   trackProgress,
@@ -225,6 +230,44 @@ async function handleTestimonials(request, response, url) {
   sendJson(response, 200, await deleteTestimonial(url.searchParams.get('id') || ''))
 }
 
+async function handleCertificates(request, response, url) {
+  if (request.method === 'GET' && url.searchParams.get('verify')) {
+    sendJson(
+      response,
+      200,
+      await fetchCertificateVerification(url.searchParams.get('verify') || ''),
+    )
+    return
+  }
+
+  const user = await requireUser(request)
+
+  if (request.method === 'GET') {
+    sendJson(response, 200, await fetchCertificates(user))
+    return
+  }
+
+  if (request.method === 'POST') {
+    const payload = await readJson(request)
+    const action = payload.action || 'create'
+
+    if (action === 'request_name_change') {
+      sendJson(response, 200, await requestCertificateNameChange(user, payload))
+      return
+    }
+
+    sendJson(response, 200, await createCertificate(user, payload))
+    return
+  }
+
+  if (request.method === 'PUT') {
+    sendJson(response, 200, await reviewCertificateNameChange(user, await readJson(request)))
+    return
+  }
+
+  sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+}
+
 async function routeRequest(request, response) {
   const { route, url } = getRoute(request)
 
@@ -275,6 +318,11 @@ async function routeRequest(request, response) {
 
   if (route === 'testimonials') {
     await handleTestimonials(request, response, url)
+    return
+  }
+
+  if (route === 'certificates') {
+    await handleCertificates(request, response, url)
     return
   }
 
