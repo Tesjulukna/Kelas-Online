@@ -11,6 +11,54 @@ const paths = {
       <path d="m11 6-6 6 6 6" />
     </>
   ),
+  alignCenter: (
+    <>
+      <path d="M12 4v16" />
+      <path d="M7 7h10" />
+      <path d="M5 12h14" />
+      <path d="M8 17h8" />
+    </>
+  ),
+  alignLeft: (
+    <>
+      <path d="M5 4v16" />
+      <path d="M5 7h13" />
+      <path d="M5 12h10" />
+      <path d="M5 17h15" />
+    </>
+  ),
+  alignRight: (
+    <>
+      <path d="M19 4v16" />
+      <path d="M6 7h13" />
+      <path d="M9 12h10" />
+      <path d="M4 17h15" />
+    </>
+  ),
+  alignTop: (
+    <>
+      <path d="M4 5h16" />
+      <path d="M7 5v12" />
+      <path d="M12 5v9" />
+      <path d="M17 5v14" />
+    </>
+  ),
+  alignMiddle: (
+    <>
+      <path d="M4 12h16" />
+      <path d="M7 6v12" />
+      <path d="M12 8v8" />
+      <path d="M17 5v14" />
+    </>
+  ),
+  alignBottom: (
+    <>
+      <path d="M4 19h16" />
+      <path d="M7 7v12" />
+      <path d="M12 10v9" />
+      <path d="M17 5v14" />
+    </>
+  ),
   bell: (
     <>
       <path d="M18 9.5a6 6 0 0 0-12 0c0 7-2.5 7.5-2.5 7.5h17S18 16.5 18 9.5Z" />
@@ -55,6 +103,17 @@ const paths = {
       <path d="M12 7.5v5l3.4 2" />
     </>
   ),
+  circleShape: (
+    <>
+      <circle cx="12" cy="12" r="7.5" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect width="11" height="11" x="8" y="8" rx="2" />
+      <path d="M5 15H4.8A1.8 1.8 0 0 1 3 13.2V5.8A1.8 1.8 0 0 1 4.8 4h7.4A1.8 1.8 0 0 1 14 5.8V6" />
+    </>
+  ),
   cart: (
     <>
       <path d="M4 5h2l2 10.5h9.5l2-7.5H7.2" />
@@ -67,6 +126,22 @@ const paths = {
       <path d="M12 4v10" />
       <path d="m8 10 4 4 4-4" />
       <path d="M5 19h14" />
+    </>
+  ),
+  distributeHorizontal: (
+    <>
+      <path d="M4 5v14" />
+      <path d="M20 5v14" />
+      <rect width="4" height="10" x="7" y="7" rx="1" />
+      <rect width="4" height="10" x="13" y="7" rx="1" />
+    </>
+  ),
+  distributeVertical: (
+    <>
+      <path d="M5 4h14" />
+      <path d="M5 20h14" />
+      <rect width="10" height="4" x="7" y="7" rx="1" />
+      <rect width="10" height="4" x="7" y="13" rx="1" />
     </>
   ),
   fileText: (
@@ -121,6 +196,13 @@ const paths = {
       <rect width="7" height="11" x="16" y="12" rx="2" />
     </>
   ),
+  layers: (
+    <>
+      <path d="m12 3 8 4-8 4-8-4z" />
+      <path d="m4 12 8 4 8-4" />
+      <path d="m4 17 8 4 8-4" />
+    </>
+  ),
   link: (
     <>
       <path d="M9.5 14.5 14.5 9.5" />
@@ -132,6 +214,13 @@ const paths = {
     <>
       <rect width="15" height="10" x="4.5" y="10.5" rx="2" />
       <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+      <path d="M12 14.5v2" />
+    </>
+  ),
+  lockOpen: (
+    <>
+      <rect width="15" height="10" x="4.5" y="10.5" rx="2" />
+      <path d="M8 10.5V8.8A4 4 0 0 1 15.4 6.7" />
       <path d="M12 14.5v2" />
     </>
   ),
@@ -177,10 +266,37 @@ const paths = {
       <circle cx="12" cy="19" r="1" />
     </>
   ),
+  minus: (
+    <>
+      <path d="M5 12h14" />
+    </>
+  ),
+  plus: (
+    <>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </>
+  ),
   play: (
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="m10 8 6 4-6 4z" />
+    </>
+  ),
+  qrCode: (
+    <>
+      <rect width="6" height="6" x="4" y="4" rx="1" />
+      <rect width="6" height="6" x="14" y="4" rx="1" />
+      <rect width="6" height="6" x="4" y="14" rx="1" />
+      <path d="M14 14h2v2h-2z" />
+      <path d="M18 14h2v6h-6v-2" />
+      <path d="M14 20h.01" />
+    </>
+  ),
+  redo: (
+    <>
+      <path d="M20 7v6h-6" />
+      <path d="M20 13a7 7 0 1 1-2-5" />
     </>
   ),
   send: (
@@ -286,6 +402,48 @@ const paths = {
     <>
       <path d="M6 6l12 12" />
       <path d="M18 6 6 18" />
+    </>
+  ),
+  square: (
+    <>
+      <rect width="14" height="14" x="5" y="5" rx="2" />
+    </>
+  ),
+  text: (
+    <>
+      <path d="M5 6h14" />
+      <path d="M12 6v12" />
+      <path d="M9 18h6" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M6.5 7 7.5 20h9L17.5 7" />
+      <path d="M9 7V4.5h6V7" />
+    </>
+  ),
+  undo: (
+    <>
+      <path d="M4 7v6h6" />
+      <path d="M4 13a7 7 0 1 0 2-5" />
+    </>
+  ),
+  zoomIn: (
+    <>
+      <circle cx="10.5" cy="10.5" r="6" />
+      <path d="M10.5 8v5" />
+      <path d="M8 10.5h5" />
+      <path d="m15 15 5 5" />
+    </>
+  ),
+  zoomOut: (
+    <>
+      <circle cx="10.5" cy="10.5" r="6" />
+      <path d="M8 10.5h5" />
+      <path d="m15 15 5 5" />
     </>
   ),
 }

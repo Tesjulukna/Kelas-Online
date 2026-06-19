@@ -18,6 +18,11 @@ import Icon from './Icon'
 
 const uploadFileApiPath = '/api/upload-file'
 const fontOptions = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Poppins', 'Montserrat']
+const historyLimit = 40
+
+function cloneDraft(value) {
+  return JSON.parse(JSON.stringify(value))
+}
 
 function cleanFileName(value) {
   return String(value || 'sertifikat')
@@ -43,6 +48,21 @@ function dummyCertificateForClass(course, settings) {
         : '',
     siteName: settings?.siteName || 'Ibnu Creative',
   }
+}
+
+function ToolbarIconButton({ icon, label, onClick, disabled = false, active = false }) {
+  return (
+    <button
+      className={`certificate-icon-tool ${active ? 'active' : ''}`.trim()}
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon name={icon} />
+    </button>
+  )
 }
 
 function getClassTemplateState(activeClasses, templates, classId = '', templateId = null) {
@@ -107,8 +127,10 @@ function CertificateTemplateEditor({
   const [zoom, setZoom] = useState(0.58)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [previewCertificateId, setPreviewCertificateId] = useState('dummy')
+  const [history, setHistory] = useState({ past: [], future: [] })
   const imageInputRef = useRef(null)
   const backgroundInputRef = useRef(null)
+  const editSessionRef = useRef(false)
 
   const selectedElement = draft.elements.find((element) => element.id === selectedElementId) || null
   const previewCertificate = certificates.find((certificate) => certificate.id === previewCertificateId)
@@ -122,11 +144,79 @@ function CertificateTemplateEditor({
     [draft.elements],
   )
 
-  const updateDraft = (updates) => {
+  const canUndo = history.past.length > 0
+  const canRedo = history.future.length > 0
+
+  const handleUndo = () => {
+    const previousDraft = history.past.at(-1)
+
+    if (!previousDraft) {
+      return
+    }
+
+    setHistory((current) => ({
+      past: current.past.slice(0, -1),
+      future: [cloneDraft(draft), ...current.future].slice(0, historyLimit),
+    }))
+    setDraft(normalizeCertificateTemplate(previousDraft, selectedClass))
+    setSelectedElementId('')
+    endHistorySession()
+  }
+
+  const handleRedo = () => {
+    const nextDraft = history.future[0]
+
+    if (!nextDraft) {
+      return
+    }
+
+    setHistory((current) => ({
+      past: [...current.past.slice(-(historyLimit - 1)), cloneDraft(draft)],
+      future: current.future.slice(1),
+    }))
+    setDraft(normalizeCertificateTemplate(nextDraft, selectedClass))
+    setSelectedElementId('')
+    endHistorySession()
+  }
+
+  const pushHistorySnapshot = () => {
+    setHistory((current) => ({
+      past: [...current.past.slice(-(historyLimit - 1)), cloneDraft(draft)],
+      future: [],
+    }))
+  }
+
+  const beginHistorySession = () => {
+    if (editSessionRef.current) {
+      return
+    }
+
+    pushHistorySnapshot()
+    editSessionRef.current = true
+  }
+
+  const endHistorySession = () => {
+    editSessionRef.current = false
+  }
+
+  const resetHistory = () => {
+    setHistory({ past: [], future: [] })
+    editSessionRef.current = false
+  }
+
+  const updateDraft = (updates, options = {}) => {
+    if (options.track !== false) {
+      pushHistorySnapshot()
+    }
+
     setDraft((current) => normalizeCertificateTemplate({ ...current, ...updates }, selectedClass))
   }
 
-  const updateElement = (elementId, updates) => {
+  const updateElement = (elementId, updates, options = {}) => {
+    if (options.track !== false) {
+      pushHistorySnapshot()
+    }
+
     setDraft((current) => ({
       ...current,
       elements: current.elements.map((element) =>
@@ -136,6 +226,7 @@ function CertificateTemplateEditor({
   }
 
   const addElement = (element) => {
+    pushHistorySnapshot()
     setDraft((current) => {
       const zIndex = Math.max(0, ...current.elements.map((item) => Number(item.zIndex) || 0)) + 1
       const nextElement = { ...element, zIndex }
@@ -201,6 +292,7 @@ function CertificateTemplateEditor({
       if (savedTemplate) {
         setSelectedTemplateId(savedTemplate.id)
         setDraft(normalizeCertificateTemplate(savedTemplate, selectedClass))
+        resetHistory()
       }
       onNotify(data.message || 'Template sertifikat berhasil disimpan.')
     } catch (error) {
@@ -227,6 +319,7 @@ function CertificateTemplateEditor({
       if (copiedTemplate) {
         setSelectedTemplateId(copiedTemplate.id)
         setDraft(normalizeCertificateTemplate(copiedTemplate, selectedClass))
+        resetHistory()
       }
       onNotify(data.message || 'Template berhasil diduplicate.')
     } catch (error) {
@@ -251,6 +344,7 @@ function CertificateTemplateEditor({
       setSelectedTemplateId(nextState.templateId)
       setDraft(nextState.draft)
       setSelectedElementId('')
+      resetHistory()
       onNotify(data.message || 'Template dihapus.')
     } catch (error) {
       onNotify(error.message || 'Template belum bisa dihapus.')
@@ -287,6 +381,7 @@ function CertificateTemplateEditor({
         y: selectedElement.y + 24,
       })
     } else if (action === 'delete') {
+      pushHistorySnapshot()
       setDraft((current) => ({
         ...current,
         elements: current.elements.filter((element) => element.id !== selectedElement.id),
@@ -403,6 +498,7 @@ function CertificateTemplateEditor({
               setSelectedTemplateId(nextState.templateId)
               setDraft(nextState.draft)
               setSelectedElementId('')
+              resetHistory()
             }}
           >
             {activeClasses.map((course) => (
@@ -421,6 +517,7 @@ function CertificateTemplateEditor({
               setSelectedTemplateId(nextState.templateId)
               setDraft(nextState.draft)
               setSelectedElementId('')
+              resetHistory()
             }}
           >
             <option value="">Template baru otomatis</option>
@@ -444,42 +541,75 @@ function CertificateTemplateEditor({
         </label>
       </div>
 
+      <div className="certificate-editor-commandbar" aria-label="Toolbar editor sertifikat">
+        <div className="certificate-toolbar-group">
+          <span>Tools</span>
+          <ToolbarIconButton
+            icon="user"
+            label="Tambah area nama peserta"
+            onClick={() => addElement(createTextElement({ content: '{{NAMA_PESERTA}}', nameField: true, autoResize: true }))}
+          />
+          <ToolbarIconButton
+            icon="text"
+            label="Tambah teks"
+            onClick={() => addElement(createTextElement({ content: 'Teks baru' }))}
+          />
+          <ToolbarIconButton icon="image" label="Upload gambar" onClick={() => imageInputRef.current?.click()} />
+          <ToolbarIconButton icon="upload" label="Upload background" onClick={() => backgroundInputRef.current?.click()} />
+          <ToolbarIconButton icon="square" label="Tambah rectangle" onClick={() => addElement(createShapeElement('rectangle'))} />
+          <ToolbarIconButton icon="circleShape" label="Tambah circle" onClick={() => addElement(createShapeElement('circle'))} />
+          <ToolbarIconButton icon="minus" label="Tambah line" onClick={() => addElement(createShapeElement('line'))} />
+          <ToolbarIconButton icon="qrCode" label="Tambah QR Code" onClick={() => addElement(createQrElement())} />
+        </div>
+
+        <div className="certificate-toolbar-group">
+          <span>History</span>
+          <ToolbarIconButton icon="undo" label="Undo" disabled={!canUndo} onClick={handleUndo} />
+          <ToolbarIconButton icon="redo" label="Redo" disabled={!canRedo} onClick={handleRedo} />
+        </div>
+
+        <div className="certificate-toolbar-group">
+          <span>Zoom</span>
+          <ToolbarIconButton icon="zoomOut" label="Zoom out" onClick={() => setZoom((value) => Math.max(0.25, value - 0.08))} />
+          <strong>{Math.round(zoom * 100)}%</strong>
+          <ToolbarIconButton icon="zoomIn" label="Zoom in" onClick={() => setZoom((value) => Math.min(1.2, value + 0.08))} />
+        </div>
+
+        <div className="certificate-toolbar-group">
+          <span>Align</span>
+          <ToolbarIconButton icon="alignLeft" label="Align left" disabled={!selectedElement} onClick={() => alignSelected('left')} />
+          <ToolbarIconButton icon="alignCenter" label="Align center" disabled={!selectedElement} onClick={() => alignSelected('center')} />
+          <ToolbarIconButton icon="alignRight" label="Align right" disabled={!selectedElement} onClick={() => alignSelected('right')} />
+          <ToolbarIconButton icon="alignTop" label="Align top" disabled={!selectedElement} onClick={() => alignSelected('top')} />
+          <ToolbarIconButton icon="alignMiddle" label="Align middle" disabled={!selectedElement} onClick={() => alignSelected('middle')} />
+          <ToolbarIconButton icon="alignBottom" label="Align bottom" disabled={!selectedElement} onClick={() => alignSelected('bottom')} />
+          <ToolbarIconButton icon="distributeHorizontal" label="Distribute horizontal" onClick={() => distributeElements('horizontal')} />
+          <ToolbarIconButton icon="distributeVertical" label="Distribute vertical" onClick={() => distributeElements('vertical')} />
+        </div>
+
+        <div className="certificate-toolbar-group">
+          <span>Layer</span>
+          <ToolbarIconButton icon="layers" label="Bring to front" disabled={!selectedElement} onClick={() => changeLayer('front')} />
+          <ToolbarIconButton icon="layers" label="Send to back" disabled={!selectedElement} onClick={() => changeLayer('back')} />
+          <ToolbarIconButton icon="copy" label="Duplicate layer" disabled={!selectedElement} onClick={() => changeLayer('duplicate')} />
+          <ToolbarIconButton
+            icon={selectedElement?.locked ? 'lockOpen' : 'lock'}
+            label={selectedElement?.locked ? 'Unlock layer' : 'Lock layer'}
+            disabled={!selectedElement}
+            onClick={() => changeLayer('lock')}
+          />
+          <ToolbarIconButton
+            icon={selectedElement?.hidden ? 'eye' : 'eyeOff'}
+            label={selectedElement?.hidden ? 'Show layer' : 'Hide layer'}
+            disabled={!selectedElement}
+            onClick={() => changeLayer('hide')}
+          />
+          <ToolbarIconButton icon="trash" label="Delete layer" disabled={!selectedElement} onClick={() => changeLayer('delete')} />
+        </div>
+      </div>
+
       <div className="certificate-editor-layout">
         <aside className="certificate-editor-sidebar tools-sidebar">
-          <h4>Tools</h4>
-          <button type="button" onClick={() => addElement(createTextElement({ content: '{{NAMA_PESERTA}}', nameField: true, autoResize: true }))}>
-            <Icon name="user" />
-            Nama Peserta
-          </button>
-          <button type="button" onClick={() => addElement(createTextElement({ content: 'Teks baru' }))}>
-            <Icon name="fileText" />
-            Tambah Teks
-          </button>
-          <button type="button" onClick={() => imageInputRef.current?.click()}>
-            <Icon name="image" />
-            Upload Gambar
-          </button>
-          <button type="button" onClick={() => addElement(createShapeElement('rectangle'))}>
-            <Icon name="layoutDashboard" />
-            Rectangle
-          </button>
-          <button type="button" onClick={() => addElement(createShapeElement('circle'))}>
-            <Icon name="target" />
-            Circle
-          </button>
-          <button type="button" onClick={() => addElement(createShapeElement('line'))}>
-            <Icon name="filter" />
-            Line
-          </button>
-          <button type="button" onClick={() => addElement(createQrElement())}>
-            <Icon name="shield" />
-            QR Code
-          </button>
-          <button type="button" onClick={() => backgroundInputRef.current?.click()}>
-            <Icon name="upload" />
-            Background
-          </button>
-
           <h4>Placeholder</h4>
           <div className="placeholder-chip-list">
             {certificatePlaceholders.map((placeholder) => (
@@ -493,14 +623,19 @@ function CertificateTemplateEditor({
             ))}
           </div>
 
-          <h4>Layer</h4>
-          <div className="layer-actions">
-            <button type="button" onClick={() => changeLayer('front')}>Front</button>
-            <button type="button" onClick={() => changeLayer('back')}>Back</button>
-            <button type="button" onClick={() => changeLayer('duplicate')}>Duplicate</button>
-            <button type="button" onClick={() => changeLayer('lock')}>{selectedElement?.locked ? 'Unlock' : 'Lock'}</button>
-            <button type="button" onClick={() => changeLayer('hide')}>{selectedElement?.hidden ? 'Show' : 'Hide'}</button>
-            <button type="button" onClick={() => changeLayer('delete')}>Delete</button>
+          <h4>Layers</h4>
+          <div className="template-layer-list">
+            {layerElements.map((element) => (
+              <button
+                type="button"
+                className={selectedElementId === element.id ? 'active' : ''}
+                key={element.id}
+                onClick={() => setSelectedElementId(element.id)}
+              >
+                <span>{element.type}</span>
+                <small>{element.content || element.shape || element.alt || element.id}</small>
+              </button>
+            ))}
           </div>
 
           <input
@@ -526,19 +661,6 @@ function CertificateTemplateEditor({
         </aside>
 
         <div className="certificate-editor-canvas-wrap">
-          <div className="certificate-editor-toolbar">
-            <button type="button" onClick={() => setZoom((value) => Math.max(0.25, value - 0.08))}>-</button>
-            <span>{Math.round(zoom * 100)}%</span>
-            <button type="button" onClick={() => setZoom((value) => Math.min(1.2, value + 0.08))}>+</button>
-            <button type="button" onClick={() => alignSelected('left')}>Left</button>
-            <button type="button" onClick={() => alignSelected('center')}>Center</button>
-            <button type="button" onClick={() => alignSelected('right')}>Right</button>
-            <button type="button" onClick={() => alignSelected('top')}>Top</button>
-            <button type="button" onClick={() => alignSelected('middle')}>Middle</button>
-            <button type="button" onClick={() => alignSelected('bottom')}>Bottom</button>
-            <button type="button" onClick={() => distributeElements('horizontal')}>Distribute X</button>
-            <button type="button" onClick={() => distributeElements('vertical')}>Distribute Y</button>
-          </div>
           <div className="certificate-editor-scroll">
             <CertificateTemplateCanvas
               template={draft}
@@ -548,6 +670,8 @@ function CertificateTemplateEditor({
               selectedElementId={selectedElementId}
               onSelect={setSelectedElementId}
               onElementChange={updateElement}
+              onEditStart={beginHistorySession}
+              onEditEnd={endHistorySession}
             />
           </div>
         </div>
@@ -704,21 +828,6 @@ function CertificateTemplateEditor({
               )}
             </div>
           )}
-
-          <h4>Layers</h4>
-          <div className="template-layer-list">
-            {layerElements.map((element) => (
-              <button
-                type="button"
-                className={selectedElementId === element.id ? 'active' : ''}
-                key={element.id}
-                onClick={() => setSelectedElementId(element.id)}
-              >
-                <span>{element.type}</span>
-                <small>{element.content || element.shape || element.alt || element.id}</small>
-              </button>
-            ))}
-          </div>
         </aside>
       </div>
 

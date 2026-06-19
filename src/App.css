@@ -14511,3 +14511,215 @@ img {
   }
 }
 
+/* Refined responsive certificate editor workspace */
+.certificate-editor-panel {
+  padding: clamp(12px, 2vw, 18px);
+}
+
+.certificate-editor-commandbar {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 10px;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+  scrollbar-width: thin;
+}
+
+.certificate-toolbar-group {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  background: #f8fafc;
+}
+
+.certificate-toolbar-group > span {
+  padding: 0 6px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.certificate-toolbar-group > strong {
+  min-width: 48px;
+  color: #0f172a;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.certificate-icon-tool {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.certificate-icon-tool:hover:not(:disabled),
+.certificate-icon-tool.active {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.certificate-icon-tool:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.certificate-icon-tool:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.certificate-icon-tool .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.certificate-editor-layout {
+  grid-template-columns: minmax(176px, 230px) minmax(360px, 1fr) minmax(270px, 330px);
+  min-height: min(820px, 78dvh);
+}
+
+.certificate-editor-canvas-wrap {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: min(780px, 74dvh);
+}
+
+.certificate-editor-scroll {
+  align-items: start;
+  justify-items: center;
+  padding: clamp(16px, 2.5vw, 32px);
+}
+
+.certificate-editor-sidebar {
+  max-height: min(820px, 78dvh);
+}
+
+.template-text-editor {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 2px solid rgba(37, 99, 235, 0.28);
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2);
+  resize: none;
+  scrollbar-width: thin;
+}
+
+.template-text-editor:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.75);
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.template-layer-list button {
+  min-height: 46px;
+}
+
+@media (max-width: 1180px) {
+  .certificate-editor-layout {
+    grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+  }
+
+  .properties-sidebar {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .certificate-editor-topbar,
+  .certificate-template-config {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .certificate-editor-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .certificate-editor-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  .certificate-editor-canvas-wrap {
+    order: 1;
+    min-height: 440px;
+  }
+
+  .tools-sidebar {
+    order: 2;
+  }
+
+  .properties-sidebar {
+    order: 3;
+  }
+
+  .certificate-editor-sidebar {
+    max-height: none;
+  }
+
+  .certificate-editor-scroll {
+    min-height: 440px;
+    place-items: start;
+    padding: 14px;
+  }
+
+  .certificate-toolbar-group {
+    min-height: 40px;
+  }
+
+  .certificate-icon-tool {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 560px) {
+  .certificate-editor-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .certificate-toolbar-group > span {
+    display: none;
+  }
+
+  .certificate-template-config label,
+  .certificate-editor-sidebar label {
+    font-size: 0.8rem;
+  }
+
+  .two-column-fields {
+    grid-template-columns: 1fr;
+  }
+}
+

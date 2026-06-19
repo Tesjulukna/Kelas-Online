@@ -70,6 +70,13 @@ function textElementStyle(element) {
   }
 }
 
+function editableTextElementStyle(element) {
+  return {
+    ...textElementStyle({ ...element, gradient: false }),
+    color: element.color || '#111827',
+  }
+}
+
 function ShapePreview({ element }) {
   if (element.shape === 'line') {
     return (
@@ -95,8 +102,32 @@ function ShapePreview({ element }) {
   )
 }
 
-function ElementPreview({ element, data }) {
+function ElementPreview({
+  element,
+  data,
+  editable = false,
+  isSelected = false,
+  onTextFocus = () => {},
+  onTextBlur = () => {},
+  onTextChange = () => {},
+}) {
   if (element.type === 'text') {
+    if (editable && isSelected && !element.locked) {
+      return (
+        <textarea
+          className="template-text-preview template-text-editor"
+          value={element.content || ''}
+          style={editableTextElementStyle(element)}
+          spellCheck="false"
+          onFocus={onTextFocus}
+          onBlur={onTextBlur}
+          onChange={(event) => onTextChange(event.target.value)}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        />
+      )
+    }
+
     return (
       <div className="template-text-preview" style={textElementStyle(element)}>
         {replaceCertificatePlaceholders(element.content, data)}
@@ -135,6 +166,8 @@ function CertificateTemplateCanvas({
   selectedElementId = '',
   onSelect = () => {},
   onElementChange = () => {},
+  onEditStart = () => {},
+  onEditEnd = () => {},
 }) {
   const safeTemplate = useMemo(() => normalizeCertificateTemplate(template), [template])
   const canvasRef = useRef(null)
@@ -158,6 +191,7 @@ function CertificateTemplateCanvas({
 
     event.preventDefault()
     event.stopPropagation()
+    onEditStart()
     onSelect(element.id)
     dragRef.current = {
       id: element.id,
@@ -188,19 +222,20 @@ function CertificateTemplateCanvas({
       onElementChange(drag.id, {
         width: Math.max(20, applySnap(drag.startWidth + deltaX)),
         height: Math.max(20, applySnap(drag.startHeight + deltaY)),
-      })
+      }, { track: false })
       return
     }
 
     onElementChange(drag.id, {
       x: applySnap(drag.startLeft + deltaX),
       y: applySnap(drag.startTop + deltaY),
-    })
+    }, { track: false })
   }
 
   const stopPointerAction = () => {
     dragRef.current = null
     setIsDragging(false)
+    onEditEnd()
     window.removeEventListener('pointermove', handlePointerMove)
     window.removeEventListener('pointerup', stopPointerAction)
   }
@@ -243,7 +278,15 @@ function CertificateTemplateCanvas({
               }}
               onPointerDown={(event) => startPointerAction(event, element)}
             >
-              <ElementPreview element={element} data={data} />
+              <ElementPreview
+                element={element}
+                data={data}
+                editable={editable}
+                isSelected={selectedElementId === element.id}
+                onTextFocus={onEditStart}
+                onTextBlur={onEditEnd}
+                onTextChange={(content) => onElementChange(element.id, { content }, { track: false })}
+              />
               {editable && selectedElementId === element.id && !element.locked && (
                 <button
                   className="template-resize-handle"
