@@ -1430,6 +1430,52 @@ export async function replaceDigitalProducts(request, products) {
   return fetchDigitalProducts(request)
 }
 
+export async function updateDigitalProductReviewLike(request, payload) {
+  const productId = cleanText(payload?.productId || '', 80)
+  const reviewId = cleanText(payload?.reviewId || '', 80)
+  const isLiked = Boolean(payload?.liked)
+
+  if (!productId || !reviewId) {
+    throw new ApiError(400, 'Produk atau ulasan tidak valid.')
+  }
+
+  const rows = await rest(
+    `digital_products?select=*&id=eq.${eq(productId)}&status=eq.${eq('Aktif')}&limit=1`,
+  )
+  const product = rows?.[0]
+
+  if (!product) {
+    throw new ApiError(404, 'Produk tidak ditemukan.')
+  }
+
+  const reviews = cleanDigitalProductReviews(product.reviews || [])
+  const reviewIndex = reviews.findIndex((review) => review.id === reviewId)
+
+  if (reviewIndex < 0) {
+    throw new ApiError(404, 'Ulasan tidak ditemukan.')
+  }
+
+  const nextReviews = reviews.map((review, index) =>
+    index === reviewIndex
+      ? {
+          ...review,
+          likes: cleanNumber((review.likes || 0) + (isLiked ? 1 : -1), 0, 1000000),
+        }
+      : review,
+  )
+
+  await rest(`digital_products?id=eq.${eq(productId)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      reviews: nextReviews,
+      updated_at: new Date().toISOString(),
+    },
+  })
+
+  return fetchDigitalProducts(request)
+}
+
 export async function fetchMembers() {
   const now = new Date().toISOString()
   const [members, sessionRows, progressRows] = await Promise.all([

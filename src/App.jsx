@@ -31,6 +31,7 @@ const tripayPaymentMethodsApiPath = '/api/tripay-payment-methods'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
 const publicProductCheckoutApiPath = '/api/public-product-checkout'
 const publicProductAccessApiPath = '/api/public-product-access'
+const digitalProductReviewLikeApiPath = '/api/digital-product-review-like'
 const publicActivityApiPath = '/api/public-activity'
 const loginApiPath = '/api/login'
 const googleAuthUrlApiPath = '/api/google-auth-url'
@@ -2147,6 +2148,15 @@ function App() {
     return applyDigitalProductsResponse(data)
   }
 
+  const handleDigitalProductReviewLike = async ({ productId, reviewId, liked }) => {
+    const data = await requestJson(digitalProductReviewLikeApiPath, {
+      method: 'POST',
+      body: JSON.stringify({ productId, reviewId, liked }),
+    })
+
+    return applyDigitalProductsResponse(data)
+  }
+
   const handleWebsiteSettingsChange = async (nextSettings) => {
     if (session?.role !== 'admin') {
       throw new Error('Silakan login admin ulang untuk menyimpan pengaturan.')
@@ -2534,6 +2544,7 @@ function App() {
             payments={payments}
             digitalProductAccess={digitalProductAccess}
             publicActivities={publicActivities}
+            onDigitalProductReviewLike={handleDigitalProductReviewLike}
           />
         )}
         {page === 'login' && (

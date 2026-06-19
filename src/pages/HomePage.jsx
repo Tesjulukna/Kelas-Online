@@ -178,6 +178,7 @@ function HomePage({
   payments = [],
   digitalProductAccess = [],
   publicActivities = [],
+  onDigitalProductReviewLike = async () => {},
 }) {
   const websiteSettings = cleanWebsiteSettings(settings)
   const initialState = getInitialDetailState(initialDetail)
@@ -1084,7 +1085,7 @@ function HomePage({
     return (
       <>
         <DetailProduk
-          key={selectedProduct.id}
+          key={`${selectedProduct.id}:${JSON.stringify(selectedProduct.reviews || [])}`}
           product={selectedProduct}
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
           wishlistCount={wishlistCount}
@@ -1093,6 +1094,7 @@ function HomePage({
           onBuy={openProductCheckout}
           onOpenWishlist={openWishlist}
           onShare={shareItem}
+          onReviewLike={onDigitalProductReviewLike}
         />
         {wishlistPopup}
         {activityToast}

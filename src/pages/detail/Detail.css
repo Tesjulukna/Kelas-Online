@@ -236,6 +236,12 @@
   color: #0f172a;
 }
 
+.ig-meta-action-btn:disabled,
+.ig-comment-heart-btn:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
 /* IG Heart Button column */
 .ig-comment-heart-btn {
   background: none;

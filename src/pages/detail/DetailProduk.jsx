@@ -2,6 +2,96 @@ import { useState } from 'react'
 import Icon from '../../components/Icon'
 import './Detail.css'
 
+const productReviewLikesKey = 'ibnucreative.product-review-likes.v1'
+
+function readLikedReviewIds(productId = '') {
+  if (typeof window === 'undefined' || !productId) {
+    return []
+  }
+
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(productReviewLikesKey) || '{}')
+    return Array.isArray(saved[productId]) ? saved[productId] : []
+  } catch {
+    return []
+  }
+}
+
+function writeLikedReviewIds(productId = '', reviewIds = []) {
+  if (typeof window === 'undefined' || !productId) {
+    return
+  }
+
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(productReviewLikesKey) || '{}')
+    window.localStorage.setItem(
+      productReviewLikesKey,
+      JSON.stringify({ ...saved, [productId]: [...new Set(reviewIds)] }),
+    )
+  } catch {
+    // Local like state is best-effort; backend count remains the source of truth.
+  }
+}
+
+function buildProductReviewList(product, likedReviewIds = []) {
+  const likedReviewSet = new Set(likedReviewIds)
+  const initialReviews = product && Array.isArray(product.reviews) ? product.reviews : []
+  const source = product?.useSampleReviews === true && initialReviews.length === 0
+    ? [
+        {
+          id: 'rev-1',
+          name: 'Rian Hidayat',
+          instagram: 'rian_design',
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
+          rating: 5,
+          message: 'Gokil sih materinya. Penjelasan mentornya detail banget dan gampang dipahami buat pemula. Langsung bisa dipraktekkan.',
+          date: '2026-06-18',
+          time: '09:30',
+          likes: 12,
+        },
+        {
+          id: 'rev-2',
+          name: 'Siti Aminah',
+          instagram: 'amnh.siti',
+          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80',
+          rating: 5,
+          message: 'Sangat recommended untuk yang mau mulai belajar. Template add-ons nya juga ngebantu banget mempercepat kerjaan. Sukses terus.',
+          date: '2026-06-17',
+          time: '14:15',
+          likes: 8,
+        },
+        {
+          id: 'rev-3',
+          name: 'David Pratama',
+          instagram: 'davidprtm_',
+          avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150&q=80',
+          rating: 4,
+          message: 'Materi digital assetnya mantap. Penjelasannya pelan-pelan jadi gampang diikutin. Ditunggu rilis template lainnya min.',
+          date: '2026-06-16',
+          time: '18:45',
+          likes: 5,
+        },
+      ]
+    : initialReviews
+
+  return source.map((review, index) => {
+    const reviewId = review.id || `rev-initial-${index}`
+
+    return {
+      id: reviewId,
+      name: review.name || 'Pembeli Terverifikasi',
+      instagram: review.instagram || review.name?.toLowerCase().replace(/\s+/g, '_') || 'pembeli',
+      avatar: review.avatar || '',
+      rating: Math.min(5, Math.max(1, Number(review.rating) || 5)),
+      message: review.message || '',
+      date: review.date || new Date().toISOString().slice(0, 10),
+      time: review.time || '10:00',
+      likes: Math.max(0, Math.round(Number(review.likes) || 0)),
+      isLiked: likedReviewSet.has(reviewId),
+    }
+  })
+}
+
 function getYoutubeEmbedUrl(value) {
   if (!value) {
     return ''
@@ -50,67 +140,21 @@ function DetailProduk({
   onBack,
   onBuy,
   onOpenWishlist,
+  onReviewLike = async () => {},
   onShare,
 }) {
-  // State reviews lists
-  const [reviewsList, setReviewsList] = useState(() => {
-    const initialReviews = product && Array.isArray(product.reviews) ? product.reviews : []
-    if (product?.useSampleReviews === true && initialReviews.length === 0) {
-      return [
-        {
-          id: 'rev-1',
-          name: 'Rian Hidayat',
-          instagram: 'rian_design',
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
-          rating: 5,
-          message: 'Gokil sih materinya! Penjelasan mentornya detail banget dan gampang dipahami buat pemula. Langsung bisa dipraktekkin! 🔥',
-          date: '2026-06-18',
-          time: '09:30',
-          likes: 12,
-          isLiked: false,
-        },
-        {
-          id: 'rev-2',
-          name: 'Siti Aminah',
-          instagram: 'amnh.siti',
-          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80',
-          rating: 5,
-          message: 'Sangat recommended untuk yang mau mulai belajar. Template add-ons nya juga ngebantu banget mempercepat kerjaan. Sukses terus! 🙌',
-          date: '2026-06-17',
-          time: '14:15',
-          likes: 8,
-          isLiked: false,
-        },
-        {
-          id: 'rev-3',
-          name: 'David Pratama',
-          instagram: 'davidprtm_',
-          avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150&q=80',
-          rating: 4,
-          message: 'Materi digital assetnya mantap. Penjelasannya pelan-pelan jadi gampang diikutin. Ditunggu rilis template lainnya min!',
-          date: '2026-06-16',
-          time: '18:45',
-          likes: 5,
-          isLiked: false,
-        }
-      ]
-    }
-    return initialReviews.map((rev, index) => ({
-      id: rev.id || `rev-initial-${index}`,
-      name: rev.name || 'Pembeli Terverifikasi',
-      instagram: rev.instagram || rev.name?.toLowerCase().replace(/\s+/g, '_') || 'pembeli',
-      avatar: rev.avatar || '',
-      rating: Math.min(5, Math.max(1, Number(rev.rating) || 5)),
-      message: rev.message || '',
-      date: rev.date || new Date().toISOString().slice(0, 10),
-      time: rev.time || '10:00',
-      likes: Math.max(0, Math.round(Number(rev.likes) || 0)),
-      isLiked: false,
-    }))
-  })
+  const initialLikedReviewIds = readLikedReviewIds(product?.id)
+  const [likedReviewIds, setLikedReviewIds] = useState(initialLikedReviewIds)
+  const [reviewsList, setReviewsList] = useState(() =>
+    buildProductReviewList(product, initialLikedReviewIds),
+  )
   const [reviewDraft, setReviewDraft] = useState('')
   const [isReviewGateOpen, setIsReviewGateOpen] = useState(false)
-
+  const [reviewGateContent, setReviewGateContent] = useState({
+    title: 'Belum bisa mengirim ulasan',
+    message: 'Kamu harus membeli produk ini dulu sebelum bisa memberikan ulasan.',
+  })
+  const [pendingReviewLikeIds, setPendingReviewLikeIds] = useState([])
   if (!product) {
     return null
   }
@@ -118,34 +162,80 @@ function DetailProduk({
   const embedUrl = product.addVideo ? getYoutubeEmbedUrl(product.videoUrl) : ''
   const addOns = Array.isArray(product.addOns) ? product.addOns : []
   const hasRichDescription = /<\/?[a-z][\s\S]*>/i.test(product.description || '')
-  
+
   const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
   const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
-  const originalPrice = (salePrice && normalPrice > salePrice)
+  const originalPrice = salePrice && normalPrice > salePrice
     ? formatRupiah(normalPrice)
     : null
 
-  // Handlers
-  const handleToggleLike = (id) => {
+  const handleToggleLike = async (id) => {
+    if (pendingReviewLikeIds.includes(id)) {
+      return
+    }
+
+    const selectedReview = reviewsList.find((review) => review.id === id)
+
+    if (!selectedReview) {
+      return
+    }
+
+    const nextIsLiked = !selectedReview.isLiked
+    const previousLikedReviewIds = likedReviewIds
+    const nextLikedReviewIds = nextIsLiked
+      ? [...new Set([...likedReviewIds, id])]
+      : likedReviewIds.filter((reviewId) => reviewId !== id)
+
+    setPendingReviewLikeIds((current) => [...new Set([...current, id])])
+    setLikedReviewIds(nextLikedReviewIds)
+    writeLikedReviewIds(product.id, nextLikedReviewIds)
     setReviewsList((current) =>
-      current.map((rev) =>
-        rev.id === id
+      current.map((review) =>
+        review.id === id
           ? {
-              ...rev,
-              isLiked: !rev.isLiked,
-              likes: rev.isLiked ? rev.likes - 1 : rev.likes + 1,
+              ...review,
+              isLiked: nextIsLiked,
+              likes: Math.max(0, review.likes + (nextIsLiked ? 1 : -1)),
             }
-          : rev
-      )
+          : review,
+      ),
     )
+
+    try {
+      await onReviewLike({ productId: product.id, reviewId: id, liked: nextIsLiked })
+    } catch (error) {
+      setLikedReviewIds(previousLikedReviewIds)
+      writeLikedReviewIds(product.id, previousLikedReviewIds)
+      setReviewsList((current) =>
+        current.map((review) =>
+          review.id === id
+            ? {
+                ...review,
+                isLiked: selectedReview.isLiked,
+                likes: selectedReview.likes,
+              }
+            : review,
+        ),
+      )
+      setReviewGateContent({
+        title: 'Like belum tersimpan',
+        message: error.message || 'Koneksi sedang bermasalah. Coba lagi sebentar lagi.',
+      })
+      setIsReviewGateOpen(true)
+    } finally {
+      setPendingReviewLikeIds((current) => current.filter((reviewId) => reviewId !== id))
+    }
   }
 
   const handleReviewSubmit = (event) => {
     event.preventDefault()
+    setReviewGateContent({
+      title: 'Belum bisa mengirim ulasan',
+      message: 'Kamu harus membeli produk ini dulu sebelum bisa memberikan ulasan.',
+    })
     setIsReviewGateOpen(true)
   }
 
-  // Calculate Average Rating
   const averageRating = reviewsList.length
     ? (reviewsList.reduce((sum, item) => sum + item.rating, 0) / reviewsList.length).toFixed(1)
     : '0.0'
@@ -242,7 +332,6 @@ function DetailProduk({
         </section>
       )}
 
-      {/* Instagram-Style Reviews Section */}
       <section className="public-detail-section">
         <p className="eyebrow">ULASAN PEMBELI</p>
         <div className="ig-reviews-container">
@@ -261,63 +350,73 @@ function DetailProduk({
           <div className="ig-comments-scroll">
             <div className="ig-comments-list">
               {reviewsList.map((review) => (
-              <article className="ig-comment-item" key={review.id}>
-                <div className="ig-comment-avatar-wrapper">
-                  {review.avatar ? (
-                    <img className="ig-comment-avatar" src={review.avatar} alt={review.name} />
-                  ) : (
-                    <span className="ig-comment-avatar ig-comment-avatar-fallback" aria-hidden="true">
-                      {(review.name || 'P').charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div className="ig-comment-body">
-                  <div className="ig-comment-username-row">
-                    <span className="ig-comment-username">
-                      @{review.instagram}
-                    </span>
-                    <div className="ig-comment-stars">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <svg
-                          key={i}
-                          className="star-icon"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill={i < review.rating ? '#fbbc05' : '#e2e8f0'}
-                          stroke={i < review.rating ? '#fbbc05' : '#cbd5e1'}
-                          strokeWidth="2"
-                          width="10"
-                          height="10"
-                        >
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                        </svg>
-                      ))}
+                <article className="ig-comment-item" key={review.id}>
+                  <div className="ig-comment-avatar-wrapper">
+                    {review.avatar ? (
+                      <img className="ig-comment-avatar" src={review.avatar} alt={review.name} />
+                    ) : (
+                      <span className="ig-comment-avatar ig-comment-avatar-fallback" aria-hidden="true">
+                        {(review.name || 'P').charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="ig-comment-body">
+                    <div className="ig-comment-username-row">
+                      <span className="ig-comment-username">
+                        @{review.instagram}
+                      </span>
+                      <div className="ig-comment-stars">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <svg
+                            key={index}
+                            className="star-icon"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill={index < review.rating ? '#fbbc05' : '#e2e8f0'}
+                            stroke={index < review.rating ? '#fbbc05' : '#cbd5e1'}
+                            strokeWidth="2"
+                            width="10"
+                            height="10"
+                          >
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                          </svg>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="ig-comment-text">
+                      {review.message}
+                    </p>
+                    <div className="ig-comment-meta-row">
+                      <span>{review.date} {review.time}</span>
+                      <span
+                        className="ig-comment-likes-count"
+                        onClick={() => handleToggleLike(review.id)}
+                      >
+                        {review.likes} likes
+                      </span>
+                      <button
+                        className="ig-meta-action-btn"
+                        type="button"
+                        onClick={() => handleToggleLike(review.id)}
+                        disabled={pendingReviewLikeIds.includes(review.id)}
+                      >
+                        {review.isLiked ? 'Batal Suka' : 'Suka'}
+                      </button>
                     </div>
                   </div>
-                  <p className="ig-comment-text">
-                    {review.message}
-                  </p>
-                  <div className="ig-comment-meta-row">
-                    <span>{review.date} {review.time}</span>
-                    <span className="ig-comment-likes-count" onClick={() => handleToggleLike(review.id)}>
-                      {review.likes} likes
-                    </span>
-                    <button className="ig-meta-action-btn" onClick={() => handleToggleLike(review.id)}>
-                      {review.isLiked ? 'Batal Suka' : 'Suka'}
-                    </button>
-                  </div>
-                </div>
-                <button 
-                  className={`ig-comment-heart-btn ${review.isLiked ? 'liked' : ''}`}
-                  onClick={() => handleToggleLike(review.id)}
-                  aria-label="Suka ulasan"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={review.isLiked ? '#ed4956' : 'none'} stroke={review.isLiked ? '#ed4956' : '#94a3b8'} strokeWidth="2.5" width="14" height="14" className="icon">
-                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
-                  </svg>
-                </button>
-              </article>
-            ))}
+                  <button
+                    className={`ig-comment-heart-btn ${review.isLiked ? 'liked' : ''}`}
+                    type="button"
+                    onClick={() => handleToggleLike(review.id)}
+                    disabled={pendingReviewLikeIds.includes(review.id)}
+                    aria-label="Suka ulasan"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={review.isLiked ? '#ed4956' : 'none'} stroke={review.isLiked ? '#ed4956' : '#94a3b8'} strokeWidth="2.5" width="14" height="14" className="icon">
+                      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                    </svg>
+                  </button>
+                </article>
+              ))}
               {!reviewsList.length && (
                 <div className="public-access-message">
                   <Icon name="message" />
@@ -357,8 +456,8 @@ function DetailProduk({
             <div className="review-gate-icon">
               <Icon name="lock" />
             </div>
-            <h3 id="review-gate-title">Belum bisa mengirim ulasan</h3>
-            <p>Kamu harus membeli produk ini dulu sebelum bisa memberikan ulasan.</p>
+            <h3 id="review-gate-title">{reviewGateContent.title}</h3>
+            <p>{reviewGateContent.message}</p>
             <button className="btn btn-primary" type="button" onClick={() => setIsReviewGateOpen(false)}>
               Mengerti
             </button>

@@ -41,6 +41,7 @@ import {
   restoreBackup,
   sendJson,
   trackProgress,
+  updateDigitalProductReviewLike,
   updateMember,
   updateProfile,
   updateSubmission,
@@ -244,6 +245,16 @@ async function routeRequest(request, response) {
     }
 
     sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+    return
+  }
+
+  if (route === 'digital-product-review-like') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+      return
+    }
+
+    sendJson(response, 200, await updateDigitalProductReviewLike(request, await readJson(request)))
     return
   }
 
