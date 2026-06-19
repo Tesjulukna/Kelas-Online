@@ -196,6 +196,30 @@ CREATE TABLE IF NOT EXISTS tripay_orders (
   INDEX tripay_class_index (class_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS payment_snapshots (
+  id VARCHAR(240) PRIMARY KEY,
+  source VARCHAR(80) NOT NULL DEFAULT 'legacy_access',
+  source_label VARCHAR(80) NOT NULL DEFAULT 'Akses lama',
+  order_code VARCHAR(180) NOT NULL DEFAULT '',
+  buyer_name VARCHAR(160) NOT NULL DEFAULT '',
+  buyer_email VARCHAR(180) NOT NULL DEFAULT '',
+  member_id VARCHAR(120) NOT NULL DEFAULT '',
+  class_id VARCHAR(120) NOT NULL DEFAULT '',
+  class_title VARCHAR(180) NOT NULL DEFAULT '',
+  product_id VARCHAR(120) NOT NULL DEFAULT '',
+  product_title VARCHAR(180) NOT NULL DEFAULT '',
+  item_type VARCHAR(40) NOT NULL DEFAULT 'class',
+  amount INT NOT NULL DEFAULT 0,
+  status VARCHAR(40) NOT NULL DEFAULT 'paid',
+  payment_method VARCHAR(80) NOT NULL DEFAULT 'Akses kelas',
+  access_granted TINYINT(1) NOT NULL DEFAULT 1,
+  created_at VARCHAR(60) NOT NULL DEFAULT '',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX payment_snapshot_member_index (member_id),
+  INDEX payment_snapshot_class_index (class_id),
+  INDEX payment_snapshot_product_index (product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS site_settings (
   id VARCHAR(60) PRIMARY KEY,
   payload LONGTEXT,

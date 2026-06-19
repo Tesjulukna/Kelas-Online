@@ -1031,6 +1031,7 @@ const backupTables = [
   'member_progress',
   'lynk_orders',
   'tripay_orders',
+  'payment_snapshots',
   'site_settings',
 ]
 
@@ -1107,6 +1108,7 @@ export async function restoreBackup(payload) {
     ['support_tickets', 'id=not.is.null'],
     ['member_progress', 'member_id=not.is.null'],
     ['tripay_orders', 'id=not.is.null'],
+    ['payment_snapshots', 'id=not.is.null'],
     ['lynk_orders', 'id=not.is.null'],
     ['digital_products', 'id=not.is.null'],
     ['classes', 'id=not.is.null'],
@@ -1125,6 +1127,7 @@ export async function restoreBackup(payload) {
     'member_progress',
     'lynk_orders',
     'tripay_orders',
+    'payment_snapshots',
     'site_settings',
   ]
 
@@ -1633,22 +1636,63 @@ function paymentPublic(row, source) {
   }
 }
 
-function historicalAccessPayments(members, classes, payments) {
+function paymentSnapshotPublic(row) {
+  const itemType = row.item_type === 'digital_product' ? 'digital_product' : 'class'
+  const classTitle = cleanText(row.class_title || row.product_title || 'Kelas', 180)
+  const productTitle = cleanText(row.product_title || '', 180)
+
+  return {
+    id: cleanText(row.id || `snapshot:${row.member_id}:${row.class_id}:${row.product_id}`, 240),
+    source: cleanText(row.source || 'legacy_access', 80),
+    sourceLabel: cleanText(row.source_label || 'Akses lama', 80),
+    orderCode: cleanText(row.order_code || row.id || '', 180),
+    merchantRef: '',
+    reference: '',
+    buyerName: cleanText(row.buyer_name || 'Member', 160),
+    buyerEmail: cleanEmail(row.buyer_email || ''),
+    memberId: cleanText(row.member_id || '', 120),
+    classId: cleanText(row.class_id || '', 120),
+    classIds: [],
+    itemType,
+    productId: cleanText(row.product_id || '', 120),
+    productTitle,
+    productKey: '',
+    productName: '',
+    classTitle: itemType === 'digital_product' ? productTitle || classTitle : classTitle,
+    amount: cleanNumber(row.amount, 0, 1000000000),
+    status: cleanText(row.status || 'paid', 60),
+    paymentMethod: cleanText(row.payment_method || 'Akses kelas', 80),
+    checkoutUrl: '',
+    accessGranted: row.access_granted !== false,
+    expiresAt: '',
+    isExpired: false,
+    createdAt: cleanText(row.created_at || '', 60),
+    updatedAt: cleanText(row.updated_at || '', 60),
+  }
+}
+
+function historicalAccessPayments(members, classes, existingPayments) {
   const paidAccessKeys = new Set(
-    payments
+    existingPayments
       .filter((payment) => payment.accessGranted || ['paid', 'processed', 'success', 'settlement'].includes(payment.status.toLowerCase()))
       .map((payment) => `${payment.memberId || payment.buyerEmail}:${payment.classId}`)
       .filter((key) => !key.startsWith(':') && !key.endsWith(':')),
   )
   const paidClasses = (classes || [])
-    .filter((course) => cleanNumber(course.price, 0, 1000000000) > 0)
-    .map((course) => ({
-      id: cleanText(course.id, 120),
-      title: cleanText(course.title || 'Kelas', 180),
-      price: cleanNumber(course.price, 0, 1000000000),
-    }))
+    .map((course) => {
+      const salePrice = cleanNumber(course.sale_price, 0, 1000000000)
+      const normalPrice = cleanNumber(course.price, 0, 1000000000)
 
-  return (members || [])
+      return {
+        id: cleanText(course.id, 120),
+        title: cleanText(course.title || 'Kelas', 180),
+        price: salePrice > 0 ? salePrice : normalPrice,
+      }
+    })
+    .filter((course) => course.price > 0)
+  const snapshotRows = []
+
+  const syntheticPayments = (members || [])
     .filter((member) => member.role === 'member' && member.status === 'Aktif')
     .flatMap((member) => {
       const memberId = cleanText(member.id, 120)
@@ -1666,7 +1710,7 @@ function historicalAccessPayments(members, classes, payments) {
           return !paidAccessKeys.has(keyById) && !paidAccessKeys.has(keyByEmail)
         })
         .map((course) => ({
-          id: `legacy-access:${memberId}:${course.id}`,
+          id: cleanText(`legacy-access:${memberId}:${course.id}`, 240),
           source: 'legacy_access',
           sourceLabel: 'Akses lama',
           orderCode: `AKSES-${memberId}-${course.id}`,
@@ -1686,22 +1730,61 @@ function historicalAccessPayments(members, classes, payments) {
           updatedAt: cleanText(member.updated_at || member.joined_at || '', 60),
         }))
     })
+
+  syntheticPayments.forEach((payment) => {
+    snapshotRows.push({
+      id: payment.id,
+      source: payment.source,
+      source_label: payment.sourceLabel,
+      order_code: payment.orderCode,
+      buyer_name: payment.buyerName,
+      buyer_email: payment.buyerEmail,
+      member_id: payment.memberId,
+      class_id: payment.classId,
+      class_title: payment.classTitle,
+      item_type: payment.itemType || 'class',
+      amount: payment.amount,
+      status: payment.status,
+      payment_method: payment.paymentMethod,
+      access_granted: payment.accessGranted,
+      created_at: payment.createdAt,
+    })
+  })
+
+  return { payments: syntheticPayments, snapshotRows }
 }
 
 export async function fetchPayments() {
-  const [tripayRows, lynkRows, memberRows, classRows] = await Promise.all([
+  const [tripayRows, lynkRows, memberRows, classRows, snapshotRows] = await Promise.all([
     fetchBackupTable('tripay_orders'),
     fetchBackupTable('lynk_orders'),
     fetchBackupTable('accounts'),
     fetchBackupTable('classes'),
+    fetchBackupTable('payment_snapshots'),
   ])
   const gatewayPayments = [
     ...(tripayRows || []).map((row) => paymentPublic(row, 'tripay')),
     ...(lynkRows || []).map((row) => paymentPublic(row, 'lynk')),
   ]
+  const snapshotPayments = (snapshotRows || []).map(paymentSnapshotPublic)
+  const legacyAccess = historicalAccessPayments(
+    memberRows || [],
+    classRows || [],
+    [...gatewayPayments, ...snapshotPayments],
+  )
+
+  if (legacyAccess.snapshotRows.length) {
+    await rest('payment_snapshots?on_conflict=id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+      body: legacyAccess.snapshotRows,
+    }).catch(() => null)
+  }
+
   const payments = [
     ...gatewayPayments,
-    ...historicalAccessPayments(memberRows || [], classRows || [], gatewayPayments),
+    ...snapshotPayments,
+    ...legacyAccess.payments,
   ].sort((a, b) => {
     const bTime = Date.parse(b.createdAt || b.updatedAt || '') || 0
     const aTime = Date.parse(a.createdAt || a.updatedAt || '') || 0

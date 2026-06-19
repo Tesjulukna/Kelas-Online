@@ -301,6 +301,27 @@ create table if not exists public.tripay_orders (
   unique (merchant_ref)
 );
 
+create table if not exists public.payment_snapshots (
+  id text primary key,
+  source text not null default 'legacy_access',
+  source_label text not null default 'Akses lama',
+  order_code text not null default '',
+  buyer_name text not null default '',
+  buyer_email text not null default '',
+  member_id text not null default '',
+  class_id text not null default '',
+  class_title text not null default '',
+  product_id text not null default '',
+  product_title text not null default '',
+  item_type text not null default 'class',
+  amount integer not null default 0,
+  status text not null default 'paid',
+  payment_method text not null default 'Akses kelas',
+  access_granted boolean not null default true,
+  created_at text not null default '',
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.site_settings (
   id text primary key,
   payload jsonb not null default '{}'::jsonb,
@@ -324,6 +345,9 @@ create index if not exists lynk_order_email_index on public.lynk_orders(buyer_em
 create index if not exists tripay_order_reference_index on public.tripay_orders(reference);
 create index if not exists tripay_order_member_index on public.tripay_orders(member_id);
 create index if not exists tripay_order_class_index on public.tripay_orders(class_id);
+create index if not exists payment_snapshot_member_index on public.payment_snapshots(member_id);
+create index if not exists payment_snapshot_class_index on public.payment_snapshots(class_id);
+create index if not exists payment_snapshot_product_index on public.payment_snapshots(product_id);
 create index if not exists digital_product_access_member_index on public.digital_product_access(member_id);
 create index if not exists digital_product_access_email_index on public.digital_product_access(buyer_email);
 create index if not exists digital_product_access_product_index on public.digital_product_access(product_id);
@@ -388,6 +412,10 @@ drop trigger if exists tripay_orders_updated_at on public.tripay_orders;
 create trigger tripay_orders_updated_at before update on public.tripay_orders
 for each row execute function public.set_updated_at();
 
+drop trigger if exists payment_snapshots_updated_at on public.payment_snapshots;
+create trigger payment_snapshots_updated_at before update on public.payment_snapshots
+for each row execute function public.set_updated_at();
+
 drop trigger if exists login_attempts_updated_at on public.login_attempts;
 create trigger login_attempts_updated_at before update on public.login_attempts
 for each row execute function public.set_updated_at();
@@ -410,6 +438,7 @@ alter table public.testimonials enable row level security;
 alter table public.member_progress enable row level security;
 alter table public.lynk_orders enable row level security;
 alter table public.tripay_orders enable row level security;
+alter table public.payment_snapshots enable row level security;
 alter table public.site_settings enable row level security;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
