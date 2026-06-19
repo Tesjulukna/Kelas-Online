@@ -7,7 +7,6 @@ import MetricCard from '../components/MetricCard'
 import WebsiteSettingsPanel from '../components/WebsiteSettingsPanel'
 import { adminMenuItems } from '../data/platformData'
 import {
-  buildSignedUploadBody,
   requestStorageUpload,
   uploadStorageFile,
 } from '../lib/storageUpload'
@@ -2008,6 +2007,7 @@ function AdminPage({
 
         xhr.open('PUT', upload.signedUrl)
         xhr.setRequestHeader('x-upsert', 'false')
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
         xhr.responseType = 'json'
         xhr.upload.onprogress = (progressEvent) => {
           if (!progressEvent.lengthComputable) {
@@ -2084,7 +2084,7 @@ function AdminPage({
           onNotify('Upload video gagal. Periksa koneksi dan pengaturan Supabase Storage.')
           event.target.value = ''
         }
-        xhr.send(buildSignedUploadBody(file))
+        xhr.send(file)
       })
       .catch((error) => {
         setVideoUploads((current) => ({

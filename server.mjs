@@ -1,6 +1,8 @@
 import { createServer } from 'node:http'
 import { createHash } from 'node:crypto'
 import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { createWriteStream } from 'node:fs'
+import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from './src/data/websiteSettings.js'
@@ -1299,6 +1301,72 @@ const server = createServer(async (request, response) => {
         },
         origin,
       )
+      return
+    }
+
+    if (
+      pathname === '/api/upload-file' ||
+      pathname === '/api/upload-file.php' ||
+      pathname === '/api/upload-video' ||
+      pathname === '/api/upload-video.php'
+    ) {
+      if (request.method === 'POST') {
+        const body = await readBody(request)
+        const payload = JSON.parse(body || '{}')
+        const type = cleanText(payload.type || '', 40)
+        const name = cleanText(payload.name || 'file', 180)
+        const contentType = cleanText(payload.contentType || 'application/octet-stream', 120)
+
+        const folderMap = {
+          profile: 'profiles',
+          task: 'tugas',
+          'class-image': 'gambar',
+          'certificate-image': 'sertifikat',
+          document: 'dokumen',
+          video: 'videos',
+        }
+        const folder = folderMap[type] || 'temp'
+        const extension = name.split('.').pop() || 'bin'
+        const fileName = `${type || 'file'}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}.${extension}`
+
+        const relativePath = `uploads/${folder}/${fileName}`
+        const absolutePath = path.resolve(__dirname, 'public', relativePath)
+
+        const mockSignedUrl = `${url.pathname}?mock=true&path=${encodeURIComponent(absolutePath)}`
+
+        sendJson(
+          response,
+          200,
+          {
+            signedUrl: mockSignedUrl,
+            url: `/${relativePath}`,
+            path: relativePath,
+            file: relativePath,
+            name: name,
+            type: contentType,
+          },
+          origin,
+        )
+        return
+      }
+
+      if (request.method === 'PUT') {
+        const absolutePath = url.searchParams.get('path')
+        if (!absolutePath) {
+          sendJson(response, 400, { message: 'Path tidak ditemukan.' }, origin)
+          return
+        }
+
+        await mkdir(path.dirname(absolutePath), { recursive: true })
+
+        const writeStream = createWriteStream(absolutePath)
+        await pipeline(request, writeStream)
+
+        sendJson(response, 200, { success: true }, origin)
+        return
+      }
+
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' }, origin)
       return
     }
 

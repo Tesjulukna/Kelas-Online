@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { createWriteStream } from 'node:fs'
+import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from './src/data/websiteSettings.js'
 
@@ -1289,6 +1291,67 @@ function localDataPlugin() {
     }
   }
 
+  const handleUploadRequest = async (request, response) => {
+    try {
+      const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`)
+
+      if (request.method === 'POST') {
+        const body = await readRequestBody(request)
+        const payload = JSON.parse(body || '{}')
+        const type = cleanText(payload.type || '', 40)
+        const name = cleanText(payload.name || 'file', 180)
+        const contentType = cleanText(payload.contentType || 'application/octet-stream', 120)
+
+        const folderMap = {
+          profile: 'profiles',
+          task: 'tugas',
+          'class-image': 'gambar',
+          'certificate-image': 'sertifikat',
+          document: 'dokumen',
+          video: 'videos',
+        }
+        const folder = folderMap[type] || 'temp'
+        const extension = name.split('.').pop() || 'bin'
+        const fileName = `${type || 'file'}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}.${extension}`
+
+        const relativePath = `uploads/${folder}/${fileName}`
+        const absolutePath = path.resolve('public', relativePath)
+
+        const mockSignedUrl = `${url.pathname}?mock=true&path=${encodeURIComponent(absolutePath)}`
+
+        sendJson(response, 200, {
+          signedUrl: mockSignedUrl,
+          url: `/${relativePath}`,
+          path: relativePath,
+          file: relativePath,
+          name: name,
+          type: contentType,
+        })
+        return
+      }
+
+      if (request.method === 'PUT') {
+        const absolutePath = url.searchParams.get('path')
+        if (!absolutePath) {
+          sendJson(response, 400, { message: 'Path tidak ditemukan.' })
+          return
+        }
+
+        await mkdir(path.dirname(absolutePath), { recursive: true })
+
+        const writeStream = createWriteStream(absolutePath)
+        await pipeline(request, writeStream)
+
+        sendJson(response, 200, { success: true })
+        return
+      }
+
+      sendJson(response, 405, { message: 'Method tidak diizinkan.' })
+    } catch (error) {
+      sendJson(response, 400, { message: error.message || 'Upload gagal.' })
+    }
+  }
+
   const handleTripayWebhookRequest = async (_request, response) => {
     sendJson(response, 501, {
       message: 'Webhook Tripay aktif setelah deploy ke backend PHP atau Vercel dengan konfigurasi Tripay.',
@@ -1318,6 +1381,10 @@ function localDataPlugin() {
     server.middlewares.use('/api/tripay-checkout.php', handleTripayCheckoutRequest)
     server.middlewares.use('/api/tripay-webhook', handleTripayWebhookRequest)
     server.middlewares.use('/api/tripay-webhook.php', handleTripayWebhookRequest)
+    server.middlewares.use('/api/upload-file', handleUploadRequest)
+    server.middlewares.use('/api/upload-file.php', handleUploadRequest)
+    server.middlewares.use('/api/upload-video', handleUploadRequest)
+    server.middlewares.use('/api/upload-video.php', handleUploadRequest)
   }
 
   return {

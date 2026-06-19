@@ -42,8 +42,9 @@ export function buildSignedUploadBody(file) {
 export async function uploadToSignedUrl(signedUrl, file) {
   const response = await fetch(signedUrl, {
     method: 'PUT',
-    body: buildSignedUploadBody(file),
+    body: file,
     headers: {
+      'Content-Type': file.type || 'application/octet-stream',
       'x-upsert': 'false',
     },
   })
