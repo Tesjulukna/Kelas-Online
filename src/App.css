@@ -14130,6 +14130,11 @@ img {
   background: #e2e8f0;
 }
 
+@keyframes sidebarFadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 .certificate-editor-sidebar {
   display: grid;
   align-content: start;
@@ -14139,6 +14144,7 @@ img {
   overflow: auto;
   padding: 14px;
   background: #ffffff;
+  animation: sidebarFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .certificate-editor-sidebar h4 {
