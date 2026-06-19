@@ -24,6 +24,14 @@ function cloneDraft(value) {
   return JSON.parse(JSON.stringify(value))
 }
 
+function clampZoom(value) {
+  return Number(Math.min(1.8, Math.max(0.15, value)).toFixed(2))
+}
+
+function pointerDistance(first, second) {
+  return Math.hypot(first.x - second.x, first.y - second.y)
+}
+
 function cleanFileName(value) {
   return String(value || 'sertifikat')
     .toLowerCase()
@@ -128,33 +136,36 @@ function CertificateTemplateEditor({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [previewCertificateId, setPreviewCertificateId] = useState('dummy')
   const [history, setHistory] = useState({ past: [], future: [] })
-  const [showLeftSidebar, setShowLeftSidebar] = useState(true)
-  const [showRightSidebar, setShowRightSidebar] = useState(true)
-  
+  const [showLeftSidebar, setShowLeftSidebar] = useState(false)
+  const [showRightSidebar, setShowRightSidebar] = useState(false)
+  const [isCreatingNewTemplate, setIsCreatingNewTemplate] = useState(false)
+  const [editingElementId, setEditingElementId] = useState('')
+
   const imageInputRef = useRef(null)
   const backgroundInputRef = useRef(null)
   const editSessionRef = useRef(false)
   const scrollContainerRef = useRef(null)
+  const panRef = useRef(null)
+  const pointersRef = useRef(new Map())
+  const pinchRef = useRef(null)
 
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return
 
     const handleWheel = (event) => {
-      if (event.shiftKey) {
+      if (event.ctrlKey || event.metaKey) {
         event.preventDefault()
-        // Shift + Wheel -> Scroll vertically
-        container.scrollTop += event.deltaY
+        const zoomFactor = event.deltaY < 0 ? 1.08 : 0.92
+        setZoom((currentZoom) => clampZoom(currentZoom * zoomFactor))
         return
       }
 
-      // Wheel -> Zoom
-      event.preventDefault()
-      const zoomDelta = event.deltaY < 0 ? 0.05 : -0.05
-      setZoom((currentZoom) => {
-        const nextZoom = Math.min(1.5, Math.max(0.15, currentZoom + zoomDelta))
-        return Number(nextZoom.toFixed(2))
-      })
+      if (event.shiftKey) {
+        event.preventDefault()
+        container.scrollLeft += event.deltaY
+        return
+      }
     }
 
     container.addEventListener('wheel', handleWheel, { passive: false })
@@ -162,6 +173,27 @@ function CertificateTemplateEditor({
       container.removeEventListener('wheel', handleWheel)
     }
   }, [])
+
+  useEffect(() => {
+    if (isCreatingNewTemplate || draft.id || selectedTemplateId || !selectedClass?.id) {
+      return
+    }
+
+    const nextState = getClassTemplateState(activeClasses, templates, selectedClass.id)
+
+    if (!nextState.templateId) {
+      return
+    }
+
+    queueMicrotask(() => {
+      setSelectedTemplateId(nextState.templateId)
+      setDraft(nextState.draft)
+      setSelectedElementId('')
+      setEditingElementId('')
+      setHistory({ past: [], future: [] })
+      editSessionRef.current = false
+    })
+  }, [activeClasses, draft.id, isCreatingNewTemplate, selectedClass, selectedTemplateId, templates])
 
   const selectedElement = draft.elements.find((element) => element.id === selectedElementId) || null
   const previewCertificate = certificates.find((certificate) => certificate.id === previewCertificateId)
@@ -316,13 +348,14 @@ function CertificateTemplateEditor({
         ...draft,
         classId: selectedClass.id,
       })
-      const savedTemplate = data.certificateTemplates?.find((template) =>
-        template.classId === selectedClass.id && template.name === draft.name,
+      const savedTemplate = data.template || data.certificateTemplates?.find((template) =>
+        template.id === draft.id || (template.classId === selectedClass.id && template.name === draft.name),
       )
 
       if (savedTemplate) {
         setSelectedTemplateId(savedTemplate.id)
         setDraft(normalizeCertificateTemplate(savedTemplate, selectedClass))
+        setIsCreatingNewTemplate(false)
         resetHistory()
       }
       onNotify(data.message || 'Template sertifikat berhasil disimpan.')
@@ -350,6 +383,7 @@ function CertificateTemplateEditor({
       if (copiedTemplate) {
         setSelectedTemplateId(copiedTemplate.id)
         setDraft(normalizeCertificateTemplate(copiedTemplate, selectedClass))
+        setIsCreatingNewTemplate(false)
         resetHistory()
       }
       onNotify(data.message || 'Template berhasil diduplicate.')
@@ -375,6 +409,8 @@ function CertificateTemplateEditor({
       setSelectedTemplateId(nextState.templateId)
       setDraft(nextState.draft)
       setSelectedElementId('')
+      setEditingElementId('')
+      setIsCreatingNewTemplate(false)
       resetHistory()
       onNotify(data.message || 'Template dihapus.')
     } catch (error) {
@@ -418,6 +454,7 @@ function CertificateTemplateEditor({
         elements: current.elements.filter((element) => element.id !== selectedElement.id),
       }))
       setSelectedElementId('')
+      setEditingElementId('')
     } else if (action === 'lock') {
       updateElement(selectedElement.id, { locked: !selectedElement.locked })
     } else if (action === 'hide') {
@@ -489,6 +526,82 @@ function CertificateTemplateEditor({
     }
   }
 
+  const handleCanvasPanStart = (event) => {
+    const container = scrollContainerRef.current
+
+    if (!container || event.target.closest('.template-element, button, input, textarea, select')) {
+      return
+    }
+
+    event.preventDefault()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    pointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    })
+
+    if (pointersRef.current.size === 2) {
+      const points = Array.from(pointersRef.current.values())
+      pinchRef.current = {
+        distance: pointerDistance(points[0], points[1]),
+        zoom,
+      }
+      panRef.current = null
+      return
+    }
+
+    panRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      scrollLeft: container.scrollLeft,
+      scrollTop: container.scrollTop,
+    }
+  }
+
+  const handleCanvasPanMove = (event) => {
+    const container = scrollContainerRef.current
+
+    if (!container || !pointersRef.current.has(event.pointerId)) {
+      return
+    }
+
+    pointersRef.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    })
+
+    if (pointersRef.current.size >= 2 && pinchRef.current) {
+      const points = Array.from(pointersRef.current.values()).slice(0, 2)
+      const nextDistance = pointerDistance(points[0], points[1])
+      const ratio = nextDistance / Math.max(1, pinchRef.current.distance)
+
+      setZoom(clampZoom(pinchRef.current.zoom * ratio))
+      return
+    }
+
+    if (!panRef.current || panRef.current.pointerId !== event.pointerId) {
+      return
+    }
+
+    event.preventDefault()
+    container.scrollLeft = panRef.current.scrollLeft - (event.clientX - panRef.current.x)
+    container.scrollTop = panRef.current.scrollTop - (event.clientY - panRef.current.y)
+  }
+
+  const handleCanvasPanEnd = (event) => {
+    pointersRef.current.delete(event.pointerId)
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+
+    if (pointersRef.current.size < 2) {
+      pinchRef.current = null
+    }
+
+    if (panRef.current?.pointerId === event.pointerId) {
+      panRef.current = null
+    }
+  }
+
   return (
     <section className="certificate-editor-panel">
       <div className="certificate-editor-topbar">
@@ -529,6 +642,8 @@ function CertificateTemplateEditor({
               setSelectedTemplateId(nextState.templateId)
               setDraft(nextState.draft)
               setSelectedElementId('')
+              setEditingElementId('')
+              setIsCreatingNewTemplate(false)
               resetHistory()
             }}
           >
@@ -548,6 +663,8 @@ function CertificateTemplateEditor({
               setSelectedTemplateId(nextState.templateId)
               setDraft(nextState.draft)
               setSelectedElementId('')
+              setEditingElementId('')
+              setIsCreatingNewTemplate(event.target.value === '')
               resetHistory()
             }}
           >
@@ -601,9 +718,9 @@ function CertificateTemplateEditor({
 
         <div className="certificate-toolbar-group">
           <span>Zoom</span>
-          <ToolbarIconButton icon="zoomOut" label="Zoom out" onClick={() => setZoom((value) => Math.max(0.15, value - 0.08))} />
+          <ToolbarIconButton icon="zoomOut" label="Zoom out" onClick={() => setZoom((value) => clampZoom(value - 0.08))} />
           <strong>{Math.round(zoom * 100)}%</strong>
-          <ToolbarIconButton icon="zoomIn" label="Zoom in" onClick={() => setZoom((value) => Math.min(1.5, value + 0.08))} />
+          <ToolbarIconButton icon="zoomIn" label="Zoom in" onClick={() => setZoom((value) => clampZoom(value + 0.08))} />
         </div>
 
         <div className="certificate-toolbar-group">
@@ -659,6 +776,27 @@ function CertificateTemplateEditor({
         </div>
       </div>
 
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="certificate-hidden-input"
+        onChange={(event) => {
+          handleUploadImage(event.target.files?.[0], 'image')
+          event.target.value = ''
+        }}
+      />
+      <input
+        ref={backgroundInputRef}
+        type="file"
+        accept="image/*"
+        className="certificate-hidden-input"
+        onChange={(event) => {
+          handleUploadImage(event.target.files?.[0], 'background')
+          event.target.value = ''
+        }}
+      />
+
       <div 
         className="certificate-editor-layout"
         style={{
@@ -699,38 +837,28 @@ function CertificateTemplateEditor({
               ))}
             </div>
 
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(event) => {
-                handleUploadImage(event.target.files?.[0], 'image')
-                event.target.value = ''
-              }}
-            />
-            <input
-              ref={backgroundInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(event) => {
-                handleUploadImage(event.target.files?.[0], 'background')
-                event.target.value = ''
-              }}
-            />
           </aside>
         )}
 
         <div className="certificate-editor-canvas-wrap">
-          <div ref={scrollContainerRef} className="certificate-editor-scroll">
+          <div
+            ref={scrollContainerRef}
+            className="certificate-editor-scroll"
+            onPointerDown={handleCanvasPanStart}
+            onPointerMove={handleCanvasPanMove}
+            onPointerUp={handleCanvasPanEnd}
+            onPointerCancel={handleCanvasPanEnd}
+          >
             <CertificateTemplateCanvas
               template={draft}
               data={previewData}
               zoom={zoom}
               editable
               selectedElementId={selectedElementId}
+              editingElementId={editingElementId}
               onSelect={setSelectedElementId}
+              onStartTextEdit={setEditingElementId}
+              onEndTextEdit={() => setEditingElementId('')}
               onElementChange={updateElement}
               onEditStart={beginHistorySession}
               onEditEnd={endHistorySession}

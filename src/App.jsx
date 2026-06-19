@@ -2276,6 +2276,7 @@ function App() {
       certificateNameChangeRequests: nextRequests,
       certificateTemplates: nextTemplates,
       certificate: data.certificate ? cleanCertificates([data.certificate])[0] : null,
+      template: data.template ? cleanCertificateTemplates([data.template])[0] : null,
       message: data.message || '',
     }
   }

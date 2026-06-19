@@ -2833,9 +2833,9 @@ export async function saveCertificateTemplate(user, payload) {
     throw new ApiError(404, 'Kelas untuk template sertifikat tidak ditemukan.')
   }
 
-  await rest('certificate_templates?on_conflict=id', {
+  const savedRows = await rest('certificate_templates?on_conflict=id', {
     method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
     body: {
       id: template.id,
       class_id: template.classId,
@@ -2852,6 +2852,7 @@ export async function saveCertificateTemplate(user, payload) {
   return {
     ok: true,
     message: 'Template sertifikat berhasil disimpan.',
+    template: savedRows?.[0] ? certificateTemplatePublic(savedRows[0]) : null,
     ...(await fetchCertificateRowsForUser(user)),
   }
 }

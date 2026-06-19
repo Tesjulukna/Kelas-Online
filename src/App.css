@@ -14602,6 +14602,14 @@ img {
   height: 18px;
 }
 
+.certificate-hidden-input {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .certificate-editor-layout {
   grid-template-columns: minmax(176px, 230px) minmax(360px, 1fr) minmax(270px, 330px);
   min-height: min(820px, 78dvh);
@@ -14617,6 +14625,13 @@ img {
   align-items: start;
   justify-items: center;
   padding: clamp(16px, 2.5vw, 32px);
+  cursor: grab;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.certificate-editor-scroll:active {
+  cursor: grabbing;
 }
 
 .certificate-editor-sidebar {
@@ -14642,6 +14657,79 @@ img {
 .template-text-editor:focus {
   outline: 2px solid rgba(37, 99, 235, 0.75);
   background: rgba(255, 255, 255, 0.34);
+}
+
+.certificate-template-stage,
+.certificate-template-canvas,
+.template-element {
+  touch-action: none;
+}
+
+.certificate-template-stage.is-editable .template-element {
+  cursor: move;
+}
+
+.template-element.type-text.selected {
+  cursor: text;
+}
+
+.template-resize-handle {
+  position: absolute;
+  inset: auto;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 5px 14px rgba(37, 99, 235, 0.32);
+}
+
+.template-resize-handle.handle-nw {
+  top: -8px;
+  left: -8px;
+  cursor: nwse-resize;
+}
+
+.template-resize-handle.handle-n {
+  top: -8px;
+  left: calc(50% - 7px);
+  cursor: ns-resize;
+}
+
+.template-resize-handle.handle-ne {
+  top: -8px;
+  right: -8px;
+  cursor: nesw-resize;
+}
+
+.template-resize-handle.handle-e {
+  top: calc(50% - 7px);
+  right: -8px;
+  cursor: ew-resize;
+}
+
+.template-resize-handle.handle-se {
+  right: -8px;
+  bottom: -8px;
+  cursor: nwse-resize;
+}
+
+.template-resize-handle.handle-s {
+  bottom: -8px;
+  left: calc(50% - 7px);
+  cursor: ns-resize;
+}
+
+.template-resize-handle.handle-sw {
+  bottom: -8px;
+  left: -8px;
+  cursor: nesw-resize;
+}
+
+.template-resize-handle.handle-w {
+  top: calc(50% - 7px);
+  left: -8px;
+  cursor: ew-resize;
 }
 
 .template-layer-list button {

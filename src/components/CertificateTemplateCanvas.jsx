@@ -5,6 +5,8 @@ import {
 } from '../lib/certificateTemplate'
 import Icon from './Icon'
 
+const resizeHandles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
+
 function qrBits(value) {
   let hash = 2166136261
 
@@ -107,17 +109,19 @@ function ElementPreview({
   data,
   editable = false,
   isSelected = false,
+  isEditing = false,
   onTextFocus = () => {},
   onTextBlur = () => {},
   onTextChange = () => {},
 }) {
   if (element.type === 'text') {
-    if (editable && isSelected && !element.locked) {
+    if (editable && isSelected && isEditing && !element.locked) {
       return (
         <textarea
           className="template-text-preview template-text-editor"
           value={element.content || ''}
           style={editableTextElementStyle(element)}
+          autoFocus
           spellCheck="false"
           onFocus={onTextFocus}
           onBlur={onTextBlur}
@@ -164,7 +168,10 @@ function CertificateTemplateCanvas({
   zoom = 1,
   editable = false,
   selectedElementId = '',
+  editingElementId = '',
   onSelect = () => {},
+  onStartTextEdit = () => {},
+  onEndTextEdit = () => {},
   onElementChange = () => {},
   onEditStart = () => {},
   onEditEnd = () => {},
@@ -191,11 +198,13 @@ function CertificateTemplateCanvas({
 
     event.preventDefault()
     event.stopPropagation()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
     onEditStart()
     onSelect(element.id)
     dragRef.current = {
       id: element.id,
       mode,
+      elementType: element.type,
       startX: event.clientX,
       startY: event.clientY,
       startLeft: Number(element.x) || 0,
@@ -218,10 +227,48 @@ function CertificateTemplateCanvas({
     const deltaX = (event.clientX - drag.startX) / zoom
     const deltaY = (event.clientY - drag.startY) / zoom
 
-    if (drag.mode === 'resize') {
+    if (String(drag.mode).startsWith('resize')) {
+      const direction = String(drag.mode).replace('resize:', '') || 'se'
+      const minSize = drag.elementType === 'line' ? 4 : 20
+      let nextX = drag.startLeft
+      let nextY = drag.startTop
+      let nextWidth = drag.startWidth
+      let nextHeight = drag.startHeight
+
+      if (direction.includes('e')) {
+        nextWidth = drag.startWidth + deltaX
+      }
+      if (direction.includes('s')) {
+        nextHeight = drag.startHeight + deltaY
+      }
+      if (direction.includes('w')) {
+        nextWidth = drag.startWidth - deltaX
+        nextX = drag.startLeft + deltaX
+      }
+      if (direction.includes('n')) {
+        nextHeight = drag.startHeight - deltaY
+        nextY = drag.startTop + deltaY
+      }
+
+      if (nextWidth < minSize) {
+        if (direction.includes('w')) {
+          nextX = drag.startLeft + drag.startWidth - minSize
+        }
+        nextWidth = minSize
+      }
+
+      if (nextHeight < minSize) {
+        if (direction.includes('n')) {
+          nextY = drag.startTop + drag.startHeight - minSize
+        }
+        nextHeight = minSize
+      }
+
       onElementChange(drag.id, {
-        width: Math.max(20, applySnap(drag.startWidth + deltaX)),
-        height: Math.max(20, applySnap(drag.startHeight + deltaY)),
+        x: applySnap(nextX),
+        y: applySnap(nextY),
+        width: Math.max(minSize, applySnap(nextWidth)),
+        height: Math.max(minSize, applySnap(nextHeight)),
       }, { track: false })
       return
     }
@@ -258,7 +305,12 @@ function CertificateTemplateCanvas({
           backgroundColor: safeTemplate.backgroundColor || '#ffffff',
           backgroundImage: safeTemplate.backgroundImage ? `url("${safeTemplate.backgroundImage}")` : 'none',
         }}
-        onPointerDown={() => editable && onSelect('')}
+        onPointerDown={() => {
+          if (editable) {
+            onSelect('')
+            onEndTextEdit()
+          }
+        }}
       >
         {safeTemplate.elements
           .filter((element) => !element.hidden)
@@ -277,23 +329,39 @@ function CertificateTemplateCanvas({
                 zIndex: Number(element.zIndex) || 1,
               }}
               onPointerDown={(event) => startPointerAction(event, element)}
+              onDoubleClick={(event) => {
+                if (editable && element.type === 'text' && !element.locked) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onSelect(element.id)
+                  onStartTextEdit(element.id)
+                  onEditStart()
+                }
+              }}
             >
               <ElementPreview
                 element={element}
                 data={data}
                 editable={editable}
                 isSelected={selectedElementId === element.id}
+                isEditing={editingElementId === element.id}
                 onTextFocus={onEditStart}
-                onTextBlur={onEditEnd}
+                onTextBlur={() => {
+                  onEditEnd()
+                  onEndTextEdit()
+                }}
                 onTextChange={(content) => onElementChange(element.id, { content }, { track: false })}
               />
               {editable && selectedElementId === element.id && !element.locked && (
-                <button
-                  className="template-resize-handle"
-                  type="button"
-                  aria-label="Resize elemen"
-                  onPointerDown={(event) => startPointerAction(event, element, 'resize')}
-                />
+                resizeHandles.map((handle) => (
+                  <button
+                    className={`template-resize-handle handle-${handle}`}
+                    type="button"
+                    aria-label={`Resize ${handle}`}
+                    key={handle}
+                    onPointerDown={(event) => startPointerAction(event, element, `resize:${handle}`)}
+                  />
+                ))
               )}
             </div>
           ))}
