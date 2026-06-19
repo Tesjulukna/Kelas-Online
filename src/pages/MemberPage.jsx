@@ -11,7 +11,7 @@ const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
 const expiredPaymentNoticeKey = 'ibnucreative.expiredPaymentNotices.v1'
 const uploadFileApiPath = '/api/upload-file'
-const testimonialMaxLength = 350
+const testimonialMaxLength = 280
 
 function scopedStorageKey(baseKey, userId = '') {
   return userId ? `${baseKey}.${userId}` : baseKey
@@ -294,7 +294,7 @@ function MemberPage({
   const [supportSubject, setSupportSubject] = useState('')
   const [supportDraft, setSupportDraft] = useState('')
   const [supportReplyDrafts, setSupportReplyDrafts] = useState({})
-  const [testimonialDraft, setTestimonialDraft] = useState('')
+  const [testimonialDrafts, setTestimonialDrafts] = useState({})
   const [previewImage, setPreviewImage] = useState(null)
   const [activePromptInstruction, setActivePromptInstruction] = useState(null)
   const [checkoutClassId, setCheckoutClassId] = useState('')
@@ -486,10 +486,14 @@ function MemberPage({
   const isLastMaterial = Boolean(selectedCourse && materials.length && currentMaterialIndex === materials.length - 1)
   const selectedCourseHasRequiredTask = materials.some((material) => material.requiresTask)
   const isSelectedCourseComplete = selectedCourseProgress >= 100 || (isLastMaterial && !selectedCourseHasRequiredTask)
+  function getMemberTestimonialForCourse(classId) {
+    return testimonials.find((testimonial) =>
+      testimonial.memberId === userId && testimonial.classId === classId,
+    )
+  }
+
   const selectedCourseTestimonial = selectedCourse
-    ? testimonials.find((testimonial) =>
-        testimonial.memberId === userId && testimonial.classId === selectedCourse.id,
-      )
+    ? getMemberTestimonialForCourse(selectedCourse.id)
     : null
   const canSendSelectedCourseTestimonial = Boolean(
       selectedCourse &&
@@ -498,11 +502,40 @@ function MemberPage({
       (!selectedCourseTestimonial || selectedCourseTestimonial.status === 'rejected'),
   )
 
-  const handleSubmitTestimonial = async () => {
-    const nextTestimonial = testimonialDraft.trim()
+  const getTestimonialStatusLabel = (status = '') => {
+    if (status === 'approved') {
+      return 'Sudah tampil di homepage'
+    }
 
-    if (!selectedCourse || !nextTestimonial) {
+    if (status === 'rejected') {
+      return 'Perlu dikirim ulang'
+    }
+
+    if (status === 'hidden') {
+      return 'Disembunyikan admin'
+    }
+
+    return 'Menunggu persetujuan admin'
+  }
+
+  const handleTestimonialDraftChange = (classId, value) => {
+    setTestimonialDrafts((current) => ({
+      ...current,
+      [classId]: value.slice(0, testimonialMaxLength),
+    }))
+  }
+
+  const handleSubmitTestimonial = async (course) => {
+    const targetCourse = course || selectedCourse
+    const nextTestimonial = String(testimonialDrafts[targetCourse?.id] || '').trim()
+
+    if (!targetCourse || !nextTestimonial) {
       onNotify('Isi testimoni dulu.')
+      return
+    }
+
+    if (getCourseProgress(targetCourse) < 100) {
+      onNotify('Testimoni bisa dikirim setelah progress kelas 100%.')
       return
     }
 
@@ -511,13 +544,23 @@ function MemberPage({
       return
     }
 
+    const existingTestimonial = getMemberTestimonialForCourse(targetCourse.id)
+
+    if (existingTestimonial && existingTestimonial.status !== 'rejected') {
+      onNotify('Testimoni kelas ini sudah terkirim.')
+      return
+    }
+
     try {
       await onCreateTestimonial({
-        classId: selectedCourse.id,
-        classTitle: selectedCourse.title,
+        classId: targetCourse.id,
+        classTitle: targetCourse.title,
         message: nextTestimonial,
       })
-      setTestimonialDraft('')
+      setTestimonialDrafts((current) => ({
+        ...current,
+        [targetCourse.id]: '',
+      }))
       onNotify('Testimoni terkirim dan menunggu persetujuan admin.')
     } catch (error) {
       onNotify(error.message || 'Testimoni belum bisa dikirim.')
@@ -1424,32 +1467,20 @@ function MemberPage({
                             ? selectedCourseTestimonial.status === 'approved'
                               ? 'Terima kasih. Testimoni kamu sudah tampil di homepage.'
                               : selectedCourseTestimonial.status === 'rejected'
-                                ? 'Testimoni sebelumnya belum disetujui. Kamu bisa mengirim ulang versi yang lebih rapi.'
+                                ? 'Testimoni sebelumnya belum disetujui. Kirim ulang dari menu Testimoni.'
                                 : 'Testimoni kamu sedang menunggu persetujuan admin.'
-                            : 'Testimoni akan diperiksa admin sebelum tampil di homepage.'}
+                            : 'Kamu sudah menyelesaikan kelas ini. Kirim pengalamanmu dari menu Testimoni.'}
                         </p>
                       </div>
                       {canSendSelectedCourseTestimonial && (
-                        <>
-                          <textarea
-                            value={testimonialDraft}
-                            maxLength={testimonialMaxLength}
-                            onChange={(event) => setTestimonialDraft(event.target.value.slice(0, testimonialMaxLength))}
-                            placeholder="Tulis kesan, hasil, atau perubahan yang kamu rasakan setelah mengikuti kelas ini."
-                            rows={4}
-                          />
-                          <small className="testimonial-character-count">
-                            {testimonialDraft.length}/{testimonialMaxLength} karakter
-                          </small>
-                          <button
-                            className="btn btn-primary"
-                            type="button"
-                            onClick={handleSubmitTestimonial}
-                          >
-                            <Icon name="send" />
-                            Kirim Testimoni
-                          </button>
-                        </>
+                        <button
+                          className="btn btn-primary"
+                          type="button"
+                          onClick={() => handleDashboardMenuChange('testimonials')}
+                        >
+                          <Icon name="send" />
+                          Buka Menu Testimoni
+                        </button>
                       )}
                     </div>
                   )}
@@ -2080,6 +2111,118 @@ function MemberPage({
             </div>
           </section>
         )
+      )}
+
+      {activeMenu === 'testimonials' && (
+        <section className="panel member-testimonial-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Testimoni member</p>
+              <h2>Kirim testimoni kelas</h2>
+              <small>
+                Form testimoni hanya terbuka untuk kelas yang sudah mencapai progress 100%.
+              </small>
+            </div>
+          </div>
+
+          <div className="member-testimonial-grid">
+            {courses.map((course) => {
+              const progress = getCourseProgress(course)
+              const testimonial = getMemberTestimonialForCourse(course.id)
+              const canSubmit = progress >= 100 && (!testimonial || testimonial.status === 'rejected')
+              const draft = testimonialDrafts[course.id] || ''
+
+              return (
+                <article
+                  className={`member-testimonial-card ${
+                    progress >= 100 ? 'is-complete' : 'is-locked'
+                  }`}
+                  key={course.id}
+                >
+                  <div className="member-testimonial-card-header">
+                    <span className="member-testimonial-visual" aria-hidden="true">
+                      {course.thumbnail ? (
+                        <img src={course.thumbnail} alt="" />
+                      ) : (
+                        <Icon name="bookOpen" />
+                      )}
+                    </span>
+                    <div className="member-testimonial-title">
+                      <small>{progress >= 100 ? 'Kelas selesai' : 'Belum selesai'}</small>
+                      <h3>{course.title}</h3>
+                      <span>{course.mentor || 'Ibnu Creative'}</span>
+                    </div>
+                  </div>
+
+                  <div className="member-testimonial-progress">
+                    <span>
+                      <small>Progress</small>
+                      <strong>{progress}%</strong>
+                    </span>
+                    <span className="progress-track">
+                      <span style={{ width: `${progress}%` }}></span>
+                    </span>
+                  </div>
+
+                  {testimonial && (
+                    <div className="member-testimonial-existing">
+                      <span>{getTestimonialStatusLabel(testimonial.status)}</span>
+                      <p>{testimonial.message}</p>
+                    </div>
+                  )}
+
+                  {canSubmit ? (
+                    <div className="member-testimonial-form">
+                      <label>
+                        Tulis testimoni
+                        <textarea
+                          value={draft}
+                          maxLength={testimonialMaxLength}
+                          onChange={(event) =>
+                            handleTestimonialDraftChange(course.id, event.target.value)
+                          }
+                          placeholder="Ceritakan hasil atau pengalamanmu setelah mengikuti kelas ini."
+                          rows={4}
+                        />
+                      </label>
+                      <div className="member-testimonial-actions">
+                        <small className="testimonial-character-count">
+                          {draft.length}/{testimonialMaxLength} karakter
+                        </small>
+                        <button
+                          className="btn btn-primary"
+                          type="button"
+                          onClick={() => handleSubmitTestimonial(course)}
+                          disabled={!draft.trim()}
+                        >
+                          <Icon name="send" />
+                          Kirim Testimoni
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="member-testimonial-locked">
+                      <Icon name={progress >= 100 ? 'checkCircle' : 'lock'} />
+                      <span>
+                        {progress >= 100
+                          ? 'Testimoni kelas ini sudah tercatat.'
+                          : 'Selesaikan progress kelas sampai 100% untuk membuka form testimoni.'}
+                      </span>
+                    </div>
+                  )}
+                </article>
+              )
+            })}
+
+            {!courses.length && (
+              <article className="empty-state">
+                <Icon name="message" />
+                <h3>Belum ada kelas untuk diberi testimoni</h3>
+                <p>Kelas yang kamu akses akan muncul di sini.</p>
+              </article>
+            )}
+          </div>
+        </section>
       )}
 
       {activeMenu === 'certificates' && (

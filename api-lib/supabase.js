@@ -15,7 +15,7 @@ const maxVideoUploadMb = Number(process.env.MAX_VIDEO_UPLOAD_MB || 80)
 const loginAttemptWindowMs = 15 * 60 * 1000
 const loginAttemptBlockMs = 15 * 60 * 1000
 const maxLoginAttempts = 5
-const testimonialMaxLength = 350
+const testimonialMaxLength = 280
 
 class ApiError extends Error {
   constructor(statusCode, message) {

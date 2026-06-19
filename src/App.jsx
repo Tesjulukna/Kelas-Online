@@ -160,7 +160,15 @@ function getDashboardMenuFromUrl(role) {
         'support',
         'website-settings',
       ]
-    : ['overview', 'my-courses', 'available-classes', 'digital-products', 'certificates', 'support']
+    : [
+        'overview',
+        'my-courses',
+        'available-classes',
+        'digital-products',
+        'testimonials',
+        'certificates',
+        'support',
+      ]
 
   return allowedMenus.includes(menuId) ? menuId : 'overview'
 }

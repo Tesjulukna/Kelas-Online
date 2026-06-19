@@ -66,6 +66,7 @@ export const memberMenuItems = [
   { id: 'my-courses', label: 'Kelas Saya', icon: 'bookOpen' },
   { id: 'available-classes', label: 'Kelas Tersedia', icon: 'bookOpen' },
   { id: 'digital-products', label: 'Produk Digital', icon: 'download' },
+  { id: 'testimonials', label: 'Testimoni', icon: 'message' },
   { id: 'certificates', label: 'Sertifikat', icon: 'certificate' },
   { id: 'support', label: 'Bantuan Mentor', icon: 'message' },
 ]
