@@ -913,7 +913,7 @@ function CertificateTemplateEditor({
             </div>
             <label className="inline-setting">
               <input type="checkbox" checked={draft.snapToGrid} onChange={(event) => updateDraft({ snapToGrid: event.target.checked })} />
-              Snap to grid
+              Snap grid saat tekan Shift
             </label>
 
             <div className="template-secondary-actions">

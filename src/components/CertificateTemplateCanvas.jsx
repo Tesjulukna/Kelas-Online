@@ -3,44 +3,29 @@ import {
   normalizeCertificateTemplate,
   replaceCertificatePlaceholders,
 } from '../lib/certificateTemplate'
+import { createQrMatrix, getCertificateVerificationUrl } from '../lib/qrCode'
 import Icon from './Icon'
 
 const resizeHandles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 
-function qrBits(value) {
-  let hash = 2166136261
-
-  for (const character of String(value || 'CERTIFICATE')) {
-    hash ^= character.charCodeAt(0)
-    hash = Math.imul(hash, 16777619)
-  }
-
-  return Math.abs(hash >>> 0).toString(2).padStart(32, '0').repeat(12)
-}
-
 function QrPreview({ element, data }) {
-  const value = data.verificationUrl || data.ID_SERTIFIKAT || 'CERTIFICATE'
-  const bits = qrBits(value)
+  const qr = createQrMatrix(getCertificateVerificationUrl(data))
 
   return (
     <div
       className="template-qr-preview"
+      title={qr.value}
       style={{
         background: element.background || '#ffffff',
         color: element.color || '#111827',
+        gridTemplateColumns: `repeat(${qr.size}, 1fr)`,
       }}
     >
-      {Array.from({ length: 81 }).map((_, index) => {
-        const row = Math.floor(index / 9)
-        const col = index % 9
-        const finder =
-          (row < 3 && col < 3) ||
-          (row < 3 && col > 5) ||
-          (row > 5 && col < 3)
-        const active = finder || bits[index] === '1'
-
-        return <i className={active ? 'active' : ''} key={index}></i>
-      })}
+      {qr.modules.flatMap((row, rowIndex) =>
+        row.map((isDark, colIndex) => (
+          <i className={isDark ? 'active' : ''} key={`${rowIndex}-${colIndex}`}></i>
+        )),
+      )}
     </div>
   )
 }
@@ -181,9 +166,9 @@ function CertificateTemplateCanvas({
   const dragRef = useRef(null)
   const [isDragging, setIsDragging] = useState(false)
 
-  const applySnap = (value) => {
-    if (!safeTemplate.snapToGrid) {
-      return value
+  const applySnap = (value, forceSnap = false) => {
+    if (!safeTemplate.snapToGrid || !forceSnap) {
+      return Math.round(value * 10) / 10
     }
 
     const grid = Math.max(1, Number(safeTemplate.gridSize) || 10)
@@ -265,17 +250,17 @@ function CertificateTemplateCanvas({
       }
 
       onElementChange(drag.id, {
-        x: applySnap(nextX),
-        y: applySnap(nextY),
-        width: Math.max(minSize, applySnap(nextWidth)),
-        height: Math.max(minSize, applySnap(nextHeight)),
+        x: applySnap(nextX, event.shiftKey),
+        y: applySnap(nextY, event.shiftKey),
+        width: Math.max(minSize, applySnap(nextWidth, event.shiftKey)),
+        height: Math.max(minSize, applySnap(nextHeight, event.shiftKey)),
       }, { track: false })
       return
     }
 
     onElementChange(drag.id, {
-      x: applySnap(drag.startLeft + deltaX),
-      y: applySnap(drag.startTop + deltaY),
+      x: applySnap(drag.startLeft + deltaX, event.shiftKey),
+      y: applySnap(drag.startTop + deltaY, event.shiftKey),
     }, { track: false })
   }
 

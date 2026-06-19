@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Icon from '../components/Icon'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
+import { createQrMatrix, getCertificateVerificationUrl } from '../lib/qrCode'
 
 function formatDate(value) {
   const time = Date.parse(value || '')
@@ -17,26 +18,19 @@ function formatDate(value) {
 }
 
 function CertificateCodeMark({ value }) {
-  const seed = String(value || 'CERTIFICATE')
-  let hash = 0
-
-  for (const character of seed) {
-    hash = (hash * 33 + character.charCodeAt(0)) >>> 0
-  }
+  const qr = createQrMatrix(getCertificateVerificationUrl({ certificateId: value }))
 
   return (
-    <span className="verify-qr" aria-hidden="true">
-      {Array.from({ length: 64 }).map((_, index) => {
-        const row = Math.floor(index / 8)
-        const col = index % 8
-        const finder =
-          (row < 2 && col < 2) ||
-          (row < 2 && col > 5) ||
-          (row > 5 && col < 2)
-        const active = finder || ((hash >> (index % 24)) & 1) === 1
-
-        return <i className={active ? 'active' : ''} key={index}></i>
-      })}
+    <span
+      className="verify-qr"
+      aria-hidden="true"
+      style={{ gridTemplateColumns: `repeat(${qr.size}, 1fr)` }}
+    >
+      {qr.modules.flatMap((row, rowIndex) =>
+        row.map((isDark, colIndex) => (
+          <i className={isDark ? 'active' : ''} key={`${rowIndex}-${colIndex}`}></i>
+        )),
+      )}
     </span>
   )
 }

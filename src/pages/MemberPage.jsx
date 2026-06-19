@@ -7,6 +7,7 @@ import { memberMenuItems } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import { createCertificateData } from '../lib/certificateTemplate'
 import { downloadCertificatePdf } from '../lib/certificatePdf'
+import { createQrMatrix, getCertificateVerificationUrl } from '../lib/qrCode'
 import { uploadStorageFile } from '../lib/storageUpload'
 import { withPublicCodes } from '../utils/publicCodes'
 
@@ -131,26 +132,19 @@ function formatCertificateDate(value) {
 }
 
 function VerificationMark({ certificateId }) {
-  const seed = String(certificateId || 'CERTIFICATE')
-  let hash = 0
-
-  for (const character of seed) {
-    hash = (hash * 31 + character.charCodeAt(0)) >>> 0
-  }
+  const qr = createQrMatrix(getCertificateVerificationUrl({ certificateId }))
 
   return (
-    <span className="certificate-qr" aria-hidden="true">
-      {Array.from({ length: 49 }).map((_, index) => {
-        const row = Math.floor(index / 7)
-        const col = index % 7
-        const finder =
-          (row < 2 && col < 2) ||
-          (row < 2 && col > 4) ||
-          (row > 4 && col < 2)
-        const active = finder || ((hash >> (index % 24)) & 1) === 1
-
-        return <i className={active ? 'active' : ''} key={index}></i>
-      })}
+    <span
+      className="certificate-qr"
+      aria-hidden="true"
+      style={{ gridTemplateColumns: `repeat(${qr.size}, 1fr)` }}
+    >
+      {qr.modules.flatMap((row, rowIndex) =>
+        row.map((isDark, colIndex) => (
+          <i className={isDark ? 'active' : ''} key={`${rowIndex}-${colIndex}`}></i>
+        )),
+      )}
     </span>
   )
 }

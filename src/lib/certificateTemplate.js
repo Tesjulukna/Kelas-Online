@@ -1,3 +1,5 @@
+import { createQrMatrix, getCertificateVerificationUrl } from './qrCode'
+
 export const certificateSizePresets = {
   a4Landscape: {
     label: 'A4 Landscape',
@@ -63,10 +65,10 @@ export function createCertificateData(certificate = {}, settings = {}) {
     NAMA_WEBSITE: siteName,
     NILAI: certificate.score || 'Lulus',
     QR_CODE: certificate.certificateId || 'IBNU-0000',
-    verificationUrl:
-      typeof window !== 'undefined' && certificate.certificateId
-        ? `${window.location.origin}/sertifikat/${encodeURIComponent(certificate.certificateId)}`
-        : certificate.verificationUrl || '',
+    verificationUrl: getCertificateVerificationUrl({
+      ...certificate,
+      ID_SERTIFIKAT: certificate.certificateId || 'IBNU-0000',
+    }),
   }
 }
 
@@ -446,45 +448,31 @@ function drawLetterSpacedText(context, text, x, y, letterSpacing = 0) {
   }
 }
 
-function qrBits(value) {
-  let hash = 2166136261
-
-  for (const character of String(value || '')) {
-    hash ^= character.charCodeAt(0)
-    hash = Math.imul(hash, 16777619)
-  }
-
-  return Math.abs(hash >>> 0).toString(2).padStart(32, '0').repeat(12)
-}
-
 function drawQr(context, element, data) {
-  const value = data.verificationUrl || data.ID_SERTIFIKAT || 'CERTIFICATE'
-  const bits = qrBits(value)
-  const cells = 9
-  const cellSize = Math.min(element.width, element.height) / cells
+  const qr = createQrMatrix(getCertificateVerificationUrl(data))
+  const quietZone = 4
+  const cells = qr.size + quietZone * 2
+  const boxSize = Math.min(element.width, element.height)
+  const cellSize = boxSize / cells
+  const offsetX = (element.width - boxSize) / 2
+  const offsetY = (element.height - boxSize) / 2
 
   context.fillStyle = element.background || '#ffffff'
   context.fillRect(0, 0, element.width, element.height)
   context.fillStyle = element.color || '#111827'
 
-  for (let row = 0; row < cells; row += 1) {
-    for (let col = 0; col < cells; col += 1) {
-      const finder =
-        (row < 3 && col < 3) ||
-        (row < 3 && col > cells - 4) ||
-        (row > cells - 4 && col < 3)
-      const active = finder || bits[row * cells + col] === '1'
-
-      if (active) {
+  qr.modules.forEach((line, row) => {
+    line.forEach((isDark, col) => {
+      if (isDark) {
         context.fillRect(
-          col * cellSize + cellSize * 0.12,
-          row * cellSize + cellSize * 0.12,
-          cellSize * 0.76,
-          cellSize * 0.76,
+          offsetX + (col + quietZone) * cellSize,
+          offsetY + (row + quietZone) * cellSize,
+          Math.ceil(cellSize),
+          Math.ceil(cellSize),
         )
       }
-    }
-  }
+    })
+  })
 }
 
 function drawRoundedRect(context, x, y, width, height, radius) {

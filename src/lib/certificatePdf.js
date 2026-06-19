@@ -2,6 +2,7 @@ import {
   createCertificateData,
   downloadCertificateTemplatePdf,
 } from './certificateTemplate'
+import { createQrMatrix, getCertificateVerificationUrl } from './qrCode'
 
 function escapePdfText(value) {
   return String(value ?? '')
@@ -61,17 +62,6 @@ function splitTitle(value, maxLength = 42) {
   return lines.slice(0, 2)
 }
 
-function hashBits(value) {
-  let hash = 2166136261
-
-  for (const character of String(value || '')) {
-    hash ^= character.charCodeAt(0)
-    hash = Math.imul(hash, 16777619)
-  }
-
-  return Math.abs(hash >>> 0).toString(2).padStart(32, '0').repeat(8)
-}
-
 function textCommand({ x, y, size, text, font = 'F1', color = '0.10 0.15 0.25' }) {
   return `${color} rg BT /${font} ${size} Tf ${x} ${y} Td (${escapePdfText(text)}) Tj ET`
 }
@@ -80,33 +70,28 @@ function rectCommand({ x, y, width, height, color }) {
   return `${color} rg ${x} ${y} ${width} ${height} re f`
 }
 
-function qrGridCommands(id, x, y) {
-  const bits = hashBits(id)
-  const size = 7
-  const cell = 7 // Increased from 5 to 7 for better scanability and look
+function qrGridCommands(value, x, y, boxSize = 72) {
+  const qr = createQrMatrix(value)
+  const quietZone = 4
+  const cells = qr.size + quietZone * 2
+  const cell = boxSize / cells
   const commands = [
-    rectCommand({ x, y, width: size * cell, height: size * cell, color: '1 1 1' }),
+    rectCommand({ x, y, width: boxSize, height: boxSize, color: '1 1 1' }),
   ]
 
-  for (let row = 0; row < size; row += 1) {
-    for (let col = 0; col < size; col += 1) {
-      const isFinder =
-        (row < 2 && col < 2) ||
-        (row < 2 && col > 4) ||
-        (row > 4 && col < 2)
-      const bitIndex = row * size + col
-
-      if (isFinder || bits[bitIndex] === '1') {
+  qr.modules.forEach((line, row) => {
+    line.forEach((isDark, col) => {
+      if (isDark) {
         commands.push(rectCommand({
-          x: x + col * cell,
-          y: y + (size - row - 1) * cell,
-          width: cell - 1,
-          height: cell - 1,
+          x: Number((x + (col + quietZone) * cell).toFixed(3)),
+          y: Number((y + boxSize - (row + quietZone + 1) * cell).toFixed(3)),
+          width: Number((cell + 0.02).toFixed(3)),
+          height: Number((cell + 0.02).toFixed(3)),
           color: '0.08 0.13 0.23',
         }))
       }
-    }
-  }
+    })
+  })
 
   return commands.join('\n')
 }
@@ -266,6 +251,10 @@ export async function downloadCertificatePdf({
   const issuedDate = formatDate(certificate.issuedAt)
   const completedDate = formatDate(certificate.completedAt)
   const certificateId = certificate.certificateId || certificate.id || ''
+  const certificateVerificationUrl = getCertificateVerificationUrl({
+    certificateId,
+    verificationUrl,
+  })
   const mentorName = certificate.mentorName || 'Ramdialta Ibnu Sajara, S.Pd'
 
   // Dynamic Name Size
@@ -373,7 +362,7 @@ export async function downloadCertificatePdf({
 
   // Verification area (right column)
   contentParts.push(
-    qrGridCommands(certificateId, 685, 110),
+    qrGridCommands(certificateVerificationUrl, 674, 104, 82),
     centeredTextCommand({ y: 96, size: 8, text: `ID: ${certificateId}`, font: 'F2', color: '0.08 0.13 0.23', pageWidth: 1420 }),
     centeredTextCommand({ y: 84, size: 7, text: 'Verifikasi Online', font: 'F1', color: '0.38 0.45 0.55', pageWidth: 1420 })
   )

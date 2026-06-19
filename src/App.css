@@ -13774,7 +13774,7 @@ img {
 .verify-qr {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: 0;
   width: 64px;
   height: 64px;
   padding: 6px;
@@ -13786,8 +13786,8 @@ img {
 
 .certificate-qr i,
 .verify-qr i {
-  border-radius: 1px;
-  background: #e2e8f0;
+  border-radius: 0;
+  background: #ffffff;
 }
 
 .certificate-qr i.active,
@@ -13974,7 +13974,7 @@ img {
   grid-template-columns: repeat(8, 1fr);
   width: 112px;
   height: 112px;
-  gap: 3px;
+  gap: 0;
 }
 
 .verify-details {
@@ -14368,14 +14368,14 @@ img {
 .template-qr-preview {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
-  gap: 3px;
-  padding: 8px;
+  gap: 0;
+  padding: 9%;
   border-radius: 10px;
 }
 
 .template-qr-preview i {
-  border-radius: 2px;
-  background: rgba(148, 163, 184, 0.25);
+  border-radius: 0;
+  background: transparent;
 }
 
 .template-qr-preview i.active {
