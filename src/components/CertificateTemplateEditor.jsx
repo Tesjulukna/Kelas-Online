@@ -302,6 +302,20 @@ function CertificateTemplateEditor({
     })
   }
 
+  const addPlaceholderElement = (placeholder) => {
+    if (placeholder === '{{QR_CODE}}') {
+      addElement(createQrElement({
+        x: Math.max(40, Math.round(draft.width - 180)),
+        y: Math.max(40, Math.round(draft.height - 180)),
+        width: 130,
+        height: 130,
+      }))
+      return
+    }
+
+    addElement(createTextElement({ content: placeholder }))
+  }
+
   const handleUploadImage = async (file, mode = 'image') => {
     if (!file) {
       return
@@ -815,7 +829,7 @@ function CertificateTemplateEditor({
                 <button
                   type="button"
                   key={placeholder}
-                  onClick={() => addElement(createTextElement({ content: placeholder }))}
+                  onClick={() => addPlaceholderElement(placeholder)}
                 >
                   {placeholder}
                 </button>
