@@ -1394,6 +1394,10 @@ export async function replaceClasses(classes) {
   const safeClassRows = classRows.map((row) => {
     const nextRow = { ...row }
 
+    if (!classColumnSupport.sale_price && cleanNumber(row.sale_price, 0, 1000000000) > 0) {
+      nextRow.price = cleanNumber(row.sale_price, 0, 1000000000)
+    }
+
     optionalClassColumns.forEach((column) => {
       if (!classColumnSupport[column]) {
         delete nextRow[column]
