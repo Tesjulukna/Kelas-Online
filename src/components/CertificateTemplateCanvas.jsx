@@ -135,11 +135,13 @@ function CertificateTemplateCanvas({
   selectedElementId = '',
   onSelect = () => {},
   onElementChange = () => {},
+  onDragEnd = () => {},
 }) {
   const safeTemplate = useMemo(() => normalizeCertificateTemplate(template), [template])
   const canvasRef = useRef(null)
   const dragRef = useRef(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [editingTextElementId, setEditingTextElementId] = useState('')
 
   const applySnap = (value) => {
     if (!safeTemplate.snapToGrid) {
@@ -151,6 +153,11 @@ function CertificateTemplateCanvas({
   }
 
   const startPointerAction = (event, element, mode = 'move') => {
+    // If inline editing this element, ignore pointer drag events
+    if (editingTextElementId === element.id) {
+      return
+    }
+
     if (!editable || element.locked) {
       onSelect(element.id)
       return
@@ -188,14 +195,14 @@ function CertificateTemplateCanvas({
       onElementChange(drag.id, {
         width: Math.max(20, applySnap(drag.startWidth + deltaX)),
         height: Math.max(20, applySnap(drag.startHeight + deltaY)),
-      })
+      }, true)
       return
     }
 
     onElementChange(drag.id, {
       x: applySnap(drag.startLeft + deltaX),
       y: applySnap(drag.startTop + deltaY),
-    })
+    }, true)
   }
 
   const stopPointerAction = () => {
@@ -203,6 +210,7 @@ function CertificateTemplateCanvas({
     setIsDragging(false)
     window.removeEventListener('pointermove', handlePointerMove)
     window.removeEventListener('pointerup', stopPointerAction)
+    onDragEnd()
   }
 
   return (
@@ -230,7 +238,7 @@ function CertificateTemplateCanvas({
           .sort((a, b) => (Number(a.zIndex) || 0) - (Number(b.zIndex) || 0))
           .map((element) => (
             <div
-              className={`template-element type-${element.type} ${selectedElementId === element.id ? 'selected' : ''} ${element.locked ? 'locked' : ''}`}
+              className={`template-element type-${element.type} ${selectedElementId === element.id ? 'selected' : ''} ${element.locked ? 'locked' : ''} ${editingTextElementId === element.id ? 'is-editing' : ''}`}
               key={element.id}
               style={{
                 left: `${element.x}px`,
@@ -242,9 +250,60 @@ function CertificateTemplateCanvas({
                 zIndex: Number(element.zIndex) || 1,
               }}
               onPointerDown={(event) => startPointerAction(event, element)}
+              onDoubleClick={(event) => {
+                if (editable && !element.locked && element.type === 'text') {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setEditingTextElementId(element.id)
+                }
+              }}
             >
-              <ElementPreview element={element} data={data} />
-              {editable && selectedElementId === element.id && !element.locked && (
+              {element.type === 'text' && editingTextElementId === element.id ? (
+                <textarea
+                  className="template-text-inline-edit"
+                  value={element.content}
+                  style={{
+                    ...textElementStyle(element),
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    resize: 'none',
+                    overflow: 'hidden',
+                    padding: 0,
+                    margin: 0,
+                  }}
+                  autoFocus
+                  onFocus={(e) => {
+                    const temp = e.target.value
+                    e.target.value = ''
+                    e.target.value = temp
+                  }}
+                  onChange={(e) => onElementChange(element.id, { content: e.target.value }, true)}
+                  onBlur={() => {
+                    setEditingTextElementId('')
+                    onDragEnd()
+                  }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation()
+                  }}
+                  onKeyDown={(e) => {
+                    e.stopPropagation()
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      e.target.blur()
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault()
+                      e.target.blur()
+                    }
+                  }}
+                />
+              ) : (
+                <ElementPreview element={element} data={data} />
+              )}
+              {editable && selectedElementId === element.id && !element.locked && editingTextElementId !== element.id && (
                 <button
                   className="template-resize-handle"
                   type="button"

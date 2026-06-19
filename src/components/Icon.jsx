@@ -288,6 +288,43 @@ const paths = {
       <path d="M18 6 6 18" />
     </>
   ),
+  undo: (
+    <>
+      <path d="M3 7v6h6" />
+      <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+    </>
+  ),
+  redo: (
+    <>
+      <path d="M21 7v6h-6" />
+      <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+    </>
+  ),
+  rectangle: (
+    <>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+    </>
+  ),
+  circle: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+    </>
+  ),
+  line: (
+    <>
+      <path d="M5 12h14" />
+    </>
+  ),
+  qr: (
+    <>
+      <rect width="6" height="6" x="3" y="3" rx="1" />
+      <rect width="6" height="6" x="15" y="3" rx="1" />
+      <rect width="6" height="6" x="3" y="15" rx="1" />
+      <path d="M15 15h3v3h-3zm3 3h3v3h-3zm-3 3h3v3h-3z" />
+      <path d="M11 3h2v2h-2zm0 4h2v2h-2zm0 4h2v2h-2z" />
+      <path d="M3 11h2v2H3zm4 0h2v2H7zm4 4h2v2h-2zm4-4h2v2h-2z" />
+    </>
+  ),
 }
 
 function Icon({ name, className = '', title }) {

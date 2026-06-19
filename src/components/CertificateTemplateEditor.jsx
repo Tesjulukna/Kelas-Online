@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   certificatePlaceholders,
   certificateSizePresets,
@@ -110,41 +110,152 @@ function CertificateTemplateEditor({
   const imageInputRef = useRef(null)
   const backgroundInputRef = useRef(null)
 
+  // Undo / Redo History Stack
+  const [historyState, setHistoryState] = useState(() => ({
+    history: [JSON.parse(JSON.stringify(draft))],
+    index: 0,
+  }))
+  const history = historyState.history
+  const historyIndex = historyState.index
+
+  // Mobile navigation tabs: 'tools', 'properties', 'layers'
+  const [activeTab, setActiveTab] = useState('tools')
+
   const selectedElement = draft.elements.find((element) => element.id === selectedElementId) || null
   const previewCertificate = certificates.find((certificate) => certificate.id === previewCertificateId)
-  const previewData = createCertificateData(
+  const previewData = useMemo(() => createCertificateData(
     previewCertificate || dummyCertificateForClass(selectedClass, settings),
     settings,
-  )
+  ), [previewCertificate, selectedClass, settings])
 
   const layerElements = useMemo(
     () => [...draft.elements].sort((a, b) => (Number(b.zIndex) || 0) - (Number(a.zIndex) || 0)),
     [draft.elements],
   )
 
-  const updateDraft = (updates) => {
-    setDraft((current) => normalizeCertificateTemplate({ ...current, ...updates }, selectedClass))
+  const pushToHistory = (nextDraft) => {
+    const serialized = JSON.parse(JSON.stringify(nextDraft))
+    setHistoryState((prev) => {
+      const sliced = prev.history.slice(0, prev.index + 1)
+      const nextHistory = [...sliced, serialized]
+      // Limit history size to 40 steps
+      if (nextHistory.length > 40) {
+        nextHistory.shift()
+      }
+      return {
+        history: nextHistory,
+        index: nextHistory.length - 1,
+      }
+    })
   }
 
-  const updateElement = (elementId, updates) => {
-    setDraft((current) => ({
-      ...current,
-      elements: current.elements.map((element) =>
-        element.id === elementId ? { ...element, ...updates } : element,
-      ),
-    }))
+  const handleUndo = () => {
+    setHistoryState((prev) => {
+      if (prev.index > 0) {
+        const nextIndex = prev.index - 1
+        setDraft(JSON.parse(JSON.stringify(prev.history[nextIndex])))
+        setSelectedElementId('')
+        return {
+          ...prev,
+          index: nextIndex,
+        }
+      }
+      return prev
+    })
+  }
+
+  const handleRedo = () => {
+    setHistoryState((prev) => {
+      if (prev.index < prev.history.length - 1) {
+        const nextIndex = prev.index + 1
+        setDraft(JSON.parse(JSON.stringify(prev.history[nextIndex])))
+        setSelectedElementId('')
+        return {
+          ...prev,
+          index: nextIndex,
+        }
+      }
+      return prev
+    })
+  }
+
+  // Keyboard shortcut listener for Ctrl+Z / Ctrl+Y
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isZ = e.key.toLowerCase() === 'z'
+      const isY = e.key.toLowerCase() === 'y'
+      const isCtrl = e.ctrlKey || e.metaKey
+
+      if (isCtrl && isZ) {
+        e.preventDefault()
+        if (e.shiftKey) {
+          handleRedo()
+        } else {
+          handleUndo()
+        }
+      } else if (isCtrl && isY) {
+        e.preventDefault()
+        handleRedo()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [historyState])
+
+  const handleClassOrTemplateChange = (nextState) => {
+    setSelectedClassId(nextState.classId)
+    setSelectedTemplateId(nextState.templateId)
+    setDraft(nextState.draft)
+    setHistoryState({
+      history: [JSON.parse(JSON.stringify(nextState.draft))],
+      index: 0,
+    })
+    setSelectedElementId('')
+  }
+
+  const updateDraft = (updates) => {
+    setDraft((current) => {
+      const next = normalizeCertificateTemplate({ ...current, ...updates }, selectedClass)
+      pushToHistory(next)
+      return next
+    })
+  }
+
+  const updateElement = (elementId, updates, skipHistory = false) => {
+    setDraft((current) => {
+      const next = {
+        ...current,
+        elements: current.elements.map((element) =>
+          element.id === elementId ? { ...element, ...updates } : element,
+        ),
+      }
+      if (!skipHistory) {
+        pushToHistory(next)
+      }
+      return next
+    })
   }
 
   const addElement = (element) => {
     setDraft((current) => {
       const zIndex = Math.max(0, ...current.elements.map((item) => Number(item.zIndex) || 0)) + 1
       const nextElement = { ...element, zIndex }
-
-      setSelectedElementId(nextElement.id)
-      return {
+      const next = {
         ...current,
         elements: [...current.elements, nextElement],
       }
+      setSelectedElementId(nextElement.id)
+      pushToHistory(next)
+      return next
+    })
+  }
+
+  // Commit history on mouse up drag/resize end
+  const handleDragEnd = () => {
+    setDraft((current) => {
+      pushToHistory(current)
+      return current
     })
   }
 
@@ -287,10 +398,14 @@ function CertificateTemplateEditor({
         y: selectedElement.y + 24,
       })
     } else if (action === 'delete') {
-      setDraft((current) => ({
-        ...current,
-        elements: current.elements.filter((element) => element.id !== selectedElement.id),
-      }))
+      setDraft((current) => {
+        const next = {
+          ...current,
+          elements: current.elements.filter((element) => element.id !== selectedElement.id),
+        }
+        pushToHistory(next)
+        return next
+      })
       setSelectedElementId('')
     } else if (action === 'lock') {
       updateElement(selectedElement.id, { locked: !selectedElement.locked })
@@ -340,13 +455,17 @@ function CertificateTemplateEditor({
       cursor += (axis === 'horizontal' ? element.width : element.height) + gap
     })
 
-    setDraft((current) => ({
-      ...current,
-      elements: current.elements.map((element) => ({
-        ...element,
-        ...(updatesById[element.id] || {}),
-      })),
-    }))
+    setDraft((current) => {
+      const next = {
+        ...current,
+        elements: current.elements.map((element) => ({
+          ...element,
+          ...(updatesById[element.id] || {}),
+        })),
+      }
+      pushToHistory(next)
+      return next
+    })
   }
 
   const exportTemplate = async (format) => {
@@ -398,11 +517,7 @@ function CertificateTemplateEditor({
             value={selectedClass?.id || ''}
             onChange={(event) => {
               const nextState = getClassTemplateState(activeClasses, templates, event.target.value)
-
-              setSelectedClassId(nextState.classId)
-              setSelectedTemplateId(nextState.templateId)
-              setDraft(nextState.draft)
-              setSelectedElementId('')
+              handleClassOrTemplateChange(nextState)
             }}
           >
             {activeClasses.map((course) => (
@@ -416,11 +531,7 @@ function CertificateTemplateEditor({
             value={selectedTemplateId}
             onChange={(event) => {
               const nextState = getClassTemplateState(activeClasses, templates, selectedClass?.id, event.target.value)
-
-              setSelectedClassId(nextState.classId)
-              setSelectedTemplateId(nextState.templateId)
-              setDraft(nextState.draft)
-              setSelectedElementId('')
+              handleClassOrTemplateChange(nextState)
             }}
           >
             <option value="">Template baru otomatis</option>
@@ -445,62 +556,87 @@ function CertificateTemplateEditor({
       </div>
 
       <div className="certificate-editor-layout">
-        <aside className="certificate-editor-sidebar tools-sidebar">
-          <h4>Tools</h4>
-          <button type="button" onClick={() => addElement(createTextElement({ content: '{{NAMA_PESERTA}}', nameField: true, autoResize: true }))}>
-            <Icon name="user" />
-            Nama Peserta
-          </button>
-          <button type="button" onClick={() => addElement(createTextElement({ content: 'Teks baru' }))}>
-            <Icon name="fileText" />
-            Tambah Teks
-          </button>
-          <button type="button" onClick={() => imageInputRef.current?.click()}>
-            <Icon name="image" />
-            Upload Gambar
-          </button>
-          <button type="button" onClick={() => addElement(createShapeElement('rectangle'))}>
+        {/* Responsive view mobile tab selection headers */}
+        <div className="editor-mobile-tabs">
+          <button
+            type="button"
+            className={activeTab === 'tools' ? 'active' : ''}
+            onClick={() => setActiveTab('tools')}
+          >
             <Icon name="layoutDashboard" />
-            Rectangle
+            Alat
           </button>
-          <button type="button" onClick={() => addElement(createShapeElement('circle'))}>
-            <Icon name="target" />
-            Circle
+          <button
+            type="button"
+            className={activeTab === 'properties' ? 'active' : ''}
+            onClick={() => setActiveTab('properties')}
+          >
+            <Icon name="settings" />
+            Properti
           </button>
-          <button type="button" onClick={() => addElement(createShapeElement('line'))}>
-            <Icon name="filter" />
-            Line
+          <button
+            type="button"
+            className={activeTab === 'layers' ? 'active' : ''}
+            onClick={() => setActiveTab('layers')}
+          >
+            <Icon name="menu" />
+            Layer
           </button>
-          <button type="button" onClick={() => addElement(createQrElement())}>
-            <Icon name="shield" />
-            QR Code
-          </button>
-          <button type="button" onClick={() => backgroundInputRef.current?.click()}>
-            <Icon name="upload" />
-            Background
-          </button>
+        </div>
 
-          <h4>Placeholder</h4>
-          <div className="placeholder-chip-list">
-            {certificatePlaceholders.map((placeholder) => (
-              <button
-                type="button"
-                key={placeholder}
-                onClick={() => addElement(createTextElement({ content: placeholder }))}
-              >
-                {placeholder}
+        {/* Tools Sidebar Panel */}
+        <aside className={`certificate-editor-sidebar tools-sidebar ${activeTab === 'tools' ? 'tab-active' : 'tab-hidden'}`}>
+          <div className="sidebar-group">
+            <h4>Tools</h4>
+            <div className="tool-buttons-grid">
+              <button type="button" onClick={() => addElement(createTextElement({ content: '{{NAMA_PESERTA}}', nameField: true, autoResize: true }))}>
+                <Icon name="user" />
+                Nama Peserta
               </button>
-            ))}
+              <button type="button" onClick={() => addElement(createTextElement({ content: 'Teks baru' }))}>
+                <Icon name="fileText" />
+                Tambah Teks
+              </button>
+              <button type="button" onClick={() => imageInputRef.current?.click()}>
+                <Icon name="image" />
+                Upload Gambar
+              </button>
+              <button type="button" onClick={() => addElement(createShapeElement('rectangle'))}>
+                <Icon name="rectangle" />
+                Rectangle
+              </button>
+              <button type="button" onClick={() => addElement(createShapeElement('circle'))}>
+                <Icon name="circle" />
+                Circle
+              </button>
+              <button type="button" onClick={() => addElement(createShapeElement('line'))}>
+                <Icon name="line" />
+                Line
+              </button>
+              <button type="button" onClick={() => addElement(createQrElement())}>
+                <Icon name="qr" />
+                QR Code
+              </button>
+              <button type="button" onClick={() => backgroundInputRef.current?.click()}>
+                <Icon name="upload" />
+                Background
+              </button>
+            </div>
           </div>
 
-          <h4>Layer</h4>
-          <div className="layer-actions">
-            <button type="button" onClick={() => changeLayer('front')}>Front</button>
-            <button type="button" onClick={() => changeLayer('back')}>Back</button>
-            <button type="button" onClick={() => changeLayer('duplicate')}>Duplicate</button>
-            <button type="button" onClick={() => changeLayer('lock')}>{selectedElement?.locked ? 'Unlock' : 'Lock'}</button>
-            <button type="button" onClick={() => changeLayer('hide')}>{selectedElement?.hidden ? 'Show' : 'Hide'}</button>
-            <button type="button" onClick={() => changeLayer('delete')}>Delete</button>
+          <div className="sidebar-group">
+            <h4>Placeholder</h4>
+            <div className="placeholder-chip-list">
+              {certificatePlaceholders.map((placeholder) => (
+                <button
+                  type="button"
+                  key={placeholder}
+                  onClick={() => addElement(createTextElement({ content: placeholder }))}
+                >
+                  {placeholder}
+                </button>
+              ))}
+            </div>
           </div>
 
           <input
@@ -525,17 +661,42 @@ function CertificateTemplateEditor({
           />
         </aside>
 
+        {/* Central Canvas Workspace */}
         <div className="certificate-editor-canvas-wrap">
           <div className="certificate-editor-toolbar">
-            <button type="button" onClick={() => setZoom((value) => Math.max(0.25, value - 0.08))}>-</button>
-            <span>{Math.round(zoom * 100)}%</span>
-            <button type="button" onClick={() => setZoom((value) => Math.min(1.2, value + 0.08))}>+</button>
+            <button
+              type="button"
+              className="toolbar-btn undo-btn"
+              onClick={handleUndo}
+              disabled={historyIndex <= 0}
+              title="Undo (Ctrl+Z)"
+            >
+              <Icon name="undo" />
+            </button>
+            <button
+              type="button"
+              className="toolbar-btn redo-btn"
+              onClick={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+              title="Redo (Ctrl+Y)"
+            >
+              <Icon name="redo" />
+            </button>
+            <span className="toolbar-divider" />
+            
+            <button type="button" className="zoom-btn" onClick={() => setZoom((value) => Math.max(0.25, value - 0.08))}>-</button>
+            <span className="zoom-indicator">{Math.round(zoom * 100)}%</span>
+            <button type="button" className="zoom-btn" onClick={() => setZoom((value) => Math.min(1.2, value + 0.08))}>+</button>
+            <span className="toolbar-divider" />
+
             <button type="button" onClick={() => alignSelected('left')}>Left</button>
             <button type="button" onClick={() => alignSelected('center')}>Center</button>
             <button type="button" onClick={() => alignSelected('right')}>Right</button>
             <button type="button" onClick={() => alignSelected('top')}>Top</button>
             <button type="button" onClick={() => alignSelected('middle')}>Middle</button>
             <button type="button" onClick={() => alignSelected('bottom')}>Bottom</button>
+            <span className="toolbar-divider" />
+            
             <button type="button" onClick={() => distributeElements('horizontal')}>Distribute X</button>
             <button type="button" onClick={() => distributeElements('vertical')}>Distribute Y</button>
           </div>
@@ -548,176 +709,205 @@ function CertificateTemplateEditor({
               selectedElementId={selectedElementId}
               onSelect={setSelectedElementId}
               onElementChange={updateElement}
+              onDragEnd={handleDragEnd}
             />
           </div>
         </div>
 
-        <aside className="certificate-editor-sidebar properties-sidebar">
-          <h4>Document</h4>
-          <label>
-            Nama template
-            <input value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} />
-          </label>
-          <label>
-            Ukuran
-            <select value={draft.sizeType} onChange={(event) => setSizeType(event.target.value)}>
-              <option value="a4Landscape">A4 Landscape</option>
-              <option value="a4Portrait">A4 Portrait</option>
-              <option value="custom">Custom Size</option>
-            </select>
-          </label>
-          <div className="two-column-fields">
+        {/* Properties Sidebar Panel */}
+        <aside className={`certificate-editor-sidebar properties-sidebar ${activeTab === 'properties' ? 'tab-active' : 'tab-hidden'}`}>
+          <div className="sidebar-group">
+            <h4>Document</h4>
             <label>
-              Width
-              <input
-                type="number"
-                value={draft.width}
-                disabled={draft.sizeType !== 'custom'}
-                onChange={(event) => updateDraft({ width: Number(event.target.value) })}
-              />
+              Nama template
+              <input value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} />
             </label>
             <label>
-              Height
-              <input
-                type="number"
-                value={draft.height}
-                disabled={draft.sizeType !== 'custom'}
-                onChange={(event) => updateDraft({ height: Number(event.target.value) })}
-              />
+              Ukuran
+              <select value={draft.sizeType} onChange={(event) => setSizeType(event.target.value)}>
+                <option value="a4Landscape">A4 Landscape</option>
+                <option value="a4Portrait">A4 Portrait</option>
+                <option value="custom">Custom Size</option>
+              </select>
             </label>
-          </div>
-          <div className="two-column-fields">
-            <label>
-              Background
-              <input type="color" value={draft.backgroundColor} onChange={(event) => updateDraft({ backgroundColor: event.target.value })} />
-            </label>
-            <label>
-              Grid
-              <input type="number" value={draft.gridSize} onChange={(event) => updateDraft({ gridSize: Number(event.target.value) })} />
-            </label>
-          </div>
-          <label className="inline-setting">
-            <input type="checkbox" checked={draft.snapToGrid} onChange={(event) => updateDraft({ snapToGrid: event.target.checked })} />
-            Snap to grid
-          </label>
-
-          <div className="template-secondary-actions">
-            <button type="button" onClick={handleDuplicate}>Duplicate Template</button>
-            <button type="button" onClick={handleDelete}>Delete Template</button>
-          </div>
-
-          <h4>Properties</h4>
-          {!selectedElement && <p className="editor-muted">Pilih elemen di canvas untuk mengedit properties.</p>}
-          {selectedElement && (
-            <div className="properties-form">
-              <div className="two-column-fields">
-                <label>X<input type="number" value={Math.round(selectedElement.x)} onChange={(event) => updateElement(selectedElement.id, { x: Number(event.target.value) })} /></label>
-                <label>Y<input type="number" value={Math.round(selectedElement.y)} onChange={(event) => updateElement(selectedElement.id, { y: Number(event.target.value) })} /></label>
-                <label>W<input type="number" value={Math.round(selectedElement.width)} onChange={(event) => updateElement(selectedElement.id, { width: Number(event.target.value) })} /></label>
-                <label>H<input type="number" value={Math.round(selectedElement.height)} onChange={(event) => updateElement(selectedElement.id, { height: Number(event.target.value) })} /></label>
-              </div>
+            <div className="two-column-fields">
               <label>
-                Rotate
-                <input type="range" min="-180" max="180" value={selectedElement.rotation || 0} onChange={(event) => updateElement(selectedElement.id, { rotation: Number(event.target.value) })} />
+                Width
+                <input
+                  type="number"
+                  value={draft.width}
+                  disabled={draft.sizeType !== 'custom'}
+                  onChange={(event) => updateDraft({ width: Number(event.target.value) })}
+                />
               </label>
               <label>
-                Opacity
-                <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={(event) => updateElement(selectedElement.id, { opacity: Number(event.target.value) })} />
+                Height
+                <input
+                  type="number"
+                  value={draft.height}
+                  disabled={draft.sizeType !== 'custom'}
+                  onChange={(event) => updateDraft({ height: Number(event.target.value) })}
+                />
               </label>
-
-              {selectedElement.type === 'text' && (
-                <>
-                  <label>
-                    Teks
-                    <textarea value={selectedElement.content || ''} rows="4" onChange={(event) => updateElement(selectedElement.id, { content: event.target.value })}></textarea>
-                  </label>
-                  <label>
-                    Font
-                    <select value={selectedElement.fontFamily || 'Inter'} onChange={(event) => updateElement(selectedElement.id, { fontFamily: event.target.value })}>
-                      {fontOptions.map((font) => <option value={font} key={font}>{font}</option>)}
-                    </select>
-                  </label>
-                  <div className="two-column-fields">
-                    <label>Size<input type="number" value={selectedElement.fontSize || 24} onChange={(event) => updateElement(selectedElement.id, { fontSize: Number(event.target.value) })} /></label>
-                    <label>Color<input type="color" value={selectedElement.color || '#111827'} onChange={(event) => updateElement(selectedElement.id, { color: event.target.value })} /></label>
-                    <label>Letter<input type="number" value={selectedElement.letterSpacing || 0} onChange={(event) => updateElement(selectedElement.id, { letterSpacing: Number(event.target.value) })} /></label>
-                    <label>Line<input type="number" step="0.1" value={selectedElement.lineHeight || 1.2} onChange={(event) => updateElement(selectedElement.id, { lineHeight: Number(event.target.value) })} /></label>
-                  </div>
-                  <div className="format-button-grid">
-                    <button type="button" className={selectedElement.fontWeight === 'bold' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { fontWeight: selectedElement.fontWeight === 'bold' ? 'normal' : 'bold' })}>B</button>
-                    <button type="button" className={selectedElement.fontStyle === 'italic' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { fontStyle: selectedElement.fontStyle === 'italic' ? 'normal' : 'italic' })}>I</button>
-                    <button type="button" className={selectedElement.underline ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { underline: !selectedElement.underline })}>U</button>
-                    <button type="button" className={selectedElement.align === 'left' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'left' })}>L</button>
-                    <button type="button" className={selectedElement.align === 'center' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'center' })}>C</button>
-                    <button type="button" className={selectedElement.align === 'right' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'right' })}>R</button>
-                  </div>
-                  <label className="inline-setting"><input type="checkbox" checked={selectedElement.shadow === true} onChange={(event) => updateElement(selectedElement.id, { shadow: event.target.checked })} /> Text shadow</label>
-                  <label className="inline-setting"><input type="checkbox" checked={selectedElement.gradient === true} onChange={(event) => updateElement(selectedElement.id, { gradient: event.target.checked })} /> Gradient text</label>
-                  <label className="inline-setting"><input type="checkbox" checked={selectedElement.autoResize === true} onChange={(event) => updateElement(selectedElement.id, { autoResize: event.target.checked })} /> Auto resize nama</label>
-                  <div className="two-column-fields">
-                    <label>Min<input type="number" value={selectedElement.minFontSize || 14} onChange={(event) => updateElement(selectedElement.id, { minFontSize: Number(event.target.value) })} /></label>
-                    <label>Max<input type="number" value={selectedElement.maxFontSize || 56} onChange={(event) => updateElement(selectedElement.id, { maxFontSize: Number(event.target.value) })} /></label>
-                  </div>
-                </>
-              )}
-
-              {selectedElement.type === 'image' && (
-                <>
-                  <label>
-                    Image URL
-                    <input value={selectedElement.src || ''} onChange={(event) => updateElement(selectedElement.id, { src: event.target.value })} />
-                  </label>
-                  <label>
-                    Crop
-                    <select value={selectedElement.objectFit || 'contain'} onChange={(event) => updateElement(selectedElement.id, { objectFit: event.target.value })}>
-                      <option value="contain">Contain</option>
-                      <option value="cover">Cover / Crop</option>
-                    </select>
-                  </label>
-                </>
-              )}
-
-              {selectedElement.type === 'shape' && (
-                <>
-                  <label>
-                    Shape
-                    <select value={selectedElement.shape || 'rectangle'} onChange={(event) => updateElement(selectedElement.id, { shape: event.target.value })}>
-                      <option value="rectangle">Rectangle</option>
-                      <option value="circle">Circle</option>
-                      <option value="line">Line</option>
-                    </select>
-                  </label>
-                  <div className="two-column-fields">
-                    <label>Fill<input type="color" value={selectedElement.fill || '#f8fafc'} onChange={(event) => updateElement(selectedElement.id, { fill: event.target.value })} /></label>
-                    <label>Stroke<input type="color" value={selectedElement.stroke || '#d4af37'} onChange={(event) => updateElement(selectedElement.id, { stroke: event.target.value })} /></label>
-                    <label>Stroke W<input type="number" value={selectedElement.strokeWidth || 0} onChange={(event) => updateElement(selectedElement.id, { strokeWidth: Number(event.target.value) })} /></label>
-                    <label>Radius<input type="number" value={selectedElement.borderRadius || 0} onChange={(event) => updateElement(selectedElement.id, { borderRadius: Number(event.target.value) })} /></label>
-                  </div>
-                </>
-              )}
-
-              {selectedElement.type === 'qr' && (
-                <div className="two-column-fields">
-                  <label>QR Color<input type="color" value={selectedElement.color || '#111827'} onChange={(event) => updateElement(selectedElement.id, { color: event.target.value })} /></label>
-                  <label>QR BG<input type="color" value={selectedElement.background || '#ffffff'} onChange={(event) => updateElement(selectedElement.id, { background: event.target.value })} /></label>
-                </div>
-              )}
             </div>
-          )}
+            <div className="two-column-fields">
+              <label>
+                Background
+                <input type="color" value={draft.backgroundColor} onChange={(event) => updateDraft({ backgroundColor: event.target.value })} />
+              </label>
+              <label>
+                Grid
+                <input type="number" value={draft.gridSize} onChange={(event) => updateDraft({ gridSize: Number(event.target.value) })} />
+              </label>
+            </div>
+            <label className="inline-setting">
+              <input type="checkbox" checked={draft.snapToGrid} onChange={(event) => updateDraft({ snapToGrid: event.target.checked })} />
+              Snap to grid
+            </label>
 
-          <h4>Layers</h4>
-          <div className="template-layer-list">
-            {layerElements.map((element) => (
-              <button
-                type="button"
-                className={selectedElementId === element.id ? 'active' : ''}
-                key={element.id}
-                onClick={() => setSelectedElementId(element.id)}
-              >
-                <span>{element.type}</span>
-                <small>{element.content || element.shape || element.alt || element.id}</small>
+            <div className="template-secondary-actions">
+              <button type="button" onClick={handleDuplicate}>
+                <Icon name="share" />
+                Duplicate Template
               </button>
-            ))}
+              <button type="button" className="danger" onClick={handleDelete}>
+                <Icon name="x" />
+                Delete Template
+              </button>
+            </div>
+          </div>
+
+          <div className="sidebar-group">
+            <h4>Properties</h4>
+            {!selectedElement && <p className="editor-muted">Pilih elemen di canvas untuk mengedit properties.</p>}
+            {selectedElement && (
+              <div className="properties-form">
+                <div className="two-column-fields">
+                  <label>X<input type="number" value={Math.round(selectedElement.x)} onChange={(event) => updateElement(selectedElement.id, { x: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                  <label>Y<input type="number" value={Math.round(selectedElement.y)} onChange={(event) => updateElement(selectedElement.id, { y: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                  <label>W<input type="number" value={Math.round(selectedElement.width)} onChange={(event) => updateElement(selectedElement.id, { width: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                  <label>H<input type="number" value={Math.round(selectedElement.height)} onChange={(event) => updateElement(selectedElement.id, { height: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                </div>
+                <label>
+                  Rotate
+                  <input type="range" min="-180" max="180" value={selectedElement.rotation || 0} onChange={(event) => updateElement(selectedElement.id, { rotation: Number(event.target.value) })} onMouseUp={handleDragEnd} onTouchEnd={handleDragEnd} />
+                </label>
+                <label>
+                  Opacity
+                  <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={(event) => updateElement(selectedElement.id, { opacity: Number(event.target.value) })} onMouseUp={handleDragEnd} onTouchEnd={handleDragEnd} />
+                </label>
+
+                {selectedElement.type === 'text' && (
+                  <>
+                    <label>
+                      Teks (Bisa diedit langsung di canvas dengan double-click)
+                      <textarea value={selectedElement.content || ''} rows="3" onChange={(event) => updateElement(selectedElement.id, { content: event.target.value })} onBlur={handleDragEnd}></textarea>
+                    </label>
+                    <label>
+                      Font
+                      <select value={selectedElement.fontFamily || 'Inter'} onChange={(event) => updateElement(selectedElement.id, { fontFamily: event.target.value })}>
+                        {fontOptions.map((font) => <option value={font} key={font}>{font}</option>)}
+                      </select>
+                    </label>
+                    <div className="two-column-fields">
+                      <label>Size<input type="number" value={selectedElement.fontSize || 24} onChange={(event) => updateElement(selectedElement.id, { fontSize: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                      <label>Color<input type="color" value={selectedElement.color || '#111827'} onChange={(event) => updateElement(selectedElement.id, { color: event.target.value })} onBlur={handleDragEnd} /></label>
+                      <label>Letter<input type="number" value={selectedElement.letterSpacing || 0} onChange={(event) => updateElement(selectedElement.id, { letterSpacing: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                      <label>Line<input type="number" step="0.1" value={selectedElement.lineHeight || 1.2} onChange={(event) => updateElement(selectedElement.id, { lineHeight: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                    </div>
+                    <div className="format-button-grid">
+                      <button type="button" className={selectedElement.fontWeight === 'bold' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { fontWeight: selectedElement.fontWeight === 'bold' ? 'normal' : 'bold' })}>B</button>
+                      <button type="button" className={selectedElement.fontStyle === 'italic' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { fontStyle: selectedElement.fontStyle === 'italic' ? 'normal' : 'italic' })}>I</button>
+                      <button type="button" className={selectedElement.underline ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { underline: !selectedElement.underline })}>U</button>
+                      <button type="button" className={selectedElement.align === 'left' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'left' })}>L</button>
+                      <button type="button" className={selectedElement.align === 'center' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'center' })}>C</button>
+                      <button type="button" className={selectedElement.align === 'right' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'right' })}>R</button>
+                    </div>
+                    <label className="inline-setting"><input type="checkbox" checked={selectedElement.shadow === true} onChange={(event) => updateElement(selectedElement.id, { shadow: event.target.checked })} /> Text shadow</label>
+                    <label className="inline-setting"><input type="checkbox" checked={selectedElement.gradient === true} onChange={(event) => updateElement(selectedElement.id, { gradient: event.target.checked })} /> Gradient text</label>
+                    <label className="inline-setting"><input type="checkbox" checked={selectedElement.autoResize === true} onChange={(event) => updateElement(selectedElement.id, { autoResize: event.target.checked })} /> Auto resize nama</label>
+                    <div className="two-column-fields">
+                      <label>Min<input type="number" value={selectedElement.minFontSize || 14} onChange={(event) => updateElement(selectedElement.id, { minFontSize: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                      <label>Max<input type="number" value={selectedElement.maxFontSize || 56} onChange={(event) => updateElement(selectedElement.id, { maxFontSize: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                    </div>
+                  </>
+                )}
+
+                {selectedElement.type === 'image' && (
+                  <>
+                    <label>
+                      Image URL
+                      <input value={selectedElement.src || ''} onChange={(event) => updateElement(selectedElement.id, { src: event.target.value })} onBlur={handleDragEnd} />
+                    </label>
+                    <label>
+                      Crop
+                      <select value={selectedElement.objectFit || 'contain'} onChange={(event) => updateElement(selectedElement.id, { objectFit: event.target.value })}>
+                        <option value="contain">Contain</option>
+                        <option value="cover">Cover / Crop</option>
+                      </select>
+                    </label>
+                  </>
+                )}
+
+                {selectedElement.type === 'shape' && (
+                  <>
+                    <label>
+                      Shape
+                      <select value={selectedElement.shape || 'rectangle'} onChange={(event) => updateElement(selectedElement.id, { shape: event.target.value })}>
+                        <option value="rectangle">Rectangle</option>
+                        <option value="circle">Circle</option>
+                        <option value="line">Line</option>
+                      </select>
+                    </label>
+                    <div className="two-column-fields">
+                      <label>Fill<input type="color" value={selectedElement.fill || '#f8fafc'} onChange={(event) => updateElement(selectedElement.id, { fill: event.target.value })} onBlur={handleDragEnd} /></label>
+                      <label>Stroke<input type="color" value={selectedElement.stroke || '#d4af37'} onChange={(event) => updateElement(selectedElement.id, { stroke: event.target.value })} onBlur={handleDragEnd} /></label>
+                      <label>Stroke W<input type="number" value={selectedElement.strokeWidth || 0} onChange={(event) => updateElement(selectedElement.id, { strokeWidth: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                      <label>Radius<input type="number" value={selectedElement.borderRadius || 0} onChange={(event) => updateElement(selectedElement.id, { borderRadius: Number(event.target.value) })} onBlur={handleDragEnd} /></label>
+                    </div>
+                  </>
+                )}
+
+                {selectedElement.type === 'qr' && (
+                  <div className="two-column-fields">
+                    <label>QR Color<input type="color" value={selectedElement.color || '#111827'} onChange={(event) => updateElement(selectedElement.id, { color: event.target.value })} onBlur={handleDragEnd} /></label>
+                    <label>QR BG<input type="color" value={selectedElement.background || '#ffffff'} onChange={(event) => updateElement(selectedElement.id, { background: event.target.value })} onBlur={handleDragEnd} /></label>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* Layers Sidebar Panel */}
+        <aside className={`certificate-editor-sidebar layers-sidebar ${activeTab === 'layers' ? 'tab-active' : 'tab-hidden'}`}>
+          <div className="sidebar-group">
+            <h4>Layer Actions</h4>
+            <div className="layer-actions">
+              <button type="button" onClick={() => changeLayer('front')}>Front</button>
+              <button type="button" onClick={() => changeLayer('back')}>Back</button>
+              <button type="button" onClick={() => changeLayer('duplicate')}>Duplicate</button>
+              <button type="button" onClick={() => changeLayer('lock')}>{selectedElement?.locked ? 'Unlock' : 'Lock'}</button>
+              <button type="button" onClick={() => changeLayer('hide')}>{selectedElement?.hidden ? 'Show' : 'Hide'}</button>
+              <button type="button" className="danger" onClick={() => changeLayer('delete')}>Delete</button>
+            </div>
+          </div>
+
+          <div className="sidebar-group">
+            <h4>Layers List</h4>
+            <div className="template-layer-list">
+              {layerElements.map((element) => (
+                <button
+                  type="button"
+                  className={selectedElementId === element.id ? 'active' : ''}
+                  key={element.id}
+                  onClick={() => setSelectedElementId(element.id)}
+                >
+                  <span className="layer-type">{element.type.toUpperCase()}</span>
+                  <small className="layer-content">{element.content || element.shape || element.alt || element.id}</small>
+                </button>
+              ))}
+            </div>
           </div>
         </aside>
       </div>
