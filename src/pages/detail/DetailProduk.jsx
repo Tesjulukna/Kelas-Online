@@ -108,6 +108,8 @@ function DetailProduk({
       isLiked: false,
     }))
   })
+  const [reviewDraft, setReviewDraft] = useState('')
+  const [isReviewGateOpen, setIsReviewGateOpen] = useState(false)
 
   if (!product) {
     return null
@@ -136,6 +138,11 @@ function DetailProduk({
           : rev
       )
     )
+  }
+
+  const handleReviewSubmit = (event) => {
+    event.preventDefault()
+    setIsReviewGateOpen(true)
   }
 
   // Calculate Average Rating
@@ -251,8 +258,9 @@ function DetailProduk({
             </div>
           </div>
 
-          <div className="ig-comments-list">
-            {reviewsList.slice(0, 3).map((review) => (
+          <div className="ig-comments-scroll">
+            <div className="ig-comments-list">
+              {reviewsList.map((review) => (
               <article className="ig-comment-item" key={review.id}>
                 <div className="ig-comment-avatar-wrapper">
                   {review.avatar ? (
@@ -310,16 +318,53 @@ function DetailProduk({
                 </button>
               </article>
             ))}
-            {!reviewsList.length && (
-              <div className="public-access-message">
-                <Icon name="message" />
-                <h3>Belum ada ulasan</h3>
-                <p>Ulasan produk akan ditampilkan setelah admin menambahkannya.</p>
-              </div>
-            )}
+              {!reviewsList.length && (
+                <div className="public-access-message">
+                  <Icon name="message" />
+                  <h3>Belum ada ulasan</h3>
+                  <p>Ulasan produk akan ditampilkan setelah admin menambahkannya.</p>
+                </div>
+              )}
+            </div>
           </div>
+
+          <form className="ig-review-compose" onSubmit={handleReviewSubmit}>
+            <textarea
+              value={reviewDraft}
+              onChange={(event) => setReviewDraft(event.target.value)}
+              placeholder="Tulis ulasan produk..."
+              aria-label="Tulis ulasan produk"
+              rows={3}
+            />
+            <button className="btn btn-primary" type="submit">
+              <Icon name="message" />
+              Kirim
+            </button>
+          </form>
         </div>
       </section>
+
+      {isReviewGateOpen && (
+        <div
+          className="review-gate-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsReviewGateOpen(false)
+            }
+          }}
+        >
+          <div className="review-gate-modal" role="alertdialog" aria-modal="true" aria-labelledby="review-gate-title">
+            <div className="review-gate-icon">
+              <Icon name="lock" />
+            </div>
+            <h3 id="review-gate-title">Belum bisa mengirim ulasan</h3>
+            <p>Kamu harus membeli produk ini dulu sebelum bisa memberikan ulasan.</p>
+            <button className="btn btn-primary" type="button" onClick={() => setIsReviewGateOpen(false)}>
+              Mengerti
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="public-sticky-actions">
         <button className="btn btn-secondary" type="button" onClick={onAddToWishlist}>

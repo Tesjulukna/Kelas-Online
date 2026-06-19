@@ -84,6 +84,33 @@
   max-width: 100%;
 }
 
+.ig-comments-scroll {
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+  margin-right: -8px;
+}
+
+.ig-comments-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.ig-comments-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+.ig-comments-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.ig-comments-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .ig-comment-item {
   display: flex;
   gap: 14px;
@@ -237,6 +264,101 @@
   width: 14px;
   height: 14px;
   fill: currentColor;
+}
+
+.ig-review-compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  border-top: 1px solid #f1f5f9;
+  margin-top: 20px;
+  padding-top: 18px;
+}
+
+.ig-review-compose textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 72px;
+  max-height: 160px;
+  resize: vertical;
+  border: 1.5px solid #dbe5f0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #0f172a;
+  background: #ffffff;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ig-review-compose textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.ig-review-compose .btn {
+  min-height: 46px;
+  padding-inline: 18px;
+  white-space: nowrap;
+}
+
+.review-gate-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.review-gate-modal {
+  width: min(100%, 420px);
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  padding: 26px;
+  text-align: center;
+}
+
+.review-gate-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.review-gate-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.review-gate-modal h3 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.review-gate-modal p {
+  margin: 0 0 20px;
+  color: #64748b;
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.review-gate-modal .btn {
+  width: 100%;
 }
 
 @keyframes heartBumble {
@@ -547,6 +669,12 @@
     gap: 10px;
   }
 
+  .ig-comments-scroll {
+    max-height: 320px;
+    padding-right: 6px;
+    margin-right: -6px;
+  }
+
   .ig-comment-avatar {
     width: 34px;
     height: 34px;
@@ -563,5 +691,19 @@
 
   .ig-comment-heart-btn {
     padding: 2px;
+  }
+
+  .ig-review-compose {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .ig-review-compose .btn {
+    width: 100%;
+  }
+
+  .review-gate-modal {
+    border-radius: 18px;
+    padding: 22px;
   }
 }
