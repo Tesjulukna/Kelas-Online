@@ -670,6 +670,8 @@ function seedClasses() {
     next: item.next ?? 'Lanjutkan modul berikutnya',
     liveAt: item.liveAt ?? 'Jumat, 29 Mei 2026, 20.00 WITA',
     lessons: item.lessons ?? `${16 + index * 4} materi`,
+    purchaseButtonLabel: item.purchaseButtonLabel ?? 'Beli Sekarang',
+    registerButtonLabel: item.registerButtonLabel ?? 'Daftar',
     showOnHomepage: item.showOnHomepage !== false,
     showOnMember: item.showOnMember !== false,
     highlighted: item.highlighted === true,
@@ -707,6 +709,8 @@ function cleanClasses(value) {
           item.salePrice === '' || item.salePrice === null || item.salePrice === undefined
             ? ''
             : Math.max(0, Math.round(Number(item.salePrice) || 0)),
+        purchaseButtonLabel: cleanText(item.purchaseButtonLabel || 'Beli Sekarang'),
+        registerButtonLabel: cleanText(item.registerButtonLabel || 'Daftar'),
         lynkProductKey: cleanLongText(item.lynkProductKey || '', 160),
         tripayProductKey: cleanLongText(item.tripayProductKey || '', 160),
         thumbnail: cleanAvatar(item.thumbnail),

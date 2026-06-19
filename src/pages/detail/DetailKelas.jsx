@@ -37,6 +37,12 @@ function DetailKelas({
   const originalPrice = salePrice && normalPrice > salePrice
     ? formatRupiah(normalPrice)
     : null
+  const rawCtaButtonLabel = String(course.purchaseButtonLabel || course.registerButtonLabel || '').trim()
+  const ctaButtonLabel =
+    !paidPrice && (!rawCtaButtonLabel || rawCtaButtonLabel === 'Beli Sekarang')
+      ? 'Masuk Gratis'
+      : rawCtaButtonLabel || 'Beli Sekarang'
+  const ctaIcon = /daftar|gabung|join/i.test(ctaButtonLabel) ? 'user' : 'wallet'
 
   const toggleAccordion = (id) => {
     setOpenAccordion((current) => (current === id ? null : id))
@@ -98,12 +104,6 @@ function DetailKelas({
             <span>
               <Icon name="user" style={{ marginRight: '4px', width: '12px' }} />
               {course.mentor || 'Mentor Profesional'}
-            </span>
-            <span>
-              <Icon name="bookOpen" style={{ marginRight: '4px', width: '12px' }} />
-              {String(course.lessons || '').toLowerCase().includes('materi')
-                ? course.lessons
-                : `${course.lessons} Materi`}
             </span>
             <span>Akses Selamanya</span>
           </div>
@@ -217,8 +217,8 @@ function DetailKelas({
           Keranjang
         </button>
         <button className="btn btn-primary" type="button" onClick={() => onBuy(course.id)}>
-          <Icon name="wallet" />
-          Beli Sekarang
+          <Icon name={ctaIcon} />
+          {ctaButtonLabel}
         </button>
       </div>
     </section>

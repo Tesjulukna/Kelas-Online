@@ -165,6 +165,8 @@ function DetailProduk({
 
   const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
   const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
+  const paidPrice = salePrice || normalPrice
+  const purchaseButtonLabel = String(product.purchaseButtonLabel || '').trim() || (paidPrice ? 'Beli Sekarang' : 'Ambil Gratis')
   const originalPrice = salePrice && normalPrice > salePrice
     ? formatRupiah(normalPrice)
     : null
@@ -472,7 +474,7 @@ function DetailProduk({
         </button>
         <button className="btn btn-primary" type="button" onClick={() => onBuy(product.id)}>
           <Icon name="wallet" />
-          Beli Sekarang
+          {purchaseButtonLabel}
         </button>
       </div>
     </section>

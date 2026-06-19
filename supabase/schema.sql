@@ -37,6 +37,9 @@ create table if not exists public.classes (
   status text not null default 'Aktif',
   revenue text not null default 'Rp 0',
   price integer not null default 0,
+  sale_price integer not null default 0,
+  purchase_button_label text not null default 'Beli Sekarang',
+  register_button_label text not null default 'Daftar',
   lynk_product_key text not null default '',
   tripay_product_key text not null default '',
   thumbnail text not null default '',
@@ -326,6 +329,9 @@ create index if not exists digital_product_access_email_index on public.digital_
 create index if not exists digital_product_access_product_index on public.digital_product_access(product_id);
 
 alter table public.classes add column if not exists price integer not null default 0;
+alter table public.classes add column if not exists sale_price integer not null default 0;
+alter table public.classes add column if not exists purchase_button_label text not null default 'Beli Sekarang';
+alter table public.classes add column if not exists register_button_label text not null default 'Daftar';
 alter table public.classes add column if not exists description text not null default '';
 alter table public.classes add column if not exists display_students integer;
 alter table public.classes add column if not exists rating numeric(2,1);

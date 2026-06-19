@@ -5,7 +5,7 @@
       "title": "Batch Desain Konten",
       "students": 128,
       "status": "Draft",
-      "revenue": "Rp 38,4 jt",
+      "revenue": "Rp 0",
       "price": 0,
       "lynkProductKey": "",
       "tripayProductKey": "",
@@ -14,7 +14,7 @@
       "progress": 72,
       "next": "Lanjutkan modul berikutnya",
       "liveAt": "Jumat, 29 Mei 2026, 20.00 WITA",
-      "lessons": "16 materi",
+      "lessons": "2 materi",
       "materials": [
         {
           "id": "admin-class-1-material-1",
@@ -173,7 +173,7 @@
       "title": "Kelas Affiliate AI",
       "students": 0,
       "status": "Aktif",
-      "revenue": "Rp 50.000",
+      "revenue": "Rp 0",
       "price": 200000,
       "lynkProductKey": "",
       "tripayProductKey": "",
@@ -439,6 +439,134 @@
       "fallbackPrice": "Mulai dari kelas pilihan",
       "emptyPrice": "Harga tersedia di dashboard"
     },
+    "homepageNotifications": {
+      "enabled": true,
+      "mode": "all",
+      "selectedActivityIds": [],
+      "customActivities": []
+    },
+    "paymentMethods": [
+      {
+        "code": "QRIS",
+        "label": "QRIS",
+        "brand": "qris",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "QRIS2",
+        "label": "QRIS 2",
+        "brand": "qris",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "BCAVA",
+        "label": "BCA Virtual Account",
+        "brand": "bca",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "BNIVA",
+        "label": "BNI Virtual Account",
+        "brand": "bni",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "BRIVA",
+        "label": "BRI Virtual Account",
+        "brand": "bri",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "MANDIRIVA",
+        "label": "Mandiri Virtual Account",
+        "brand": "mandiri",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "PERMATAVA",
+        "label": "Permata Virtual Account",
+        "brand": "permata",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "CIMBVA",
+        "label": "CIMB Niaga Virtual Account",
+        "brand": "cimb",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "BSIVA",
+        "label": "BSI Virtual Account",
+        "brand": "bsi",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "MUAMALATVA",
+        "label": "Muamalat Virtual Account",
+        "brand": "muamalat",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "ALFAMART",
+        "label": "Alfamart",
+        "brand": "alfamart",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "INDOMARET",
+        "label": "Indomaret",
+        "brand": "indomaret",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "ALFAMIDI",
+        "label": "Alfamidi",
+        "brand": "alfamidi",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "OVO",
+        "label": "OVO",
+        "brand": "ovo",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      },
+      {
+        "code": "SHOPEEPAY",
+        "label": "ShopeePay",
+        "brand": "shopeepay",
+        "logoUrl": "",
+        "feeFlat": 0,
+        "feePercent": 0
+      }
+    ],
     "benefits": {
       "eyebrow": "Benefit",
       "title": "Belajar lebih terarah dengan materi, tugas, dan feedback mentor.",
@@ -546,5 +674,5 @@
       ]
     }
   },
-  "updatedAt": "2026-06-14T23:02:33.964Z"
+  "updatedAt": "2026-06-19T05:17:24.043Z"
 }

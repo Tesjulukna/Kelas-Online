@@ -354,7 +354,7 @@ function MemberPage({
     const normalPrice = Math.max(0, Math.round(Number(item.price) || 0))
     const salePrice = Math.max(0, Math.round(Number(item.salePrice) || 0))
 
-    return item.itemType === 'digital_product' && salePrice > 0 ? salePrice : normalPrice
+    return salePrice > 0 ? salePrice : normalPrice
   }
   const selectedPaymentMethod = tripayPaymentMethods.find(
     (method) => method.code === selectedPaymentMethodCode,
@@ -1540,7 +1540,7 @@ function MemberPage({
                 <span className="member-class-body">
                   <h3>{course.title}</h3>
                   <p>
-                    {course.mentor} / {course.lessons}
+                    {course.mentor}
                   </p>
                   <span className="member-class-next">{course.next}</span>
                 </span>

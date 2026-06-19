@@ -814,7 +814,7 @@ function HomePage({
     const isClass = type === 'kelas'
     const normalPrice = Math.max(0, Math.round(Number(item.price) || 0))
     const salePrice = Math.max(0, Math.round(Number(item.salePrice) || 0))
-    const price = isClass ? normalPrice : salePrice || normalPrice
+    const price = salePrice || normalPrice
     const nextItem = {
       id: item.id,
       publicCode: item.publicCode,

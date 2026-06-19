@@ -46,6 +46,14 @@ const richTextTools = [
 
 const richTextColors = ['#111827', '#2563eb', '#059669', '#dc2626', '#7c3aed']
 
+const classCtaButtonOptions = [
+  'Beli Sekarang',
+  'Daftar',
+  'Gabung Kelas',
+  'Ambil Kelas',
+  'Mulai Belajar',
+]
+
 function RichTextToolIcon({ name }) {
   const paths = {
     bold: (
@@ -265,6 +273,8 @@ function createEmptyClassForm() {
     status: 'Aktif',
     price: '0',
     salePrice: '0',
+    purchaseButtonLabel: 'Beli Sekarang',
+    registerButtonLabel: 'Beli Sekarang',
     lynkProductKey: '',
     tripayProductKey: '',
     thumbnail: '',
@@ -2240,6 +2250,8 @@ function AdminPage({
         classForm.salePrice === ''
           ? ''
           : Math.max(0, Number(classForm.salePrice) || 0),
+      purchaseButtonLabel: classForm.purchaseButtonLabel.trim() || 'Beli Sekarang',
+      registerButtonLabel: classForm.purchaseButtonLabel.trim() || 'Beli Sekarang',
       lynkProductKey: classForm.lynkProductKey.trim(),
       tripayProductKey: classForm.tripayProductKey.trim(),
       thumbnail: classForm.thumbnail,
@@ -2289,6 +2301,8 @@ function AdminPage({
       status: item.status,
       price: parseRupiahValue(item.price),
       salePrice: parseRupiahValue(item.salePrice),
+      purchaseButtonLabel: item.purchaseButtonLabel || item.registerButtonLabel || 'Beli Sekarang',
+      registerButtonLabel: item.registerButtonLabel || item.purchaseButtonLabel || 'Beli Sekarang',
       lynkProductKey: item.lynkProductKey ?? '',
       tripayProductKey: item.tripayProductKey ?? '',
       thumbnail: item.thumbnail ?? '',
@@ -4868,7 +4882,7 @@ function AdminPage({
         </div>
       )}
       {selectedSubmissionMember && (
-        <div className="modal-backdrop" role="presentation">
+        <div className="modal-backdrop submission-member-backdrop" role="presentation">
           <div className="crud-editor submission-member-modal">
             <div className="modal-heading">
               <div>
@@ -4990,7 +5004,7 @@ function AdminPage({
         </div>
       )}
       {viewingSubmission && (
-        <div className="modal-backdrop" role="presentation">
+        <div className="modal-backdrop submission-review-backdrop" role="presentation">
           <div className="crud-editor submission-review">
             <div className="modal-heading">
               <div>
@@ -5215,6 +5229,28 @@ function AdminPage({
                     ? formatRupiah(classForm.salePrice)
                     : 'Kosong atau 0 = tidak menggunakan harga promo'}
                 </span>
+              </label>
+              <label>
+                Tombol utama detail kelas
+                <select
+                  name="purchaseButtonLabel"
+                  value={classForm.purchaseButtonLabel}
+                  onChange={handleClassFormChange}
+                >
+                  {[
+                    ...(
+                      classForm.purchaseButtonLabel &&
+                      !classCtaButtonOptions.includes(classForm.purchaseButtonLabel)
+                        ? [classForm.purchaseButtonLabel]
+                        : []
+                    ),
+                    ...classCtaButtonOptions,
+                  ].map((option) => (
+                    <option value={option} key={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </label>
               <div className="digital-metric-grid">
                 <label>

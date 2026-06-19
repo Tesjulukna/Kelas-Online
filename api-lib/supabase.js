@@ -750,6 +750,9 @@ function mapClass(row, materials) {
     status: row.status,
     revenue: row.revenue,
     price: Number(row.price) || 0,
+    salePrice: Number(row.sale_price) || 0,
+    purchaseButtonLabel: row.purchase_button_label || 'Beli Sekarang',
+    registerButtonLabel: row.register_button_label || 'Daftar',
     lynkProductKey: row.lynk_product_key || '',
     tripayProductKey: row.tripay_product_key || '',
     thumbnail: row.thumbnail || '',
@@ -1159,6 +1162,9 @@ function cleanClassesForDb(value) {
           status: cleanText(item.status || 'Aktif', 40),
           revenue: cleanText(item.revenue || 'Rp 0', 80),
           price: cleanNumber(item.price, 0, 1000000000),
+          sale_price: cleanNumber(item.salePrice, 0, 1000000000),
+          purchase_button_label: cleanText(item.purchaseButtonLabel || 'Beli Sekarang', 80),
+          register_button_label: cleanText(item.registerButtonLabel || 'Daftar', 80),
           lynk_product_key: cleanText(item.lynkProductKey || '', 180),
           tripay_product_key: cleanText(item.tripayProductKey || '', 180),
           thumbnail: cleanUrl(item.thumbnail || ''),
@@ -1342,7 +1348,7 @@ export async function replaceClasses(classes) {
       : assetRows
 
   try {
-    await rest('classes?select=description,display_students,rating,show_on_homepage,show_on_member,highlighted&limit=1')
+    await rest('classes?select=description,display_students,rating,sale_price,purchase_button_label,register_button_label,show_on_homepage,show_on_member,highlighted&limit=1')
   } catch {
     throw new ApiError(
       500,
@@ -3726,7 +3732,7 @@ export async function renderPublicDetailPage(request, response, { type, code }) 
   const cleanCode = cleanText(code || '', 20)
   const publicPath = `/${itemType}/${encodeURIComponent(cleanCode)}`
   const rows = itemType === 'kelas'
-    ? await rest(`classes?select=id,title,description,mentor,lessons,price,status,thumbnail&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
+    ? await rest(`classes?select=id,title,description,mentor,lessons,price,sale_price,status,thumbnail&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
     : await rest(`digital_products?select=id,title,description,price,sale_price,status,thumbnail,file_name,platform_type&status=eq.${eq('Aktif')}&order=updated_at.desc,id.asc`)
   const item = withPublicCodes(rows || []).find((row) => row.public_code === cleanCode || row.id === cleanCode)
 
@@ -3742,9 +3748,7 @@ export async function renderPublicDetailPage(request, response, { type, code }) 
     return
   }
 
-  const amount = itemType === 'kelas'
-    ? cleanNumber(item.price, 0, 1000000000)
-    : cleanNumber(item.sale_price, 0, 1000000000) || cleanNumber(item.price, 0, 1000000000)
+  const amount = cleanNumber(item.sale_price, 0, 1000000000) || cleanNumber(item.price, 0, 1000000000)
   const priceText = amount ? `Harga ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount)}.` : 'Gratis.'
   const description = itemType === 'kelas'
     ? `${cleanText(String(item.description || '').replace(/<[^>]*>/g, ' '), 180) || `${item.mentor || 'Mentor IbnuCreative'} membimbing kelas ini`}. ${priceText}`
@@ -4275,7 +4279,7 @@ export async function createTripayCheckout(request) {
 
   const normalPrice = cleanNumber(checkoutItem.price, 0, 1000000000)
   const salePrice = cleanNumber(checkoutItem.sale_price, 0, 1000000000)
-  const amount = checkoutType === 'digital_product' && salePrice > 0
+  const amount = salePrice > 0
     ? salePrice
     : normalPrice
 
