@@ -1028,6 +1028,7 @@ const backupTables = [
   'support_tickets',
   'submissions',
   'testimonials',
+  'certificate_templates',
   'certificates',
   'certificate_name_change_requests',
   'member_progress',
@@ -1109,6 +1110,7 @@ export async function restoreBackup(payload) {
     ['testimonials', 'id=not.is.null'],
     ['certificate_name_change_requests', 'id=not.is.null'],
     ['certificates', 'id=not.is.null'],
+    ['certificate_templates', 'id=not.is.null'],
     ['support_tickets', 'id=not.is.null'],
     ['member_progress', 'member_id=not.is.null'],
     ['tripay_orders', 'id=not.is.null'],
@@ -1128,6 +1130,7 @@ export async function restoreBackup(payload) {
     'support_tickets',
     'submissions',
     'testimonials',
+    'certificate_templates',
     'certificates',
     'certificate_name_change_requests',
     'member_progress',
@@ -2591,11 +2594,33 @@ function certificatePublic(row) {
     classTitle: cleanText(row.class_title || 'Kelas', 180),
     mentorName: cleanText(row.mentor_name || 'Ibnu Creative', 140),
     participantName: cleanText(row.participant_name || row.member_name || 'Member', 160),
+    templateId: cleanText(row.template_id || '', 160),
+    templateSnapshot: parseJson(row.template_snapshot, null),
     completedAt: cleanText(row.completed_at || '', 80),
     issuedAt: cleanText(row.issued_at || row.created_at || '', 80),
     nameChangeUsed: row.name_change_used === true,
     version: cleanNumber(row.version || 1, 1, 1000),
     revokedAt: cleanText(row.revoked_at || '', 80),
+    createdAt: cleanText(row.created_at || '', 80),
+    updatedAt: cleanText(row.updated_at || '', 80),
+  }
+}
+
+function certificateTemplatePublic(row) {
+  const payload = parseJson(row.payload, {})
+
+  return {
+    id: cleanText(row.id || '', 160),
+    classId: cleanText(row.class_id || '', 120),
+    name: cleanText(row.name || 'Template Sertifikat', 180),
+    sizeType: cleanText(row.size_type || payload.sizeType || 'a4Landscape', 40),
+    width: cleanNumber(row.width || payload.width || 1123, 320, 2400),
+    height: cleanNumber(row.height || payload.height || 794, 320, 2400),
+    backgroundColor: cleanText(payload.backgroundColor || '#f8fafc', 40),
+    backgroundImage: cleanUrl(payload.backgroundImage || '', 1200),
+    snapToGrid: payload.snapToGrid !== false,
+    gridSize: cleanNumber(payload.gridSize || 10, 4, 80),
+    elements: Array.isArray(payload.elements) ? payload.elements : [],
     createdAt: cleanText(row.created_at || '', 80),
     updatedAt: cleanText(row.updated_at || '', 80),
   }
@@ -2624,7 +2649,7 @@ function certificateNameChangePublic(row) {
 function isMissingCertificateTableError(error) {
   const message = String(error?.message || '').toLowerCase()
 
-  return ['certificates', 'certificate_name_change_requests'].some((table) =>
+  return ['certificates', 'certificate_templates', 'certificate_name_change_requests'].some((table) =>
     message.includes(table),
   ) && (
     message.includes('relation') ||
@@ -2645,33 +2670,137 @@ function certificateTableSetupError(error) {
   throw error
 }
 
+function cleanCertificateTemplateElement(element = {}, index = 0) {
+  const type = ['text', 'image', 'shape', 'qr'].includes(element.type) ? element.type : 'text'
+
+  return {
+    ...element,
+    id: cleanText(element.id || `certificate-element-${index + 1}`, 120),
+    type,
+    x: cleanNumber(element.x, -2400, 2400),
+    y: cleanNumber(element.y, -2400, 2400),
+    width: cleanNumber(element.width, 1, 2400, 160),
+    height: cleanNumber(element.height, 1, 2400, 80),
+    rotation: cleanNumber(element.rotation, -360, 360),
+    opacity: Math.min(1, Math.max(0, Number(element.opacity ?? 1) || 0)),
+    zIndex: cleanNumber(element.zIndex ?? index + 1, -10000, 10000, index + 1),
+    locked: Boolean(element.locked),
+    hidden: Boolean(element.hidden),
+    ...(type === 'text'
+      ? {
+          content: cleanText(element.content || 'Teks', 1000),
+          fontFamily: cleanText(element.fontFamily || 'Inter', 80),
+          fontSize: cleanNumber(element.fontSize, 6, 220, 24),
+          minFontSize: cleanNumber(element.minFontSize, 6, 220, 14),
+          maxFontSize: cleanNumber(element.maxFontSize, 6, 240, 56),
+          fontWeight: element.fontWeight === 'bold' ? 'bold' : 'normal',
+          fontStyle: element.fontStyle === 'italic' ? 'italic' : 'normal',
+          underline: Boolean(element.underline),
+          color: cleanText(element.color || '#111827', 40),
+          align: ['left', 'center', 'right'].includes(element.align) ? element.align : 'left',
+          letterSpacing: cleanNumber(element.letterSpacing, -4, 24),
+          lineHeight: Math.min(3, Math.max(0.8, Number(element.lineHeight) || 1.2)),
+          shadow: Boolean(element.shadow),
+          gradient: Boolean(element.gradient),
+          gradientFrom: cleanText(element.gradientFrom || '#2563eb', 40),
+          gradientTo: cleanText(element.gradientTo || '#d97706', 40),
+          autoResize: Boolean(element.autoResize),
+          nameField: Boolean(element.nameField),
+        }
+      : {}),
+    ...(type === 'image'
+      ? {
+          src: cleanUrl(element.src || '', 1200),
+          alt: cleanText(element.alt || 'Gambar sertifikat', 160),
+          objectFit: element.objectFit === 'cover' ? 'cover' : 'contain',
+        }
+      : {}),
+    ...(type === 'shape'
+      ? {
+          shape: ['rectangle', 'circle', 'line'].includes(element.shape) ? element.shape : 'rectangle',
+          fill: cleanText(element.fill || '#f8fafc', 40),
+          stroke: cleanText(element.stroke || '#d4af37', 40),
+          strokeWidth: cleanNumber(element.strokeWidth, 0, 80),
+          borderRadius: cleanNumber(element.borderRadius, 0, 999),
+        }
+      : {}),
+    ...(type === 'qr'
+      ? {
+          color: cleanText(element.color || '#111827', 40),
+          background: cleanText(element.background || '#ffffff', 40),
+        }
+      : {}),
+  }
+}
+
+function cleanCertificateTemplateForDb(payload = {}) {
+  const sizeType = ['a4Landscape', 'a4Portrait', 'custom'].includes(payload.sizeType)
+    ? payload.sizeType
+    : 'a4Landscape'
+  const width = sizeType === 'a4Portrait'
+    ? 794
+    : sizeType === 'a4Landscape'
+      ? 1123
+      : cleanNumber(payload.width, 320, 2400, 1123)
+  const height = sizeType === 'a4Portrait'
+    ? 1123
+    : sizeType === 'a4Landscape'
+      ? 794
+      : cleanNumber(payload.height, 320, 2400, 794)
+
+  return {
+    id: cleanText(payload.id || makeId('certificate-template'), 160),
+    classId: cleanText(payload.classId || '', 120),
+    name: cleanText(payload.name || 'Template Sertifikat', 180),
+    sizeType,
+    width,
+    height,
+    payload: {
+      sizeType,
+      width,
+      height,
+      backgroundColor: cleanText(payload.backgroundColor || '#f8fafc', 40),
+      backgroundImage: cleanUrl(payload.backgroundImage || '', 1200),
+      snapToGrid: payload.snapToGrid !== false,
+      gridSize: cleanNumber(payload.gridSize || 10, 4, 80, 10),
+      elements: Array.isArray(payload.elements)
+        ? payload.elements.slice(0, 220).map(cleanCertificateTemplateElement)
+        : [],
+    },
+  }
+}
+
 async function fetchCertificateRowsForUser(user) {
   try {
     if (user.role === 'admin') {
-      const [certificateRows, requestRows] = await Promise.all([
+      const [certificateRows, requestRows, templateRows] = await Promise.all([
         rest('certificates?select=*&order=issued_at.desc,created_at.desc'),
         rest('certificate_name_change_requests?select=*&order=created_at.desc,id.desc'),
+        rest('certificate_templates?select=*&order=updated_at.desc,created_at.desc'),
       ])
 
       return {
         certificates: (certificateRows || []).map(certificatePublic),
         certificateNameChangeRequests: (requestRows || []).map(certificateNameChangePublic),
+        certificateTemplates: (templateRows || []).map(certificateTemplatePublic),
         updatedAt: new Date().toISOString(),
       }
     }
 
-    const [certificateRows, requestRows] = await Promise.all([
+    const [certificateRows, requestRows, templateRows] = await Promise.all([
       rest(
         `certificates?select=*&member_id=eq.${eq(user.userId)}&order=issued_at.desc,created_at.desc`,
       ),
       rest(
         `certificate_name_change_requests?select=*&member_id=eq.${eq(user.userId)}&order=created_at.desc,id.desc`,
       ),
+      rest('certificate_templates?select=*&order=updated_at.desc,created_at.desc').catch(() => []),
     ])
 
     return {
       certificates: (certificateRows || []).map(certificatePublic),
       certificateNameChangeRequests: (requestRows || []).map(certificateNameChangePublic),
+      certificateTemplates: (templateRows || []).map(certificateTemplatePublic),
       updatedAt: new Date().toISOString(),
     }
   } catch (error) {
@@ -2681,6 +2810,120 @@ async function fetchCertificateRowsForUser(user) {
 
 export async function fetchCertificates(user) {
   return fetchCertificateRowsForUser(user)
+}
+
+export async function saveCertificateTemplate(user, payload) {
+  if (user.role !== 'admin') {
+    throw new ApiError(403, 'Hanya admin yang bisa menyimpan template sertifikat.')
+  }
+
+  const template = cleanCertificateTemplateForDb(payload)
+
+  if (!template.classId) {
+    throw new ApiError(400, 'Pilih kelas untuk template sertifikat.')
+  }
+
+  const classRows = await rest(
+    `classes?select=id,title&id=eq.${eq(template.classId)}&limit=1`,
+  ).catch((error) => {
+    certificateTableSetupError(error)
+  })
+
+  if (!classRows?.[0]) {
+    throw new ApiError(404, 'Kelas untuk template sertifikat tidak ditemukan.')
+  }
+
+  await rest('certificate_templates?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: {
+      id: template.id,
+      class_id: template.classId,
+      name: template.name,
+      size_type: template.sizeType,
+      width: template.width,
+      height: template.height,
+      payload: template.payload,
+    },
+  }).catch((error) => {
+    certificateTableSetupError(error)
+  })
+
+  return {
+    ok: true,
+    message: 'Template sertifikat berhasil disimpan.',
+    ...(await fetchCertificateRowsForUser(user)),
+  }
+}
+
+export async function duplicateCertificateTemplate(user, payload) {
+  if (user.role !== 'admin') {
+    throw new ApiError(403, 'Hanya admin yang bisa duplicate template sertifikat.')
+  }
+
+  const templateId = cleanText(payload.templateId || payload.id || '', 160)
+
+  if (!templateId) {
+    throw new ApiError(400, 'ID template wajib dikirim.')
+  }
+
+  const rows = await rest(
+    `certificate_templates?select=*&id=eq.${eq(templateId)}&limit=1`,
+  ).catch((error) => {
+    certificateTableSetupError(error)
+  })
+  const sourceTemplate = rows?.[0]
+
+  if (!sourceTemplate) {
+    throw new ApiError(404, 'Template sertifikat tidak ditemukan.')
+  }
+
+  const nextId = makeId('certificate-template')
+
+  await rest('certificate_templates', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      id: nextId,
+      class_id: cleanText(payload.classId || sourceTemplate.class_id || '', 120),
+      name: cleanText(payload.name || `${sourceTemplate.name || 'Template'} Copy`, 180),
+      size_type: sourceTemplate.size_type,
+      width: sourceTemplate.width,
+      height: sourceTemplate.height,
+      payload: parseJson(sourceTemplate.payload, {}),
+    },
+  })
+
+  return {
+    ok: true,
+    message: 'Template sertifikat berhasil diduplicate.',
+    ...(await fetchCertificateRowsForUser(user)),
+  }
+}
+
+export async function deleteCertificateTemplate(user, templateId) {
+  if (user.role !== 'admin') {
+    throw new ApiError(403, 'Hanya admin yang bisa menghapus template sertifikat.')
+  }
+
+  const id = cleanText(templateId || '', 160)
+
+  if (!id) {
+    throw new ApiError(400, 'ID template wajib dikirim.')
+  }
+
+  await rest(`certificate_templates?id=eq.${eq(id)}`, {
+    method: 'DELETE',
+    headers: { Prefer: 'return=minimal' },
+  }).catch((error) => {
+    certificateTableSetupError(error)
+  })
+
+  return {
+    ok: true,
+    message: 'Template sertifikat dihapus.',
+    ...(await fetchCertificateRowsForUser(user)),
+  }
 }
 
 async function findCertificateByAnyId(value) {
@@ -2716,6 +2959,15 @@ async function uniqueCertificateId() {
   }
 
   return `IBNU-${year}-${Date.now().toString(36).toUpperCase()}`
+}
+
+async function fetchCertificateTemplateForClass(classId) {
+  const rows = await rest(
+    `certificate_templates?select=*&class_id=eq.${eq(classId)}&order=updated_at.desc,created_at.desc&limit=1`,
+  ).catch(() => [])
+  const template = rows?.[0]
+
+  return template ? certificateTemplatePublic(template) : null
 }
 
 async function getClassCompletionForCertificate(user, classId) {
@@ -2814,6 +3066,7 @@ export async function createCertificate(user, payload) {
 
   const now = new Date().toISOString()
   const certificateId = await uniqueCertificateId()
+  const certificateTemplate = await fetchCertificateTemplateForClass(classId)
 
   await rest('certificates', {
     method: 'POST',
@@ -2827,6 +3080,8 @@ export async function createCertificate(user, payload) {
       class_title: cleanText(completion.course.title || 'Kelas', 180),
       mentor_name: cleanText(completion.course.mentor || 'Ibnu Creative', 140),
       participant_name: participantName,
+      template_id: certificateTemplate?.id || '',
+      template_snapshot: certificateTemplate || null,
       completed_at: completion.completedAt || now,
       issued_at: now,
       name_change_used: false,
@@ -3396,6 +3651,12 @@ export async function prepareFileUpload(request, payload) {
       role: 'admin',
       mimeTypes: imageTypes,
       maxBytes: 8 * 1024 * 1024,
+    },
+    'certificate-image': {
+      folder: 'sertifikat',
+      role: 'admin',
+      mimeTypes: imageTypes,
+      maxBytes: 12 * 1024 * 1024,
     },
     document: {
       folder: 'dokumen',

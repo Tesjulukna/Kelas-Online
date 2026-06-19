@@ -1,3 +1,8 @@
+import {
+  createCertificateData,
+  downloadCertificateTemplatePdf,
+} from './certificateTemplate'
+
 function escapePdfText(value) {
   return String(value ?? '')
     .replace(/\\/g, '\\\\')
@@ -107,7 +112,7 @@ function qrGridCommands(id, x, y) {
 }
 
 // Estimates Helvetica text width in points
-function estimateTextWidth(text, size, font = 'F1') {
+function estimateTextWidth(text, size) {
   const chars = String(text ?? '')
   let width = 0
   for (const char of chars) {
@@ -130,7 +135,7 @@ function estimateTextWidth(text, size, font = 'F1') {
 
 // Center align text horizontally relative to pageWidth (default 841.89)
 function centeredTextCommand({ y, size, text, font = 'F1', color = '0.10 0.15 0.25', pageWidth = 841.89 }) {
-  const textWidth = estimateTextWidth(text, size, font)
+  const textWidth = estimateTextWidth(text, size)
   const x = Math.max(40, (pageWidth - textWidth) / 2)
   return textCommand({ x, y, size, text, font, color })
 }
@@ -234,9 +239,26 @@ export async function downloadCertificatePdf({
   certificate,
   siteName = 'Ibnu Creative',
   brandLogo = '',
-  brandIcon = 'spark',
   verificationUrl = '',
+  template = null,
 }) {
+  if (template) {
+    const data = createCertificateData(
+      {
+        ...certificate,
+        verificationUrl,
+      },
+      { siteName },
+    )
+
+    await downloadCertificateTemplatePdf(
+      template,
+      data,
+      `${cleanFileName(certificate.classTitle)}-${cleanFileName(certificate.participantName)}`,
+    )
+    return
+  }
+
   const width = 841.89
   const height = 595.28
   
@@ -281,7 +303,7 @@ export async function downloadCertificatePdf({
     '0.85 0.71 0.34 RG 1.4 w 58 58 725.89 479.28 re S',
   ]
 
-  let textXStart = 72
+  let textXStart
 
   // Logo top left placement
   if (logoImg) {

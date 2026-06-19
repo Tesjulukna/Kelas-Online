@@ -9,6 +9,7 @@ import {
   createSupportTicket,
   createTripayCheckout,
   currentUser,
+  deleteCertificateTemplate,
   deleteMember,
   deleteSubmission,
   deleteSupportTicket,
@@ -44,6 +45,8 @@ import {
   requireUser,
   reviewCertificateNameChange,
   restoreBackup,
+  duplicateCertificateTemplate,
+  saveCertificateTemplate,
   sendJson,
   trackProgress,
   updateDigitalProductReviewLike,
@@ -256,12 +259,27 @@ async function handleCertificates(request, response, url) {
       return
     }
 
+    if (action === 'save_template') {
+      sendJson(response, 200, await saveCertificateTemplate(user, payload.template || payload))
+      return
+    }
+
+    if (action === 'duplicate_template') {
+      sendJson(response, 200, await duplicateCertificateTemplate(user, payload))
+      return
+    }
+
     sendJson(response, 200, await createCertificate(user, payload))
     return
   }
 
   if (request.method === 'PUT') {
     sendJson(response, 200, await reviewCertificateNameChange(user, await readJson(request)))
+    return
+  }
+
+  if (request.method === 'DELETE') {
+    sendJson(response, 200, await deleteCertificateTemplate(user, url.searchParams.get('templateId') || ''))
     return
   }
 

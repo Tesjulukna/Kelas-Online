@@ -1018,6 +1018,11 @@ function cleanCertificates(value) {
       classTitle: cleanLongText(item.classTitle || 'Kelas', 180),
       mentorName: cleanLongText(item.mentorName || 'Ibnu Creative', 140),
       participantName: cleanLongText(item.participantName || item.memberName || 'Member', 160),
+      templateId: cleanText(item.templateId || ''),
+      templateSnapshot:
+        item.templateSnapshot && typeof item.templateSnapshot === 'object'
+          ? item.templateSnapshot
+          : null,
       completedAt: cleanText(item.completedAt || ''),
       issuedAt: cleanText(item.issuedAt || ''),
       nameChangeUsed: item.nameChangeUsed === true,
@@ -1049,6 +1054,30 @@ function cleanCertificateNameChangeRequests(value) {
       status: cleanText(item.status || 'pending'),
       adminNote: cleanLongText(item.adminNote || '', 500),
       reviewedAt: cleanText(item.reviewedAt || ''),
+      createdAt: cleanText(item.createdAt || ''),
+      updatedAt: cleanText(item.updatedAt || ''),
+    }))
+}
+
+function cleanCertificateTemplates(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((item) => item?.id && item?.classId)
+    .map((item) => ({
+      id: cleanText(item.id),
+      classId: cleanText(item.classId || ''),
+      name: cleanLongText(item.name || 'Template Sertifikat', 180),
+      sizeType: cleanText(item.sizeType || 'a4Landscape'),
+      width: Math.max(320, Math.min(2400, Math.round(Number(item.width) || 1123))),
+      height: Math.max(320, Math.min(2400, Math.round(Number(item.height) || 794))),
+      backgroundColor: cleanText(item.backgroundColor || '#f8fafc'),
+      backgroundImage: cleanLongText(item.backgroundImage || '', 1200),
+      snapToGrid: item.snapToGrid !== false,
+      gridSize: Math.max(4, Math.min(80, Math.round(Number(item.gridSize) || 10))),
+      elements: Array.isArray(item.elements) ? item.elements : [],
       createdAt: cleanText(item.createdAt || ''),
       updatedAt: cleanText(item.updatedAt || ''),
     }))
@@ -1307,12 +1336,14 @@ async function fetchStoredCertificates(currentSession) {
     return {
       certificates: [],
       certificateNameChangeRequests: [],
+      certificateTemplates: [],
     }
   }
 
   const data = await requestJson(certificatesApiPath).catch(() => ({
     certificates: [],
     certificateNameChangeRequests: [],
+    certificateTemplates: [],
   }))
 
   return {
@@ -1320,6 +1351,7 @@ async function fetchStoredCertificates(currentSession) {
     certificateNameChangeRequests: cleanCertificateNameChangeRequests(
       data.certificateNameChangeRequests,
     ),
+    certificateTemplates: cleanCertificateTemplates(data.certificateTemplates),
   }
 }
 
@@ -1367,6 +1399,7 @@ function App() {
   const [testimonials, setTestimonials] = useState([])
   const [certificates, setCertificates] = useState([])
   const [certificateNameChangeRequests, setCertificateNameChangeRequests] = useState([])
+  const [certificateTemplates, setCertificateTemplates] = useState([])
   const [payments, setPayments] = useState([])
   const [publicActivities, setPublicActivities] = useState([])
   const [isClassesLoaded, setIsClassesLoaded] = useState(false)
@@ -1726,6 +1759,7 @@ function App() {
           setTestimonials(nextTestimonials)
           setCertificates(certificateData.certificates)
           setCertificateNameChangeRequests(certificateData.certificateNameChangeRequests)
+          setCertificateTemplates(certificateData.certificateTemplates)
           setPayments(nextPayments)
         })
         .catch(() => {
@@ -1738,6 +1772,7 @@ function App() {
             setTestimonials((current) => current)
             setCertificates((current) => current)
             setCertificateNameChangeRequests((current) => current)
+            setCertificateTemplates((current) => current)
             setPayments((current) => current)
           }
         })
@@ -2230,13 +2265,16 @@ function App() {
     const nextRequests = cleanCertificateNameChangeRequests(
       data.certificateNameChangeRequests,
     )
+    const nextTemplates = cleanCertificateTemplates(data.certificateTemplates)
 
     setCertificates(nextCertificates)
     setCertificateNameChangeRequests(nextRequests)
+    setCertificateTemplates(nextTemplates)
     announcePeopleSync()
     return {
       certificates: nextCertificates,
       certificateNameChangeRequests: nextRequests,
+      certificateTemplates: nextTemplates,
       certificate: data.certificate ? cleanCertificates([data.certificate])[0] : null,
       message: data.message || '',
     }
@@ -2595,6 +2633,51 @@ function App() {
     return applyCertificatesResponse(data)
   }
 
+  const handleSaveCertificateTemplate = async (templateData) => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk menyimpan template.')
+    }
+
+    const data = await requestJson(certificatesApiPath, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'save_template',
+        template: templateData,
+      }),
+    })
+
+    return applyCertificatesResponse(data)
+  }
+
+  const handleDuplicateCertificateTemplate = async (templateData) => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk duplicate template.')
+    }
+
+    const data = await requestJson(certificatesApiPath, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'duplicate_template',
+        ...templateData,
+      }),
+    })
+
+    return applyCertificatesResponse(data)
+  }
+
+  const handleDeleteCertificateTemplate = async (templateId) => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk menghapus template.')
+    }
+
+    const data = await requestJson(
+      `${certificatesApiPath}?templateId=${encodeURIComponent(templateId)}`,
+      { method: 'DELETE' },
+    )
+
+    return applyCertificatesResponse(data)
+  }
+
   const handleUpdateSupportTicket = async (ticketData) => {
     const data = await requestJson(supportApiPath, {
       method: 'PUT',
@@ -2774,6 +2857,7 @@ function App() {
               testimonials={testimonials}
               certificates={certificates}
               certificateNameChangeRequests={certificateNameChangeRequests}
+              certificateTemplates={certificateTemplates}
               payments={payments}
               focusTarget={memberFocusTarget}
               checkoutClassRequestId={pendingCheckoutClassId}
@@ -2820,6 +2904,7 @@ function App() {
               testimonials={testimonials}
               certificates={certificates}
               certificateNameChangeRequests={certificateNameChangeRequests}
+              certificateTemplates={certificateTemplates}
               payments={payments}
               publicActivities={publicActivities}
               websiteSettings={websiteSettings}
@@ -2838,6 +2923,9 @@ function App() {
               onUpdateTestimonial={handleUpdateTestimonial}
               onDeleteTestimonial={handleDeleteTestimonial}
               onReviewCertificateNameChange={handleReviewCertificateNameChange}
+              onSaveCertificateTemplate={handleSaveCertificateTemplate}
+              onDuplicateCertificateTemplate={handleDuplicateCertificateTemplate}
+              onDeleteCertificateTemplate={handleDeleteCertificateTemplate}
               activeMenu={activeAdminMenu}
               onMenuChange={(menuId) => navigateToDashboardMenu('admin', menuId)}
               isMenuOpen={isDashboardMenuOpen}

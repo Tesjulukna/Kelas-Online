@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import CertificateTemplateCanvas from '../components/CertificateTemplateCanvas'
 import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
 import { memberMenuItems } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
+import { createCertificateData } from '../lib/certificateTemplate'
 import { downloadCertificatePdf } from '../lib/certificatePdf'
 import { uploadStorageFile } from '../lib/storageUpload'
 import { withPublicCodes } from '../utils/publicCodes'
@@ -153,7 +155,21 @@ function VerificationMark({ certificateId }) {
   )
 }
 
-function CertificatePreview({ certificate, siteName = 'Ibnu Creative', brandLogo = '', brandIcon = 'spark' }) {
+function CertificatePreview({ certificate, siteName = 'Ibnu Creative', brandLogo = '', brandIcon = 'spark', template = null }) {
+  if (template) {
+    const zoom = Math.min(0.72, 720 / Math.max(1, Number(template.width) || 1123))
+
+    return (
+      <div className="member-template-certificate-preview">
+        <CertificateTemplateCanvas
+          template={template}
+          data={createCertificateData(certificate, { siteName })}
+          zoom={zoom}
+        />
+      </div>
+    )
+  }
+
   const mentorName = certificate.mentorName || 'Ramdialta Ibnu Sajara, S.Pd'
   return (
     <div className="certificate-preview" aria-label={`Preview sertifikat ${certificate.classTitle}`}>
@@ -349,6 +365,7 @@ function MemberPage({
   testimonials = [],
   certificates = [],
   certificateNameChangeRequests = [],
+  certificateTemplates = [],
   payments = [],
   checkoutClassRequestId = '',
   activeMenu,
@@ -430,6 +447,21 @@ function MemberPage({
     ),
     [certificateNameChangeRequests],
   )
+  const certificateTemplatesById = useMemo(
+    () => new Map(certificateTemplates.map((template) => [template.id, template])),
+    [certificateTemplates],
+  )
+  const certificateTemplatesByClass = useMemo(() => {
+    const map = new Map()
+
+    certificateTemplates.forEach((template) => {
+      if (!map.has(template.classId)) {
+        map.set(template.classId, template)
+      }
+    })
+
+    return map
+  }, [certificateTemplates])
   const materials = selectedCourse?.materials ?? []
   const currentMaterialIndex = Math.min(
     activeMaterialIndex,
@@ -987,6 +1019,11 @@ function MemberPage({
     }
 
     const verificationUrl = `${window.location.origin}/sertifikat/${encodeURIComponent(certificate.certificateId)}`
+    const certificateTemplate =
+      certificate.templateSnapshot ||
+      certificateTemplatesById.get(certificate.templateId) ||
+      certificateTemplatesByClass.get(certificate.classId) ||
+      null
 
     downloadCertificatePdf({
       certificate,
@@ -994,6 +1031,7 @@ function MemberPage({
       brandLogo: safeWebsiteSettings.brandLogo,
       brandIcon: safeWebsiteSettings.brandIcon,
       verificationUrl,
+      template: certificateTemplate,
     })
     onNotify('Sertifikat PDF mulai diunduh.')
   }
@@ -2512,6 +2550,12 @@ function MemberPage({
               const changeDraft = certificate ? certificateChangeDrafts[certificate.id] || {} : {}
               const isSelected = selectedCertificateId === certificate?.id
               const canCreate = progress >= 100
+              const certificateTemplate = certificate
+                ? certificate.templateSnapshot ||
+                  certificateTemplatesById.get(certificate.templateId) ||
+                  certificateTemplatesByClass.get(certificate.classId) ||
+                  null
+                : null
 
               return (
                 <article
@@ -2576,6 +2620,7 @@ function MemberPage({
                           siteName={safeWebsiteSettings.siteName}
                           brandLogo={safeWebsiteSettings.brandLogo}
                           brandIcon={safeWebsiteSettings.brandIcon}
+                          template={certificateTemplate}
                         />
                         <div className="certificate-actions">
                           <button

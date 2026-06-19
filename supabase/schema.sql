@@ -249,6 +249,18 @@ create table if not exists public.testimonials (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.certificate_templates (
+  id text primary key,
+  class_id text not null default '',
+  name text not null default 'Template Sertifikat',
+  size_type text not null default 'a4Landscape',
+  width integer not null default 1123,
+  height integer not null default 794,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.certificates (
   id text primary key,
   certificate_id text not null unique,
@@ -258,6 +270,8 @@ create table if not exists public.certificates (
   class_title text not null default '',
   mentor_name text not null default 'Ibnu Creative',
   participant_name text not null default '',
+  template_id text not null default '',
+  template_snapshot jsonb,
   completed_at text not null default '',
   issued_at text not null default '',
   name_change_used boolean not null default false,
@@ -378,6 +392,7 @@ create index if not exists submission_material_index on public.submissions(mater
 create index if not exists testimonial_status_index on public.testimonials(status);
 create index if not exists testimonial_member_index on public.testimonials(member_id);
 create index if not exists testimonial_class_index on public.testimonials(class_id);
+create index if not exists certificate_template_class_index on public.certificate_templates(class_id);
 create index if not exists certificate_public_id_index on public.certificates(certificate_id);
 create index if not exists certificate_member_index on public.certificates(member_id);
 create index if not exists certificate_class_index on public.certificates(class_id);
@@ -406,6 +421,9 @@ alter table public.classes add column if not exists tripay_product_key text not 
 alter table public.classes add column if not exists show_on_homepage boolean not null default true;
 alter table public.classes add column if not exists show_on_member boolean not null default true;
 alter table public.classes add column if not exists highlighted boolean not null default false;
+
+alter table public.certificates add column if not exists template_id text not null default '';
+alter table public.certificates add column if not exists template_snapshot jsonb;
 
 drop trigger if exists accounts_updated_at on public.accounts;
 create trigger accounts_updated_at before update on public.accounts
@@ -441,6 +459,10 @@ for each row execute function public.set_updated_at();
 
 drop trigger if exists testimonials_updated_at on public.testimonials;
 create trigger testimonials_updated_at before update on public.testimonials
+for each row execute function public.set_updated_at();
+
+drop trigger if exists certificate_templates_updated_at on public.certificate_templates;
+create trigger certificate_templates_updated_at before update on public.certificate_templates
 for each row execute function public.set_updated_at();
 
 drop trigger if exists certificates_updated_at on public.certificates;
@@ -486,6 +508,7 @@ alter table public.login_attempts enable row level security;
 alter table public.support_tickets enable row level security;
 alter table public.submissions enable row level security;
 alter table public.testimonials enable row level security;
+alter table public.certificate_templates enable row level security;
 alter table public.certificates enable row level security;
 alter table public.certificate_name_change_requests enable row level security;
 alter table public.member_progress enable row level security;

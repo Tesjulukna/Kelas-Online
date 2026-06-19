@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import ConfirmDialog from '../components/ConfirmDialog'
+import CertificateTemplateEditor from '../components/CertificateTemplateEditor'
 import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
@@ -685,6 +686,7 @@ function AdminPage({
   testimonials = [],
   certificates = [],
   certificateNameChangeRequests = [],
+  certificateTemplates = [],
   payments = [],
   publicActivities = [],
   websiteSettings,
@@ -703,6 +705,9 @@ function AdminPage({
   onUpdateTestimonial = async () => {},
   onDeleteTestimonial = async () => {},
   onReviewCertificateNameChange = async () => {},
+  onSaveCertificateTemplate = async () => {},
+  onDuplicateCertificateTemplate = async () => {},
+  onDeleteCertificateTemplate = async () => {},
   activeMenu,
   onMenuChange,
   isMenuOpen,
@@ -4600,6 +4605,18 @@ function AdminPage({
               <span>Ditolak</span>
             </article>
           </div>
+
+          <CertificateTemplateEditor
+            classes={classes}
+            templates={certificateTemplates}
+            certificates={certificates}
+            sessionToken={sessionToken}
+            settings={websiteSettings}
+            onSaveTemplate={onSaveCertificateTemplate}
+            onDuplicateTemplate={onDuplicateCertificateTemplate}
+            onDeleteTemplate={onDeleteCertificateTemplate}
+            onNotify={onNotify}
+          />
 
           <div className="admin-certificate-layout">
             <section className="admin-certificate-card">
