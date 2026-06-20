@@ -14604,12 +14604,19 @@ img {
   inset: 0;
   z-index: 12000;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
   min-height: 100dvh;
+  padding: 8px;
   overflow: hidden;
   border: 0;
   border-radius: 0;
   background: #f8fafc;
+}
+
+.certificate-editor-panel.is-fullscreen > .certificate-editor-topbar,
+.certificate-editor-panel.is-fullscreen > .certificate-template-config {
+  display: none;
 }
 
 .certificate-editor-panel.is-fullscreen .certificate-editor-layout {
@@ -14624,6 +14631,45 @@ img {
 
 .certificate-editor-panel.is-fullscreen .certificate-editor-sidebar {
   max-height: none;
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-editor-commandbar {
+  gap: 6px;
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-toolbar-group {
+  gap: 4px;
+  min-height: 34px;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-toolbar-group > span {
+  display: none;
+  font-size: 0.62rem;
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-toolbar-group > strong {
+  min-width: 38px;
+  font-size: 0.72rem;
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-icon-tool {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-icon-tool .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-editor-scroll {
+  padding: 14px;
 }
 
 .certificate-editor-commandbar {
@@ -14891,7 +14937,7 @@ img {
   }
 
   .certificate-editor-panel.is-fullscreen {
-    padding: 10px;
+    padding: 6px;
   }
 
   .certificate-editor-topbar,

@@ -1030,6 +1030,14 @@ function CertificateTemplateEditor({
           >
             <Icon name={showRightSidebar ? 'fileText' : 'eyeOff'} />
           </button>
+          <button
+            type="button"
+            className={`certificate-icon-tool ${isFullscreen ? 'active' : ''}`}
+            title={isFullscreen ? 'Keluar fullscreen' : 'Fullscreen editor'}
+            onClick={() => setIsFullscreen((value) => !value)}
+          >
+            <Icon name={isFullscreen ? 'minimize' : 'maximize'} />
+          </button>
         </div>
 
         <div className="certificate-toolbar-group">
