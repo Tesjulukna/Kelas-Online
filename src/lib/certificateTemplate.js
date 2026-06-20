@@ -664,7 +664,7 @@ function drawShapeElement(context, element) {
   }
 }
 
-export async function renderCertificateTemplateToCanvas(template, data = {}, scale = 1) {
+export async function renderCertificateTemplateToCanvas(template, data = {}, scale = 1, options = {}) {
   const safeTemplate = normalizeCertificateTemplate(template)
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.round(safeTemplate.width * scale))
@@ -692,7 +692,9 @@ export async function renderCertificateTemplateToCanvas(template, data = {}, sca
     prepareElementContext(context, element)
 
     if (element.type === 'text') {
-      drawTextElement(context, element, data)
+      if (!options.skipText) {
+        drawTextElement(context, element, data)
+      }
     } else if (element.type === 'shape') {
       drawShapeElement(context, element)
     } else if (element.type === 'qr') {
@@ -747,7 +749,207 @@ function base64ToBytes(dataUrl) {
   return bytes
 }
 
-function buildImagePdf(imageBytes, imageWidth, imageHeight, pageWidth, pageHeight) {
+function pdfNumber(value) {
+  return Number(value || 0)
+    .toFixed(3)
+    .replace(/\.?0+$/, '')
+}
+
+function escapePdfText(value) {
+  return String(value ?? '')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '?')
+    .replace(/\\/g, '\\\\')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)')
+    .replace(/\r?\n/g, ' ')
+}
+
+function hexToRgb(value, fallback = '#111827') {
+  const color = String(value || fallback).trim()
+  const normalized = color.startsWith('#') ? color.slice(1) : color
+  const hex = normalized.length === 3
+    ? normalized.split('').map((item) => item + item).join('')
+    : normalized
+
+  if (!/^[0-9a-f]{6}$/i.test(hex)) {
+    return hexToRgb(fallback, '#111827')
+  }
+
+  return [
+    parseInt(hex.slice(0, 2), 16) / 255,
+    parseInt(hex.slice(2, 4), 16) / 255,
+    parseInt(hex.slice(4, 6), 16) / 255,
+  ]
+}
+
+function pdfColor(value, fallback = '#111827') {
+  return hexToRgb(value, fallback).map(pdfNumber).join(' ')
+}
+
+function getPdfFontKey(element) {
+  const family = String(element.fontFamily || '').toLowerCase()
+  const serif = family.includes('times') || family.includes('georgia')
+  const bold = element.fontWeight === 'bold'
+  const italic = element.fontStyle === 'italic'
+
+  if (serif && bold && italic) return 'F8'
+  if (serif && italic) return 'F7'
+  if (serif && bold) return 'F6'
+  if (serif) return 'F5'
+  if (bold && italic) return 'F4'
+  if (italic) return 'F3'
+  if (bold) return 'F2'
+  return 'F1'
+}
+
+function getCanvasFont(element, fontSize) {
+  const fontWeight = element.fontWeight === 'bold' ? '700' : '400'
+  const fontStyle = element.fontStyle === 'italic' ? 'italic' : 'normal'
+  const fontFamily = element.fontFamily || 'Arial'
+
+  return `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`
+}
+
+function getTextLayoutForPdf(context, element, data) {
+  const content = replaceCertificatePlaceholders(element.content, data)
+  let fontSize = clampNumber(element.fontSize, 6, 220, 24)
+  const minFontSize = clampNumber(element.minFontSize, 6, fontSize, 14)
+  const maxFontSize = clampNumber(element.maxFontSize, fontSize, 240, fontSize)
+  const lineHeight = clampNumber(element.lineHeight, 0.8, 3, 1.2)
+  const letterSpacing = clampNumber(element.letterSpacing, -4, 24, 0)
+
+  if (element.autoResize) {
+    fontSize = Math.min(fontSize, maxFontSize)
+    while (fontSize > minFontSize) {
+      context.font = getCanvasFont(element, fontSize)
+      const lines = wrapText(context, content, element.width, letterSpacing)
+      const totalHeight = lines.length * fontSize * lineHeight
+      const maxLineWidth = Math.max(
+        ...lines.map((line) => context.measureText(line).width + Math.max(0, line.length - 1) * letterSpacing),
+      )
+
+      if (maxLineWidth <= element.width && totalHeight <= element.height) {
+        break
+      }
+
+      fontSize -= 1
+    }
+  }
+
+  context.font = getCanvasFont(element, fontSize)
+
+  return {
+    content,
+    fontSize,
+    lineHeight,
+    letterSpacing,
+    lines: wrapText(context, content, element.width, letterSpacing),
+  }
+}
+
+function rotateTemplatePoint(x, y, element) {
+  const angle = (Number(element.rotation) || 0) * Math.PI / 180
+
+  if (!angle) {
+    return { x, y }
+  }
+
+  const centerX = element.x + element.width / 2
+  const centerY = element.y + element.height / 2
+  const dx = x - centerX
+  const dy = y - centerY
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+
+  return {
+    x: centerX + dx * cos - dy * sin,
+    y: centerY + dx * sin + dy * cos,
+  }
+}
+
+function mapTemplatePointToPdf(point, scaleX, scaleY, pageHeight) {
+  return {
+    x: point.x * scaleX,
+    y: pageHeight - point.y * scaleY,
+  }
+}
+
+function buildPdfTextStream(template, data, pageWidth, pageHeight) {
+  const scaleX = pageWidth / template.width
+  const scaleY = pageHeight / template.height
+  const fontScale = Math.min(scaleX, scaleY)
+  const measureCanvas = document.createElement('canvas')
+  const measureContext = measureCanvas.getContext('2d')
+  const commands = []
+  const elements = [...template.elements]
+    .filter((element) => !element.hidden && element.type === 'text')
+    .sort((a, b) => (Number(a.zIndex) || 0) - (Number(b.zIndex) || 0))
+
+  elements.forEach((element) => {
+    const layout = getTextLayoutForPdf(measureContext, element, data)
+    const fontSize = layout.fontSize * fontScale
+    const lineGap = layout.fontSize * layout.lineHeight
+    const fontKey = getPdfFontKey(element)
+    const fillColor = pdfColor(
+      element.gradient ? element.gradientFrom || element.color : element.color,
+      '#111827',
+    )
+    const pdfAngle = -(Number(element.rotation) || 0) * Math.PI / 180
+    const cos = pdfNumber(Math.cos(pdfAngle))
+    const sin = pdfNumber(Math.sin(pdfAngle))
+    const negativeSin = pdfNumber(-Math.sin(pdfAngle))
+    const cos2 = pdfNumber(Math.cos(pdfAngle))
+
+    measureContext.font = getCanvasFont(element, layout.fontSize)
+
+    layout.lines.forEach((line, index) => {
+      const textWidth = measureContext.measureText(line).width + Math.max(0, line.length - 1) * layout.letterSpacing
+      const localX = element.align === 'right'
+        ? element.width - textWidth
+        : element.align === 'center'
+          ? (element.width - textWidth) / 2
+          : 0
+      const localTopY = index * lineGap
+      const baselinePoint = rotateTemplatePoint(
+        element.x + localX,
+        element.y + localTopY + layout.fontSize * 0.82,
+        element,
+      )
+      const pdfPoint = mapTemplatePointToPdf(baselinePoint, scaleX, scaleY, pageHeight)
+      const charSpacing = layout.letterSpacing
+        ? `${pdfNumber(layout.letterSpacing * fontScale)} Tc `
+        : ''
+
+      commands.push(
+        `${fillColor} rg BT /${fontKey} ${pdfNumber(fontSize)} Tf ${charSpacing}${cos} ${sin} ${negativeSin} ${cos2} ${pdfNumber(pdfPoint.x)} ${pdfNumber(pdfPoint.y)} Tm (${escapePdfText(line)}) Tj ET`,
+      )
+
+      if (element.underline) {
+        const underlineY = element.y + localTopY + layout.fontSize + 3
+        const start = mapTemplatePointToPdf(
+          rotateTemplatePoint(element.x + localX, underlineY, element),
+          scaleX,
+          scaleY,
+          pageHeight,
+        )
+        const end = mapTemplatePointToPdf(
+          rotateTemplatePoint(element.x + localX + textWidth, underlineY, element),
+          scaleX,
+          scaleY,
+          pageHeight,
+        )
+
+        commands.push(
+          `${fillColor} RG ${pdfNumber(Math.max(0.6, layout.fontSize * 0.06 * fontScale))} w ${pdfNumber(start.x)} ${pdfNumber(start.y)} m ${pdfNumber(end.x)} ${pdfNumber(end.y)} l S`,
+        )
+      }
+    })
+  })
+
+  return commands.join('\n')
+}
+
+function buildHybridTextPdf(imageBytes, imageWidth, imageHeight, pageWidth, pageHeight, textStream = '') {
   const encoder = new TextEncoder()
   const parts = []
   const offsets = [0]
@@ -767,15 +969,28 @@ function buildImagePdf(imageBytes, imageWidth, imageHeight, pageWidth, pageHeigh
     push('\nendobj\n')
   }
 
-  const stream = `q ${pageWidth} 0 0 ${pageHeight} 0 0 cm /Img1 Do Q`
+  const contentStream = [
+    `q ${pdfNumber(pageWidth)} 0 0 ${pdfNumber(pageHeight)} 0 0 cm /Img1 Do Q`,
+    textStream,
+  ].filter(Boolean).join('\n')
+  const contentLength = encoder.encode(contentStream).length
+  const fontResources = '/F1 4 0 R /F2 5 0 R /F3 6 0 R /F4 7 0 R /F5 8 0 R /F6 9 0 R /F7 10 0 R /F8 11 0 R'
 
   addObject('<< /Type /Catalog /Pages 2 0 R >>')
   addObject('<< /Type /Pages /Kids [3 0 R] /Count 1 >>')
-  addObject(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /XObject << /Img1 5 0 R >> >> /Contents 4 0 R >>`)
-  addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`)
+  addObject(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pdfNumber(pageWidth)} ${pdfNumber(pageHeight)}] /Resources << /Font << ${fontResources} >> /XObject << /Img1 13 0 R >> >> /Contents 12 0 R >>`)
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>')
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>')
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>')
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-BoldOblique >>')
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>')
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold >>')
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Times-Italic >>')
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Times-BoldItalic >>')
+  addObject(`<< /Length ${contentLength} >>\nstream\n${contentStream}\nendstream`)
 
   offsets.push(offset)
-  push('5 0 obj\n')
+  push('13 0 obj\n')
   push(`<< /Type /XObject /Subtype /Image /Width ${imageWidth} /Height ${imageHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`)
   push(imageBytes)
   push('\nendstream\nendobj\n')
@@ -802,13 +1017,14 @@ function buildImagePdf(imageBytes, imageWidth, imageHeight, pageWidth, pageHeigh
 
 export async function downloadCertificateTemplatePdf(template, data, fileName = 'sertifikat') {
   const safeTemplate = normalizeCertificateTemplate(template)
-  const canvas = await renderCertificateTemplateToCanvas(safeTemplate, data, 2)
+  const canvas = await renderCertificateTemplateToCanvas(safeTemplate, data, 2, { skipText: true })
   const dataUrl = canvas.toDataURL('image/jpeg', 0.94)
   const imageBytes = base64ToBytes(dataUrl)
   const isLandscape = safeTemplate.width >= safeTemplate.height
   const pageWidth = isLandscape ? 841.89 : 595.28
   const pageHeight = isLandscape ? 595.28 : 841.89
-  const pdfBytes = buildImagePdf(imageBytes, canvas.width, canvas.height, pageWidth, pageHeight)
+  const textStream = buildPdfTextStream(safeTemplate, data, pageWidth, pageHeight)
+  const pdfBytes = buildHybridTextPdf(imageBytes, canvas.width, canvas.height, pageWidth, pageHeight, textStream)
   const blob = new Blob([pdfBytes], { type: 'application/pdf' })
 
   downloadBlob(blob, `${fileName}.pdf`)
