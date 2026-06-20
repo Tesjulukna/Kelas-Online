@@ -149,12 +149,53 @@ function VerificationMark({ certificateId }) {
   )
 }
 
+function useElementWidth() {
+  const elementRef = useRef(null)
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    const element = elementRef.current
+
+    if (!element) {
+      return undefined
+    }
+
+    const updateWidth = () => {
+      setWidth(element.clientWidth || 0)
+    }
+
+    updateWidth()
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(updateWidth)
+      observer.observe(element)
+
+      return () => observer.disconnect()
+    }
+
+    window.addEventListener('resize', updateWidth)
+
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [])
+
+  return [elementRef, width]
+}
+
 function CertificatePreview({ certificate, siteName = 'Ibnu Creative', brandLogo = '', brandIcon = 'spark', template = null }) {
+  const [templatePreviewRef, templatePreviewWidth] = useElementWidth()
+
   if (template) {
-    const zoom = Math.min(0.72, 720 / Math.max(1, Number(template.width) || 1123))
+    const templateWidth = Math.max(1, Number(template.width) || 1123)
+    const templateHeight = Math.max(1, Number(template.height) || 794)
+    const availableWidth = templatePreviewWidth ? Math.max(220, templatePreviewWidth - 20) : 720
+    const zoom = Math.min(0.72, availableWidth / templateWidth)
 
     return (
-      <div className="member-template-certificate-preview">
+      <div
+        className="member-template-certificate-preview"
+        ref={templatePreviewRef}
+        style={{ '--certificate-template-ratio': `${templateWidth} / ${templateHeight}` }}
+      >
         <CertificateTemplateCanvas
           template={template}
           data={createCertificateData(certificate, { siteName })}
@@ -408,6 +449,7 @@ function MemberPage({
   const [testimonialDrafts, setTestimonialDrafts] = useState({})
   const [previewImage, setPreviewImage] = useState(null)
   const [activePromptInstruction, setActivePromptInstruction] = useState(null)
+  const [certificateTestimonialPrompt, setCertificateTestimonialPrompt] = useState(null)
   const [checkoutClassId, setCheckoutClassId] = useState('')
   const [paymentMethodCourse, setPaymentMethodCourse] = useState(null)
   const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('')
@@ -667,6 +709,20 @@ function MemberPage({
     )
   }
 
+  function hasSubmittedCertificateTestimonial(classId) {
+    const testimonial = getMemberTestimonialForCourse(classId)
+
+    return Boolean(testimonial && testimonial.status !== 'rejected')
+  }
+
+  function openCertificateTestimonialPrompt(course, action = 'download') {
+    setCertificateTestimonialPrompt({
+      action,
+      courseId: course?.id || course?.classId || '',
+      classTitle: course?.title || course?.classTitle || 'kelas ini',
+    })
+  }
+
   const selectedCourseTestimonial = selectedCourse
     ? getMemberTestimonialForCourse(selectedCourse.id)
     : null
@@ -754,6 +810,30 @@ function MemberPage({
 
     onMenuChange(menuId)
   }, [onMenuChange])
+
+  const handleOpenCertificateTestimonialForm = useCallback(() => {
+    const targetCourseId = certificateTestimonialPrompt?.courseId || ''
+
+    setCertificateTestimonialPrompt(null)
+    handleDashboardMenuChange('testimonials')
+
+    window.setTimeout(() => {
+      if (!targetCourseId) {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+        return
+      }
+
+      const targetCard = Array.from(
+        document.querySelectorAll('[data-testimonial-course-id]'),
+      ).find((element) => element.dataset.testimonialCourseId === targetCourseId)
+
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    }, 80)
+  }, [certificateTestimonialPrompt, handleDashboardMenuChange])
 
   const handleOpenDigitalProductDetail = (product) => {
     if (onOpenPublicProductDetail) {
@@ -985,6 +1065,11 @@ function MemberPage({
       return
     }
 
+    if (!hasSubmittedCertificateTestimonial(course.id)) {
+      openCertificateTestimonialPrompt(course, 'create')
+      return
+    }
+
     if (participantName.length < 3) {
       onNotify('Isi nama lengkap untuk sertifikat minimal 3 karakter.')
       return
@@ -1009,6 +1094,14 @@ function MemberPage({
   const handleDownloadCertificate = (certificate) => {
     if (!certificate?.certificateId) {
       onNotify('Sertifikat belum tersedia.')
+      return
+    }
+
+    if (!hasSubmittedCertificateTestimonial(certificate.classId)) {
+      openCertificateTestimonialPrompt({
+        id: certificate.classId,
+        title: certificate.classTitle,
+      }, 'download')
       return
     }
 
@@ -2417,6 +2510,7 @@ function MemberPage({
                   className={`member-testimonial-card ${
                     progress >= 100 ? 'is-complete' : 'is-locked'
                   }`}
+                  data-testimonial-course-id={course.id}
                   key={course.id}
                 >
                   <div className="member-testimonial-card-header">
@@ -2544,6 +2638,8 @@ function MemberPage({
               const changeDraft = certificate ? certificateChangeDrafts[certificate.id] || {} : {}
               const isSelected = selectedCertificateId === certificate?.id
               const canCreate = progress >= 100
+              const hasCertificateTestimonial = hasSubmittedCertificateTestimonial(course.id)
+              const needsCertificateTestimonial = canCreate && !hasCertificateTestimonial
               const certificateTemplate = certificate
                 ? certificate.templateSnapshot ||
                   certificateTemplatesById.get(certificate.templateId) ||
@@ -2597,6 +2693,12 @@ function MemberPage({
                               <Icon name="certificate" />
                               Buat Sertifikat
                             </button>
+                            {needsCertificateTestimonial && (
+                              <div className="certificate-testimonial-required-note">
+                                <Icon name="message" />
+                                <span>Isi testimoni kelas dulu sebelum membuat sertifikat.</span>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <div className="certificate-locked-note">
@@ -2642,6 +2744,12 @@ function MemberPage({
                             Buat Ulang Nama
                           </button>
                         </div>
+                        {needsCertificateTestimonial && (
+                          <div className="certificate-testimonial-required-note">
+                            <Icon name="message" />
+                            <span>Isi testimoni kelas dulu sebelum mendownload sertifikat.</span>
+                          </div>
+                        )}
 
                         {!request && !certificate.nameChangeUsed && (
                           <div className={`certificate-regenerate-box ${isSelected ? 'active' : ''}`.trim()}>
@@ -2849,6 +2957,54 @@ function MemberPage({
             )}
           </div>
         </section>
+      )}
+
+      {certificateTestimonialPrompt && (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            className="certificate-testimonial-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="certificate-testimonial-title"
+          >
+            <button
+              className="certificate-testimonial-modal-close"
+              type="button"
+              aria-label="Tutup pemberitahuan"
+              onClick={() => setCertificateTestimonialPrompt(null)}
+            >
+              <Icon name="x" />
+            </button>
+            <span className="certificate-testimonial-modal-icon" aria-hidden="true">
+              <Icon name="message" />
+            </span>
+            <div>
+              <p className="eyebrow">Testimoni dibutuhkan</p>
+              <h2 id="certificate-testimonial-title">Isi testimoni kelas dulu</h2>
+              <p>
+                Sebelum {certificateTestimonialPrompt.action === 'create' ? 'membuat' : 'mendownload'} sertifikat,
+                silakan isi testimoni untuk kelas <strong>{certificateTestimonialPrompt.classTitle}</strong>.
+              </p>
+            </div>
+            <div className="certificate-testimonial-modal-actions">
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => setCertificateTestimonialPrompt(null)}
+              >
+                Nanti dulu
+              </button>
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={handleOpenCertificateTestimonialForm}
+              >
+                <Icon name="message" />
+                Menu Testimoni
+              </button>
+            </div>
+          </section>
+        </div>
       )}
 
       {previewImage && (
