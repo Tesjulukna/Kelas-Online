@@ -24,6 +24,9 @@ export const certificatePlaceholders = [
   '{{QR_CODE}}',
 ]
 
+const certificatePdfRenderScale = 4
+const certificatePdfImageQuality = 0.98
+
 function makeElementId(prefix = 'element') {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
@@ -671,6 +674,8 @@ export async function renderCertificateTemplateToCanvas(template, data = {}, sca
   canvas.height = Math.max(1, Math.round(safeTemplate.height * scale))
   const context = canvas.getContext('2d')
 
+  context.imageSmoothingEnabled = true
+  context.imageSmoothingQuality = 'high'
   context.scale(scale, scale)
   context.fillStyle = safeTemplate.backgroundColor || '#ffffff'
   context.fillRect(0, 0, safeTemplate.width, safeTemplate.height)
@@ -802,8 +807,8 @@ function buildImagePdf(imageBytes, imageWidth, imageHeight, pageWidth, pageHeigh
 
 export async function downloadCertificateTemplatePdf(template, data, fileName = 'sertifikat') {
   const safeTemplate = normalizeCertificateTemplate(template)
-  const canvas = await renderCertificateTemplateToCanvas(safeTemplate, data, 2)
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.94)
+  const canvas = await renderCertificateTemplateToCanvas(safeTemplate, data, certificatePdfRenderScale)
+  const dataUrl = canvas.toDataURL('image/jpeg', certificatePdfImageQuality)
   const imageBytes = base64ToBytes(dataUrl)
   const isLandscape = safeTemplate.width >= safeTemplate.height
   const pageWidth = isLandscape ? 841.89 : 595.28
