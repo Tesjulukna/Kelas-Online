@@ -13552,6 +13552,44 @@ img {
   gap: 10px;
 }
 
+.certificate-regenerate-box {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.94), rgba(255, 255, 255, 0.98));
+}
+
+.certificate-regenerate-box.active {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.1);
+}
+
+.certificate-regenerate-box .icon {
+  width: 24px;
+  height: 24px;
+  color: #2563eb;
+}
+
+.certificate-regenerate-box strong,
+.certificate-regenerate-box span {
+  display: block;
+}
+
+.certificate-regenerate-box strong {
+  color: #0f172a;
+}
+
+.certificate-regenerate-box span {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 .certificate-preview {
   position: relative;
   display: flex;
@@ -14557,7 +14595,35 @@ img {
 
 /* Refined responsive certificate editor workspace */
 .certificate-editor-panel {
+  position: relative;
   padding: clamp(12px, 2vw, 18px);
+}
+
+.certificate-editor-panel.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  min-height: 100dvh;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: #f8fafc;
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-editor-layout {
+  min-height: 0;
+  height: 100%;
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-editor-canvas-wrap,
+.certificate-editor-panel.is-fullscreen .certificate-editor-scroll {
+  min-height: 0;
+}
+
+.certificate-editor-panel.is-fullscreen .certificate-editor-sidebar {
+  max-height: none;
 }
 
 .certificate-editor-commandbar {
@@ -14646,6 +14712,41 @@ img {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+.certificate-mobile-dock,
+.certificate-mobile-sheet {
+  display: none;
+}
+
+.certificate-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.certificate-tool-grid button {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  min-height: 72px;
+  border: 1px solid #dbe4ef;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.certificate-tool-grid button:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.certificate-tool-grid .icon {
+  width: 22px;
+  height: 22px;
 }
 
 .certificate-editor-layout {
@@ -14785,6 +14886,14 @@ img {
 }
 
 @media (max-width: 900px) {
+  .certificate-editor-panel {
+    gap: 12px;
+  }
+
+  .certificate-editor-panel.is-fullscreen {
+    padding: 10px;
+  }
+
   .certificate-editor-topbar,
   .certificate-template-config {
     display: grid;
@@ -14797,27 +14906,19 @@ img {
   }
 
   .certificate-editor-layout {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr !important;
     min-height: auto;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .certificate-editor-canvas-wrap {
-    order: 1;
+    position: relative;
     min-height: 440px;
   }
 
-  .tools-sidebar {
-    order: 2;
-  }
-
-  .properties-sidebar {
-    order: 3;
-  }
-
-  .certificate-editor-sidebar {
-    max-height: none;
+  .certificate-editor-layout .certificate-editor-sidebar {
+    display: none;
   }
 
   .certificate-editor-scroll {
@@ -14833,6 +14934,170 @@ img {
   .certificate-icon-tool {
     width: 32px;
     height: 32px;
+  }
+
+  .certificate-mobile-dock {
+    position: sticky;
+    bottom: 10px;
+    z-index: 22;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid rgba(203, 213, 225, 0.92);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(14px);
+  }
+
+  .certificate-mobile-dock button {
+    display: grid;
+    place-items: center;
+    gap: 4px;
+    min-width: 0;
+    min-height: 54px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    background: transparent;
+    color: #475569;
+    font: inherit;
+    font-size: 0.7rem;
+    font-weight: 850;
+  }
+
+  .certificate-mobile-dock button.active {
+    border-color: rgba(37, 99, 235, 0.2);
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  .certificate-mobile-dock .icon {
+    width: 19px;
+    height: 19px;
+  }
+
+  .certificate-mobile-sheet {
+    position: absolute;
+    right: 12px;
+    bottom: 84px;
+    left: 12px;
+    z-index: 40;
+    display: block;
+    pointer-events: none;
+  }
+
+  .certificate-editor-panel.is-fullscreen .certificate-mobile-sheet {
+    position: fixed;
+    right: 12px;
+    bottom: 84px;
+    left: 12px;
+  }
+
+  .certificate-mobile-sheet-card {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    max-height: min(66dvh, 560px);
+    overflow: hidden;
+    border: 1px solid rgba(203, 213, 225, 0.98);
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+    pointer-events: auto;
+  }
+
+  .certificate-mobile-sheet-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .certificate-mobile-sheet-heading strong {
+    color: #0f172a;
+    font-size: 0.95rem;
+  }
+
+  .certificate-mobile-sheet-heading button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #dbe4ef;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #0f172a;
+    cursor: pointer;
+  }
+
+  .certificate-mobile-sheet-body {
+    display: grid;
+    align-content: start;
+    gap: 12px;
+    min-height: 0;
+    overflow: auto;
+    padding: 14px;
+    scrollbar-width: thin;
+  }
+
+  .certificate-mobile-sheet-body h4 {
+    margin: 6px 0 0;
+    color: #0f172a;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .certificate-mobile-sheet-body label {
+    display: grid;
+    gap: 7px;
+    color: #334155;
+    font-size: 0.82rem;
+    font-weight: 850;
+  }
+
+  .certificate-mobile-sheet-body input,
+  .certificate-mobile-sheet-body select,
+  .certificate-mobile-sheet-body textarea {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #0f172a;
+    font: inherit;
+    padding: 10px 11px;
+  }
+
+  .certificate-mobile-sheet-body .placeholder-chip-list button,
+  .certificate-mobile-sheet-body .template-layer-list button,
+  .certificate-mobile-sheet-body .template-secondary-actions button,
+  .certificate-mobile-sheet-body .format-button-grid button {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid #dbe4ef;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 800;
+    padding: 9px 10px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .certificate-mobile-sheet-body .format-button-grid button {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .certificate-mobile-sheet-body .placeholder-chip-list button {
+    overflow-wrap: anywhere;
+    font-size: 0.73rem;
   }
 }
 
@@ -14852,6 +15117,36 @@ img {
 
   .two-column-fields {
     grid-template-columns: 1fr;
+  }
+
+  .certificate-regenerate-box {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .certificate-regenerate-box .btn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .certificate-mobile-dock {
+    gap: 4px;
+    padding: 6px;
+    border-radius: 16px;
+  }
+
+  .certificate-mobile-dock button {
+    min-height: 50px;
+    border-radius: 12px;
+    font-size: 0.64rem;
+  }
+
+  .certificate-mobile-sheet {
+    right: 8px;
+    left: 8px;
+  }
+
+  .certificate-tool-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

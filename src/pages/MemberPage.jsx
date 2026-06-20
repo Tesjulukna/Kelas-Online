@@ -2639,9 +2639,28 @@ function MemberPage({
                             onClick={() => setSelectedCertificateId(isSelected ? '' : certificate.id)}
                           >
                             <Icon name="userPen" />
-                            Ubah Nama
+                            Buat Ulang Nama
                           </button>
                         </div>
+
+                        {!request && !certificate.nameChangeUsed && (
+                          <div className={`certificate-regenerate-box ${isSelected ? 'active' : ''}`.trim()}>
+                            <Icon name="userPen" />
+                            <div>
+                              <strong>Buat ulang nama sertifikat</strong>
+                              <span>
+                                Kalau nama di sertifikat salah, kamu bisa mengajukan perubahan 1 kali dan menunggu persetujuan admin.
+                              </span>
+                            </div>
+                            <button
+                              className="btn btn-secondary"
+                              type="button"
+                              onClick={() => setSelectedCertificateId(isSelected ? '' : certificate.id)}
+                            >
+                              {isSelected ? 'Tutup Form' : 'Ajukan Nama Baru'}
+                            </button>
+                          </div>
+                        )}
 
                         {request && (
                           <div className={`certificate-request-status status-${request.status}`}>
@@ -2704,7 +2723,7 @@ function MemberPage({
                               onClick={() => handleSubmitCertificateNameChange(certificate)}
                             >
                               <Icon name="send" />
-                              Ajukan Perubahan
+                              Kirim Pengajuan Buat Ulang
                             </button>
                           </div>
                         )}

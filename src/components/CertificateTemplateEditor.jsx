@@ -140,6 +140,8 @@ function CertificateTemplateEditor({
   const [showRightSidebar, setShowRightSidebar] = useState(false)
   const [isCreatingNewTemplate, setIsCreatingNewTemplate] = useState(false)
   const [editingElementId, setEditingElementId] = useState('')
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [mobilePanel, setMobilePanel] = useState('')
 
   const imageInputRef = useRef(null)
   const backgroundInputRef = useRef(null)
@@ -148,6 +150,19 @@ function CertificateTemplateEditor({
   const panRef = useRef(null)
   const pointersRef = useRef(new Map())
   const pinchRef = useRef(null)
+
+  useEffect(() => {
+    if (!isFullscreen || typeof document === 'undefined') {
+      return undefined
+    }
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isFullscreen])
 
   useEffect(() => {
     const container = scrollContainerRef.current
@@ -616,14 +631,274 @@ function CertificateTemplateEditor({
     }
   }
 
+  const renderQuickTools = () => (
+    <div className="certificate-tool-grid">
+      <button type="button" onClick={() => addElement(createTextElement({ content: '{{NAMA_PESERTA}}', nameField: true, autoResize: true }))}>
+        <Icon name="user" />
+        <span>Nama peserta</span>
+      </button>
+      <button type="button" onClick={() => addElement(createTextElement({ content: 'Teks baru' }))}>
+        <Icon name="text" />
+        <span>Teks</span>
+      </button>
+      <button type="button" onClick={() => imageInputRef.current?.click()}>
+        <Icon name="image" />
+        <span>Gambar</span>
+      </button>
+      <button type="button" onClick={() => backgroundInputRef.current?.click()}>
+        <Icon name="upload" />
+        <span>Background</span>
+      </button>
+      <button type="button" onClick={() => addElement(createShapeElement('rectangle'))}>
+        <Icon name="square" />
+        <span>Rectangle</span>
+      </button>
+      <button type="button" onClick={() => addElement(createShapeElement('circle'))}>
+        <Icon name="circleShape" />
+        <span>Circle</span>
+      </button>
+      <button type="button" onClick={() => addElement(createShapeElement('line'))}>
+        <Icon name="minus" />
+        <span>Line</span>
+      </button>
+      <button type="button" onClick={() => addElement(createQrElement())}>
+        <Icon name="qrCode" />
+        <span>QR Code</span>
+      </button>
+    </div>
+  )
+
+  const renderPlaceholderControls = () => (
+    <>
+      <h4>Placeholder</h4>
+      <div className="placeholder-chip-list">
+        {certificatePlaceholders.map((placeholder) => (
+          <button
+            type="button"
+            key={placeholder}
+            onClick={() => {
+              addPlaceholderElement(placeholder)
+              setMobilePanel('')
+            }}
+          >
+            {placeholder}
+          </button>
+        ))}
+      </div>
+    </>
+  )
+
+  const renderLayerControls = () => (
+    <>
+      <h4>Layers</h4>
+      <div className="template-layer-list">
+        {layerElements.map((element) => (
+          <button
+            type="button"
+            className={selectedElementId === element.id ? 'active' : ''}
+            key={element.id}
+            onClick={() => {
+              setSelectedElementId(element.id)
+              setMobilePanel('')
+            }}
+          >
+            <span>{element.type}</span>
+            <small>{element.content || element.shape || element.alt || element.id}</small>
+          </button>
+        ))}
+      </div>
+    </>
+  )
+
+  const renderDocumentControls = () => (
+    <>
+      <h4>Document</h4>
+      <label>
+        Nama template
+        <input value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} />
+      </label>
+      <label>
+        Ukuran
+        <select value={draft.sizeType} onChange={(event) => setSizeType(event.target.value)}>
+          <option value="a4Landscape">A4 Landscape</option>
+          <option value="a4Portrait">A4 Portrait</option>
+          <option value="custom">Custom Size</option>
+        </select>
+      </label>
+      <div className="two-column-fields">
+        <label>
+          Width
+          <input
+            type="number"
+            value={draft.width}
+            disabled={draft.sizeType !== 'custom'}
+            onChange={(event) => updateDraft({ width: Number(event.target.value) })}
+          />
+        </label>
+        <label>
+          Height
+          <input
+            type="number"
+            value={draft.height}
+            disabled={draft.sizeType !== 'custom'}
+            onChange={(event) => updateDraft({ height: Number(event.target.value) })}
+          />
+        </label>
+      </div>
+      <div className="two-column-fields">
+        <label>
+          Background
+          <input type="color" value={draft.backgroundColor} onChange={(event) => updateDraft({ backgroundColor: event.target.value })} />
+        </label>
+        <label>
+          Grid
+          <input type="number" value={draft.gridSize} onChange={(event) => updateDraft({ gridSize: Number(event.target.value) })} />
+        </label>
+      </div>
+      <label className="inline-setting">
+        <input type="checkbox" checked={draft.snapToGrid} onChange={(event) => updateDraft({ snapToGrid: event.target.checked })} />
+        Snap grid saat tekan Shift
+      </label>
+
+      <div className="template-secondary-actions">
+        <button type="button" onClick={handleDuplicate}>Duplicate Template</button>
+        <button type="button" onClick={handleDelete}>Delete Template</button>
+      </div>
+    </>
+  )
+
+  const renderPropertiesControls = () => (
+    <>
+      <h4>Properties</h4>
+      {!selectedElement && <p className="editor-muted">Pilih elemen di canvas untuk mengedit properties.</p>}
+      {selectedElement && (
+        <div className="properties-form">
+          <div className="two-column-fields">
+            <label>X<input type="number" value={Math.round(selectedElement.x)} onChange={(event) => updateElement(selectedElement.id, { x: Number(event.target.value) })} /></label>
+            <label>Y<input type="number" value={Math.round(selectedElement.y)} onChange={(event) => updateElement(selectedElement.id, { y: Number(event.target.value) })} /></label>
+            <label>W<input type="number" value={Math.round(selectedElement.width)} onChange={(event) => updateElement(selectedElement.id, { width: Number(event.target.value) })} /></label>
+            <label>H<input type="number" value={Math.round(selectedElement.height)} onChange={(event) => updateElement(selectedElement.id, { height: Number(event.target.value) })} /></label>
+          </div>
+          <label>
+            Rotate
+            <input type="range" min="-180" max="180" value={selectedElement.rotation || 0} onChange={(event) => updateElement(selectedElement.id, { rotation: Number(event.target.value) })} />
+          </label>
+          <label>
+            Opacity
+            <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={(event) => updateElement(selectedElement.id, { opacity: Number(event.target.value) })} />
+          </label>
+
+          {selectedElement.type === 'text' && (
+            <>
+              <label>
+                Teks
+                <textarea value={selectedElement.content || ''} rows="4" onChange={(event) => updateElement(selectedElement.id, { content: event.target.value })}></textarea>
+              </label>
+              <label>
+                Font
+                <select value={selectedElement.fontFamily || 'Inter'} onChange={(event) => updateElement(selectedElement.id, { fontFamily: event.target.value })}>
+                  {fontOptions.map((font) => <option value={font} key={font}>{font}</option>)}
+                </select>
+              </label>
+              <div className="two-column-fields">
+                <label>Size<input type="number" value={selectedElement.fontSize || 24} onChange={(event) => updateElement(selectedElement.id, { fontSize: Number(event.target.value) })} /></label>
+                <label>Color<input type="color" value={selectedElement.color || '#111827'} onChange={(event) => updateElement(selectedElement.id, { color: event.target.value })} /></label>
+                <label>Letter<input type="number" value={selectedElement.letterSpacing || 0} onChange={(event) => updateElement(selectedElement.id, { letterSpacing: Number(event.target.value) })} /></label>
+                <label>Line<input type="number" step="0.1" value={selectedElement.lineHeight || 1.2} onChange={(event) => updateElement(selectedElement.id, { lineHeight: Number(event.target.value) })} /></label>
+              </div>
+              <div className="format-button-grid">
+                <button type="button" className={selectedElement.fontWeight === 'bold' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { fontWeight: selectedElement.fontWeight === 'bold' ? 'normal' : 'bold' })}>B</button>
+                <button type="button" className={selectedElement.fontStyle === 'italic' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { fontStyle: selectedElement.fontStyle === 'italic' ? 'normal' : 'italic' })}>I</button>
+                <button type="button" className={selectedElement.underline ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { underline: !selectedElement.underline })}>U</button>
+                <button type="button" className={selectedElement.align === 'left' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'left' })}>L</button>
+                <button type="button" className={selectedElement.align === 'center' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'center' })}>C</button>
+                <button type="button" className={selectedElement.align === 'right' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'right' })}>R</button>
+              </div>
+              <label className="inline-setting"><input type="checkbox" checked={selectedElement.shadow === true} onChange={(event) => updateElement(selectedElement.id, { shadow: event.target.checked })} /> Text shadow</label>
+              <label className="inline-setting"><input type="checkbox" checked={selectedElement.gradient === true} onChange={(event) => updateElement(selectedElement.id, { gradient: event.target.checked })} /> Gradient text</label>
+              <label className="inline-setting"><input type="checkbox" checked={selectedElement.autoResize === true} onChange={(event) => updateElement(selectedElement.id, { autoResize: event.target.checked })} /> Auto resize nama</label>
+              <div className="two-column-fields">
+                <label>Min<input type="number" value={selectedElement.minFontSize || 14} onChange={(event) => updateElement(selectedElement.id, { minFontSize: Number(event.target.value) })} /></label>
+                <label>Max<input type="number" value={selectedElement.maxFontSize || 56} onChange={(event) => updateElement(selectedElement.id, { maxFontSize: Number(event.target.value) })} /></label>
+              </div>
+            </>
+          )}
+
+          {selectedElement.type === 'image' && (
+            <>
+              <label>
+                Image URL
+                <input value={selectedElement.src || ''} onChange={(event) => updateElement(selectedElement.id, { src: event.target.value })} />
+              </label>
+              <label>
+                Crop
+                <select value={selectedElement.objectFit || 'contain'} onChange={(event) => updateElement(selectedElement.id, { objectFit: event.target.value })}>
+                  <option value="contain">Contain</option>
+                  <option value="cover">Cover / Crop</option>
+                </select>
+              </label>
+            </>
+          )}
+
+          {selectedElement.type === 'shape' && (
+            <>
+              <label>
+                Shape
+                <select value={selectedElement.shape || 'rectangle'} onChange={(event) => updateElement(selectedElement.id, { shape: event.target.value })}>
+                  <option value="rectangle">Rectangle</option>
+                  <option value="circle">Circle</option>
+                  <option value="line">Line</option>
+                </select>
+              </label>
+              <div className="two-column-fields">
+                <label>Fill<input type="color" value={selectedElement.fill || '#f8fafc'} onChange={(event) => updateElement(selectedElement.id, { fill: event.target.value })} /></label>
+                <label>Stroke<input type="color" value={selectedElement.stroke || '#d4af37'} onChange={(event) => updateElement(selectedElement.id, { stroke: event.target.value })} /></label>
+                <label>Stroke W<input type="number" value={selectedElement.strokeWidth || 0} onChange={(event) => updateElement(selectedElement.id, { strokeWidth: Number(event.target.value) })} /></label>
+                <label>Radius<input type="number" value={selectedElement.borderRadius || 0} onChange={(event) => updateElement(selectedElement.id, { borderRadius: Number(event.target.value) })} /></label>
+              </div>
+            </>
+          )}
+
+          {selectedElement.type === 'qr' && (
+            <div className="two-column-fields">
+              <label>QR Color<input type="color" value={selectedElement.color || '#111827'} onChange={(event) => updateElement(selectedElement.id, { color: event.target.value })} /></label>
+              <label>QR BG<input type="color" value={selectedElement.background || '#ffffff'} onChange={(event) => updateElement(selectedElement.id, { background: event.target.value })} /></label>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+
+  const mobilePanelTitle = {
+    tools: 'Tools',
+    placeholder: 'Placeholder',
+    document: 'Dokumen',
+    properties: 'Properti',
+    layers: 'Layer',
+  }[mobilePanel]
+
+  const renderMobilePanelContent = () => {
+    if (mobilePanel === 'tools') return renderQuickTools()
+    if (mobilePanel === 'placeholder') return renderPlaceholderControls()
+    if (mobilePanel === 'document') return renderDocumentControls()
+    if (mobilePanel === 'properties') return renderPropertiesControls()
+    if (mobilePanel === 'layers') return renderLayerControls()
+    return null
+  }
+
   return (
-    <section className="certificate-editor-panel">
+    <section className={`certificate-editor-panel ${isFullscreen ? 'is-fullscreen' : ''}`.trim()}>
       <div className="certificate-editor-topbar">
         <div>
           <p className="eyebrow">Visual Editor</p>
           <h3>Kelola Template Sertifikat</h3>
         </div>
         <div className="certificate-editor-actions">
+          <button className="btn btn-secondary" type="button" onClick={() => setIsFullscreen((value) => !value)}>
+            <Icon name={isFullscreen ? 'minimize' : 'maximize'} />
+            {isFullscreen ? 'Keluar' : 'Fullscreen'}
+          </button>
           <button className="btn btn-secondary" type="button" onClick={() => setIsPreviewOpen(true)}>
             <Icon name="eye" />
             Preview
@@ -823,34 +1098,8 @@ function CertificateTemplateEditor({
       >
         {showLeftSidebar && (
           <aside className="certificate-editor-sidebar tools-sidebar">
-            <h4>Placeholder</h4>
-            <div className="placeholder-chip-list">
-              {certificatePlaceholders.map((placeholder) => (
-                <button
-                  type="button"
-                  key={placeholder}
-                  onClick={() => addPlaceholderElement(placeholder)}
-                >
-                  {placeholder}
-                </button>
-              ))}
-            </div>
-
-            <h4>Layers</h4>
-            <div className="template-layer-list">
-              {layerElements.map((element) => (
-                <button
-                  type="button"
-                  className={selectedElementId === element.id ? 'active' : ''}
-                  key={element.id}
-                  onClick={() => setSelectedElementId(element.id)}
-                >
-                  <span>{element.type}</span>
-                  <small>{element.content || element.shape || element.alt || element.id}</small>
-                </button>
-              ))}
-            </div>
-
+            {renderPlaceholderControls()}
+            {renderLayerControls()}
           </aside>
         )}
 
@@ -882,160 +1131,50 @@ function CertificateTemplateEditor({
 
         {showRightSidebar && (
           <aside className="certificate-editor-sidebar properties-sidebar">
-            <h4>Document</h4>
-            <label>
-              Nama template
-              <input value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} />
-            </label>
-            <label>
-              Ukuran
-              <select value={draft.sizeType} onChange={(event) => setSizeType(event.target.value)}>
-                <option value="a4Landscape">A4 Landscape</option>
-                <option value="a4Portrait">A4 Portrait</option>
-                <option value="custom">Custom Size</option>
-              </select>
-            </label>
-            <div className="two-column-fields">
-              <label>
-                Width
-                <input
-                  type="number"
-                  value={draft.width}
-                  disabled={draft.sizeType !== 'custom'}
-                  onChange={(event) => updateDraft({ width: Number(event.target.value) })}
-                />
-              </label>
-              <label>
-                Height
-                <input
-                  type="number"
-                  value={draft.height}
-                  disabled={draft.sizeType !== 'custom'}
-                  onChange={(event) => updateDraft({ height: Number(event.target.value) })}
-                />
-              </label>
-            </div>
-            <div className="two-column-fields">
-              <label>
-                Background
-                <input type="color" value={draft.backgroundColor} onChange={(event) => updateDraft({ backgroundColor: event.target.value })} />
-              </label>
-              <label>
-                Grid
-                <input type="number" value={draft.gridSize} onChange={(event) => updateDraft({ gridSize: Number(event.target.value) })} />
-              </label>
-            </div>
-            <label className="inline-setting">
-              <input type="checkbox" checked={draft.snapToGrid} onChange={(event) => updateDraft({ snapToGrid: event.target.checked })} />
-              Snap grid saat tekan Shift
-            </label>
-
-            <div className="template-secondary-actions">
-              <button type="button" onClick={handleDuplicate}>Duplicate Template</button>
-              <button type="button" onClick={handleDelete}>Delete Template</button>
-            </div>
-
-            <h4>Properties</h4>
-            {!selectedElement && <p className="editor-muted">Pilih elemen di canvas untuk mengedit properties.</p>}
-            {selectedElement && (
-              <div className="properties-form">
-                <div className="two-column-fields">
-                  <label>X<input type="number" value={Math.round(selectedElement.x)} onChange={(event) => updateElement(selectedElement.id, { x: Number(event.target.value) })} /></label>
-                  <label>Y<input type="number" value={Math.round(selectedElement.y)} onChange={(event) => updateElement(selectedElement.id, { y: Number(event.target.value) })} /></label>
-                  <label>W<input type="number" value={Math.round(selectedElement.width)} onChange={(event) => updateElement(selectedElement.id, { width: Number(event.target.value) })} /></label>
-                  <label>H<input type="number" value={Math.round(selectedElement.height)} onChange={(event) => updateElement(selectedElement.id, { height: Number(event.target.value) })} /></label>
-                </div>
-                <label>
-                  Rotate
-                  <input type="range" min="-180" max="180" value={selectedElement.rotation || 0} onChange={(event) => updateElement(selectedElement.id, { rotation: Number(event.target.value) })} />
-                </label>
-                <label>
-                  Opacity
-                  <input type="range" min="0" max="1" step="0.05" value={selectedElement.opacity ?? 1} onChange={(event) => updateElement(selectedElement.id, { opacity: Number(event.target.value) })} />
-                </label>
-
-                {selectedElement.type === 'text' && (
-                  <>
-                    <label>
-                      Teks
-                      <textarea value={selectedElement.content || ''} rows="4" onChange={(event) => updateElement(selectedElement.id, { content: event.target.value })}></textarea>
-                    </label>
-                    <label>
-                      Font
-                      <select value={selectedElement.fontFamily || 'Inter'} onChange={(event) => updateElement(selectedElement.id, { fontFamily: event.target.value })}>
-                        {fontOptions.map((font) => <option value={font} key={font}>{font}</option>)}
-                      </select>
-                    </label>
-                    <div className="two-column-fields">
-                      <label>Size<input type="number" value={selectedElement.fontSize || 24} onChange={(event) => updateElement(selectedElement.id, { fontSize: Number(event.target.value) })} /></label>
-                      <label>Color<input type="color" value={selectedElement.color || '#111827'} onChange={(event) => updateElement(selectedElement.id, { color: event.target.value })} /></label>
-                      <label>Letter<input type="number" value={selectedElement.letterSpacing || 0} onChange={(event) => updateElement(selectedElement.id, { letterSpacing: Number(event.target.value) })} /></label>
-                      <label>Line<input type="number" step="0.1" value={selectedElement.lineHeight || 1.2} onChange={(event) => updateElement(selectedElement.id, { lineHeight: Number(event.target.value) })} /></label>
-                    </div>
-                    <div className="format-button-grid">
-                      <button type="button" className={selectedElement.fontWeight === 'bold' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { fontWeight: selectedElement.fontWeight === 'bold' ? 'normal' : 'bold' })}>B</button>
-                      <button type="button" className={selectedElement.fontStyle === 'italic' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { fontStyle: selectedElement.fontStyle === 'italic' ? 'normal' : 'italic' })}>I</button>
-                      <button type="button" className={selectedElement.underline ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { underline: !selectedElement.underline })}>U</button>
-                      <button type="button" className={selectedElement.align === 'left' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'left' })}>L</button>
-                      <button type="button" className={selectedElement.align === 'center' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'center' })}>C</button>
-                      <button type="button" className={selectedElement.align === 'right' ? 'active' : ''} onClick={() => updateElement(selectedElement.id, { align: 'right' })}>R</button>
-                    </div>
-                    <label className="inline-setting"><input type="checkbox" checked={selectedElement.shadow === true} onChange={(event) => updateElement(selectedElement.id, { shadow: event.target.checked })} /> Text shadow</label>
-                    <label className="inline-setting"><input type="checkbox" checked={selectedElement.gradient === true} onChange={(event) => updateElement(selectedElement.id, { gradient: event.target.checked })} /> Gradient text</label>
-                    <label className="inline-setting"><input type="checkbox" checked={selectedElement.autoResize === true} onChange={(event) => updateElement(selectedElement.id, { autoResize: event.target.checked })} /> Auto resize nama</label>
-                    <div className="two-column-fields">
-                      <label>Min<input type="number" value={selectedElement.minFontSize || 14} onChange={(event) => updateElement(selectedElement.id, { minFontSize: Number(event.target.value) })} /></label>
-                      <label>Max<input type="number" value={selectedElement.maxFontSize || 56} onChange={(event) => updateElement(selectedElement.id, { maxFontSize: Number(event.target.value) })} /></label>
-                    </div>
-                  </>
-                )}
-
-                {selectedElement.type === 'image' && (
-                  <>
-                    <label>
-                      Image URL
-                      <input value={selectedElement.src || ''} onChange={(event) => updateElement(selectedElement.id, { src: event.target.value })} />
-                    </label>
-                    <label>
-                      Crop
-                      <select value={selectedElement.objectFit || 'contain'} onChange={(event) => updateElement(selectedElement.id, { objectFit: event.target.value })}>
-                        <option value="contain">Contain</option>
-                        <option value="cover">Cover / Crop</option>
-                      </select>
-                    </label>
-                  </>
-                )}
-
-                {selectedElement.type === 'shape' && (
-                  <>
-                    <label>
-                      Shape
-                      <select value={selectedElement.shape || 'rectangle'} onChange={(event) => updateElement(selectedElement.id, { shape: event.target.value })}>
-                        <option value="rectangle">Rectangle</option>
-                        <option value="circle">Circle</option>
-                        <option value="line">Line</option>
-                      </select>
-                    </label>
-                    <div className="two-column-fields">
-                      <label>Fill<input type="color" value={selectedElement.fill || '#f8fafc'} onChange={(event) => updateElement(selectedElement.id, { fill: event.target.value })} /></label>
-                      <label>Stroke<input type="color" value={selectedElement.stroke || '#d4af37'} onChange={(event) => updateElement(selectedElement.id, { stroke: event.target.value })} /></label>
-                      <label>Stroke W<input type="number" value={selectedElement.strokeWidth || 0} onChange={(event) => updateElement(selectedElement.id, { strokeWidth: Number(event.target.value) })} /></label>
-                      <label>Radius<input type="number" value={selectedElement.borderRadius || 0} onChange={(event) => updateElement(selectedElement.id, { borderRadius: Number(event.target.value) })} /></label>
-                    </div>
-                  </>
-                )}
-
-                {selectedElement.type === 'qr' && (
-                  <div className="two-column-fields">
-                    <label>QR Color<input type="color" value={selectedElement.color || '#111827'} onChange={(event) => updateElement(selectedElement.id, { color: event.target.value })} /></label>
-                    <label>QR BG<input type="color" value={selectedElement.background || '#ffffff'} onChange={(event) => updateElement(selectedElement.id, { background: event.target.value })} /></label>
-                  </div>
-                )}
-              </div>
-            )}
+            {renderDocumentControls()}
+            {renderPropertiesControls()}
           </aside>
         )}
       </div>
+
+      <nav className="certificate-mobile-dock" aria-label="Panel cepat editor sertifikat">
+        <button type="button" className={mobilePanel === 'tools' ? 'active' : ''} onClick={() => setMobilePanel(mobilePanel === 'tools' ? '' : 'tools')}>
+          <Icon name="plus" />
+          <span>Tools</span>
+        </button>
+        <button type="button" className={mobilePanel === 'placeholder' ? 'active' : ''} onClick={() => setMobilePanel(mobilePanel === 'placeholder' ? '' : 'placeholder')}>
+          <Icon name="text" />
+          <span>Placeholder</span>
+        </button>
+        <button type="button" className={mobilePanel === 'document' ? 'active' : ''} onClick={() => setMobilePanel(mobilePanel === 'document' ? '' : 'document')}>
+          <Icon name="fileText" />
+          <span>Dokumen</span>
+        </button>
+        <button type="button" className={mobilePanel === 'properties' ? 'active' : ''} onClick={() => setMobilePanel(mobilePanel === 'properties' ? '' : 'properties')}>
+          <Icon name="settings" />
+          <span>Properti</span>
+        </button>
+        <button type="button" className={mobilePanel === 'layers' ? 'active' : ''} onClick={() => setMobilePanel(mobilePanel === 'layers' ? '' : 'layers')}>
+          <Icon name="layers" />
+          <span>Layer</span>
+        </button>
+      </nav>
+
+      {mobilePanel && (
+        <div className="certificate-mobile-sheet" role="dialog" aria-modal="false" aria-label={mobilePanelTitle}>
+          <div className="certificate-mobile-sheet-card">
+            <div className="certificate-mobile-sheet-heading">
+              <strong>{mobilePanelTitle}</strong>
+              <button type="button" onClick={() => setMobilePanel('')} aria-label="Tutup panel">
+                <Icon name="x" />
+              </button>
+            </div>
+            <div className="certificate-mobile-sheet-body">
+              {renderMobilePanelContent()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {isPreviewOpen && (
         <div className="certificate-preview-modal" role="dialog" aria-modal="true">
