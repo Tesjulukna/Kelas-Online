@@ -169,6 +169,8 @@ function HomePage({
   onPublicProductCheckout = async () => {},
   publicProductAccessApiPath = '/api/public-product-access',
   initialDetail = null,
+  isClassesLoaded = true,
+  isProductsLoaded = true,
   checkoutCustomer = null,
   classes = [],
   digitalProducts = [],
@@ -566,9 +568,8 @@ function HomePage({
     notificationSettingsSignature,
   ])
 
-  const homepageClasses = withPublicCodes(classes.filter(
-    (course) => course.status === 'Aktif' && course.showOnHomepage !== false,
-  ))
+  const detailClasses = withPublicCodes(classes.filter((course) => course.status === 'Aktif'))
+  const homepageClasses = detailClasses.filter((course) => course.showOnHomepage !== false)
   const detailProducts = withPublicCodes(digitalProducts.filter((product) => product.status === 'Aktif'))
   const homepageProducts = detailProducts.filter((product) => product.showOnHomepage !== false)
 
@@ -662,7 +663,7 @@ function HomePage({
     return matchesSearch && matchesCategory
   })
 
-  const selectedClass = homepageClasses.find((course) => course.id === selectedClassId || course.publicCode === selectedClassId)
+  const selectedClass = detailClasses.find((course) => course.id === selectedClassId || course.publicCode === selectedClassId)
   const approvedTestimonials = testimonials.filter((testimonial) => testimonial.status === 'approved')
   const activeTestimonial = approvedTestimonials.length
     ? approvedTestimonials[testimonialIndex % approvedTestimonials.length]
@@ -683,6 +684,8 @@ function HomePage({
   const initialDetailType = initialDetail?.type || ''
   const initialDetailId = initialDetail?.id || ''
   const initialDetailAction = initialDetail?.action || ''
+  const isClassDetailPath = initialDetailType === 'kelas' && Boolean(initialDetailId)
+  const isProductDetailPath = initialDetailType === 'produk' && Boolean(initialDetailId)
   const wishlistCount = wishlistItems.length
   const isMemberCheckout = checkoutCustomer?.isMember === true
   const memberCheckoutPhone = checkoutCustomer?.phone || ''
@@ -1142,6 +1145,21 @@ function HomePage({
     </div>
   ) : null
 
+  const renderDetailStatus = ({ title, message, isLoading = false }) => (
+    <section className="public-detail-status-page">
+      <div className="public-access-message public-detail-status-card">
+        <Icon name={isLoading ? 'clock' : 'x'} />
+        <h3>{title}</h3>
+        <p>{message}</p>
+        {!isLoading && (
+          <button className="btn btn-primary" type="button" onClick={closePublicDetail}>
+            Kembali ke homepage
+          </button>
+        )}
+      </div>
+    </section>
+  )
+
   if (selectedClass) {
     return (
       <>
@@ -1159,6 +1177,21 @@ function HomePage({
         {activityToast}
       </>
     )
+  }
+
+  if (isClassDetailPath) {
+    if (!isClassesLoaded) {
+      return renderDetailStatus({
+        isLoading: true,
+        title: 'Membuka detail kelas...',
+        message: 'Sebentar, data kelas sedang disiapkan.',
+      })
+    }
+
+    return renderDetailStatus({
+      title: 'Kelas tidak ditemukan',
+      message: 'Link kelas ini tidak tersedia atau kelas sudah tidak aktif.',
+    })
   }
 
   if (accessOrderCode) {
@@ -1228,6 +1261,21 @@ function HomePage({
         {activityToast}
       </>
     )
+  }
+
+  if (isProductDetailPath) {
+    if (!isProductsLoaded) {
+      return renderDetailStatus({
+        isLoading: true,
+        title: initialDetailAction === 'checkout' ? 'Membuka checkout produk...' : 'Membuka detail produk...',
+        message: 'Sebentar, data produk digital sedang disiapkan.',
+      })
+    }
+
+    return renderDetailStatus({
+      title: 'Produk tidak ditemukan',
+      message: 'Link produk ini tidak tersedia atau produk sudah tidak aktif.',
+    })
   }
 
   return (

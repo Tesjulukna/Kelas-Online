@@ -7389,6 +7389,20 @@ img {
   overflow-wrap: anywhere;
 }
 
+.public-detail-status-page {
+  display: grid;
+  place-items: center;
+  min-height: calc(100dvh - 92px);
+  padding: clamp(22px, 5vw, 56px) 16px;
+  background: #f5f8fc;
+}
+
+.public-detail-status-card {
+  width: min(100%, 520px);
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+}
+
 .public-access-actions {
   display: flex;
   flex-wrap: wrap;

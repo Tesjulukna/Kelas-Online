@@ -1403,6 +1403,7 @@ function App() {
   const [payments, setPayments] = useState([])
   const [publicActivities, setPublicActivities] = useState([])
   const [isClassesLoaded, setIsClassesLoaded] = useState(false)
+  const [isPublicProductsLoaded, setIsPublicProductsLoaded] = useState(false)
   const [isWebsiteSettingsLoaded, setIsWebsiteSettingsLoaded] = useState(false)
   const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(false)
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false)
@@ -2039,6 +2040,11 @@ function App() {
       })
       .catch(() => {
         // Homepage remains usable if public activity data is temporarily unavailable.
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsPublicProductsLoaded(true)
+        }
       })
 
     return () => {
@@ -2814,6 +2820,8 @@ function App() {
             onPublicProductCheckout={handlePublicProductCheckout}
             publicProductAccessApiPath={publicProductAccessApiPath}
             initialDetail={publicDetailTarget}
+            isClassesLoaded={isClassesLoaded}
+            isProductsLoaded={isPublicProductsLoaded}
             checkoutCustomer={checkoutCustomer}
             classes={classes}
             digitalProducts={digitalProducts}
