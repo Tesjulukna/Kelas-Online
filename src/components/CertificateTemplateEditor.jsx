@@ -895,26 +895,42 @@ function CertificateTemplateEditor({
           <h3>Kelola Template Sertifikat</h3>
         </div>
         <div className="certificate-editor-actions">
-          <button className="btn btn-secondary" type="button" onClick={() => setIsFullscreen((value) => !value)}>
+          <button
+            className="certificate-action-icon"
+            type="button"
+            title={isFullscreen ? 'Keluar fullscreen' : 'Fullscreen'}
+            aria-label={isFullscreen ? 'Keluar fullscreen' : 'Fullscreen'}
+            onClick={() => setIsFullscreen((value) => !value)}
+          >
             <Icon name={isFullscreen ? 'minimize' : 'maximize'} />
-            {isFullscreen ? 'Keluar' : 'Fullscreen'}
           </button>
-          <button className="btn btn-secondary" type="button" onClick={() => setIsPreviewOpen(true)}>
+          <button
+            className="certificate-action-icon"
+            type="button"
+            title="Preview"
+            aria-label="Preview"
+            onClick={() => setIsPreviewOpen(true)}
+          >
             <Icon name="eye" />
-            Preview
           </button>
-          <button className="btn btn-secondary" type="button" onClick={() => exportTemplate('png')}>
-            PNG
-          </button>
-          <button className="btn btn-secondary" type="button" onClick={() => exportTemplate('jpg')}>
-            JPG
-          </button>
-          <button className="btn btn-secondary" type="button" onClick={() => exportTemplate('pdf')}>
-            PDF
-          </button>
-          <button className="btn btn-primary" type="button" onClick={handleSave}>
+          <details className="certificate-export-menu">
+            <summary title="Export" aria-label="Export">
+              <Icon name="download" />
+            </summary>
+            <div className="certificate-export-options">
+              <button type="button" onClick={() => exportTemplate('png')}>PNG</button>
+              <button type="button" onClick={() => exportTemplate('jpg')}>JPG</button>
+              <button type="button" onClick={() => exportTemplate('pdf')}>PDF</button>
+            </div>
+          </details>
+          <button
+            className="certificate-action-icon primary"
+            type="button"
+            title="Save"
+            aria-label="Save"
+            onClick={handleSave}
+          >
             <Icon name="checkCircle" />
-            Save
           </button>
         </div>
       </div>

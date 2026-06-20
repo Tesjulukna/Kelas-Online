@@ -14137,9 +14137,109 @@ img {
 
 .certificate-editor-actions {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
   gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+
+.certificate-action-icon,
+.certificate-export-menu > summary {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.certificate-action-icon:hover,
+.certificate-export-menu > summary:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.certificate-action-icon:active,
+.certificate-export-menu > summary:active {
+  transform: translateY(1px);
+}
+
+.certificate-action-icon.primary {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+}
+
+.certificate-action-icon .icon,
+.certificate-export-menu .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.certificate-export-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.certificate-export-menu > summary {
+  list-style: none;
+}
+
+.certificate-export-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.certificate-export-options {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 70;
+  display: grid;
+  min-width: 86px;
+  overflow: hidden;
+  border: 1px solid #dbe4ef;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+}
+
+.certificate-export-options button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 850;
+  padding: 10px 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.certificate-export-options button:last-child {
+  border-bottom: 0;
+}
+
+.certificate-export-options button:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .certificate-template-config {
@@ -14597,6 +14697,12 @@ img {
 .certificate-editor-panel {
   position: relative;
   padding: clamp(12px, 2vw, 18px);
+}
+
+.certificate-editor-panel .certificate-editor-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
 }
 
 .certificate-editor-panel.is-fullscreen {
