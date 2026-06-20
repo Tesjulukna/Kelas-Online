@@ -1070,6 +1070,7 @@ function cleanCertificateTemplates(value) {
       id: cleanText(item.id),
       classId: cleanText(item.classId || ''),
       name: cleanLongText(item.name || 'Template Sertifikat', 180),
+      mentorName: cleanLongText(item.mentorName || '', 140),
       sizeType: cleanText(item.sizeType || 'a4Landscape'),
       width: Math.max(320, Math.min(2400, Math.round(Number(item.width) || 1123))),
       height: Math.max(320, Math.min(2400, Math.round(Number(item.height) || 794))),

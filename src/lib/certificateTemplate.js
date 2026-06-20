@@ -177,13 +177,14 @@ export function createQrElement(overrides = {}) {
   }
 }
 
-export function createDefaultCertificateTemplate(classId = '', classTitle = 'Kelas Online') {
+export function createDefaultCertificateTemplate(classId = '', classTitle = 'Kelas Online', mentorName = '') {
   const size = certificateSizePresets.a4Landscape
 
   return {
     id: '',
     classId,
     name: `Template ${classTitle}`,
+    mentorName,
     sizeType: 'a4Landscape',
     width: size.width,
     height: size.height,
@@ -370,6 +371,7 @@ export function normalizeCertificateTemplate(template = {}, fallbackClass = {}) 
   const defaultTemplate = createDefaultCertificateTemplate(
     template.classId || fallbackClass.id || '',
     fallbackClass.title || 'Kelas Online',
+    fallbackClass.mentor || '',
   )
   const sizePreset = certificateSizePresets[template.sizeType] || null
   const width = template.sizeType === 'custom'
@@ -388,6 +390,7 @@ export function normalizeCertificateTemplate(template = {}, fallbackClass = {}) 
     id: template.id || '',
     classId: template.classId || fallbackClass.id || defaultTemplate.classId,
     name: template.name || defaultTemplate.name,
+    mentorName: template.mentorName || fallbackClass.mentor || defaultTemplate.mentorName || 'Ibnu Creative',
     sizeType: template.sizeType || 'a4Landscape',
     width,
     height,

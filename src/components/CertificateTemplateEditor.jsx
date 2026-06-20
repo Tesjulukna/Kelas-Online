@@ -40,12 +40,12 @@ function cleanFileName(value) {
     .slice(0, 80) || 'sertifikat'
 }
 
-function dummyCertificateForClass(course, settings) {
+function dummyCertificateForClass(course, settings, template = {}) {
   return {
     participantName: 'Ramdialta Ibnu Sajara',
     memberName: 'Ramdialta Ibnu Sajara',
     classTitle: course?.title || 'Kelas Online Digital',
-    mentorName: course?.mentor || 'Ibnu Creative',
+    mentorName: template?.mentorName || course?.mentor || 'Ibnu Creative',
     completedAt: new Date().toISOString(),
     issuedAt: new Date().toISOString(),
     certificateId: 'IBNU-2026-DEMO',
@@ -92,7 +92,9 @@ function getClassTemplateState(activeClasses, templates, classId = '', templateI
   const fallbackTemplate = templateId === ''
     ? null
     : templates.find((template) => template.classId === course.id)
-  const template = selectedTemplate || fallbackTemplate || createDefaultCertificateTemplate(course.id, course.title)
+  const template = selectedTemplate ||
+    fallbackTemplate ||
+    createDefaultCertificateTemplate(course.id, course.title, course.mentor || '')
 
   return {
     classId: course.id,
@@ -212,8 +214,11 @@ function CertificateTemplateEditor({
 
   const selectedElement = draft.elements.find((element) => element.id === selectedElementId) || null
   const previewCertificate = certificates.find((certificate) => certificate.id === previewCertificateId)
+  const previewSourceCertificate = previewCertificate
+    ? { ...previewCertificate, mentorName: draft.mentorName || previewCertificate.mentorName }
+    : dummyCertificateForClass(selectedClass, settings, draft)
   const previewData = createCertificateData(
-    previewCertificate || dummyCertificateForClass(selectedClass, settings),
+    previewSourceCertificate,
     settings,
   )
 
@@ -716,6 +721,14 @@ function CertificateTemplateEditor({
       <label>
         Nama template
         <input value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} />
+      </label>
+      <label>
+        Nama mentor sertifikat
+        <input
+          value={draft.mentorName || ''}
+          placeholder={selectedClass?.mentor || 'Ibnu Creative'}
+          onChange={(event) => updateDraft({ mentorName: event.target.value })}
+        />
       </label>
       <label>
         Ukuran

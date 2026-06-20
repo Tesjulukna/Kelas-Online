@@ -2613,6 +2613,7 @@ function certificateTemplatePublic(row) {
     id: cleanText(row.id || '', 160),
     classId: cleanText(row.class_id || '', 120),
     name: cleanText(row.name || 'Template Sertifikat', 180),
+    mentorName: cleanText(payload.mentorName || '', 140),
     sizeType: cleanText(row.size_type || payload.sizeType || 'a4Landscape', 40),
     width: cleanNumber(row.width || payload.width || 1123, 320, 2400),
     height: cleanNumber(row.height || payload.height || 794, 320, 2400),
@@ -2752,6 +2753,7 @@ function cleanCertificateTemplateForDb(payload = {}) {
     id: cleanText(payload.id || makeId('certificate-template'), 160),
     classId: cleanText(payload.classId || '', 120),
     name: cleanText(payload.name || 'Template Sertifikat', 180),
+    mentorName: cleanText(payload.mentorName || '', 140),
     sizeType,
     width,
     height,
@@ -2759,6 +2761,7 @@ function cleanCertificateTemplateForDb(payload = {}) {
       sizeType,
       width,
       height,
+      mentorName: cleanText(payload.mentorName || '', 140),
       backgroundColor: cleanText(payload.backgroundColor || '#f8fafc', 40),
       backgroundImage: cleanUrl(payload.backgroundImage || '', 1200),
       snapToGrid: payload.snapToGrid !== false,
@@ -2848,6 +2851,19 @@ export async function saveCertificateTemplate(user, payload) {
   }).catch((error) => {
     certificateTableSetupError(error)
   })
+
+  if (template.mentorName) {
+    await rest(`certificates?class_id=eq.${eq(template.classId)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: {
+        mentor_name: template.mentorName,
+        updated_at: new Date().toISOString(),
+      },
+    }).catch((error) => {
+      certificateTableSetupError(error)
+    })
+  }
 
   return {
     ok: true,
@@ -3068,6 +3084,10 @@ export async function createCertificate(user, payload) {
   const now = new Date().toISOString()
   const certificateId = await uniqueCertificateId()
   const certificateTemplate = await fetchCertificateTemplateForClass(classId)
+  const mentorName = cleanText(
+    certificateTemplate?.mentorName || completion.course.mentor || 'Ibnu Creative',
+    140,
+  )
 
   await rest('certificates', {
     method: 'POST',
@@ -3079,7 +3099,7 @@ export async function createCertificate(user, payload) {
       member_name: cleanText(user.name || 'Member', 160),
       class_id: classId,
       class_title: cleanText(completion.course.title || 'Kelas', 180),
-      mentor_name: cleanText(completion.course.mentor || 'Ibnu Creative', 140),
+      mentor_name: mentorName,
       participant_name: participantName,
       template_id: certificateTemplate?.id || '',
       template_snapshot: certificateTemplate || null,

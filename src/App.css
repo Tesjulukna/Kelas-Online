@@ -10147,11 +10147,14 @@ img {
 
 .submission-review-backdrop {
   z-index: 180;
+  overflow: hidden;
 }
 
 .submission-review {
   width: min(760px, calc(100vw - 28px));
   max-height: min(820px, calc(100dvh - 28px));
+  min-width: 0;
+  overscroll-behavior: contain;
 }
 
 .submission-member-modal {
@@ -10159,8 +10162,10 @@ img {
   max-height: min(820px, calc(100dvh - 28px));
   grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 0;
+  min-width: 0;
   overflow: hidden;
   padding: 0;
+  overscroll-behavior: contain;
 }
 
 .submission-member-modal > .modal-heading {
@@ -10174,6 +10179,7 @@ img {
 }
 
 .submission-member-modal > .modal-heading h2 {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
@@ -10216,10 +10222,12 @@ img {
 }
 
 .submission-member-modal .member-submission-table {
+  min-width: 0;
   min-height: 0;
   max-height: none;
   margin: 14px 20px 20px;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .member-submission-table .support-message {
@@ -10229,6 +10237,16 @@ img {
 
 .member-submission-table .support-message strong,
 .member-submission-table .support-message small {
+  overflow-wrap: anywhere;
+}
+
+.submission-review .support-ticket-preview,
+.submission-review label,
+.submission-review .modal-actions {
+  min-width: 0;
+}
+
+.submission-review .support-ticket-preview {
   overflow-wrap: anywhere;
 }
 
@@ -10433,28 +10451,50 @@ img {
 
   .submission-member-backdrop {
     align-items: start;
-    padding: 8px;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+    overflow: hidden;
   }
 
   .submission-review-backdrop {
     align-items: start;
-    padding: 8px;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
   }
 
   .submission-review {
     width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
     max-height: calc(100dvh - 16px);
+    padding: 16px;
+    border-radius: 12px;
+    overflow-y: auto;
   }
 
   .submission-member-modal {
     width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
     max-height: calc(100dvh - 16px);
     border-radius: 12px;
   }
 
   .submission-member-modal > .modal-heading {
+    align-items: center;
     gap: 10px;
-    padding: 14px;
+    padding: 12px;
+  }
+
+  .submission-member-modal > .modal-heading .eyebrow {
+    font-size: 0.68rem;
+  }
+
+  .submission-member-modal > .modal-heading h2 {
+    font-size: clamp(1rem, 5vw, 1.28rem);
+    line-height: 1.2;
+  }
+
+  .submission-member-modal > .modal-heading button {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
   }
 
   .submission-member-modal > .submission-member-summary,
@@ -10462,8 +10502,14 @@ img {
     padding: 12px 14px 0;
   }
 
+  .submission-member-modal > .submission-filter-bar {
+    max-height: 172px;
+    overflow-y: auto;
+  }
+
   .submission-member-modal .member-submission-table {
     margin: 12px 14px 14px;
+    padding-right: 2px;
   }
 
   .member-submission-table.compact-list-table {
@@ -10480,6 +10526,8 @@ img {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     align-items: stretch;
+    min-width: 0;
+    padding: 12px;
   }
 
   .member-submission-table.compact-list-table .row-actions {
@@ -10490,16 +10538,98 @@ img {
 
   .member-submission-table.compact-list-table .row-actions button {
     width: 100%;
+    white-space: normal;
   }
 
   .member-submission-table.compact-list-table .support-message {
     gap: 4px;
+    min-width: 0;
+  }
+
+  .member-submission-table.compact-list-table .support-message strong,
+  .member-submission-table.compact-list-table .support-message small,
+  .member-submission-table.compact-list-table .mobile-list-meta {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .submission-table-thumb {
+    width: 46px;
+    height: 46px;
+  }
+
+  .submission-review .modal-heading {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .submission-review .modal-heading h2 {
+    font-size: clamp(1rem, 5vw, 1.24rem);
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .submission-review .modal-heading button {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+  }
+
+  .submission-review .support-ticket-preview {
+    padding: 12px;
+    overflow: hidden;
+  }
+
+  .submission-review .support-ticket-preview p,
+  .submission-review .support-ticket-preview span,
+  .submission-review .support-ticket-preview strong {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .submission-review .submission-image-preview img {
+    width: 100%;
+    max-height: 48dvh;
+    object-fit: contain;
+  }
+
+  .submission-review textarea {
+    min-height: 120px;
+  }
+
+  .submission-review .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .submission-review .modal-actions .btn,
+  .submission-review .modal-actions button {
+    width: 100%;
   }
 }
 
 @media (max-width: 420px) {
   .filter-button-group {
     grid-template-columns: 1fr;
+  }
+
+  .submission-member-modal > .submission-member-summary,
+  .submission-member-modal > .submission-filter-bar,
+  .submission-member-modal .member-submission-table {
+    margin-inline: 10px;
+    padding-inline: 0;
+  }
+
+  .submission-member-modal > .submission-member-summary,
+  .submission-member-modal > .submission-filter-bar {
+    margin: 0 10px;
+    padding-top: 10px;
+  }
+
+  .submission-member-summary span {
+    padding: 8px 10px;
   }
 }
 
