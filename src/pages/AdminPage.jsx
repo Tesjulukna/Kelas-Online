@@ -6,6 +6,7 @@ import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
 import WebsiteSettingsPanel from '../components/WebsiteSettingsPanel'
 import { adminMenuItems } from '../data/platformData'
+import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import {
   requestStorageUpload,
   uploadStorageFile,
@@ -782,6 +783,27 @@ function AdminPage({
   onCloseMenu,
   onNotify = () => {},
 }) {
+  const [showEarnings, setShowEarnings] = useState(() => {
+    try {
+      const cached = window.localStorage.getItem('ibnucreative.admin.show-earnings')
+      return cached !== 'false'
+    } catch {
+      return true
+    }
+  })
+
+  const handleToggleEarnings = () => {
+    setShowEarnings((prev) => {
+      const next = !prev
+      try {
+        window.localStorage.setItem('ibnucreative.admin.show-earnings', String(next))
+      } catch (e) {
+        console.error(e)
+      }
+      return next
+    })
+  }
+
   const [classForm, setClassForm] = useState(() => createEmptyClassForm())
   const [editingClassId, setEditingClassId] = useState(null)
   const [isClassModalOpen, setIsClassModalOpen] = useState(false)
@@ -2873,11 +2895,77 @@ function AdminPage({
     >
       {activeMenu === 'overview' && (
         <>
+          {(() => {
+            const settings = websiteSettings ? cleanWebsiteSettings(websiteSettings) : defaultWebsiteSettings
+            const brandLogo = settings.brandLogo
+            const brandIcon = settings.brandIcon || 'spark'
+            const number = Math.max(0, Number(String(totalPaidRevenue ?? '').replace(/[^\d]/g, '')) || 0)
+            const formattedNum = new Intl.NumberFormat('id-ID', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(number)
+
+            return (
+              <article className="premium-earnings-card">
+                <div className="earnings-hexagon-wrap">
+                  <svg className="earnings-hexagon-svg" viewBox="0 0 100 115">
+                    <polygon points="50,5 95,30 95,85 50,110 5,85 5,30" />
+                  </svg>
+                  <div className="earnings-logo-content">
+                    {brandLogo ? (
+                      <img src={brandLogo} alt="" />
+                    ) : (
+                      <Icon name={brandIcon} />
+                    )}
+                  </div>
+                </div>
+
+                <div className="earnings-info">
+                  <div className="earnings-label-row">
+                    <span>Earnings</span>
+                    <button
+                      type="button"
+                      className="earnings-eye-btn"
+                      onClick={handleToggleEarnings}
+                      aria-label={showEarnings ? 'Sembunyikan nominal' : 'Tampilkan nominal'}
+                    >
+                      <Icon name={showEarnings ? 'eyeOff' : 'eye'} />
+                    </button>
+                  </div>
+                  <strong className="earnings-value">
+                    {showEarnings ? (
+                      <>
+                        <span className="earnings-currency">IDR</span> {formattedNum}
+                      </>
+                    ) : (
+                      '••••••'
+                    )}
+                  </strong>
+                  <button
+                    type="button"
+                    className="earnings-link-btn"
+                    onClick={() => onMenuChange('payments')}
+                  >
+                    Payout Setting Page
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  className="earnings-action-btn"
+                  onClick={() => onMenuChange('payments')}
+                  aria-label="Atur Payout"
+                >
+                  <Icon name="wallet" />
+                </button>
+              </article>
+            )
+          })()}
+
           <section className="summary-grid admin-summary">
             <MetricCard icon="users" label="Sedang aktif" value={onlineMembers.length} />
             <MetricCard icon="message" label="Bantuan masuk" value={waitingSupportCount} />
             <MetricCard icon="fileText" label="Tugas masuk" value={pendingSubmissions} />
-            <MetricCard icon="wallet" label="Omzet terbayar" value={formatRupiah(totalPaidRevenue)} />
           </section>
 
           <section className="traffic-insight-panel panel" aria-label="Insight trafik pengunjung">

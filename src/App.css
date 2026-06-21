@@ -16064,3 +16064,233 @@ img {
   }
 }
 
+/* Premium Earnings Card styling */
+.premium-earnings-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 28px 32px;
+  border: 0;
+  border-radius: 16px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #4f8cff 0%, #2563eb 50%, #1d4ed8 100%);
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.16);
+  margin-bottom: 24px;
+}
+
+/* Background decorative circles */
+.premium-earnings-card::before,
+.premium-earnings-card::after {
+  content: '';
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+.premium-earnings-card::before {
+  width: 150px;
+  height: 150px;
+  top: -50px;
+  left: -20px;
+}
+.premium-earnings-card::after {
+  width: 250px;
+  height: 250px;
+  bottom: -100px;
+  right: -30px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.earnings-hexagon-wrap {
+  position: relative;
+  width: 80px;
+  height: 92px;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.earnings-hexagon-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.08));
+}
+
+.earnings-hexagon-svg polygon {
+  fill: rgba(30, 64, 175, 0.4);
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 3.5px;
+}
+
+.earnings-logo-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.earnings-logo-content img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.earnings-logo-content .icon {
+  width: 32px;
+  height: 32px;
+  color: #ffffff;
+}
+
+.earnings-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+  z-index: 1;
+}
+
+.earnings-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.earnings-eye-btn {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 2px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.earnings-eye-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.earnings-eye-btn .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.earnings-value {
+  color: #ffffff;
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.earnings-currency {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-right: 4px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.earnings-link-btn {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+  width: fit-content;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.5);
+  transition: all 0.2s ease;
+  margin-top: 4px;
+}
+
+.earnings-link-btn:hover {
+  color: #ffffff;
+  border-bottom-color: #ffffff;
+}
+
+.earnings-action-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 28px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  color: #ffffff;
+  background: rgba(30, 64, 175, 0.5);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 2;
+}
+
+.earnings-action-btn:hover {
+  background: rgba(30, 64, 175, 0.8);
+  transform: translateY(-2px);
+}
+
+.earnings-action-btn .icon {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 640px) {
+  .premium-earnings-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    padding-right: 68px;
+  }
+  .earnings-hexagon-wrap {
+    width: 56px;
+    height: 64px;
+  }
+  .earnings-logo-content {
+    padding: 10px;
+  }
+  .earnings-logo-content .icon {
+    width: 24px;
+    height: 24px;
+  }
+  .earnings-value {
+    font-size: 1.45rem;
+  }
+  .earnings-currency {
+    font-size: 1.05rem;
+  }
+  .earnings-action-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    bottom: auto;
+    right: 16px;
+    width: 38px;
+    height: 38px;
+  }
+  .earnings-action-btn:hover {
+    transform: translateY(-50%) translateY(-2px);
+  }
+}
+
+
