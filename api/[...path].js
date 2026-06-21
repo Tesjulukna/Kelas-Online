@@ -21,6 +21,7 @@ import {
   fetchMembers,
   fetchMemberPayments,
   fetchPayments,
+  fetchAnalytics,
   fetchPublicActivities,
   fetchPublicDigitalProductAccess,
   fetchTripayPaymentMethods,
@@ -48,6 +49,7 @@ import {
   duplicateCertificateTemplate,
   saveCertificateTemplate,
   sendJson,
+  trackAnalyticsEvent,
   trackProgress,
   updateDigitalProductReviewLike,
   updateMember,
@@ -352,6 +354,21 @@ async function routeRequest(request, response) {
 
     const user = await requireUser(request)
     sendJson(response, 200, user.role === 'admin' ? await fetchPayments() : await fetchMemberPayments(request))
+    return
+  }
+
+  if (route === 'analytics') {
+    if (request.method === 'GET') {
+      sendJson(response, 200, await fetchAnalytics(request))
+      return
+    }
+
+    if (request.method === 'POST') {
+      sendJson(response, 200, await trackAnalyticsEvent(request, await readJson(request)))
+      return
+    }
+
+    sendJson(response, 405, { message: 'Method tidak diizinkan.' })
     return
   }
 

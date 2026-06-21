@@ -220,6 +220,41 @@ CREATE TABLE IF NOT EXISTS payment_snapshots (
   INDEX payment_snapshot_product_index (product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS analytics_events (
+  id VARCHAR(160) PRIMARY KEY,
+  event_type VARCHAR(40) NOT NULL DEFAULT 'view',
+  visitor_id VARCHAR(160) NOT NULL DEFAULT '',
+  session_id VARCHAR(160) NOT NULL DEFAULT '',
+  member_id VARCHAR(120) NOT NULL DEFAULT '',
+  member_role VARCHAR(40) NOT NULL DEFAULT 'public',
+  page_path VARCHAR(300) NOT NULL DEFAULT '/',
+  page_title VARCHAR(180) NOT NULL DEFAULT '',
+  target_type VARCHAR(80) NOT NULL DEFAULT '',
+  target_label VARCHAR(180) NOT NULL DEFAULT '',
+  target_id VARCHAR(120) NOT NULL DEFAULT '',
+  referrer TEXT,
+  source VARCHAR(80) NOT NULL DEFAULT 'direct',
+  source_label VARCHAR(120) NOT NULL DEFAULT 'Direct / Manual',
+  country VARCHAR(80) NOT NULL DEFAULT 'Tidak diketahui',
+  region VARCHAR(120) NOT NULL DEFAULT 'Tidak diketahui',
+  city VARCHAR(120) NOT NULL DEFAULT 'Tidak diketahui',
+  timezone VARCHAR(80) NOT NULL DEFAULT '',
+  language VARCHAR(80) NOT NULL DEFAULT '',
+  device_type VARCHAR(60) NOT NULL DEFAULT 'Tidak diketahui',
+  browser VARCHAR(80) NOT NULL DEFAULT 'Tidak diketahui',
+  user_agent VARCHAR(500) NOT NULL DEFAULT '',
+  ip_hash VARCHAR(80) NOT NULL DEFAULT '',
+  metadata LONGTEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX analytics_event_created_index (created_at),
+  INDEX analytics_event_type_index (event_type),
+  INDEX analytics_event_visitor_index (visitor_id),
+  INDEX analytics_event_source_index (source),
+  INDEX analytics_event_location_index (country, region, city),
+  INDEX analytics_event_page_index (page_path)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS site_settings (
   id VARCHAR(60) PRIMARY KEY,
   payload LONGTEXT,

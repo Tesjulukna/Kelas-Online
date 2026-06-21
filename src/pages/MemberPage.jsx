@@ -833,7 +833,7 @@ function MemberPage({
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     }, 80)
-  }, [certificateTestimonialPrompt, handleDashboardMenuChange])
+  }, [certificateTestimonialPrompt, handleDashboardMenuChange, setCertificateTestimonialPrompt])
 
   const handleOpenDigitalProductDetail = (product) => {
     if (onOpenPublicProductDetail) {

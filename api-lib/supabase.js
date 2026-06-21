@@ -245,6 +245,108 @@ function cleanUrl(value, maxLength = 600) {
   }
 }
 
+function requestHeader(request, name) {
+  const key = String(name || '').toLowerCase()
+
+  if (!key || !request?.headers) {
+    return ''
+  }
+
+  if (typeof request.headers.get === 'function') {
+    return cleanText(request.headers.get(key) || '', 600)
+  }
+
+  const value = request.headers[key] || request.headers[name]
+
+  return cleanText(Array.isArray(value) ? value[0] : value || '', 600)
+}
+
+function decodeHeaderValue(value, maxLength = 120) {
+  const text = cleanText(value || '', maxLength)
+
+  if (!text) {
+    return ''
+  }
+
+  try {
+    return cleanText(decodeURIComponent(text), maxLength)
+  } catch {
+    return text
+  }
+}
+
+function inferDeviceType(userAgent = '') {
+  const value = String(userAgent || '').toLowerCase()
+
+  if (/ipad|tablet|kindle|playbook/.test(value)) return 'Tablet'
+  if (/mobile|android|iphone|ipod|opera mini|blackberry/.test(value)) return 'Mobile'
+  if (value) return 'Desktop'
+
+  return 'Tidak diketahui'
+}
+
+function inferBrowser(userAgent = '') {
+  const value = String(userAgent || '')
+
+  if (/Edg\//.test(value)) return 'Microsoft Edge'
+  if (/OPR\//.test(value)) return 'Opera'
+  if (/Chrome\//.test(value)) return 'Chrome'
+  if (/Safari\//.test(value) && !/Chrome\//.test(value)) return 'Safari'
+  if (/Firefox\//.test(value)) return 'Firefox'
+
+  return value ? 'Browser lain' : 'Tidak diketahui'
+}
+
+function inferTrafficSource(referrer = '', request = null) {
+  const originHost = cleanText(
+    requestHeader(request, 'x-forwarded-host') || requestHeader(request, 'host'),
+    160,
+  ).replace(/^www\./, '')
+
+  if (!referrer) {
+    return { source: 'direct', sourceLabel: 'Direct / Manual' }
+  }
+
+  try {
+    const url = new URL(referrer)
+    const host = url.hostname.replace(/^www\./, '').toLowerCase()
+
+    if (originHost && host === originHost.toLowerCase()) {
+      return { source: 'internal', sourceLabel: 'Internal website' }
+    }
+
+    if (host.includes('instagram')) return { source: 'instagram', sourceLabel: 'Instagram' }
+    if (host.includes('facebook') || host === 'fb.com' || host.includes('fbcdn')) {
+      return { source: 'facebook', sourceLabel: 'Facebook' }
+    }
+    if (host.includes('tiktok')) return { source: 'tiktok', sourceLabel: 'TikTok' }
+    if (host.includes('youtube') || host === 'youtu.be') return { source: 'youtube', sourceLabel: 'YouTube' }
+    if (host.includes('whatsapp') || host === 'wa.me') return { source: 'whatsapp', sourceLabel: 'WhatsApp' }
+    if (host.includes('linkedin')) return { source: 'linkedin', sourceLabel: 'LinkedIn' }
+    if (host === 'x.com' || host.includes('twitter') || host === 't.co') return { source: 'x-twitter', sourceLabel: 'X / Twitter' }
+    if (host.includes('google')) return { source: 'google', sourceLabel: 'Google' }
+    if (host.includes('bing')) return { source: 'bing', sourceLabel: 'Bing' }
+    if (host.includes('duckduckgo')) return { source: 'duckduckgo', sourceLabel: 'DuckDuckGo' }
+
+    return { source: 'referral', sourceLabel: host }
+  } catch {
+    return { source: 'referral', sourceLabel: 'Referral' }
+  }
+}
+
+function analyticsTableSetupError(error) {
+  const message = String(error?.message || '').toLowerCase()
+
+  if (message.includes('analytics_events') || message.includes('schema cache')) {
+    throw new ApiError(
+      500,
+      'Tabel analytics_events belum siap di Supabase. Jalankan supabase/schema.sql terbaru, lalu deploy ulang.',
+    )
+  }
+
+  throw error
+}
+
 function cleanExternalUrl(value) {
   const rawUrl = cleanText(value, 1200)
 
@@ -1035,6 +1137,7 @@ const backupTables = [
   'lynk_orders',
   'tripay_orders',
   'payment_snapshots',
+  'analytics_events',
   'site_settings',
 ]
 
@@ -1115,6 +1218,7 @@ export async function restoreBackup(payload) {
     ['member_progress', 'member_id=not.is.null'],
     ['tripay_orders', 'id=not.is.null'],
     ['payment_snapshots', 'id=not.is.null'],
+    ['analytics_events', 'id=not.is.null'],
     ['lynk_orders', 'id=not.is.null'],
     ['digital_products', 'id=not.is.null'],
     ['classes', 'id=not.is.null'],
@@ -1137,6 +1241,7 @@ export async function restoreBackup(payload) {
     'lynk_orders',
     'tripay_orders',
     'payment_snapshots',
+    'analytics_events',
     'site_settings',
   ]
 
@@ -1804,6 +1909,277 @@ export async function fetchPayments() {
   return {
     payments,
     updatedAt: new Date().toISOString(),
+  }
+}
+
+function cleanAnalyticsDate(value, fallback) {
+  const rawValue = cleanText(value || '', 20)
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
+    return rawValue
+  }
+
+  return fallback
+}
+
+function analyticsDateRange(url) {
+  const today = new Date()
+  const todayKey = today.toISOString().slice(0, 10)
+  const defaultStart = new Date(today)
+  defaultStart.setUTCDate(defaultStart.getUTCDate() - 6)
+
+  const startDate = cleanAnalyticsDate(url.searchParams.get('startDate'), defaultStart.toISOString().slice(0, 10))
+  const endDate = cleanAnalyticsDate(url.searchParams.get('endDate'), todayKey)
+  const startTime = Date.parse(`${startDate}T00:00:00.000Z`)
+  const endTime = Date.parse(`${endDate}T23:59:59.999Z`)
+  const safeStart = Number.isFinite(startTime) ? startTime : Date.parse(`${defaultStart.toISOString().slice(0, 10)}T00:00:00.000Z`)
+  const safeEnd = Number.isFinite(endTime) && endTime >= safeStart
+    ? endTime
+    : Date.parse(`${todayKey}T23:59:59.999Z`)
+  const maxRangeMs = 370 * 24 * 60 * 60 * 1000
+  const boundedStart = safeEnd - safeStart > maxRangeMs ? safeEnd - maxRangeMs : safeStart
+
+  return {
+    startDate: new Date(boundedStart).toISOString().slice(0, 10),
+    endDate: new Date(safeEnd).toISOString().slice(0, 10),
+    startIso: new Date(boundedStart).toISOString(),
+    endIso: new Date(safeEnd).toISOString(),
+  }
+}
+
+function analyticsEventPublic(row) {
+  return {
+    id: cleanText(row.id || '', 160),
+    eventType: cleanText(row.event_type || 'view', 40),
+    visitorId: cleanText(row.visitor_id || '', 160),
+    sessionId: cleanText(row.session_id || '', 160),
+    memberId: cleanText(row.member_id || '', 120),
+    memberRole: cleanText(row.member_role || 'public', 40),
+    pagePath: cleanText(row.page_path || '/', 300),
+    pageTitle: cleanText(row.page_title || 'Website', 180),
+    targetType: cleanText(row.target_type || '', 80),
+    targetLabel: cleanText(row.target_label || '', 180),
+    targetId: cleanText(row.target_id || '', 120),
+    referrer: cleanUrl(row.referrer || '', 800),
+    source: cleanText(row.source || 'direct', 80),
+    sourceLabel: cleanText(row.source_label || 'Direct / Manual', 120),
+    country: cleanText(row.country || 'Tidak diketahui', 80),
+    region: cleanText(row.region || 'Tidak diketahui', 120),
+    city: cleanText(row.city || 'Tidak diketahui', 120),
+    timezone: cleanText(row.timezone || '', 80),
+    language: cleanText(row.language || '', 80),
+    deviceType: cleanText(row.device_type || 'Tidak diketahui', 60),
+    browser: cleanText(row.browser || 'Tidak diketahui', 80),
+    createdAt: cleanText(row.created_at || '', 80),
+  }
+}
+
+function dateKeysBetween(startDate, endDate) {
+  const keys = []
+  const current = new Date(`${startDate}T00:00:00.000Z`)
+  const end = new Date(`${endDate}T00:00:00.000Z`)
+
+  while (current <= end && keys.length < 380) {
+    keys.push(current.toISOString().slice(0, 10))
+    current.setUTCDate(current.getUTCDate() + 1)
+  }
+
+  return keys
+}
+
+function incrementTop(map, key, fallbackLabel = '') {
+  const safeKey = cleanText(key || fallbackLabel || 'Tidak diketahui', 160) || 'Tidak diketahui'
+  const current = map.get(safeKey) || { label: safeKey, count: 0 }
+
+  map.set(safeKey, { ...current, count: current.count + 1 })
+}
+
+function topItemsFromMap(map, limit = 8) {
+  return [...map.values()]
+    .sort((first, second) => second.count - first.count || first.label.localeCompare(second.label))
+    .slice(0, limit)
+}
+
+function buildAnalytics(events, range) {
+  const dailyMap = new Map(
+    dateKeysBetween(range.startDate, range.endDate).map((dateKey) => [
+      dateKey,
+      { dateKey, views: 0, clicks: 0, visitors: new Set() },
+    ]),
+  )
+  const visitorIds = new Set()
+  const sessionIds = new Set()
+  const countries = new Map()
+  const regions = new Map()
+  const cities = new Map()
+  const sources = new Map()
+  const pages = new Map()
+  const clickTargets = new Map()
+  const devices = new Map()
+
+  events.forEach((event) => {
+    const time = Date.parse(event.createdAt || '')
+    const dateKey = Number.isFinite(time)
+      ? new Date(time).toISOString().slice(0, 10)
+      : range.startDate
+    const daily = dailyMap.get(dateKey) || { dateKey, views: 0, clicks: 0, visitors: new Set() }
+
+    if (event.eventType === 'click') {
+      daily.clicks += 1
+      incrementTop(clickTargets, event.targetLabel || event.targetType || 'Klik')
+    } else {
+      daily.views += 1
+      incrementTop(pages, event.pageTitle || event.pagePath || 'Halaman')
+    }
+
+    if (event.visitorId) {
+      visitorIds.add(event.visitorId)
+      daily.visitors.add(event.visitorId)
+    }
+
+    if (event.sessionId) {
+      sessionIds.add(event.sessionId)
+    }
+
+    incrementTop(countries, event.country || 'Tidak diketahui')
+    incrementTop(regions, event.region || 'Tidak diketahui')
+    incrementTop(cities, event.city || 'Tidak diketahui')
+    incrementTop(sources, event.sourceLabel || 'Direct / Manual')
+    incrementTop(devices, event.deviceType || 'Tidak diketahui')
+    dailyMap.set(dateKey, daily)
+  })
+
+  const daily = [...dailyMap.values()].map((item) => ({
+    dateKey: item.dateKey,
+    views: item.views,
+    clicks: item.clicks,
+    visitors: item.visitors.size,
+  }))
+
+  return {
+    range: {
+      startDate: range.startDate,
+      endDate: range.endDate,
+    },
+    totals: {
+      views: events.filter((event) => event.eventType !== 'click').length,
+      clicks: events.filter((event) => event.eventType === 'click').length,
+      visitors: visitorIds.size,
+      sessions: sessionIds.size,
+    },
+    daily,
+    countries: topItemsFromMap(countries),
+    regions: topItemsFromMap(regions),
+    cities: topItemsFromMap(cities),
+    sources: topItemsFromMap(sources),
+    pages: topItemsFromMap(pages),
+    clickTargets: topItemsFromMap(clickTargets),
+    devices: topItemsFromMap(devices),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export async function trackAnalyticsEvent(request, payload = {}) {
+  const user = await currentUser(request).catch(() => null)
+
+  if (user?.role === 'admin') {
+    return { ok: true, skipped: true }
+  }
+
+  const eventType = ['view', 'click'].includes(payload.eventType || payload.type)
+    ? payload.eventType || payload.type
+    : 'view'
+  const userAgent = requestHeader(request, 'user-agent')
+  const referrer = cleanUrl(payload.referrer || requestHeader(request, 'referer'), 800)
+  const source = inferTrafficSource(referrer, request)
+  const ipAddress = cleanText(
+    (requestHeader(request, 'x-forwarded-for').split(',')[0] || requestHeader(request, 'x-real-ip')),
+    120,
+  )
+  const country = decodeHeaderValue(
+    requestHeader(request, 'x-vercel-ip-country') ||
+      requestHeader(request, 'cf-ipcountry') ||
+      payload.country ||
+      'Tidak diketahui',
+    80,
+  )
+  const region = decodeHeaderValue(
+    requestHeader(request, 'x-vercel-ip-country-region') ||
+      requestHeader(request, 'x-vercel-ip-region') ||
+      payload.region ||
+      'Tidak diketahui',
+    120,
+  )
+  const city = decodeHeaderValue(
+    requestHeader(request, 'x-vercel-ip-city') ||
+      requestHeader(request, 'x-vercel-ip-city-name') ||
+      payload.city ||
+      'Tidak diketahui',
+    120,
+  )
+
+  try {
+    await rest('analytics_events', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: {
+        id: makeId('analytics'),
+        event_type: eventType,
+        visitor_id: cleanText(payload.visitorId || '', 160),
+        session_id: cleanText(payload.sessionId || '', 160),
+        member_id: user?.role === 'member' ? cleanText(user.userId || '', 120) : '',
+        member_role: user?.role === 'member' ? 'member' : 'public',
+        page_path: cleanText(payload.pagePath || '/', 300),
+        page_title: cleanText(payload.pageTitle || 'Website', 180),
+        target_type: cleanText(payload.targetType || '', 80),
+        target_label: cleanText(payload.targetLabel || '', 180),
+        target_id: cleanText(payload.targetId || '', 120),
+        referrer,
+        source: source.source,
+        source_label: source.sourceLabel,
+        country,
+        region,
+        city,
+        timezone: cleanText(payload.timezone || '', 80),
+        language: cleanText(payload.language || '', 80),
+        device_type: cleanText(payload.deviceType || inferDeviceType(userAgent), 60),
+        browser: inferBrowser(userAgent),
+        user_agent: cleanText(userAgent, 500),
+        ip_hash: ipAddress ? sha256(`${serviceKey}:${ipAddress}`) : '',
+        metadata: payload.metadata && typeof payload.metadata === 'object'
+          ? {
+              width: cleanNumber(payload.metadata.width, 0, 10000),
+              height: cleanNumber(payload.metadata.height, 0, 10000),
+            }
+          : {},
+      },
+    })
+
+    return { ok: true }
+  } catch (error) {
+    return {
+      ok: false,
+      message: error.message || 'Analytics belum bisa dicatat.',
+    }
+  }
+}
+
+export async function fetchAnalytics(request) {
+  await requireUser(request, 'admin')
+  const url = new URL(request.url || '/', 'http://localhost')
+  const range = analyticsDateRange(url)
+
+  try {
+    const rows = await rest(
+      `analytics_events?select=*&created_at=gte.${encodeURIComponent(range.startIso)}&created_at=lte.${encodeURIComponent(range.endIso)}&order=created_at.asc&limit=10000`,
+    )
+    const events = (rows || [])
+      .map(analyticsEventPublic)
+      .filter((event) => event.memberRole !== 'admin')
+
+    return { analytics: buildAnalytics(events, range) }
+  } catch (error) {
+    analyticsTableSetupError(error)
   }
 }
 

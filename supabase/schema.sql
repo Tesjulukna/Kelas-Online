@@ -374,6 +374,35 @@ create table if not exists public.payment_snapshots (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.analytics_events (
+  id text primary key,
+  event_type text not null default 'view',
+  visitor_id text not null default '',
+  session_id text not null default '',
+  member_id text not null default '',
+  member_role text not null default 'public',
+  page_path text not null default '/',
+  page_title text not null default '',
+  target_type text not null default '',
+  target_label text not null default '',
+  target_id text not null default '',
+  referrer text not null default '',
+  source text not null default 'direct',
+  source_label text not null default 'Direct / Manual',
+  country text not null default 'Tidak diketahui',
+  region text not null default 'Tidak diketahui',
+  city text not null default 'Tidak diketahui',
+  timezone text not null default '',
+  language text not null default '',
+  device_type text not null default 'Tidak diketahui',
+  browser text not null default 'Tidak diketahui',
+  user_agent text not null default '',
+  ip_hash text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.site_settings (
   id text primary key,
   payload jsonb not null default '{}'::jsonb,
@@ -406,6 +435,12 @@ create index if not exists tripay_order_class_index on public.tripay_orders(clas
 create index if not exists payment_snapshot_member_index on public.payment_snapshots(member_id);
 create index if not exists payment_snapshot_class_index on public.payment_snapshots(class_id);
 create index if not exists payment_snapshot_product_index on public.payment_snapshots(product_id);
+create index if not exists analytics_event_created_index on public.analytics_events(created_at);
+create index if not exists analytics_event_type_index on public.analytics_events(event_type);
+create index if not exists analytics_event_visitor_index on public.analytics_events(visitor_id);
+create index if not exists analytics_event_source_index on public.analytics_events(source);
+create index if not exists analytics_event_location_index on public.analytics_events(country, region, city);
+create index if not exists analytics_event_page_index on public.analytics_events(page_path);
 create index if not exists digital_product_access_member_index on public.digital_product_access(member_id);
 create index if not exists digital_product_access_email_index on public.digital_product_access(buyer_email);
 create index if not exists digital_product_access_product_index on public.digital_product_access(product_id);
@@ -489,6 +524,10 @@ drop trigger if exists payment_snapshots_updated_at on public.payment_snapshots;
 create trigger payment_snapshots_updated_at before update on public.payment_snapshots
 for each row execute function public.set_updated_at();
 
+drop trigger if exists analytics_events_updated_at on public.analytics_events;
+create trigger analytics_events_updated_at before update on public.analytics_events
+for each row execute function public.set_updated_at();
+
 drop trigger if exists login_attempts_updated_at on public.login_attempts;
 create trigger login_attempts_updated_at before update on public.login_attempts
 for each row execute function public.set_updated_at();
@@ -515,6 +554,7 @@ alter table public.member_progress enable row level security;
 alter table public.lynk_orders enable row level security;
 alter table public.tripay_orders enable row level security;
 alter table public.payment_snapshots enable row level security;
+alter table public.analytics_events enable row level security;
 alter table public.site_settings enable row level security;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

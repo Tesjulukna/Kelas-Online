@@ -20,6 +20,14 @@ const uploadFileApiPath = '/api/upload-file'
 const fontOptions = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Poppins', 'Montserrat']
 const historyLimit = 40
 
+function createDuplicateElementId(type = 'element') {
+  const token = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(16).slice(2)
+
+  return `${type}-${token}`.slice(0, 120)
+}
+
 function cloneDraft(value) {
   return JSON.parse(JSON.stringify(value))
 }
@@ -477,7 +485,7 @@ function CertificateTemplateEditor({
     } else if (action === 'duplicate') {
       addElement({
         ...selectedElement,
-        id: `${selectedElement.type}-${Date.now()}`,
+        id: createDuplicateElementId(selectedElement.type),
         x: selectedElement.x + 24,
         y: selectedElement.y + 24,
       })

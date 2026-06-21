@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ConfirmDialog from './components/ConfirmDialog'
 import Icon from './components/Icon'
 import ProfileEditor from './components/ProfileEditor'
@@ -35,6 +35,7 @@ const publicProductCheckoutApiPath = '/api/public-product-checkout'
 const publicProductAccessApiPath = '/api/public-product-access'
 const digitalProductReviewLikeApiPath = '/api/digital-product-review-like'
 const publicActivityApiPath = '/api/public-activity'
+const analyticsApiPath = '/api/analytics'
 const loginApiPath = '/api/login'
 const googleAuthUrlApiPath = '/api/google-auth-url'
 const googleLoginApiPath = '/api/google-login'
@@ -53,6 +54,8 @@ const pagePaths = {
 }
 const publicInfoPages = ['about', 'contact', 'privacy', 'terms']
 const notificationSeenKey = 'ibnucreative.notifications.seen.v1'
+const analyticsVisitorKey = 'ibnucreative.analytics.visitor.v1'
+const analyticsSessionKey = 'ibnucreative.analytics.session.v1'
 
 function getPageFromPath(pathname) {
   const cleanPath = pathname.replace(/\/+$/, '') || '/'
@@ -1238,6 +1241,105 @@ async function requestJson(path, options = {}) {
   return data
 }
 
+function createAnalyticsId(prefix) {
+  const randomValue =
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+  return `${prefix}-${randomValue}`.slice(0, 120)
+}
+
+function getStoredAnalyticsId(storage, key, prefix) {
+  if (typeof window === 'undefined') {
+    return createAnalyticsId(prefix)
+  }
+
+  try {
+    const saved = storage.getItem(key)
+
+    if (saved) {
+      return saved
+    }
+
+    const nextId = createAnalyticsId(prefix)
+    storage.setItem(key, nextId)
+    return nextId
+  } catch {
+    return createAnalyticsId(prefix)
+  }
+}
+
+function getAnalyticsDeviceType() {
+  if (typeof navigator === 'undefined') {
+    return 'Tidak diketahui'
+  }
+
+  const value = navigator.userAgent.toLowerCase()
+
+  if (/ipad|tablet|kindle|playbook/.test(value)) return 'Tablet'
+  if (/mobile|android|iphone|ipod|opera mini|blackberry/.test(value)) return 'Mobile'
+
+  return 'Desktop'
+}
+
+function getClickableLabel(element) {
+  const rawLabel =
+    element.getAttribute('aria-label') ||
+    element.getAttribute('title') ||
+    element.getAttribute('data-analytics-label') ||
+    element.textContent ||
+    element.value ||
+    element.name ||
+    element.id ||
+    element.tagName
+
+  return cleanText(String(rawLabel || '').replace(/\s+/g, ' '), 160)
+}
+
+function sendAnalyticsEvent(eventType, payload = {}, currentSession = null) {
+  if (typeof window === 'undefined' || currentSession?.role === 'admin') {
+    return
+  }
+
+  const visitorId = getStoredAnalyticsId(window.localStorage, analyticsVisitorKey, 'visitor')
+  const sessionId = getStoredAnalyticsId(window.sessionStorage, analyticsSessionKey, 'session')
+  const pagePath =
+    payload.pagePath ||
+    `${window.location.pathname}${window.location.search}${window.location.hash}`
+  const body = {
+    eventType,
+    visitorId,
+    sessionId,
+    pagePath,
+    pageTitle: payload.pageTitle || document.title,
+    referrer: document.referrer || '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    language: navigator.language || '',
+    deviceType: getAnalyticsDeviceType(),
+    targetType: payload.targetType || '',
+    targetLabel: payload.targetLabel || '',
+    targetId: payload.targetId || '',
+    metadata: {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    },
+  }
+
+  fetch(analyticsApiPath, {
+    method: 'POST',
+    cache: 'no-store',
+    keepalive: true,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(currentSession?.token ? { 'X-Session-Token': currentSession.token } : {}),
+    },
+    body: JSON.stringify(body),
+  }).catch(() => {
+    // Analytics must never block the website.
+  })
+}
+
 async function fetchStoredClasses({ mergeLocal = false } = {}) {
   const response = await fetch(classesApiPath, { cache: 'no-store' })
 
@@ -1421,6 +1523,7 @@ function App() {
   const [seenNotificationIds, setSeenNotificationIds] = useState(() =>
     readSeenNotifications(readSession()?.userId),
   )
+  const lastAnalyticsViewRef = useRef('')
 
   useEffect(() => {
     if (!notice) {
@@ -1475,6 +1578,55 @@ function App() {
       window.removeEventListener('ibnucreative-route-change', updateCurrentPath)
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || session?.role === 'admin') {
+      return undefined
+    }
+
+    const pagePath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    const viewKey = `${session?.role || 'public'}:${session?.userId || 'guest'}:${pagePath}`
+
+    if (lastAnalyticsViewRef.current === viewKey) {
+      return undefined
+    }
+
+    lastAnalyticsViewRef.current = viewKey
+    const timer = window.setTimeout(() => {
+      sendAnalyticsEvent('view', { pagePath, pageTitle: document.title }, session)
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [activeMemberMenu, activeSection, currentPath, page, session])
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || session?.role === 'admin') {
+      return undefined
+    }
+
+    const handleClick = (event) => {
+      const target = event.target?.closest?.('a, button, summary, [role="button"]')
+
+      if (!target || target.closest('[data-analytics-ignore="true"]')) {
+        return
+      }
+
+      const targetLabel = getClickableLabel(target)
+
+      if (!targetLabel) {
+        return
+      }
+
+      sendAnalyticsEvent('click', {
+        targetType: target.tagName?.toLowerCase?.() || 'click',
+        targetLabel,
+        targetId: target.id || target.getAttribute('data-analytics-id') || '',
+      }, session)
+    }
+
+    document.addEventListener('click', handleClick, true)
+    return () => document.removeEventListener('click', handleClick, true)
+  }, [session])
 
   useEffect(() => {
     let isCurrent = true

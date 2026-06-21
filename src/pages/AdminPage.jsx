@@ -11,6 +11,8 @@ import {
   uploadStorageFile,
 } from '../lib/storageUpload'
 
+const analyticsApiPath = '/api/analytics'
+
 function createEmptyMaterial() {
   return {
     id: `material-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -205,6 +207,73 @@ async function uploadClassImage(file, sessionToken = '') {
   })
 
   return data.url
+}
+
+function formatDateInput(date) {
+  const value = date instanceof Date ? date : new Date(date)
+  const localDate = new Date(value.getTime() - value.getTimezoneOffset() * 60000)
+
+  return localDate.toISOString().slice(0, 10)
+}
+
+function getAnalyticsPresetRange(preset = '7d') {
+  const endDate = new Date()
+  const startDate = new Date(endDate)
+
+  if (preset === 'today') {
+    return {
+      startDate: formatDateInput(endDate),
+      endDate: formatDateInput(endDate),
+    }
+  }
+
+  startDate.setDate(endDate.getDate() - (preset === '28d' ? 27 : 6))
+
+  return {
+    startDate: formatDateInput(startDate),
+    endDate: formatDateInput(endDate),
+  }
+}
+
+function createEmptyAnalyticsInsights() {
+  const range = getAnalyticsPresetRange('7d')
+
+  return {
+    range,
+    totals: {
+      views: 0,
+      clicks: 0,
+      visitors: 0,
+      sessions: 0,
+    },
+    daily: [],
+    countries: [],
+    regions: [],
+    cities: [],
+    sources: [],
+    pages: [],
+    clickTargets: [],
+    devices: [],
+    updatedAt: '',
+  }
+}
+
+function formatCompactNumber(value) {
+  return new Intl.NumberFormat('id-ID', {
+    notation: Number(value) >= 10000 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  }).format(Math.max(0, Number(value) || 0))
+}
+
+function formatAnalyticsDate(value) {
+  if (!value) {
+    return '-'
+  }
+
+  return new Date(`${value}T00:00:00`).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+  })
 }
 
 function formatRupiah(value) {
@@ -748,6 +817,18 @@ function AdminPage({
   const [paymentEndDate, setPaymentEndDate] = useState('')
   const [paymentPageSize, setPaymentPageSize] = useState(10)
   const [paymentPage, setPaymentPage] = useState(1)
+  const [analyticsPreset, setAnalyticsPreset] = useState('7d')
+  const [analyticsStartDate, setAnalyticsStartDate] = useState(() =>
+    getAnalyticsPresetRange('7d').startDate,
+  )
+  const [analyticsEndDate, setAnalyticsEndDate] = useState(() =>
+    getAnalyticsPresetRange('7d').endDate,
+  )
+  const [analyticsInsights, setAnalyticsInsights] = useState(() =>
+    createEmptyAnalyticsInsights(),
+  )
+  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false)
+  const [analyticsError, setAnalyticsError] = useState('')
   const [supportForm, setSupportForm] = useState(() => createEmptySupportForm())
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false)
   const [pendingDeleteSupport, setPendingDeleteSupport] = useState(null)
@@ -775,6 +856,28 @@ function AdminPage({
   const pendingSubmissions = submissions.filter(
     (item) => item.status === 'Menunggu Review',
   ).length
+  const applyAnalyticsPreset = (preset) => {
+    const range = getAnalyticsPresetRange(preset)
+
+    setAnalyticsPreset(preset)
+    setAnalyticsStartDate(range.startDate)
+    setAnalyticsEndDate(range.endDate)
+  }
+  const analyticsDailyMax = Math.max(
+    1,
+    ...analyticsInsights.daily.map((item) => Math.max(item.views, item.clicks, item.visitors)),
+  )
+  const analyticsTopMax = Math.max(
+    1,
+    ...[
+      analyticsInsights.sources,
+      analyticsInsights.countries,
+      analyticsInsights.regions,
+      analyticsInsights.cities,
+      analyticsInsights.pages,
+      analyticsInsights.clickTargets,
+    ].flat().map((item) => item.count),
+  )
   const pendingTestimonials = testimonials.filter((item) => item.status === 'pending').length
   const approvedTestimonials = testimonials.filter((item) => item.status === 'approved').length
   const pendingCertificateNameRequests = certificateNameChangeRequests.filter(
@@ -1088,6 +1191,56 @@ function AdminPage({
     { id: 'Disetujui', label: 'Disetujui' },
     { id: 'Perlu Revisi', label: 'Revisi' },
   ]
+
+  useEffect(() => {
+    if (activeMenu !== 'overview' || !sessionToken) {
+      return undefined
+    }
+
+    const controller = new AbortController()
+    const params = new URLSearchParams({
+      startDate: analyticsStartDate,
+      endDate: analyticsEndDate,
+    })
+
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        setIsAnalyticsLoading(true)
+        setAnalyticsError('')
+      }
+    })
+
+    fetch(`${analyticsApiPath}?${params.toString()}`, {
+      cache: 'no-store',
+      headers: {
+        'X-Session-Token': sessionToken,
+      },
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Insight pengunjung belum bisa dimuat.')
+        }
+
+        setAnalyticsInsights(data.analytics || createEmptyAnalyticsInsights())
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') {
+          return
+        }
+
+        setAnalyticsError(error.message || 'Insight pengunjung belum bisa dimuat.')
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsAnalyticsLoading(false)
+        }
+      })
+
+    return () => controller.abort()
+  }, [activeMenu, analyticsEndDate, analyticsStartDate, sessionToken])
 
   useEffect(() => {
     const editor = materialDescriptionRef.current
@@ -2686,6 +2839,27 @@ function AdminPage({
     }
   }
 
+  const renderInsightList = (title, icon, items, emptyLabel = 'Belum ada data') => (
+    <article className="traffic-breakdown-card">
+      <div className="traffic-breakdown-title">
+        <Icon name={icon} />
+        <h3>{title}</h3>
+      </div>
+      <div className="traffic-ranking-list">
+        {items.slice(0, 6).map((item) => (
+          <div className="traffic-ranking-row" key={`${title}-${item.label}`}>
+            <span>{item.label}</span>
+            <strong>{formatCompactNumber(item.count)}</strong>
+            <i style={{ '--traffic-row-size': `${Math.max(6, (item.count / analyticsTopMax) * 100)}%` }} />
+          </div>
+        ))}
+        {!items.length && (
+          <p className="traffic-empty-text">{emptyLabel}</p>
+        )}
+      </div>
+    </article>
+  )
+
   return (
     <DashboardShell
       role="admin"
@@ -2704,6 +2878,137 @@ function AdminPage({
             <MetricCard icon="message" label="Bantuan masuk" value={waitingSupportCount} />
             <MetricCard icon="fileText" label="Tugas masuk" value={pendingSubmissions} />
             <MetricCard icon="wallet" label="Omzet terbayar" value={formatRupiah(totalPaidRevenue)} />
+          </section>
+
+          <section className="traffic-insight-panel panel" aria-label="Insight trafik pengunjung">
+            <div className="traffic-insight-heading">
+              <div>
+                <p className="eyebrow">Traffic insight</p>
+                <h2>Grafik pengunjung website</h2>
+                <span>
+                  Pantau view, klik, asal traffic, lokasi pengunjung, dan halaman yang paling sering dibuka.
+                </span>
+              </div>
+              <div className="traffic-range-panel">
+                <div className="traffic-preset-group" aria-label="Preset tanggal insight">
+                  {[
+                    ['today', 'Hari ini'],
+                    ['7d', '7 hari terakhir'],
+                    ['28d', '28 hari terakhir'],
+                  ].map(([preset, label]) => (
+                    <button
+                      className={analyticsPreset === preset ? 'active' : ''}
+                      type="button"
+                      key={preset}
+                      onClick={() => applyAnalyticsPreset(preset)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="traffic-date-controls">
+                  <label>
+                    <Icon name="calendar" />
+                    Mulai
+                    <input
+                      type="date"
+                      value={analyticsStartDate}
+                      onChange={(event) => {
+                        setAnalyticsPreset('custom')
+                        setAnalyticsStartDate(event.target.value)
+                      }}
+                    />
+                  </label>
+                  <label>
+                    <Icon name="calendar" />
+                    Sampai
+                    <input
+                      type="date"
+                      value={analyticsEndDate}
+                      onChange={(event) => {
+                        setAnalyticsPreset('custom')
+                        setAnalyticsEndDate(event.target.value)
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="traffic-metric-grid">
+              <article>
+                <Icon name="eye" />
+                <span>Total view</span>
+                <strong>{formatCompactNumber(analyticsInsights.totals.views)}</strong>
+              </article>
+              <article>
+                <Icon name="target" />
+                <span>Total klik</span>
+                <strong>{formatCompactNumber(analyticsInsights.totals.clicks)}</strong>
+              </article>
+              <article>
+                <Icon name="users" />
+                <span>Pengunjung unik</span>
+                <strong>{formatCompactNumber(analyticsInsights.totals.visitors)}</strong>
+              </article>
+              <article>
+                <Icon name="trendingUp" />
+                <span>Sesi akses</span>
+                <strong>{formatCompactNumber(analyticsInsights.totals.sessions)}</strong>
+              </article>
+            </div>
+
+            <div className="traffic-chart-card">
+              <div className="traffic-chart-heading">
+                <div>
+                  <h3>Aktivitas harian</h3>
+                  <p>
+                    {formatAnalyticsDate(analyticsInsights.range.startDate)} - {formatAnalyticsDate(analyticsInsights.range.endDate)}
+                  </p>
+                </div>
+                {isAnalyticsLoading && <span>Memuat insight...</span>}
+                {analyticsError && <span className="traffic-error-text">{analyticsError}</span>}
+              </div>
+              <div className="traffic-chart" aria-label="Grafik view dan klik harian">
+                {analyticsInsights.daily.map((item) => (
+                  <div className="traffic-chart-day" key={item.dateKey}>
+                    <div className="traffic-chart-bars">
+                      <i
+                        className="views"
+                        title={`${item.views} view`}
+                        style={{ '--traffic-bar-size': `${Math.max(3, (item.views / analyticsDailyMax) * 100)}%` }}
+                      />
+                      <i
+                        className="clicks"
+                        title={`${item.clicks} klik`}
+                        style={{ '--traffic-bar-size': `${Math.max(3, (item.clicks / analyticsDailyMax) * 100)}%` }}
+                      />
+                    </div>
+                    <small>{formatAnalyticsDate(item.dateKey)}</small>
+                  </div>
+                ))}
+                {!analyticsInsights.daily.length && (
+                  <article className="traffic-chart-empty">
+                    <Icon name="trendingUp" />
+                    <strong>Belum ada trafik pada rentang ini</strong>
+                    <span>Data akan mulai muncul setelah pengunjung membuka atau klik website.</span>
+                  </article>
+                )}
+              </div>
+              <div className="traffic-legend">
+                <span><i className="views" /> View</span>
+                <span><i className="clicks" /> Klik</span>
+              </div>
+            </div>
+
+            <div className="traffic-breakdown-grid">
+              {renderInsightList('Asal traffic', 'share', analyticsInsights.sources)}
+              {renderInsightList('Negara', 'shield', analyticsInsights.countries)}
+              {renderInsightList('Daerah', 'target', analyticsInsights.regions)}
+              {renderInsightList('Kota', 'users', analyticsInsights.cities)}
+              {renderInsightList('Halaman teratas', 'layoutDashboard', analyticsInsights.pages)}
+              {renderInsightList('Klik teratas', 'link', analyticsInsights.clickTargets)}
+            </div>
           </section>
 
           <section className="admin-actions">
