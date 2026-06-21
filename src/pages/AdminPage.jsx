@@ -2868,7 +2868,7 @@ function AdminPage({
         <h3>{title}</h3>
       </div>
       <div className="traffic-ranking-list">
-        {items.slice(0, 6).map((item) => (
+        {items.map((item) => (
           <div className="traffic-ranking-row" key={`${title}-${item.label}`}>
             <span>{item.label}</span>
             <strong>{formatCompactNumber(item.count)}</strong>

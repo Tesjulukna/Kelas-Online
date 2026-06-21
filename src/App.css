@@ -3921,7 +3921,7 @@ img {
 }
 
 .material-modal-backdrop {
-  z-index: 120;
+  z-index: 11000 !important;
 }
 
 .material-modal-editor {
@@ -4798,7 +4798,7 @@ img {
 }
 
 .prompt-modal-backdrop {
-  z-index: 150;
+  z-index: 12000 !important;
 }
 
 .prompt-modal-editor {
@@ -5887,6 +5887,27 @@ img {
 .traffic-ranking-list {
   display: grid;
   gap: 9px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+}
+
+.traffic-ranking-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.traffic-ranking-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.traffic-ranking-list::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+
+.traffic-ranking-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
 }
 
 .traffic-ranking-row {
