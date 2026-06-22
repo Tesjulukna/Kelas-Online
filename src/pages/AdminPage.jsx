@@ -1206,6 +1206,17 @@ function AdminPage({
       ]),
     ).entries(),
   ].filter(([classId]) => classId)
+  const memberAccessibleClasses = selectedSubmissionMember
+    ? getMemberAccessibleClasses(selectedSubmissionMember, classes)
+    : []
+  const dropdownClassOptions = selectedSubmissionMember
+    ? [
+        ...new Map([
+          ...memberAccessibleClasses.map((course) => [course.id, course.title]),
+          ...selectedMemberClassOptions,
+        ]).entries(),
+      ].filter(([classId]) => classId)
+    : []
   const submissionStatusOptions = [
     { id: 'all', label: 'Semua' },
     { id: 'Menunggu Review', label: 'Menunggu' },
@@ -4909,7 +4920,18 @@ function AdminPage({
                     onClick={() => {
                       setSelectedSubmissionMemberId(member.id)
                       setSubmissionStatusFilter('all')
-                      setSubmissionClassFilter('all')
+                      if (submissionListClassFilter !== 'all') {
+                        setSubmissionClassFilter(submissionListClassFilter)
+                      } else {
+                        const memberClasses = getMemberAccessibleClasses(member, classes)
+                        if (memberClasses.length > 1) {
+                          setSubmissionClassFilter('choose')
+                        } else if (memberClasses.length === 1) {
+                          setSubmissionClassFilter(memberClasses[0].id)
+                        } else {
+                          setSubmissionClassFilter('all')
+                        }
+                      }
                     }}
                   >
                     Lihat Tugas
@@ -5520,8 +5542,13 @@ function AdminPage({
                   value={submissionClassFilter}
                   onChange={(event) => setSubmissionClassFilter(event.target.value)}
                 >
-                  <option value="all">Semua kelas</option>
-                  {selectedMemberClassOptions.map(([classId, classTitle]) => (
+                  {memberAccessibleClasses.length > 1 && (
+                    <option value="choose">-- Pilih Kelas --</option>
+                  )}
+                  {submissionClassFilter !== 'choose' && (
+                    <option value="all">Semua kelas</option>
+                  )}
+                  {dropdownClassOptions.map(([classId, classTitle]) => (
                     <option value={classId} key={classId}>
                       {classTitle}
                     </option>
@@ -5529,62 +5556,103 @@ function AdminPage({
                 </select>
               </label>
             </div>
-            <div
-              className="admin-table submission-table member-submission-table compact-list-table"
-              role="table"
-              aria-label="Tugas per materi"
-            >
-              <div className="table-row table-head" role="row">
-                <span role="columnheader">Materi</span>
-                <span role="columnheader">Status</span>
-                <span role="columnheader">Dikirim</span>
-                <span role="columnheader">Aksi</span>
+            {submissionClassFilter === 'choose' ? (
+              <div className="class-selection-screen">
+                <p className="selection-desc">
+                  Member ini terdaftar di beberapa kelas. Silakan pilih kelas untuk mengelola tugasnya:
+                </p>
+                <div className="class-selection-grid">
+                  {memberAccessibleClasses.map((course) => {
+                    const courseSubmissions = selectedMemberSubmissions.filter(
+                      (s) => s.classId === course.id
+                    )
+                    const pendingCount = courseSubmissions.filter(
+                      (s) => s.status === 'Menunggu Review'
+                    ).length
+
+                    return (
+                      <button
+                        key={course.id}
+                        type="button"
+                        className="class-selection-card"
+                        onClick={() => setSubmissionClassFilter(course.id)}
+                      >
+                        <div className="class-card-icon">
+                          <Icon name="bookOpen" />
+                        </div>
+                        <div className="class-card-info">
+                          <h4>{course.title}</h4>
+                          <p>
+                            {courseSubmissions.length} tugas dikirim
+                            {pendingCount > 0 && (
+                              <mark className="class-card-badge">{pendingCount} menunggu feedback</mark>
+                            )}
+                          </p>
+                        </div>
+                        <Icon name="arrowRight" />
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-              {visibleMemberSubmissions.map((submission) => (
-                <div className="table-row" role="row" key={submission.id}>
-                  <span className="support-message" data-label="Materi" role="cell">
-                    {submission.attachmentUrl && (
-                      <img
-                        className="submission-table-thumb"
-                        src={submission.attachmentUrl}
-                        alt=""
-                      />
-                    )}
-                    <strong>{submission.materialTitle}</strong>
-                    <small>{submission.classTitle}</small>
-                    <small className="mobile-list-meta">
-                      {submission.status} -{' '}
+            ) : (
+              <div
+                className="admin-table submission-table member-submission-table compact-list-table"
+                role="table"
+                aria-label="Tugas per materi"
+              >
+                <div className="table-row table-head" role="row">
+                  <span role="columnheader">Materi</span>
+                  <span role="columnheader">Status</span>
+                  <span role="columnheader">Dikirim</span>
+                  <span role="columnheader">Aksi</span>
+                </div>
+                {visibleMemberSubmissions.map((submission) => (
+                  <div className="table-row" role="row" key={submission.id}>
+                    <span className="support-message" data-label="Materi" role="cell">
+                      {submission.attachmentUrl && (
+                        <img
+                          className="submission-table-thumb"
+                          src={submission.attachmentUrl}
+                          alt=""
+                        />
+                      )}
+                      <strong>{submission.materialTitle}</strong>
+                      <small>{submission.classTitle}</small>
+                      <small className="mobile-list-meta">
+                        {submission.status} -{' '}
+                        {submission.submittedAt
+                          ? new Date(submission.submittedAt).toLocaleDateString('id-ID')
+                          : '-'}
+                      </small>
+                      {submission.attachmentUrl && (
+                        <small className="submission-image-note">Ada gambar tugas</small>
+                      )}
+                    </span>
+                    <span data-label="Status" role="cell">
+                      <mark>{submission.status}</mark>
+                    </span>
+                    <span data-label="Dikirim" role="cell">
                       {submission.submittedAt
                         ? new Date(submission.submittedAt).toLocaleDateString('id-ID')
                         : '-'}
-                    </small>
-                    {submission.attachmentUrl && (
-                      <small className="submission-image-note">Ada gambar tugas</small>
-                    )}
-                  </span>
-                  <span data-label="Status" role="cell">
-                    <mark>{submission.status}</mark>
-                  </span>
-                  <span data-label="Dikirim" role="cell">
-                    {submission.submittedAt
-                      ? new Date(submission.submittedAt).toLocaleDateString('id-ID')
-                      : '-'}
-                  </span>
-                  <span className="row-actions" data-label="Aksi" role="cell">
-                    <button type="button" onClick={() => openSubmissionReview(submission)}>
-                      Lihat Tugas
-                    </button>
-                  </span>
-                </div>
-              ))}
-              {!visibleMemberSubmissions.length && (
-                <article className="empty-state table-empty">
-                  <Icon name="fileText" />
-                  <h3>Tidak ada tugas sesuai filter</h3>
-                  <p>Pilih filter lain untuk melihat kiriman tugas member ini.</p>
-                </article>
-              )}
-            </div>
+                    </span>
+                    <span className="row-actions" data-label="Aksi" role="cell">
+                      <button type="button" onClick={() => openSubmissionReview(submission)}>
+                        Lihat Tugas
+                      </button>
+                    </span>
+                  </div>
+                ))}
+                {!visibleMemberSubmissions.length && (
+                  <article className="empty-state table-empty">
+                    <Icon name="fileText" />
+                    <h3>Tidak ada tugas sesuai filter</h3>
+                    <p>Pilih filter lain untuk melihat kiriman tugas member ini.</p>
+                  </article>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

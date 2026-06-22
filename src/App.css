@@ -16314,4 +16314,87 @@ img {
   }
 }
 
+/* Class Selection in Admin Submissions Popup */
+.class-selection-screen {
+  padding: 1.5rem 0.5rem;
+}
+.selection-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 1.5rem;
+}
+.class-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+.class-selection-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1.25rem;
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.class-selection-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-color, #2563eb);
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1), 0 2px 4px -1px rgba(37, 99, 235, 0.06);
+}
+.class-selection-card:active {
+  transform: translateY(0);
+}
+.class-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.5rem;
+  background-color: rgba(37, 99, 235, 0.1);
+  color: var(--primary-color, #2563eb);
+  flex-shrink: 0;
+}
+.class-card-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.class-card-info {
+  flex-grow: 1;
+  min-width: 0;
+}
+.class-card-info h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color, #111827);
+  margin: 0 0 0.25rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.class-card-info p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0;
+}
+.class-card-badge {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+
 
