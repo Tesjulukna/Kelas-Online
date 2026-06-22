@@ -5609,7 +5609,7 @@ function AdminPage({
                 </div>
                 {visibleMemberSubmissions.map((submission) => (
                   <div className="table-row" role="row" key={submission.id}>
-                    <span className="support-message" data-label="Materi" role="cell">
+                    <span className="submission-materi-cell" data-label="Materi" role="cell">
                       {submission.attachmentUrl && (
                         <img
                           className="submission-table-thumb"
@@ -5617,17 +5617,19 @@ function AdminPage({
                           alt=""
                         />
                       )}
-                      <strong>{submission.materialTitle}</strong>
-                      <small>{submission.classTitle}</small>
-                      <small className="mobile-list-meta">
-                        {submission.status} -{' '}
-                        {submission.submittedAt
-                          ? new Date(submission.submittedAt).toLocaleDateString('id-ID')
-                          : '-'}
-                      </small>
-                      {submission.attachmentUrl && (
-                        <small className="submission-image-note">Ada gambar tugas</small>
-                      )}
+                      <span className="submission-materi-info">
+                        <strong>{submission.materialTitle}</strong>
+                        <small>{submission.classTitle}</small>
+                        <small className="mobile-list-meta">
+                          {submission.status} -{' '}
+                          {submission.submittedAt
+                            ? new Date(submission.submittedAt).toLocaleDateString('id-ID')
+                            : '-'}
+                        </small>
+                        {submission.attachmentUrl && (
+                          <small className="submission-image-note">Ada gambar tugas</small>
+                        )}
+                      </span>
                     </span>
                     <span data-label="Status" role="cell">
                       <mark>{submission.status}</mark>

@@ -16395,6 +16395,57 @@ img {
   background-color: #fef3c7;
   color: #d97706;
 }
+/* Responsive Class Selection Screen Adjustment */
+.class-selection-screen {
+  padding: 1.5rem 1.25rem !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+}
 
+@media (max-width: 760px) {
+  .class-selection-screen {
+    padding: 1rem 0.88rem !important;
+  }
+  .class-selection-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.88rem !important;
+  }
+}
 
+/* Submission Materi Cell Flex Layout */
+.member-submission-table .submission-materi-cell {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  text-align: left !important;
+}
+
+.member-submission-table .submission-materi-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.member-submission-table .submission-table-thumb {
+  width: 48px !important;
+  height: 48px !important;
+  object-fit: cover !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--color-border, #e5e7eb) !important;
+  flex: 0 0 48px !important;
+}
+
+/* Desktop Columns Alignment for Member Submissions Table */
+@media (min-width: 761px) {
+  .member-submission-table .table-row {
+    grid-template-columns: minmax(220px, 2fr) minmax(100px, 0.6fr) minmax(120px, 0.8fr) minmax(130px, 0.8fr) !important;
+    min-width: 650px !important;
+    width: 100% !important;
+  }
+}
 
