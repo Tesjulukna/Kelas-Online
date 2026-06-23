@@ -2872,6 +2872,74 @@ function AdminPage({
     }
   }
 
+  const getInsightItemLabel = (title, rawLabel) => {
+    if (!rawLabel) return 'Tidak diketahui'
+    const code = String(rawLabel).toUpperCase().trim()
+    if (title === 'Negara') {
+      const countryNames = {
+        ID: 'Indonesia',
+        SG: 'Singapura',
+        MY: 'Malaysia',
+        US: 'Amerika Serikat',
+        JP: 'Jepang',
+        KR: 'Korea Selatan',
+        CN: 'Tiongkok',
+        AU: 'Australia',
+        GB: 'Inggris',
+        DE: 'Jerman',
+        NL: 'Belanda',
+        HK: 'Hong Kong',
+        TW: 'Taiwan',
+        TH: 'Thailand',
+        PH: 'Filipina',
+        VN: 'Vietnam',
+        IN: 'India',
+        SA: 'Arab Saudi',
+      }
+      return countryNames[code] || rawLabel
+    }
+    if (title === 'Daerah') {
+      const regionNames = {
+        AC: 'Aceh',
+        BA: 'Bali',
+        BT: 'Banten',
+        BE: 'Bengkulu',
+        GO: 'Gorontalo',
+        JK: 'DKI Jakarta',
+        JA: 'Jambi',
+        JB: 'Jawa Barat',
+        JT: 'Jawa Tengah',
+        JI: 'Jawa Timur',
+        KB: 'Kalimantan Barat',
+        KS: 'Kalimantan Selatan',
+        KT: 'Kalimantan Tengah',
+        KI: 'Kalimantan Timur',
+        KU: 'Kalimantan Utara',
+        BB: 'Kepulauan Bangka Belitung',
+        KR: 'Kepulauan Riau',
+        LA: 'Lampung',
+        MA: 'Maluku',
+        MU: 'Maluku Utara',
+        NB: 'Nusa Tenggara Barat',
+        NT: 'Nusa Tenggara Timur',
+        PA: 'Papua',
+        PB: 'Papua Barat',
+        RI: 'Riau',
+        SR: 'Sulawesi Barat',
+        SN: 'Sulawesi Selatan',
+        ST: 'Sulawesi Tengah',
+        SG: 'Sulawesi Tenggara',
+        SA: 'Sulawesi Utara',
+        SB: 'Sumatera Barat',
+        SS: 'Sumatera Selatan',
+        SU: 'Sumatera Utara',
+        YO: 'DI Yogyakarta',
+      }
+      return regionNames[code] || rawLabel
+    }
+    return rawLabel
+  }
+
   const renderInsightList = (title, icon, items, emptyLabel = 'Belum ada data') => (
     <article className="traffic-breakdown-card">
       <div className="traffic-breakdown-title">
@@ -2881,7 +2949,7 @@ function AdminPage({
       <div className="traffic-ranking-list">
         {items.map((item) => (
           <div className="traffic-ranking-row" key={`${title}-${item.label}`}>
-            <span>{item.label}</span>
+            <span>{getInsightItemLabel(title, item.label)}</span>
             <strong>{formatCompactNumber(item.count)}</strong>
             <i style={{ '--traffic-row-size': `${Math.max(6, (item.count / analyticsTopMax) * 100)}%` }} />
           </div>

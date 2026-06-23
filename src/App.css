@@ -10879,7 +10879,21 @@ img {
   }
 
   .submission-member-summary {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .submission-member-summary span {
+    padding: 6px 8px;
+    text-align: center;
+  }
+
+  .submission-member-summary small {
+    font-size: 0.64rem;
+  }
+
+  .submission-member-summary strong {
+    font-size: 0.88rem;
   }
 
   .submission-member-backdrop {
@@ -10907,12 +10921,14 @@ img {
     height: calc(100dvh - 16px);
     max-height: calc(100dvh - 16px);
     border-radius: 12px;
+    padding: 14px !important;
+    gap: 12px !important;
   }
 
   .submission-member-modal > .modal-heading {
     align-items: center;
     gap: 10px;
-    padding: 12px;
+    padding: 0 0 4px 0;
   }
 
   .submission-member-modal > .modal-heading .eyebrow {
@@ -10932,7 +10948,8 @@ img {
 
   .submission-member-modal > .submission-member-summary,
   .submission-member-modal > .submission-filter-bar {
-    padding: 12px 14px 0;
+    padding: 0;
+    margin: 0;
   }
 
   .submission-member-modal > .submission-filter-bar {
@@ -10941,8 +10958,8 @@ img {
   }
 
   .submission-member-modal .member-submission-table {
-    margin: 12px 14px 14px;
-    padding-right: 2px;
+    margin: 4px 0 0 0;
+    padding-right: 0;
   }
 
   .member-submission-table.compact-list-table {
@@ -10957,10 +10974,10 @@ img {
   .member-submission-table.compact-list-table .table-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    gap: 8px;
     align-items: stretch;
     min-width: 0;
-    padding: 12px;
+    padding: 10px;
   }
 
   .member-submission-table.compact-list-table .row-actions {
@@ -11051,18 +11068,18 @@ img {
   .submission-member-modal > .submission-member-summary,
   .submission-member-modal > .submission-filter-bar,
   .submission-member-modal .member-submission-table {
-    margin-inline: 10px;
+    margin-inline: 0;
     padding-inline: 0;
   }
 
   .submission-member-modal > .submission-member-summary,
   .submission-member-modal > .submission-filter-bar {
-    margin: 0 10px;
-    padding-top: 10px;
+    margin: 0;
+    padding-top: 0;
   }
 
   .submission-member-summary span {
-    padding: 8px 10px;
+    padding: 6px 8px;
   }
 }
 
