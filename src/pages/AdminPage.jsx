@@ -733,9 +733,8 @@ function getMemberProgressSummary(member, classes, submissions) {
     title: latest.classTitle,
     detail:
       latest.materialIndex >= 0
-        ? `Materi ${latest.materialIndex + 1}/${Math.max(1, latest.materialCount)}: ${
-            latest.materialTitle || 'Belum ada judul'
-          }`
+        ? `Materi ${latest.materialIndex + 1}/${Math.max(1, latest.materialCount)}: ${latest.materialTitle || 'Belum ada judul'
+        }`
         : 'Belum ada materi yang dibuka.',
     tasksLabel,
     lastActivityAt: latest.lastActivityAt,
@@ -760,28 +759,28 @@ function AdminPage({
   publicActivities = [],
   websiteSettings,
   onClassesChange,
-  onDigitalProductsChange = async () => {},
-  onWebsiteSettingsChange = async () => {},
+  onDigitalProductsChange = async () => { },
+  onWebsiteSettingsChange = async () => { },
   onSyncTripayPaymentMethods = async () => [],
-  onDownloadBackup = async () => {},
-  onRestoreBackup = async () => {},
-  onCreateMember = async () => {},
-  onUpdateMember = async () => {},
-  onDeleteMember = async () => {},
-  onUpdateSupportTicket = async () => {},
-  onDeleteSupportTicket = async () => {},
-  onUpdateSubmission = async () => {},
-  onUpdateTestimonial = async () => {},
-  onDeleteTestimonial = async () => {},
-  onReviewCertificateNameChange = async () => {},
-  onSaveCertificateTemplate = async () => {},
-  onDuplicateCertificateTemplate = async () => {},
-  onDeleteCertificateTemplate = async () => {},
+  onDownloadBackup = async () => { },
+  onRestoreBackup = async () => { },
+  onCreateMember = async () => { },
+  onUpdateMember = async () => { },
+  onDeleteMember = async () => { },
+  onUpdateSupportTicket = async () => { },
+  onDeleteSupportTicket = async () => { },
+  onUpdateSubmission = async () => { },
+  onUpdateTestimonial = async () => { },
+  onDeleteTestimonial = async () => { },
+  onReviewCertificateNameChange = async () => { },
+  onSaveCertificateTemplate = async () => { },
+  onDuplicateCertificateTemplate = async () => { },
+  onDeleteCertificateTemplate = async () => { },
   activeMenu,
   onMenuChange,
   isMenuOpen,
   onCloseMenu,
-  onNotify = () => {},
+  onNotify = () => { },
 }) {
   const [showEarnings, setShowEarnings] = useState(() => {
     try {
@@ -1211,11 +1210,11 @@ function AdminPage({
     : []
   const dropdownClassOptions = selectedSubmissionMember
     ? [
-        ...new Map([
-          ...memberAccessibleClasses.map((course) => [course.id, course.title]),
-          ...selectedMemberClassOptions,
-        ]).entries(),
-      ].filter(([classId]) => classId)
+      ...new Map([
+        ...memberAccessibleClasses.map((course) => [course.id, course.title]),
+        ...selectedMemberClassOptions,
+      ]).entries(),
+    ].filter(([classId]) => classId)
     : []
   const submissionStatusOptions = [
     { id: 'all', label: 'Semua' },
@@ -1530,9 +1529,9 @@ function AdminPage({
       addOns: (current.addOns || []).map((addOn) =>
         addOn.id === addOnId
           ? {
-              ...addOn,
-              [field]: field === 'price' ? parseRupiahValue(value) : value,
-            }
+            ...addOn,
+            [field]: field === 'price' ? parseRupiahValue(value) : value,
+          }
           : addOn,
       ),
     }))
@@ -1767,11 +1766,11 @@ function AdminPage({
           ? checked
           : ['displayStudents', 'rating'].includes(name)
             ? value
-          : name === 'students' || name === 'progress'
-          ? Number(value)
-          : name === 'price'
-            ? parseRupiahValue(value)
-            : value,
+            : name === 'students' || name === 'progress'
+              ? Number(value)
+              : name === 'price'
+                ? parseRupiahValue(value)
+                : value,
     }))
   }
 
@@ -1809,11 +1808,11 @@ function AdminPage({
       materials: current.materials.map((material) =>
         material.id === materialId
           ? {
-              ...material,
-              [field]: ['requiresTask', 'allowTaskImage', 'requireTaskImage'].includes(field)
-                ? Boolean(value)
-                : value,
-            }
+            ...material,
+            [field]: ['requiresTask', 'allowTaskImage', 'requireTaskImage'].includes(field)
+              ? Boolean(value)
+              : value,
+          }
           : material,
       ),
     }))
@@ -1905,12 +1904,12 @@ function AdminPage({
     setPromptEditorState((current) =>
       current
         ? {
-            ...current,
-            draft: {
-              ...current.draft,
-              [field]: value,
-            },
-          }
+          ...current,
+          draft: {
+            ...current.draft,
+            [field]: value,
+          },
+        }
         : current,
     )
   }
@@ -1947,8 +1946,7 @@ function AdminPage({
           ...draft,
           title:
             draft.title ||
-            `Prompt ${
-              promptIndex >= 0 ? promptIndex + 1 : promptItems.length + 1
+            `Prompt ${promptIndex >= 0 ? promptIndex + 1 : promptItems.length + 1
             }`,
         }
 
@@ -1957,8 +1955,8 @@ function AdminPage({
           promptItems:
             promptIndex >= 0
               ? promptItems.map((item) =>
-                  item.id === promptEditorState.promptId ? nextPrompt : item,
-                )
+                item.id === promptEditorState.promptId ? nextPrompt : item,
+              )
               : [...promptItems, nextPrompt],
         }
       }),
@@ -1973,11 +1971,11 @@ function AdminPage({
       materials: current.materials.map((material) =>
         material.id === materialId
           ? {
-              ...material,
-              promptItems: (material.promptItems ?? []).filter(
-                (item) => item.id !== promptId,
-              ),
-            }
+            ...material,
+            promptItems: (material.promptItems ?? []).filter(
+              (item) => item.id !== promptId,
+            ),
+          }
           : material,
       ),
     }))
@@ -1992,11 +1990,11 @@ function AdminPage({
       materials: current.materials.map((material) =>
         material.id === materialId
           ? {
-              ...material,
-              resourceLinks: (material.resourceLinks ?? []).map((link) =>
-                link.id === linkId ? { ...link, [field]: value } : link,
-              ),
-            }
+            ...material,
+            resourceLinks: (material.resourceLinks ?? []).map((link) =>
+              link.id === linkId ? { ...link, [field]: value } : link,
+            ),
+          }
           : material,
       ),
     }))
@@ -2008,12 +2006,12 @@ function AdminPage({
       materials: current.materials.map((material) =>
         material.id === materialId
           ? {
-              ...material,
-              resourceLinks: [
-                ...(material.resourceLinks ?? []),
-                createEmptyResourceLink(),
-              ],
-            }
+            ...material,
+            resourceLinks: [
+              ...(material.resourceLinks ?? []),
+              createEmptyResourceLink(),
+            ],
+          }
           : material,
       ),
     }))
@@ -2025,11 +2023,11 @@ function AdminPage({
       materials: current.materials.map((material) =>
         material.id === materialId
           ? {
-              ...material,
-              resourceLinks: (material.resourceLinks ?? []).filter(
-                (link) => link.id !== linkId,
-              ),
-            }
+            ...material,
+            resourceLinks: (material.resourceLinks ?? []).filter(
+              (link) => link.id !== linkId,
+            ),
+          }
           : material,
       ),
     }))
@@ -2081,10 +2079,10 @@ function AdminPage({
         materials: current.materials.map((material) =>
           material.id === materialId
             ? {
-                ...material,
-                imageFile: imageUrl,
-                imageName: file.name,
-              }
+              ...material,
+              imageFile: imageUrl,
+              imageName: file.name,
+            }
             : material,
         ),
       }))
@@ -2138,10 +2136,10 @@ function AdminPage({
         materials: current.materials.map((material) =>
           material.id === materialId
             ? {
-                ...material,
-                pdfFile: data.url,
-                pdfName: data.name || file.name,
-              }
+              ...material,
+              pdfFile: data.url,
+              pdfName: data.name || file.name,
+            }
             : material,
         ),
       }))
@@ -2239,11 +2237,11 @@ function AdminPage({
             materials: current.materials.map((material) =>
               material.id === materialId
                 ? {
-                    ...material,
-                    videoFile: upload.file || upload.path || '',
-                    videoName: upload.name || file.name,
-                    videoType: upload.type || file.type,
-                  }
+                  ...material,
+                  videoFile: upload.file || upload.path || '',
+                  videoName: upload.name || file.name,
+                  videoType: upload.type || file.type,
+                }
                 : material,
             ),
           }))
@@ -2531,20 +2529,20 @@ function AdminPage({
       highlighted: item.highlighted === true,
       materials: item.materials?.length
         ? item.materials.map((material) => ({
-            ...material,
-            description: material.description ?? '',
-            videoFile: material.videoFile ?? '',
-            videoName: material.videoName ?? '',
-            videoType: material.videoType ?? '',
-            imageFile: material.imageFile ?? '',
-            imageName: material.imageName ?? '',
-            pdfFile: material.pdfFile ?? '',
-            pdfName: material.pdfName ?? '',
-            allowTaskImage: material.allowTaskImage !== false,
-            requireTaskImage: Boolean(material.requireTaskImage),
-            promptItems: material.promptItems ?? [],
-            resourceLinks: material.resourceLinks ?? [],
-          }))
+          ...material,
+          description: material.description ?? '',
+          videoFile: material.videoFile ?? '',
+          videoName: material.videoName ?? '',
+          videoType: material.videoType ?? '',
+          imageFile: material.imageFile ?? '',
+          imageName: material.imageName ?? '',
+          pdfFile: material.pdfFile ?? '',
+          pdfName: material.pdfName ?? '',
+          allowTaskImage: material.allowTaskImage !== false,
+          requireTaskImage: Boolean(material.requireTaskImage),
+          promptItems: material.promptItems ?? [],
+          resourceLinks: material.resourceLinks ?? [],
+        }))
         : [createEmptyMaterial()],
     })
     setEditingClassId(item.id)
@@ -2749,10 +2747,10 @@ function AdminPage({
       memberName: ticket.memberName,
       subject: ticket.subject,
       message: ticket.message,
-        status: ticket.status === 'Menunggu' ? 'Dibalas' : ticket.status,
-        answer: ticket.answer ?? '',
-        replyDraft: '',
-        replies: ticket.replies ?? [],
+      status: ticket.status === 'Menunggu' ? 'Dibalas' : ticket.status,
+      answer: ticket.answer ?? '',
+      replyDraft: '',
+      replies: ticket.replies ?? [],
     })
     setIsSupportModalOpen(true)
   }
@@ -2895,6 +2893,10 @@ function AdminPage({
         VN: 'Vietnam',
         IN: 'India',
         SA: 'Arab Saudi',
+        BH: 'Bahrain',
+        QA: 'Qatar',
+        PL: 'Polandia',
+        IT: 'Italia',
       }
       return countryNames[code] || rawLabel
     }
@@ -3299,23 +3301,23 @@ function AdminPage({
                               : 'Kelas disembunyikan dari homepage.',
                           )
                         }
-                          >
-                            {item.showOnHomepage === false ? 'Show homepage' : 'Hide homepage'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateClassQuickAction(
-                                item.id,
-                                { showOnMember: item.showOnMember === false },
-                                item.showOnMember === false
-                                  ? 'Kelas ditampilkan di Kelas Tersedia member.'
-                                  : 'Kelas disembunyikan dari Kelas Tersedia member.',
-                              )
-                            }
-                          >
-                            {item.showOnMember === false ? 'Show member' : 'Hide member'}
-                          </button>
+                      >
+                        {item.showOnHomepage === false ? 'Show homepage' : 'Hide homepage'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClassQuickAction(
+                            item.id,
+                            { showOnMember: item.showOnMember === false },
+                            item.showOnMember === false
+                              ? 'Kelas ditampilkan di Kelas Tersedia member.'
+                              : 'Kelas disembunyikan dari Kelas Tersedia member.',
+                          )
+                        }
+                      >
+                        {item.showOnMember === false ? 'Show member' : 'Hide member'}
+                      </button>
                       <button
                         type="button"
                         onClick={() =>
@@ -4271,9 +4273,8 @@ function AdminPage({
             </div>
             <div className="member-heading-actions">
               <button
-                className={`mobile-member-filter-toggle ${
-                  hasMemberFilter ? 'active' : ''
-                }`}
+                className={`mobile-member-filter-toggle ${hasMemberFilter ? 'active' : ''
+                  }`}
                 type="button"
                 aria-label="Tampilkan pencarian dan filter member"
                 aria-expanded={isMemberFilterOpen}
@@ -4721,12 +4722,12 @@ function AdminPage({
                     <span data-label="Waktu" role="cell">
                       {payment.createdAt
                         ? new Date(payment.createdAt).toLocaleString('id-ID', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
                         : '-'}
                     </span>
                   </div>
@@ -4851,9 +4852,8 @@ function AdminPage({
               <h2>{pendingSubmissions} tugas menunggu feedback</h2>
             </div>
             <button
-              className={`mobile-submission-filter-toggle ${
-                hasSubmissionListFilter ? 'active' : ''
-              }`}
+              className={`mobile-submission-filter-toggle ${hasSubmissionListFilter ? 'active' : ''
+                }`}
               type="button"
               aria-label="Tampilkan pencarian dan filter tugas"
               aria-expanded={isSubmissionFilterOpen}
@@ -4863,9 +4863,8 @@ function AdminPage({
             </button>
           </div>
           <div
-            className={`submission-filter-bar submission-list-filter-bar ${
-              isSubmissionFilterOpen ? 'is-open' : ''
-            }`}
+            className={`submission-filter-bar submission-list-filter-bar ${isSubmissionFilterOpen ? 'is-open' : ''
+              }`}
           >
             <label className="submission-search-field">
               Cari member
@@ -5963,7 +5962,7 @@ function AdminPage({
                   {[
                     ...(
                       classForm.purchaseButtonLabel &&
-                      !classCtaButtonOptions.includes(classForm.purchaseButtonLabel)
+                        !classCtaButtonOptions.includes(classForm.purchaseButtonLabel)
                         ? [classForm.purchaseButtonLabel]
                         : []
                     ),
