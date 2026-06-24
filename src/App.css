@@ -10689,59 +10689,6 @@ img {
 }
 
 @media (max-width: 760px) {
-  .compact-list-table {
-    gap: 0;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    background: #ffffff;
-  }
-
-  .compact-list-table .table-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    min-width: 0;
-    min-height: 0;
-    padding: 10px 12px;
-  }
-
-  .submission-list-filter-bar .submission-search-field {
-    flex: 0 0 auto;
-  }
-
-  .submission-filter-bar input,
-  .submission-filter-bar select {
-    min-width: 0;
-  }
-
-  .filter-button-group {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
-    gap: 8px;
-  }
-
-  .filter-button-group button {
-    width: 100%;
-    padding: 0 8px;
-    white-space: normal;
-  }
-
-  .mobile-submission-filter-toggle {
-    position: relative;
-    display: inline-grid;
-    place-items: center;
-    width: 38px;
-    height: 38px;
-    flex: 0 0 38px;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    color: var(--color-heading);
-    background: #ffffff;
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-  }
-
   .mobile-submission-filter-toggle .icon {
     width: 18px;
     height: 18px;
@@ -10857,12 +10804,16 @@ img {
   }
 
   .submission-member-modal .member-submission-table {
-    margin: 0;
-    padding: 10px 14px 14px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    margin: 0 !important;
+    padding: 10px 14px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+    min-height: 0 !important;
+    height: 100% !important;
   }
 
   .submission-member-modal .class-selection-screen {
@@ -10872,9 +10823,207 @@ img {
   }
 
   .member-submission-table.compact-list-table {
-    overflow: visible;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 8px !important;
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .compact-list-table {
+    gap: 0;
+    overflow: hidden;
     border: 1px solid var(--color-border);
     border-radius: 8px;
+    background: #ffffff;
+  }
+
+  .compact-list-table .table-head {
+    display: none !important;
+  }
+
+  .compact-list-table .table-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 10px 12px !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .compact-list-table .table-row:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .compact-list-table .table-row [role='cell'] {
+    display: block !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  .compact-list-table .table-row [role='cell']::before,
+  .compact-list-table .table-row .member-identity::before,
+  .compact-list-table .table-row .row-actions::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .compact-list-table .member-identity {
+    display: flex !important;
+    gap: 9px !important;
+    align-items: center !important;
+  }
+
+  .compact-list-table .member-identity .sidebar-avatar {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .compact-list-table .support-message {
+    display: grid !important;
+    gap: 2px !important;
+  }
+
+  .compact-list-table .mobile-list-meta {
+    display: block !important;
+    margin-top: 2px !important;
+    color: var(--color-muted) !important;
+    font-size: 0.72rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .member-table.compact-list-table [data-label='Username'],
+  .member-table.compact-list-table [data-label='Status'],
+  .submission-table.compact-list-table:not(.member-submission-table) [data-label='Tugas'],
+  .submission-table.compact-list-table:not(.member-submission-table) [data-label='Menunggu'],
+  .submission-table.compact-list-table:not(.member-submission-table) [data-label='Terakhir kirim'] {
+    display: none !important;
+  }
+
+  .member-table.compact-list-table .member-progress-content {
+    gap: 4px !important;
+  }
+
+  .member-table.compact-list-table .member-activity-content {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px 8px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .member-table.compact-list-table .member-activity-content small {
+    white-space: normal !important;
+  }
+
+  .member-table.compact-list-table .row-actions {
+    justify-content: flex-start !important;
+  }
+
+  /* Extremely Compact Member Submissions Cards */
+  .submission-table.compact-list-table .table-row {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    padding: 8px 10px !important;
+    gap: 10px !important;
+  }
+
+  .submission-table.compact-list-table .member-identity {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .submission-table.compact-list-table .member-identity .sidebar-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    flex: 0 0 32px !important;
+  }
+
+  .submission-table.compact-list-table .member-identity strong {
+    font-size: 0.84rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .submission-table.compact-list-table .member-identity small {
+    font-size: 0.7rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .submission-table.compact-list-table .row-actions {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-content: flex-end !important;
+    padding: 0 !important;
+    display: flex !important;
+  }
+
+  .submission-table.compact-list-table .row-actions button {
+    width: auto !important;
+    min-height: 28px !important;
+    padding: 0 10px !important;
+    font-size: 0.76rem !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+  }
+
+  .submission-list-filter-bar,
+  .submission-filter-bar {
+    align-items: stretch !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .submission-list-filter-bar label,
+  .submission-filter-bar label {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .submission-list-filter-bar .submission-search-field {
+    flex: 0 0 auto !important;
+  }
+
+  .submission-filter-bar input,
+  .submission-filter-bar select {
+    min-width: 0;
+  }
+
+  .filter-button-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  .filter-button-group button {
+    width: 100%;
+    padding: 0 8px;
+    white-space: normal;
+  }
+
+  .mobile-submission-filter-toggle {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-heading);
+    background: #ffffff;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
   }
 
   .member-submission-table.compact-list-table .table-head {
@@ -10900,6 +11049,11 @@ img {
 
   .member-submission-table.compact-list-table .table-row [role='cell']::before {
     content: none !important;
+    display: none !important;
+  }
+
+  .member-submission-table.compact-list-table [data-label='Status'],
+  .member-submission-table.compact-list-table [data-label='Dikirim'] {
     display: none !important;
   }
 
