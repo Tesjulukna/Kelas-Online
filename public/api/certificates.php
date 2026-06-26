@@ -14,6 +14,48 @@ function cert_json($value): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function certificate_asset_url($value): string
+{
+    $url = is_string($value) ? trim($value) : '';
+
+    if ($url === '') {
+        return '';
+    }
+
+    $needle = '/storage/v1/object/public/';
+    $position = strpos($url, $needle);
+
+    if ($position !== false) {
+        $path = substr($url, $position + strlen($needle));
+
+        return '/uploads/' . ltrim($path, '/');
+    }
+
+    return clean_asset_url($url, 2000);
+}
+
+function certificate_normalize_template_payload($payload): array
+{
+    $template = is_array($payload) ? $payload : [];
+
+    if (isset($template['backgroundImage'])) {
+        $template['backgroundImage'] = certificate_asset_url($template['backgroundImage']);
+    }
+
+    $elements = is_array($template['elements'] ?? null) ? $template['elements'] : [];
+    $template['elements'] = array_map(function ($element): array {
+        $nextElement = is_array($element) ? $element : [];
+
+        if (($nextElement['type'] ?? '') === 'image' && isset($nextElement['src'])) {
+            $nextElement['src'] = certificate_asset_url($nextElement['src']);
+        }
+
+        return $nextElement;
+    }, $elements);
+
+    return $template;
+}
+
 function certificate_public(array $row): array
 {
     return [
@@ -47,7 +89,7 @@ function certificate_template_public(array $row): array
         'sizeType' => $row['size_type'] ?? 'a4Landscape',
         'width' => (int) ($row['width'] ?? 1123),
         'height' => (int) ($row['height'] ?? 794),
-        'payload' => cert_json($row['payload'] ?? '{}'),
+        'payload' => certificate_normalize_template_payload(cert_json($row['payload'] ?? '{}')),
         'createdAt' => (string) ($row['created_at'] ?? ''),
         'updatedAt' => (string) ($row['updated_at'] ?? ''),
     ];
@@ -169,6 +211,7 @@ if ($method === 'POST') {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE class_id = VALUES(class_id), name = VALUES(name), mentor_name = VALUES(mentor_name), size_type = VALUES(size_type), width = VALUES(width), height = VALUES(height), payload = VALUES(payload)',
         );
+        $templatePayload = certificate_normalize_template_payload($template['payload'] ?? $template);
         $insert->execute([
             $templateId,
             clean_text($template['classId'] ?? '', 120),
@@ -177,7 +220,7 @@ if ($method === 'POST') {
             clean_text($template['sizeType'] ?? 'a4Landscape', 60),
             clean_number($template['width'] ?? 1123, 320, 5000),
             clean_number($template['height'] ?? 794, 320, 5000),
-            json_encode($template['payload'] ?? $template, JSON_UNESCAPED_UNICODE),
+            json_encode($templatePayload, JSON_UNESCAPED_UNICODE),
         ]);
 
         $query = $pdo->prepare('SELECT * FROM certificate_templates WHERE id = ? LIMIT 1');
@@ -332,4 +375,3 @@ $updateRequest = $pdo->prepare(
 $updateRequest->execute([$status, $adminNote, date(DATE_ATOM), $requestId]);
 
 send_json(200, fetch_certificates_response($pdo, current_user()));
-

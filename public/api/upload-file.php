@@ -37,13 +37,19 @@ $config = [
         'extensions' => ['jpg', 'jpeg', 'png', 'webp'],
         'mimes' => ['image/jpeg', 'image/png', 'image/webp'],
     ],
+    'certificate-image' => [
+        'dir' => 'sertifikat',
+        'max' => 20 * 1024 * 1024,
+        'extensions' => ['jpg', 'jpeg', 'png', 'webp'],
+        'mimes' => ['image/jpeg', 'image/png', 'image/webp'],
+    ],
 ];
 
 if (!isset($config[$type])) {
     send_json(400, ['message' => 'Tipe upload tidak valid.']);
 }
 
-if (in_array($type, ['document', 'class-image'], true) && ($user['role'] ?? '') !== 'admin') {
+if (in_array($type, ['document', 'class-image', 'certificate-image'], true) && ($user['role'] ?? '') !== 'admin') {
     send_json(403, ['message' => 'Hanya admin yang bisa upload file materi.']);
 }
 

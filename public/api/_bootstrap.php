@@ -143,7 +143,8 @@ function clean_image($value): string
     if (
         strpos($image, '/uploads/profiles/') === 0 ||
         strpos($image, '/uploads/tugas/') === 0 ||
-        strpos($image, '/uploads/gambar/') === 0
+        strpos($image, '/uploads/gambar/') === 0 ||
+        strpos($image, '/uploads/sertifikat/') === 0
     ) {
         return clean_text($image, 240);
     }
