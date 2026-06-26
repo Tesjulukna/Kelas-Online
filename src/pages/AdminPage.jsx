@@ -4236,7 +4236,13 @@ function AdminPage({
                 <span role="columnheader">Aksi</span>
               </div>
               {digitalProducts.map((product) => {
-                const accessCount = digitalProductAccess.filter((access) => access.productId === product.id).length
+                const accessCount = Math.max(
+                  0,
+                  Math.round(
+                    Number(product.accessCount) ||
+                    digitalProductAccess.filter((access) => access.productId === product.id).length,
+                  ),
+                )
 
                 return (
                   <div className="table-row" role="row" key={product.id}>
