@@ -1070,22 +1070,27 @@ function cleanCertificateTemplates(value) {
 
   return value
     .filter((item) => item?.id && item?.classId)
-    .map((item) => ({
-      id: cleanText(item.id),
-      classId: cleanText(item.classId || ''),
-      name: cleanLongText(item.name || 'Template Sertifikat', 180),
-      mentorName: cleanLongText(item.mentorName || '', 140),
-      sizeType: cleanText(item.sizeType || 'a4Landscape'),
-      width: Math.max(320, Math.min(2400, Math.round(Number(item.width) || 1123))),
-      height: Math.max(320, Math.min(2400, Math.round(Number(item.height) || 794))),
-      backgroundColor: cleanText(item.backgroundColor || '#f8fafc'),
-      backgroundImage: cleanLongText(item.backgroundImage || '', 1200),
-      snapToGrid: item.snapToGrid !== false,
-      gridSize: Math.max(4, Math.min(80, Math.round(Number(item.gridSize) || 10))),
-      elements: Array.isArray(item.elements) ? item.elements : [],
-      createdAt: cleanText(item.createdAt || ''),
-      updatedAt: cleanText(item.updatedAt || ''),
-    }))
+    .map((item) => {
+      const payload = item.payload && typeof item.payload === 'object' ? item.payload : {}
+      const template = { ...payload, ...item }
+
+      return {
+        id: cleanText(item.id),
+        classId: cleanText(item.classId || payload.classId || ''),
+        name: cleanLongText(item.name || payload.name || 'Template Sertifikat', 180),
+        mentorName: cleanLongText(item.mentorName || payload.mentorName || '', 140),
+        sizeType: cleanText(item.sizeType || payload.sizeType || 'a4Landscape'),
+        width: Math.max(320, Math.min(5000, Math.round(Number(item.width || payload.width) || 1123))),
+        height: Math.max(320, Math.min(5000, Math.round(Number(item.height || payload.height) || 794))),
+        backgroundColor: cleanText(template.backgroundColor || '#f8fafc'),
+        backgroundImage: cleanLongText(template.backgroundImage || '', 2000),
+        snapToGrid: template.snapToGrid !== false,
+        gridSize: Math.max(4, Math.min(80, Math.round(Number(template.gridSize) || 10))),
+        elements: Array.isArray(template.elements) ? template.elements : [],
+        createdAt: cleanText(item.createdAt || ''),
+        updatedAt: cleanText(item.updatedAt || ''),
+      }
+    })
 }
 
 function cleanPayments(value) {

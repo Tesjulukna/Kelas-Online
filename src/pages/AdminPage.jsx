@@ -862,6 +862,7 @@ function AdminPage({
   const [isDigitalProductBuilderOpen, setIsDigitalProductBuilderOpen] = useState(false)
   const [isDigitalReviewManagerOpen, setIsDigitalReviewManagerOpen] = useState(false)
   const [digitalReviewDraft, setDigitalReviewDraft] = useState(() => createEmptyDigitalProductReview())
+  const [isAdminTestimonialModalOpen, setIsAdminTestimonialModalOpen] = useState(false)
   const [adminTestimonialForm, setAdminTestimonialForm] = useState({
     sourceType: 'member',
     memberId: '',
@@ -1070,6 +1071,7 @@ function AdminPage({
         message: '',
         status: 'approved',
       })
+      setIsAdminTestimonialModalOpen(false)
       onNotify('Testimoni admin berhasil ditambahkan.')
     } catch (error) {
       onNotify(error.message || 'Testimoni admin belum bisa ditambahkan.')
@@ -4967,102 +4969,15 @@ function AdminPage({
               <h2>{pendingTestimonials} testimoni menunggu persetujuan</h2>
               <small>{approvedTestimonials} testimoni sudah tampil di homepage.</small>
             </div>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => setIsAdminTestimonialModalOpen(true)}
+            >
+              <Icon name="message" />
+              Tambahkan Testimoni
+            </button>
           </div>
-          <form className="digital-builder-card" onSubmit={handleCreateAdminTestimonial}>
-            <div className="digital-builder-card-heading">
-              <h3>Tambah testimoni manual</h3>
-              <small>Pilih member yang sudah join kelas, atau buat orang custom dari admin.</small>
-            </div>
-            <div className="digital-review-admin-grid">
-              <label>
-                Sumber orang
-                <select
-                  value={adminTestimonialForm.sourceType}
-                  onChange={(event) => updateAdminTestimonialForm('sourceType', event.target.value)}
-                >
-                  <option value="member">Pilih dari member</option>
-                  <option value="custom">Orang custom</option>
-                </select>
-              </label>
-              {adminTestimonialForm.sourceType === 'member' ? (
-                <label>
-                  Member
-                  <select
-                    value={adminTestimonialForm.memberId}
-                    onChange={(event) => updateAdminTestimonialForm('memberId', event.target.value)}
-                  >
-                    <option value="">Pilih member</option>
-                    {members.map((member) => (
-                      <option value={member.id} key={member.id}>
-                        {member.name} - {member.email || member.username}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : (
-                <label>
-                  Nama orang
-                  <input
-                    type="text"
-                    value={adminTestimonialForm.customName}
-                    onChange={(event) => updateAdminTestimonialForm('customName', event.target.value)}
-                    placeholder="Nama pemberi testimoni"
-                  />
-                </label>
-              )}
-              <label>
-                Kelas
-                <select
-                  value={adminTestimonialForm.classId}
-                  onChange={(event) => updateAdminTestimonialForm('classId', event.target.value)}
-                >
-                  <option value="">Pilih kelas</option>
-                  {adminTestimonialClassOptions.map((course) => (
-                    <option value={course.id} key={course.id}>
-                      {course.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Status
-                <select
-                  value={adminTestimonialForm.status}
-                  onChange={(event) => updateAdminTestimonialForm('status', event.target.value)}
-                >
-                  <option value="approved">Tampilkan di homepage</option>
-                  <option value="pending">Menunggu review</option>
-                  <option value="hidden">Simpan tapi sembunyikan</option>
-                </select>
-              </label>
-            </div>
-            {adminTestimonialForm.sourceType === 'custom' && (
-              <label>
-                Link foto profil opsional
-                <input
-                  type="text"
-                  value={adminTestimonialForm.customAvatar}
-                  onChange={(event) => updateAdminTestimonialForm('customAvatar', event.target.value)}
-                  placeholder="https://... atau /uploads/profiles/..."
-                />
-              </label>
-            )}
-            <label>
-              Isi testimoni
-              <textarea
-                value={adminTestimonialForm.message}
-                onChange={(event) => updateAdminTestimonialForm('message', event.target.value)}
-                placeholder="Tulis testimoni yang akan tampil di homepage."
-                rows={4}
-              />
-            </label>
-            <div className="form-actions">
-              <button className="btn btn-primary" type="submit">
-                <Icon name="message" />
-                Tambahkan Testimoni
-              </button>
-            </div>
-          </form>
           <div className="testimonial-admin-list">
             {testimonials.map((testimonial) => (
               <article className="testimonial-admin-card" key={testimonial.id}>
@@ -5120,6 +5035,130 @@ function AdminPage({
             )}
           </div>
         </section>
+      )}
+
+      {isAdminTestimonialModalOpen && (
+        <div
+          className="digital-review-modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsAdminTestimonialModalOpen(false)
+            }
+          }}
+        >
+          <section className="digital-review-modal" role="dialog" aria-modal="true" aria-labelledby="admin-testimonial-modal-title">
+            <div className="digital-review-modal-heading">
+              <div>
+                <p className="eyebrow">Testimoni admin</p>
+                <h3 id="admin-testimonial-modal-title">Tambahkan testimoni</h3>
+                <small>Pilih member yang sudah join kelas, atau buat orang custom dari admin.</small>
+              </div>
+              <button
+                className="icon-action-button"
+                type="button"
+                onClick={() => setIsAdminTestimonialModalOpen(false)}
+                aria-label="Tutup tambah testimoni"
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+            <form className="digital-review-add-panel" onSubmit={handleCreateAdminTestimonial}>
+              <div className="digital-review-admin-grid">
+                <label>
+                  Sumber orang
+                  <select
+                    value={adminTestimonialForm.sourceType}
+                    onChange={(event) => updateAdminTestimonialForm('sourceType', event.target.value)}
+                  >
+                    <option value="member">Pilih dari member</option>
+                    <option value="custom">Orang custom</option>
+                  </select>
+                </label>
+                {adminTestimonialForm.sourceType === 'member' ? (
+                  <label>
+                    Member
+                    <select
+                      value={adminTestimonialForm.memberId}
+                      onChange={(event) => updateAdminTestimonialForm('memberId', event.target.value)}
+                    >
+                      <option value="">Pilih member</option>
+                      {members.map((member) => (
+                        <option value={member.id} key={member.id}>
+                          {member.name} - {member.email || member.username}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label>
+                    Nama orang
+                    <input
+                      type="text"
+                      value={adminTestimonialForm.customName}
+                      onChange={(event) => updateAdminTestimonialForm('customName', event.target.value)}
+                      placeholder="Nama pemberi testimoni"
+                    />
+                  </label>
+                )}
+                <label>
+                  Kelas
+                  <select
+                    value={adminTestimonialForm.classId}
+                    onChange={(event) => updateAdminTestimonialForm('classId', event.target.value)}
+                  >
+                    <option value="">Pilih kelas</option>
+                    {adminTestimonialClassOptions.map((course) => (
+                      <option value={course.id} key={course.id}>
+                        {course.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Status
+                  <select
+                    value={adminTestimonialForm.status}
+                    onChange={(event) => updateAdminTestimonialForm('status', event.target.value)}
+                  >
+                    <option value="approved">Tampilkan di homepage</option>
+                    <option value="pending">Menunggu review</option>
+                    <option value="hidden">Simpan tapi sembunyikan</option>
+                  </select>
+                </label>
+              </div>
+              {adminTestimonialForm.sourceType === 'custom' && (
+                <label>
+                  Link foto profil opsional
+                  <input
+                    type="text"
+                    value={adminTestimonialForm.customAvatar}
+                    onChange={(event) => updateAdminTestimonialForm('customAvatar', event.target.value)}
+                    placeholder="https://... atau /uploads/profiles/..."
+                  />
+                </label>
+              )}
+              <label>
+                Isi testimoni
+                <textarea
+                  value={adminTestimonialForm.message}
+                  onChange={(event) => updateAdminTestimonialForm('message', event.target.value)}
+                  placeholder="Tulis testimoni yang akan tampil di homepage."
+                  rows={5}
+                />
+              </label>
+              <div className="form-actions">
+                <button className="btn btn-secondary" type="button" onClick={() => setIsAdminTestimonialModalOpen(false)}>
+                  Batal
+                </button>
+                <button className="btn btn-primary" type="submit">
+                  <Icon name="message" />
+                  Tambahkan Testimoni
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       )}
 
       {activeMenu === 'submissions' && (
