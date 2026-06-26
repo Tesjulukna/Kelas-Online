@@ -135,6 +135,305 @@ function payment_is_pending_status(string $status): bool
     return in_array(strtolower($status), ['pending', 'unpaid', 'waiting', 'callback'], true);
 }
 
+function payment_class_amount(array $class): int
+{
+    $salePrice = (int) ($class['sale_price'] ?? 0);
+    $price = (int) ($class['price'] ?? 0);
+
+    return $salePrice > 0 ? $salePrice : max(0, $price);
+}
+
+function payment_product_amount(array $product): int
+{
+    $salePrice = (int) ($product['sale_price'] ?? 0);
+    $price = (int) ($product['price'] ?? 0);
+
+    return $salePrice > 0 ? $salePrice : max(0, $price);
+}
+
+function payment_snapshot_created_at(array $row): string
+{
+    foreach (['created_at', 'joined_at', 'updated_at'] as $key) {
+        $value = trim((string) ($row[$key] ?? ''));
+
+        if ($value === '' || strpos($value, '0000-00-00') === 0) {
+            continue;
+        }
+
+        $time = strtotime($value);
+
+        if ($time) {
+            return date('Y-m-d H:i:s', $time);
+        }
+    }
+
+    return date('Y-m-d H:i:s');
+}
+
+function payment_pair_key(string $memberId, string $classId): string
+{
+    return $memberId . '::' . $classId;
+}
+
+function payment_product_pair_key(string $memberId, string $email, string $productId): string
+{
+    $buyerKey = $memberId !== '' ? $memberId : strtolower($email);
+
+    return $buyerKey . '::' . $productId;
+}
+
+function payment_collect_existing_pairs(PDO $pdo): array
+{
+    $pairs = [];
+
+    try {
+        foreach ($pdo->query("SELECT member_id, class_id FROM payment_snapshots WHERE member_id <> '' AND class_id <> ''")->fetchAll() as $row) {
+            $pairs[payment_pair_key((string) $row['member_id'], (string) $row['class_id'])] = true;
+        }
+    } catch (Throwable $error) {
+        // Table may not exist on older installs.
+    }
+
+    try {
+        foreach ($pdo->query("SELECT member_id, class_id FROM tripay_orders WHERE member_id <> '' AND class_id <> '' AND class_id NOT LIKE 'product:%' AND (access_granted = 1 OR status IN ('paid', 'processed', 'success', 'settlement'))")->fetchAll() as $row) {
+            $pairs[payment_pair_key((string) $row['member_id'], (string) $row['class_id'])] = true;
+        }
+    } catch (Throwable $error) {
+        // Continue.
+    }
+
+    try {
+        foreach ($pdo->query("SELECT member_id, class_ids FROM lynk_orders WHERE member_id <> '' AND status = 'processed'")->fetchAll() as $row) {
+            $classIds = json_decode((string) ($row['class_ids'] ?? '[]'), true);
+
+            if (!is_array($classIds)) {
+                continue;
+            }
+
+            foreach ($classIds as $classId) {
+                $classId = clean_text($classId, 120);
+
+                if ($classId !== '') {
+                    $pairs[payment_pair_key((string) $row['member_id'], $classId)] = true;
+                }
+            }
+        }
+    } catch (Throwable $error) {
+        // Continue.
+    }
+
+    return $pairs;
+}
+
+function payment_collect_existing_product_pairs(PDO $pdo): array
+{
+    $pairs = [];
+
+    try {
+        foreach ($pdo->query("SELECT member_id, buyer_email, product_id FROM payment_snapshots WHERE product_id <> ''")->fetchAll() as $row) {
+            $productId = clean_text($row['product_id'] ?? '', 120);
+
+            if ($productId !== '') {
+                $pairs[payment_product_pair_key(
+                    clean_text($row['member_id'] ?? '', 120),
+                    clean_email($row['buyer_email'] ?? ''),
+                    $productId,
+                )] = true;
+            }
+        }
+    } catch (Throwable $error) {
+        // Table may not exist on older installs.
+    }
+
+    try {
+        foreach ($pdo->query("SELECT member_id, buyer_email, class_id, status, access_granted FROM tripay_orders WHERE class_id LIKE 'product:%'")->fetchAll() as $row) {
+            $status = strtolower(clean_text($row['status'] ?? '', 40));
+
+            if (empty($row['access_granted']) && !in_array($status, ['paid', 'processed', 'success', 'settlement'], true)) {
+                continue;
+            }
+
+            $productId = clean_text(substr((string) ($row['class_id'] ?? ''), 8), 120);
+
+            if ($productId !== '') {
+                $pairs[payment_product_pair_key(
+                    clean_text($row['member_id'] ?? '', 120),
+                    clean_email($row['buyer_email'] ?? ''),
+                    $productId,
+                )] = true;
+            }
+        }
+    } catch (Throwable $error) {
+        // Continue.
+    }
+
+    return $pairs;
+}
+
+function payment_backfill_member_access_snapshots(PDO $pdo): void
+{
+    try {
+        $classes = [];
+        $classRows = [];
+
+        try {
+            $classRows = $pdo->query('SELECT id, title, price, sale_price FROM classes')->fetchAll();
+        } catch (Throwable $error) {
+            $classRows = $pdo->query('SELECT id, title, price FROM classes')->fetchAll();
+        }
+
+        foreach ($classRows as $class) {
+            if (!array_key_exists('sale_price', $class)) {
+                $class['sale_price'] = 0;
+            }
+
+            $classes[(string) $class['id']] = $class;
+        }
+
+        if (!$classes) {
+            return;
+        }
+
+        $existingPairs = payment_collect_existing_pairs($pdo);
+        $members = $pdo
+            ->query("SELECT id, name, email, allowed_class_ids, joined_at, created_at, updated_at FROM accounts WHERE role = 'member'")
+            ->fetchAll();
+        $insert = $pdo->prepare(
+            'INSERT IGNORE INTO payment_snapshots
+            (id, source, source_label, order_code, buyer_name, buyer_email, member_id, class_id, class_title, item_type, amount, status, payment_method, access_granted, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        );
+
+        foreach ($members as $member) {
+            $memberId = clean_text($member['id'] ?? '', 120);
+            $classIds = clean_allowed_class_ids($member['allowed_class_ids'] ?? null);
+
+            if ($memberId === '' || !is_array($classIds) || !$classIds) {
+                continue;
+            }
+
+            foreach ($classIds as $classId) {
+                $classId = clean_text($classId, 120);
+
+                if ($classId === '' || empty($classes[$classId])) {
+                    continue;
+                }
+
+                $pairKey = payment_pair_key($memberId, $classId);
+
+                if (!empty($existingPairs[$pairKey])) {
+                    continue;
+                }
+
+                $class = $classes[$classId];
+                $snapshotId = 'legacy-lynk-' . substr(hash('sha256', $pairKey), 0, 40);
+                $orderCode = 'LYNK-LEGACY-' . strtoupper(substr(hash('sha256', $pairKey), 0, 10));
+
+                $insert->execute([
+                    $snapshotId,
+                    'legacy_lynk_access',
+                    'Akses lama / Lynk.id',
+                    $orderCode,
+                    clean_text($member['name'] ?? 'Member', 160),
+                    clean_email($member['email'] ?? ''),
+                    $memberId,
+                    $classId,
+                    clean_text($class['title'] ?? 'Kelas', 180),
+                    'class',
+                    payment_class_amount($class),
+                    'paid',
+                    'Lynk.id',
+                    1,
+                    payment_snapshot_created_at($member),
+                ]);
+                $existingPairs[$pairKey] = true;
+            }
+        }
+    } catch (Throwable $error) {
+        // Payment list should still load even if legacy backfill is blocked.
+    }
+}
+
+function payment_backfill_product_access_snapshots(PDO $pdo): void
+{
+    try {
+        $products = [];
+        $productRows = [];
+
+        try {
+            $productRows = $pdo->query('SELECT id, title, price, sale_price FROM digital_products')->fetchAll();
+        } catch (Throwable $error) {
+            $productRows = $pdo->query('SELECT id, title, price FROM digital_products')->fetchAll();
+        }
+
+        foreach ($productRows as $product) {
+            if (!array_key_exists('sale_price', $product)) {
+                $product['sale_price'] = 0;
+            }
+
+            $products[(string) $product['id']] = $product;
+        }
+
+        if (!$products) {
+            return;
+        }
+
+        $existingPairs = payment_collect_existing_product_pairs($pdo);
+        $accessRows = $pdo
+            ->query("SELECT * FROM digital_product_access WHERE status = 'active' ORDER BY created_at ASC")
+            ->fetchAll();
+        $insert = $pdo->prepare(
+            'INSERT IGNORE INTO payment_snapshots
+            (id, source, source_label, order_code, buyer_name, buyer_email, member_id, product_id, product_title, item_type, amount, status, payment_method, access_granted, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        );
+
+        foreach ($accessRows as $access) {
+            $productId = clean_text($access['product_id'] ?? '', 120);
+
+            if ($productId === '' || empty($products[$productId])) {
+                continue;
+            }
+
+            $memberId = clean_text($access['member_id'] ?? '', 120);
+            $buyerEmail = clean_email($access['buyer_email'] ?? '');
+            $pairKey = payment_product_pair_key($memberId, $buyerEmail, $productId);
+
+            if (!empty($existingPairs[$pairKey])) {
+                continue;
+            }
+
+            $product = $products[$productId];
+            $source = strtolower(clean_text($access['source'] ?? '', 80));
+            $isLynk = strpos($source, 'lynk') !== false;
+            $snapshotId = 'legacy-product-' . substr(hash('sha256', $pairKey), 0, 40);
+            $fallbackOrderCode = ($isLynk ? 'LYNK-PRODUCT-' : 'PRODUCT-ACCESS-')
+                . strtoupper(substr(hash('sha256', $pairKey), 0, 10));
+
+            $insert->execute([
+                $snapshotId,
+                $isLynk ? 'legacy_lynk_product_access' : 'legacy_product_access',
+                $isLynk ? 'Akses produk / Lynk.id' : 'Akses produk digital',
+                clean_text($access['order_id'] ?? '', 180) ?: $fallbackOrderCode,
+                clean_text($access['buyer_name'] ?? 'Pelanggan', 160),
+                $buyerEmail,
+                $memberId,
+                $productId,
+                clean_text($access['product_title'] ?? ($product['title'] ?? 'Produk digital'), 180),
+                'digital_product',
+                payment_product_amount($product),
+                'paid',
+                $isLynk ? 'Lynk.id' : clean_text($access['source'] ?? 'Produk digital', 80),
+                1,
+                payment_snapshot_created_at($access),
+            ]);
+            $existingPairs[$pairKey] = true;
+        }
+    } catch (Throwable $error) {
+        // Payment list should still load even if legacy product backfill is blocked.
+    }
+}
+
 function payment_public(array $row): array
 {
     return [
@@ -216,6 +515,11 @@ try {
     // Continue with other sources.
 }
 
+if (($user['role'] ?? '') === 'admin') {
+    payment_backfill_member_access_snapshots($pdo);
+    payment_backfill_product_access_snapshots($pdo);
+}
+
 try {
     $query = ($user['role'] ?? '') === 'admin'
         ? $pdo->query('SELECT * FROM payment_snapshots ORDER BY created_at DESC LIMIT 2000')
@@ -235,6 +539,10 @@ try {
 if (($user['role'] ?? '') === 'admin') {
     try {
         foreach ($pdo->query('SELECT * FROM lynk_orders ORDER BY created_at DESC LIMIT 1000')->fetchAll() as $row) {
+            if (($row['status'] ?? '') === 'product_processed') {
+                continue;
+            }
+
             $classIds = json_decode((string) ($row['class_ids'] ?? '[]'), true);
             $payload = payment_order_payload($row);
             $amount = payment_amount_from_payload($payload);

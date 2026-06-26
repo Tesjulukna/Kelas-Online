@@ -2,6 +2,8 @@
 
 require __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_email.php';
+require_once __DIR__ . '/_tripay.php';
+require_once __DIR__ . '/_commerce.php';
 
 ensure_method(['POST']);
 
@@ -324,6 +326,87 @@ function lynk_find_classes(PDO $pdo, array $payload, array $productCandidates, a
     return array_values(array_unique(array_filter($classIds)));
 }
 
+function lynk_find_products(PDO $pdo, array $productCandidates): array
+{
+    try {
+        $products = $pdo
+            ->query('SELECT id, title, status, lynk_product_key FROM digital_products ORDER BY id ASC')
+            ->fetchAll();
+    } catch (Throwable $error) {
+        return [];
+    }
+
+    $candidateKeys = array_values(array_unique(array_filter(array_map('lynk_normalize_key', $productCandidates))));
+    $productIds = [];
+
+    foreach ($products as $product) {
+        $keys = [
+            lynk_normalize_key($product['id'] ?? ''),
+            lynk_normalize_key($product['title'] ?? ''),
+            lynk_normalize_key($product['lynk_product_key'] ?? ''),
+        ];
+
+        foreach ($candidateKeys as $candidateKey) {
+            if ($candidateKey === '') {
+                continue;
+            }
+
+            if (in_array($candidateKey, $keys, true)) {
+                $productIds[] = $product['id'];
+                continue 2;
+            }
+
+            foreach ($keys as $productKey) {
+                if ($productKey !== '' && (strpos($candidateKey, $productKey) !== false || strpos($productKey, $candidateKey) !== false)) {
+                    $productIds[] = $product['id'];
+                    continue 3;
+                }
+            }
+        }
+    }
+
+    return array_values(array_unique(array_filter($productIds)));
+}
+
+function lynk_snapshot_amount(array $item): int
+{
+    $salePrice = (int) ($item['sale_price'] ?? 0);
+    $price = (int) ($item['price'] ?? 0);
+
+    return $salePrice > 0 ? $salePrice : max(0, $price);
+}
+
+function lynk_insert_product_payment_snapshot(PDO $pdo, array $product, array $access, string $orderId): void
+{
+    try {
+        $snapshotId = 'lynk-product-' . substr(hash('sha256', $orderId . '::' . ($product['id'] ?? '')), 0, 40);
+        $insert = $pdo->prepare(
+            'INSERT IGNORE INTO payment_snapshots
+            (id, source, source_label, order_code, buyer_name, buyer_email, member_id, product_id, product_title, item_type, amount, status, payment_method, access_granted, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        );
+        $insert->execute([
+            $snapshotId,
+            'lynk_product',
+            'Lynk.id',
+            $orderId,
+            clean_text($access['buyer_name'] ?? 'Pembeli Lynk.id', 160),
+            clean_email($access['buyer_email'] ?? ''),
+            clean_text($access['member_id'] ?? '', 120),
+            clean_text($product['id'] ?? '', 120),
+            clean_text($product['title'] ?? 'Produk digital', 180),
+            'digital_product',
+            lynk_snapshot_amount($product),
+            'paid',
+            'Lynk.id',
+            1,
+            date('Y-m-d H:i:s'),
+        ]);
+    } catch (Throwable $error) {
+        // Product access should stay active even if the payment snapshot cannot be written.
+    }
+}
+
 function lynk_unique_username(PDO $pdo, string $email, string $name): string
 {
     $base = clean_username(strstr($email, '@', true) ?: $name);
@@ -448,6 +531,27 @@ function lynk_ensure_tables(PDO $pdo): void
             INDEX lynk_order_member_index (member_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
     );
+
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS digital_product_access (
+            id VARCHAR(160) PRIMARY KEY,
+            product_id VARCHAR(120) NOT NULL DEFAULT '',
+            product_title VARCHAR(180) NOT NULL DEFAULT '',
+            member_id VARCHAR(120) NOT NULL DEFAULT '',
+            buyer_name VARCHAR(160) NOT NULL DEFAULT '',
+            buyer_email VARCHAR(180) NOT NULL DEFAULT '',
+            source VARCHAR(80) NOT NULL DEFAULT '',
+            order_id VARCHAR(180) NOT NULL DEFAULT '',
+            status VARCHAR(40) NOT NULL DEFAULT 'active',
+            download_url MEDIUMTEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX digital_product_access_member_index (member_id),
+            INDEX digital_product_access_email_index (buyer_email),
+            INDEX digital_product_access_product_index (product_id),
+            INDEX digital_product_access_order_index (order_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    );
 }
 
 lynk_ensure_tables($pdo);
@@ -486,6 +590,7 @@ $productCandidates = array_values(array_unique(array_merge(
 )));
 $productKey = clean_text($productCandidates[0] ?? '', 240);
 $classIds = lynk_find_classes($pdo, $payload, $productCandidates, $config);
+$productIds = lynk_find_products($pdo, $productCandidates);
 
 if ($orderId === '') {
     $orderId = $eventId ?: hash('sha256', $rawBody);
@@ -527,7 +632,7 @@ if ($buyerEmail === '') {
     send_json(422, ['message' => 'Email pembeli tidak ditemukan pada payload Lynk.id.']);
 }
 
-if (!$classIds) {
+if (!$classIds && !$productIds) {
     $insertOrder = $pdo->prepare(
         'INSERT INTO lynk_orders
         (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, status, payload)
@@ -552,6 +657,69 @@ if (!$classIds) {
         'status' => 'unmapped',
         'message' => 'Produk Lynk.id tidak dipetakan ke kelas website, jadi tidak dibuatkan akun member.',
         'productCandidates' => $productCandidates,
+    ]);
+}
+
+$productAccessResults = [];
+
+foreach ($productIds as $productId) {
+    try {
+        $accessResult = commerce_grant_digital_product_access($pdo, [
+            'productId' => $productId,
+            'memberId' => '',
+            'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
+            'buyerEmail' => $buyerEmail,
+            'source' => 'lynk',
+            'orderId' => $orderId . '-' . $productId,
+        ]);
+        $productAccessResults[] = $accessResult;
+        lynk_insert_product_payment_snapshot(
+            $pdo,
+            $accessResult['product'] ?? [],
+            $accessResult['access'] ?? [],
+            $orderId,
+        );
+
+        send_digital_product_delivery_email([
+            'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
+            'buyerEmail' => $buyerEmail,
+            'productTitle' => $accessResult['product']['title'] ?? 'Produk digital',
+            'downloadUrl' => clean_asset_url(
+                ($accessResult['product']['file_url'] ?? '')
+                    ?: commerce_public_product_access_url($accessResult['access']['order_id'] ?? ($orderId . '-' . $productId)),
+                1000,
+            ),
+            'deliveryNote' => $accessResult['product']['delivery_note'] ?? '',
+        ]);
+    } catch (Throwable $error) {
+        // Continue with other mapped products/classes.
+    }
+}
+
+if (!$classIds) {
+    $firstProduct = $productAccessResults[0]['product'] ?? [];
+    $insertOrder = $pdo->prepare(
+        'INSERT INTO lynk_orders
+        (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, status, payload)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    );
+    $insertOrder->execute([
+        make_id('lynk'),
+        $eventId,
+        $orderId,
+        $buyerName ?: 'Pembeli Lynk.id',
+        $buyerEmail,
+        $productKey,
+        clean_text($firstProduct['title'] ?? ($productKey ?: 'Produk digital'), 240),
+        json_encode([], JSON_UNESCAPED_UNICODE),
+        'product_processed',
+        $rawBody,
+    ]);
+
+    send_json(200, [
+        'ok' => true,
+        'message' => 'Akses produk digital berhasil dibuat dari pembayaran Lynk.id.',
+        'productIds' => $productIds,
     ]);
 }
 
