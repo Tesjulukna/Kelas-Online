@@ -1,6 +1,7 @@
 <?php
 
 require __DIR__ . '/_bootstrap.php';
+require_once __DIR__ . '/_email.php';
 
 ensure_method(['POST']);
 
@@ -372,13 +373,6 @@ function lynk_send_credentials_email(string $email, string $name, array $account
         return false;
     }
 
-    $host = clean_text($_SERVER['HTTP_HOST'] ?? 'ibnucreative.local', 180);
-    $from = clean_email($config['lynk_email_from'] ?? '');
-
-    if ($from === '' && $host !== '') {
-        $from = 'no-reply@' . preg_replace('/^www\./', '', $host);
-    }
-
     $passwordLine = $account['password']
         ? "Password: {$account['password']}\n"
         : "Password: gunakan password akun yang sudah pernah dibuat.\n";
@@ -390,16 +384,26 @@ function lynk_send_credentials_email(string $email, string $name, array $account
         . $passwordLine
         . "\nSilakan login dan buka menu Kelas Saya.\n\n"
         . "IbnuCreative Academy";
-    $headers = [
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
-    ];
+    $loginButton = '<p><a href="' . email_escape($account['loginUrl']) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">Masuk ke Kelas Saya</a></p>';
+    $html = '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">'
+        . '<h2>Akses kelas Anda sudah aktif</h2>'
+        . '<p>Halo ' . email_escape($name) . ',</p>'
+        . '<p>Pembayaran kelas Anda melalui Lynk.id sudah berhasil dan akses belajar sudah aktif.</p>'
+        . '<p><strong>Email:</strong> ' . email_escape($email) . '<br>'
+        . '<strong>Username:</strong> ' . email_escape($account['username'] ?? '') . '<br>'
+        . '<strong>Password:</strong> ' . email_escape($account['password'] ?: 'Gunakan password akun yang sudah pernah dibuat.') . '</p>'
+        . $loginButton
+        . '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($account['loginUrl']) . '">' . email_escape($account['loginUrl']) . '</a></p>'
+        . '<p>IbnuCreative Academy</p>'
+        . '</div>';
+    $result = send_resend_email([
+        'to' => $email,
+        'subject' => 'Akses kelas IbnuCreative Anda sudah aktif',
+        'text' => $message,
+        'html' => $html,
+    ]);
 
-    if ($from !== '') {
-        $headers[] = 'From: IbnuCreative Academy <' . $from . '>';
-    }
-
-    return @mail($email, 'Akses kelas IbnuCreative Anda sudah aktif', $message, implode("\r\n", $headers));
+    return !empty($result['sent']);
 }
 
 function lynk_ensure_tables(PDO $pdo): void
