@@ -6,12 +6,133 @@ ensure_method(['GET']);
 
 $user = require_user();
 $pdo = db();
+$config = api_config();
 
 function payment_order_payload(array $row): array
 {
     $payload = json_decode((string) ($row['payload'] ?? '{}'), true);
 
     return is_array($payload) ? $payload : [];
+}
+
+function payment_payload_value(array $payload, array $paths)
+{
+    foreach ($paths as $path) {
+        $current = $payload;
+
+        foreach (explode('.', $path) as $segment) {
+            if (!is_array($current) || !array_key_exists($segment, $current)) {
+                $current = null;
+                break;
+            }
+
+            $current = $current[$segment];
+        }
+
+        if (is_scalar($current) && trim((string) $current) !== '') {
+            return $current;
+        }
+    }
+
+    return null;
+}
+
+function payment_amount_from_payload(array $payload): int
+{
+    $value = payment_payload_value($payload, [
+        'amount',
+        'total',
+        'total_amount',
+        'paid_amount',
+        'gross_amount',
+        'price',
+        'nominal',
+        'order.amount',
+        'order.total',
+        'order.total_amount',
+        'invoice.amount',
+        'invoice.total',
+        'payment.amount',
+        'payment.total',
+        'transaction.amount',
+        'transaction.total',
+        'data.amount',
+        'data.total',
+        'data.total_amount',
+        'data.paid_amount',
+        'data.gross_amount',
+        'data.price',
+        'data.order.amount',
+        'data.order.total',
+        'data.order.total_amount',
+        'data.invoice.amount',
+        'data.invoice.total',
+        'data.payment.amount',
+        'data.payment.total',
+        'data.transaction.amount',
+        'data.transaction.total',
+    ]);
+
+    if ($value === null) {
+        return 0;
+    }
+
+    if (is_numeric($value)) {
+        return max(0, (int) round((float) $value));
+    }
+
+    $normalized = preg_replace('/[^0-9]/', '', (string) $value) ?? '';
+
+    return $normalized === '' ? 0 : (int) $normalized;
+}
+
+function payment_time_value($value): int
+{
+    if (is_numeric($value)) {
+        $number = (int) $value;
+
+        if ($number > 1000000000000) {
+            return (int) floor($number / 1000);
+        }
+
+        return $number > 1000000000 ? $number : 0;
+    }
+
+    $time = strtotime((string) $value);
+
+    return $time ?: 0;
+}
+
+function payment_tripay_expires_at(array $row, array $payload, int $defaultMinutes): int
+{
+    $value = payment_payload_value($payload, [
+        'expired_time',
+        'expires_at',
+        'expired_at',
+        'data.expired_time',
+        'data.expires_at',
+        'data.expired_at',
+        'response.expired_time',
+        'response.expires_at',
+        'response.expired_at',
+        'response.data.expired_time',
+        'response.data.expires_at',
+        'response.data.expired_at',
+    ]);
+    $expiresAt = payment_time_value($value);
+
+    if ($expiresAt > 0) {
+        return $expiresAt;
+    }
+
+    $createdAt = payment_time_value($row['created_at'] ?? '');
+
+    return $createdAt > 0 ? $createdAt + ($defaultMinutes * 60) : 0;
+}
+
+function payment_is_pending_status(string $status): bool
+{
+    return in_array(strtolower($status), ['pending', 'unpaid', 'waiting', 'callback'], true);
 }
 
 function payment_public(array $row): array
@@ -46,6 +167,7 @@ function payment_public(array $row): array
 $payments = [];
 
 try {
+    $expiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
     $query = ($user['role'] ?? '') === 'admin'
         ? $pdo->query('SELECT * FROM tripay_orders ORDER BY created_at DESC LIMIT 2000')
         : (function () use ($pdo, $user) {
@@ -57,6 +179,26 @@ try {
     foreach ($query->fetchAll() as $row) {
         $payload = payment_order_payload($row);
         $isProduct = clean_text($payload['order_type'] ?? '', 60) === 'digital_product';
+        $expiresAt = payment_tripay_expires_at($row, $payload, $expiredMinutes);
+        $status = strtolower(clean_text($row['status'] ?? 'pending', 40));
+        $isExpired = payment_is_pending_status($status)
+            && empty($row['access_granted'])
+            && $expiresAt > 0
+            && $expiresAt <= time();
+
+        if ($isExpired) {
+            $row['status'] = 'expired';
+
+            try {
+                $markExpired = $pdo->prepare(
+                    "UPDATE tripay_orders SET status = ? WHERE id = ? AND status IN ('pending', 'unpaid', 'waiting', 'callback')",
+                );
+                $markExpired->execute(['expired', $row['id']]);
+            } catch (Throwable $error) {
+                // The public response can still mark it expired even if DB update is blocked.
+            }
+        }
+
         $payments[] = payment_public(array_merge($row, [
             'source' => 'tripay',
             'sourceLabel' => 'Tripay',
@@ -66,6 +208,8 @@ try {
             'productTitle' => $isProduct ? clean_text($payload['product_title'] ?? $row['class_title'], 180) : '',
             'paymentMethod' => clean_text($payload['payment_name'] ?? $payload['payment_method'] ?? 'Tripay', 120),
             'accessGranted' => !empty($row['access_granted']),
+            'expiresAt' => $expiresAt > 0 ? date('Y-m-d H:i:s', $expiresAt) : '',
+            'isExpired' => $isExpired,
         ]));
     }
 } catch (Throwable $error) {
@@ -92,14 +236,35 @@ if (($user['role'] ?? '') === 'admin') {
     try {
         foreach ($pdo->query('SELECT * FROM lynk_orders ORDER BY created_at DESC LIMIT 1000')->fetchAll() as $row) {
             $classIds = json_decode((string) ($row['class_ids'] ?? '[]'), true);
+            $payload = payment_order_payload($row);
+            $amount = payment_amount_from_payload($payload);
+            $payloadProductName = payment_payload_value($payload, [
+                'product.name',
+                'product.title',
+                'item.name',
+                'item.title',
+                'order.product_name',
+                'order.item_name',
+                'data.product.name',
+                'data.product.title',
+                'data.item.name',
+                'data.item.title',
+                'data.product_name',
+                'data.item_name',
+                'product_name',
+                'item_name',
+                'title',
+                'name',
+            ]);
+            $productName = clean_text($payloadProductName ?: ($row['product_name'] ?: 'Pembayaran Lynk.id'), 180);
             $payments[] = payment_public(array_merge($row, [
                 'id' => 'lynk:' . $row['id'],
                 'source' => 'lynk',
                 'sourceLabel' => 'Lynk.id',
                 'orderCode' => $row['order_id'],
                 'classId' => is_array($classIds) ? clean_text($classIds[0] ?? '', 120) : '',
-                'classTitle' => $row['product_name'] ?: 'Pembayaran Lynk.id',
-                'amount' => 0,
+                'classTitle' => $productName,
+                'amount' => $amount,
                 'paymentMethod' => 'Lynk.id',
                 'accessGranted' => ($row['status'] ?? '') === 'processed',
             ]));

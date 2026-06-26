@@ -1087,7 +1087,7 @@ function AdminPage({
     }
   }
   const paymentSearchQuery = paymentSearchTerm.trim().toLowerCase()
-  const paidPaymentStatuses = ['paid', 'processed', 'success', 'settlement']
+  const paidPaymentStatuses = ['paid', 'processed', 'success', 'settlement', 'unmapped']
   const pendingPaymentStatuses = ['pending', 'unpaid', 'waiting', 'callback']
   const failedPaymentStatuses = ['failed', 'expired', 'cancelled', 'canceled']
   const isPaidPayment = (payment) =>

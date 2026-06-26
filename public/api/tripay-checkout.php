@@ -205,6 +205,7 @@ $insert->execute([
         'delivery_note' => $checkoutType === 'digital_product' ? ($checkoutItem['delivery_note'] ?? '') : '',
         'payment_method' => $method,
         'payment_name' => $method,
+        'expired_time' => $checkoutPayload['expired_time'],
         'data' => $tripayData,
         'response' => $tripayResponse['data'],
     ], JSON_UNESCAPED_UNICODE),
