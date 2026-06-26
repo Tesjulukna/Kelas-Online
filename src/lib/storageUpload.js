@@ -61,7 +61,30 @@ export async function uploadStorageFile({
   type,
   sessionToken = '',
 }) {
-  const upload = await requestStorageUpload({ endpoint, file, type, sessionToken })
+  let upload
+
+  try {
+    upload = await requestStorageUpload({ endpoint, file, type, sessionToken })
+  } catch (error) {
+    const formData = new FormData()
+    formData.append('type', type)
+    formData.append('file', file)
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        ...(sessionToken ? { 'X-Session-Token': sessionToken } : {}),
+      },
+      body: formData,
+    })
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      throw new Error(data.message || error.message || 'File tidak bisa diupload.')
+    }
+
+    return data
+  }
 
   await uploadToSignedUrl(upload.signedUrl, file)
 

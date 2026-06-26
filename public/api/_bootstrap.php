@@ -273,6 +273,29 @@ function default_website_settings(): array
             'fallbackPrice' => 'Mulai dari kelas pilihan',
             'emptyPrice' => 'Harga tersedia di dashboard',
         ],
+        'homepageNotifications' => [
+            'enabled' => true,
+            'mode' => 'all',
+            'selectedActivityIds' => [],
+            'customActivities' => [],
+        ],
+        'paymentMethods' => [
+            ['code' => 'QRIS', 'label' => 'QRIS', 'brand' => 'qris', 'logoUrl' => ''],
+            ['code' => 'QRIS2', 'label' => 'QRIS 2', 'brand' => 'qris', 'logoUrl' => ''],
+            ['code' => 'BCAVA', 'label' => 'BCA Virtual Account', 'brand' => 'bca', 'logoUrl' => ''],
+            ['code' => 'BNIVA', 'label' => 'BNI Virtual Account', 'brand' => 'bni', 'logoUrl' => ''],
+            ['code' => 'BRIVA', 'label' => 'BRI Virtual Account', 'brand' => 'bri', 'logoUrl' => ''],
+            ['code' => 'MANDIRIVA', 'label' => 'Mandiri Virtual Account', 'brand' => 'mandiri', 'logoUrl' => ''],
+            ['code' => 'PERMATAVA', 'label' => 'Permata Virtual Account', 'brand' => 'permata', 'logoUrl' => ''],
+            ['code' => 'CIMBVA', 'label' => 'CIMB Niaga Virtual Account', 'brand' => 'cimb', 'logoUrl' => ''],
+            ['code' => 'BSIVA', 'label' => 'BSI Virtual Account', 'brand' => 'bsi', 'logoUrl' => ''],
+            ['code' => 'MUAMALATVA', 'label' => 'Muamalat Virtual Account', 'brand' => 'muamalat', 'logoUrl' => ''],
+            ['code' => 'ALFAMART', 'label' => 'Alfamart', 'brand' => 'alfamart', 'logoUrl' => ''],
+            ['code' => 'INDOMARET', 'label' => 'Indomaret', 'brand' => 'indomaret', 'logoUrl' => ''],
+            ['code' => 'ALFAMIDI', 'label' => 'Alfamidi', 'brand' => 'alfamidi', 'logoUrl' => ''],
+            ['code' => 'OVO', 'label' => 'OVO', 'brand' => 'ovo', 'logoUrl' => ''],
+            ['code' => 'SHOPEEPAY', 'label' => 'ShopeePay', 'brand' => 'shopeepay', 'logoUrl' => ''],
+        ],
         'benefits' => [
             'eyebrow' => 'Benefit',
             'title' => 'Belajar lebih terarah dengan materi, tugas, dan feedback mentor.',
@@ -355,6 +378,94 @@ function clean_website_icon($value, string $fallback = 'spark'): string
     ];
 
     return in_array($icon, $allowed, true) ? $icon : $fallback;
+}
+
+function clean_payment_methods($value, array $fallbackMethods): array
+{
+    $source = is_array($value) && count($value) > 0 ? $value : $fallbackMethods;
+    $methods = [];
+    $seenCodes = [];
+
+    foreach (array_slice($source, 0, 80) as $index => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $fallback = $fallbackMethods[$index] ?? $fallbackMethods[0];
+        $code = strtoupper(clean_text($item['code'] ?? $fallback['code'], 40));
+
+        if ($code === '' || in_array($code, $seenCodes, true)) {
+            continue;
+        }
+
+        $seenCodes[] = $code;
+
+        $feeFlat = clean_number($item['feeFlat'] ?? ($item['feeCustomer']['flat'] ?? 0), 0, 1000000);
+        $feePercent = (float) ($item['feePercent'] ?? ($item['feeCustomer']['percent'] ?? 0));
+        $feePercent = min(100, max(0, $feePercent));
+
+        $methods[] = [
+            'code' => $code,
+            'label' => clean_text($item['label'] ?? $item['name'] ?? $fallback['label'] ?? $code, 80),
+            'brand' => clean_text($item['brand'] ?? $fallback['brand'] ?? strtolower($code), 40),
+            'logoUrl' => clean_asset_url($item['logoUrl'] ?? $item['iconUrl'] ?? ''),
+            'feeFlat' => $feeFlat,
+            'feePercent' => $feePercent,
+        ];
+    }
+
+    return $methods;
+}
+
+function clean_homepage_notifications($value): array
+{
+    $source = is_array($value) ? $value : [];
+    $selectedActivityIds = [];
+    $customActivities = [];
+
+    foreach (array_slice(is_array($source['selectedActivityIds'] ?? null) ? $source['selectedActivityIds'] : [], 0, 300) as $id) {
+        $cleanId = clean_text($id, 240);
+
+        if ($cleanId !== '') {
+            $selectedActivityIds[] = $cleanId;
+        }
+    }
+
+    foreach (array_slice(is_array($source['customActivities'] ?? null) ? $source['customActivities'] : [], 0, 100) as $index => $activity) {
+        if (!is_array($activity)) {
+            continue;
+        }
+
+        $name = clean_text($activity['name'] ?? '', 160);
+        $itemTitle = clean_text($activity['itemTitle'] ?? '', 180);
+
+        if ($name === '' || $itemTitle === '') {
+            continue;
+        }
+
+        $itemType = ($activity['type'] ?? $activity['itemType'] ?? 'kelas') === 'produk' ? 'produk' : 'kelas';
+
+        $customActivities[] = [
+            'id' => clean_text($activity['id'] ?? 'custom-activity-' . ($index + 1), 240),
+            'name' => $name,
+            'avatar' => clean_asset_url($activity['avatar'] ?? ''),
+            'actionText' => clean_text(
+                $activity['actionText'] ?? ($itemType === 'produk' ? 'membeli produk digital' : 'mendaftar kelas'),
+                80
+            ),
+            'itemTitle' => $itemTitle,
+            'itemId' => clean_text($activity['itemId'] ?? '', 160),
+            'type' => $itemType,
+            'createdAt' => clean_text($activity['createdAt'] ?? '', 80),
+        ];
+    }
+
+    return [
+        'enabled' => ($source['enabled'] ?? true) !== false,
+        'mode' => in_array($source['mode'] ?? 'all', ['all', 'selected'], true) ? $source['mode'] : 'all',
+        'selectedActivityIds' => $selectedActivityIds,
+        'customActivities' => $customActivities,
+    ];
 }
 
 function clean_website_settings($value): array
@@ -488,6 +599,8 @@ function clean_website_settings($value): array
             'fallbackPrice' => clean_text($courses['fallbackPrice'] ?? $defaults['courses']['fallbackPrice'], 90),
             'emptyPrice' => clean_text($courses['emptyPrice'] ?? $defaults['courses']['emptyPrice'], 90),
         ],
+        'homepageNotifications' => clean_homepage_notifications($source['homepageNotifications'] ?? []),
+        'paymentMethods' => clean_payment_methods($source['paymentMethods'] ?? [], $defaults['paymentMethods']),
         'benefits' => [
             'eyebrow' => clean_text($benefits['eyebrow'] ?? $defaults['benefits']['eyebrow'], 60),
             'title' => clean_text($benefits['title'] ?? $defaults['benefits']['title'], 140),
@@ -803,10 +916,16 @@ function fetch_classes(PDO $pdo): array
         return [
             'id' => $class['id'],
             'title' => $class['title'],
+            'description' => $class['description'] ?? '',
             'students' => (int) $class['students'],
+            'displayStudents' => isset($class['display_students']) ? $class['display_students'] : null,
+            'rating' => isset($class['rating']) ? $class['rating'] : null,
             'status' => $class['status'],
             'revenue' => $class['revenue'],
             'price' => (int) ($class['price'] ?? 0),
+            'salePrice' => (int) ($class['sale_price'] ?? 0),
+            'purchaseButtonLabel' => $class['purchase_button_label'] ?? 'Beli Sekarang',
+            'registerButtonLabel' => $class['register_button_label'] ?? 'Daftar',
             'lynkProductKey' => $class['lynk_product_key'] ?? '',
             'tripayProductKey' => $class['tripay_product_key'] ?? '',
             'thumbnail' => $class['thumbnail'],
@@ -815,6 +934,9 @@ function fetch_classes(PDO $pdo): array
             'next' => $class['next_label'],
             'liveAt' => $class['live_at'],
             'lessons' => $class['lessons'],
+            'showOnHomepage' => array_key_exists('show_on_homepage', $class) ? (bool) $class['show_on_homepage'] : true,
+            'showOnMember' => array_key_exists('show_on_member', $class) ? (bool) $class['show_on_member'] : true,
+            'highlighted' => !empty($class['highlighted']),
             'materials' => array_map(function (array $material) use ($assetsQuery): array {
                 $assetsQuery->execute([$material['id']]);
                 $assets = $assetsQuery->fetchAll();

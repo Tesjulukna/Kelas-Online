@@ -299,9 +299,15 @@ function cleanPaymentMethods(value) {
         code,
         label: cleanText(item?.label || fallback.label || code, 80),
         brand: cleanText(item?.brand || fallback.brand || code.toLowerCase(), 40),
-        logoUrl: cleanUrl(item?.logoUrl || '', 2000),
-        feeFlat: Math.max(0, Math.round(Number(item?.feeFlat) || 0)),
-        feePercent: Math.max(0, Math.min(100, Number(item?.feePercent) || 0)),
+        logoUrl: cleanUrl(item?.logoUrl || item?.iconUrl || '', 2000),
+        feeFlat: Math.max(
+          0,
+          Math.round(Number(item?.feeFlat ?? item?.feeCustomer?.flat) || 0),
+        ),
+        feePercent: Math.max(
+          0,
+          Math.min(100, Number(item?.feePercent ?? item?.feeCustomer?.percent) || 0),
+        ),
       }
     })
     .filter(Boolean)

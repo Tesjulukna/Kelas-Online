@@ -600,6 +600,9 @@ function HomePage({
       : Math.max(0, Math.round(count))
   }
 
+  const getProductAccessCount = (productId) =>
+    digitalProductAccess.filter((access) => access.productId === productId).length
+
   const catalogItems = [
     ...homepageClasses.map((course) => {
       const fallbackMetrics = getItemMockMetrics(course.id)
@@ -627,6 +630,10 @@ function HomePage({
     }),
     ...homepageProducts.map((product) => {
       const fallbackMetrics = getItemMockMetrics(product.id)
+      const realSales = Math.max(
+        0,
+        Math.round(Number(product.accessCount) || getProductAccessCount(product.id)),
+      )
       const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
       const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
       const currentPriceVal = salePrice || normalPrice
@@ -646,7 +653,7 @@ function HomePage({
         description: plainTextFromHtml(product.description) || 'Produk digital siap diakses otomatis setelah pembayaran berhasil.',
         fileName: product.fileName || product.platformType || 'Produk digital',
         rating: resolveRating(product, fallbackMetrics.rating),
-        sales: resolveCount(product.displaySales, fallbackMetrics.sales),
+        sales: resolveCount(product.displaySales, realSales),
         highlighted: product.highlighted === true,
       }
     })
@@ -671,6 +678,15 @@ function HomePage({
   const selectedProduct = detailProducts.find((product) => product.id === selectedProductId || product.publicCode === selectedProductId)
   const checkoutProduct = detailProducts.find((product) => product.id === checkoutProductId || product.publicCode === checkoutProductId)
   const activeCheckoutProduct = checkoutProduct || selectedProduct
+  const selectedProductSalesCount = selectedProduct
+    ? resolveCount(
+        selectedProduct.displaySales,
+        Math.max(
+          0,
+          Math.round(Number(selectedProduct.accessCount) || getProductAccessCount(selectedProduct.id)),
+        ),
+      )
+    : 0
   const selectedProductSalePrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.salePrice) || 0))
   const selectedProductNormalPrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.price) || 0))
   const selectedProductPrice = selectedProductSalePrice || selectedProductNormalPrice
@@ -1218,6 +1234,7 @@ function HomePage({
           key={`${selectedProduct.id}:${JSON.stringify(selectedProduct.reviews || [])}`}
           product={selectedProduct}
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
+          salesCount={selectedProductSalesCount}
           wishlistCount={wishlistCount}
           onBack={closePublicDetail}
           onAddToWishlist={() => addWishlistItem(selectedProduct, 'produk')}

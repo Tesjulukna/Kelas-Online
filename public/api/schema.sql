@@ -18,10 +18,16 @@ CREATE TABLE IF NOT EXISTS accounts (
 CREATE TABLE IF NOT EXISTS classes (
   id VARCHAR(120) PRIMARY KEY,
   title VARCHAR(160) NOT NULL,
+  description LONGTEXT,
   students INT NOT NULL DEFAULT 0,
+  display_students INT NULL,
+  rating DECIMAL(2,1) NULL,
   status VARCHAR(40) NOT NULL DEFAULT 'Aktif',
   revenue VARCHAR(80) NOT NULL DEFAULT 'Rp 0',
   price INT NOT NULL DEFAULT 0,
+  sale_price INT NOT NULL DEFAULT 0,
+  purchase_button_label VARCHAR(80) NOT NULL DEFAULT 'Beli Sekarang',
+  register_button_label VARCHAR(80) NOT NULL DEFAULT 'Daftar',
   lynk_product_key VARCHAR(180) NOT NULL DEFAULT '',
   tripay_product_key VARCHAR(180) NOT NULL DEFAULT '',
   thumbnail MEDIUMTEXT,
@@ -30,6 +36,9 @@ CREATE TABLE IF NOT EXISTS classes (
   next_label VARCHAR(160) NOT NULL DEFAULT 'Lanjutkan modul berikutnya',
   live_at VARCHAR(160) NOT NULL DEFAULT 'Jadwal menyusul',
   lessons VARCHAR(80) NOT NULL DEFAULT '0 materi',
+  show_on_homepage TINYINT(1) NOT NULL DEFAULT 1,
+  show_on_member TINYINT(1) NOT NULL DEFAULT 1,
+  highlighted TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -218,6 +227,144 @@ CREATE TABLE IF NOT EXISTS payment_snapshots (
   INDEX payment_snapshot_member_index (member_id),
   INDEX payment_snapshot_class_index (class_id),
   INDEX payment_snapshot_product_index (product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS digital_products (
+  id VARCHAR(120) PRIMARY KEY,
+  title VARCHAR(180) NOT NULL,
+  description LONGTEXT,
+  price INT NOT NULL DEFAULT 0,
+  display_sales INT NULL,
+  rating DECIMAL(2,1) NULL,
+  status VARCHAR(40) NOT NULL DEFAULT 'Draft',
+  thumbnail MEDIUMTEXT,
+  add_video TINYINT(1) NOT NULL DEFAULT 0,
+  video_url TEXT,
+  file_url MEDIUMTEXT,
+  file_name VARCHAR(220) NOT NULL DEFAULT '',
+  delivery_note LONGTEXT,
+  platform_type VARCHAR(60) NOT NULL DEFAULT 'upload',
+  pay_what_you_want TINYINT(1) NOT NULL DEFAULT 0,
+  sale_price INT NOT NULL DEFAULT 0,
+  item_quantity_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  item_quantity INT NOT NULL DEFAULT 0,
+  limit_qty_per_checkout TINYINT(1) NOT NULL DEFAULT 0,
+  purchase_button_label VARCHAR(80) NOT NULL DEFAULT 'Buy Now',
+  release_time_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  release_time VARCHAR(120) NOT NULL DEFAULT '',
+  whatsapp_notification TINYINT(1) NOT NULL DEFAULT 0,
+  custom_message_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  custom_message LONGTEXT,
+  reviews LONGTEXT,
+  add_ons LONGTEXT,
+  customer_questions LONGTEXT,
+  block_layout VARCHAR(40) NOT NULL DEFAULT 'default',
+  require_customer_name TINYINT(1) NOT NULL DEFAULT 0,
+  require_customer_phone TINYINT(1) NOT NULL DEFAULT 0,
+  lynk_product_key VARCHAR(180) NOT NULL DEFAULT '',
+  tripay_product_key VARCHAR(180) NOT NULL DEFAULT '',
+  show_on_homepage TINYINT(1) NOT NULL DEFAULT 1,
+  show_on_member TINYINT(1) NOT NULL DEFAULT 1,
+  highlighted TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX digital_product_status_index (status),
+  INDEX digital_product_home_index (show_on_homepage),
+  INDEX digital_product_member_index (show_on_member)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS digital_product_access (
+  id VARCHAR(160) PRIMARY KEY,
+  product_id VARCHAR(120) NOT NULL DEFAULT '',
+  product_title VARCHAR(180) NOT NULL DEFAULT '',
+  member_id VARCHAR(120) NOT NULL DEFAULT '',
+  buyer_name VARCHAR(160) NOT NULL DEFAULT '',
+  buyer_email VARCHAR(180) NOT NULL DEFAULT '',
+  source VARCHAR(80) NOT NULL DEFAULT '',
+  order_id VARCHAR(180) NOT NULL DEFAULT '',
+  status VARCHAR(40) NOT NULL DEFAULT 'active',
+  download_url MEDIUMTEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX digital_product_access_member_index (member_id),
+  INDEX digital_product_access_email_index (buyer_email),
+  INDEX digital_product_access_product_index (product_id),
+  INDEX digital_product_access_order_index (order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS testimonials (
+  id VARCHAR(120) PRIMARY KEY,
+  member_id VARCHAR(120) NOT NULL DEFAULT '',
+  member_name VARCHAR(160) NOT NULL DEFAULT '',
+  member_avatar MEDIUMTEXT,
+  class_id VARCHAR(120) NOT NULL DEFAULT '',
+  class_title VARCHAR(180) NOT NULL DEFAULT '',
+  message VARCHAR(320) NOT NULL DEFAULT '',
+  status VARCHAR(40) NOT NULL DEFAULT 'pending',
+  created_at VARCHAR(60) NOT NULL DEFAULT '',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX testimonial_status_index (status),
+  INDEX testimonial_member_index (member_id),
+  INDEX testimonial_class_index (class_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS certificate_templates (
+  id VARCHAR(120) PRIMARY KEY,
+  class_id VARCHAR(120) NOT NULL DEFAULT '',
+  name VARCHAR(180) NOT NULL DEFAULT 'Template Sertifikat',
+  mentor_name VARCHAR(160) NOT NULL DEFAULT 'Ibnu Creative',
+  size_type VARCHAR(60) NOT NULL DEFAULT 'a4Landscape',
+  width INT NOT NULL DEFAULT 1123,
+  height INT NOT NULL DEFAULT 794,
+  payload LONGTEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX certificate_template_class_index (class_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS certificates (
+  id VARCHAR(120) PRIMARY KEY,
+  certificate_id VARCHAR(120) NOT NULL,
+  member_id VARCHAR(120) NOT NULL DEFAULT '',
+  member_name VARCHAR(160) NOT NULL DEFAULT '',
+  class_id VARCHAR(120) NOT NULL DEFAULT '',
+  class_title VARCHAR(180) NOT NULL DEFAULT '',
+  mentor_name VARCHAR(160) NOT NULL DEFAULT 'Ibnu Creative',
+  participant_name VARCHAR(160) NOT NULL DEFAULT '',
+  template_id VARCHAR(120) NOT NULL DEFAULT '',
+  template_snapshot LONGTEXT,
+  completed_at VARCHAR(60) NOT NULL DEFAULT '',
+  issued_at VARCHAR(60) NOT NULL DEFAULT '',
+  name_change_used TINYINT(1) NOT NULL DEFAULT 0,
+  version INT NOT NULL DEFAULT 1,
+  revoked_at VARCHAR(60) NOT NULL DEFAULT '',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY certificate_public_id_unique (certificate_id),
+  UNIQUE KEY certificate_member_class_unique (member_id, class_id),
+  INDEX certificate_member_index (member_id),
+  INDEX certificate_class_index (class_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS certificate_name_change_requests (
+  id VARCHAR(120) PRIMARY KEY,
+  certificate_row_id VARCHAR(120) NOT NULL DEFAULT '',
+  public_certificate_id VARCHAR(120) NOT NULL DEFAULT '',
+  member_id VARCHAR(120) NOT NULL DEFAULT '',
+  member_name VARCHAR(160) NOT NULL DEFAULT '',
+  class_id VARCHAR(120) NOT NULL DEFAULT '',
+  class_title VARCHAR(180) NOT NULL DEFAULT '',
+  old_name VARCHAR(160) NOT NULL DEFAULT '',
+  new_name VARCHAR(160) NOT NULL DEFAULT '',
+  reason TEXT,
+  status VARCHAR(40) NOT NULL DEFAULT 'pending',
+  admin_note TEXT,
+  reviewed_at VARCHAR(60) NOT NULL DEFAULT '',
+  created_at VARCHAR(60) NOT NULL DEFAULT '',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY certificate_change_once_unique (certificate_row_id),
+  INDEX certificate_change_status_index (status),
+  INDEX certificate_change_member_index (member_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS analytics_events (

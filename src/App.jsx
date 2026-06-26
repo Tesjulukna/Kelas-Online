@@ -764,6 +764,7 @@ function cleanDigitalProducts(value) {
         item.displaySales === '' || item.displaySales === null || item.displaySales === undefined
           ? ''
           : Math.max(0, Math.round(Number(item.displaySales) || 0)),
+      accessCount: Math.max(0, Math.round(Number(item.accessCount) || 0)),
       rating:
         item.rating === '' || item.rating === null || item.rating === undefined
           ? ''
@@ -1367,6 +1368,24 @@ async function fetchStoredWebsiteSettings() {
   return cleanWebsiteSettings(data.settings)
 }
 
+async function fetchTripayPaymentMethods() {
+  const data = await requestJson(tripayPaymentMethodsApiPath)
+  const paymentMethods = Array.isArray(data.paymentMethods) ? data.paymentMethods : []
+
+  return cleanWebsiteSettings({ paymentMethods }).paymentMethods
+}
+
+function mergeTripayPaymentMethods(settings, paymentMethods) {
+  if (!paymentMethods.length) {
+    return cleanWebsiteSettings(settings)
+  }
+
+  return cleanWebsiteSettings({
+    ...settings,
+    paymentMethods,
+  })
+}
+
 async function fetchStoredMembers() {
   const data = await requestJson(membersApiPath)
 
@@ -1667,6 +1686,20 @@ function App() {
 
         setWebsiteSettings(nextSettings)
         window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(nextSettings))
+
+        fetchTripayPaymentMethods()
+          .then((paymentMethods) => {
+            if (!isCurrent || !paymentMethods.length) {
+              return
+            }
+
+            const syncedSettings = mergeTripayPaymentMethods(nextSettings, paymentMethods)
+            setWebsiteSettings(syncedSettings)
+            window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(syncedSettings))
+          })
+          .catch(() => {
+            // Stored payment settings remain usable if Tripay cannot be reached.
+          })
       })
       .catch(() => {
         // Default settings keep the public website usable if the API is not installed yet.
@@ -2507,23 +2540,24 @@ function App() {
       throw new Error('Silakan login admin ulang untuk sinkron metode pembayaran.')
     }
 
-    const data = await requestJson(tripayPaymentMethodsApiPath)
-    const paymentMethods = Array.isArray(data.paymentMethods) ? data.paymentMethods : []
+    const paymentMethods = await fetchTripayPaymentMethods()
 
     if (!paymentMethods.length) {
       throw new Error('Metode pembayaran aktif dari Tripay belum bisa dibaca.')
     }
 
-    const syncedSettings = cleanWebsiteSettings({
-      ...websiteSettings,
-      paymentMethods,
+    const syncedSettings = mergeTripayPaymentMethods(websiteSettings, paymentMethods)
+    const data = await requestJson(settingsApiPath, {
+      method: 'PUT',
+      body: JSON.stringify({ settings: syncedSettings }),
     })
+    const savedSettings = cleanWebsiteSettings(data.settings || syncedSettings)
 
-    setWebsiteSettings(syncedSettings)
-    window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(syncedSettings))
+    setWebsiteSettings(savedSettings)
+    window.sessionStorage.setItem(websiteSettingsKey, JSON.stringify(savedSettings))
     announceWebsiteSettingsSync()
 
-    return syncedSettings.paymentMethods
+    return savedSettings.paymentMethods
   }
 
   const refreshDataAfterRestore = async () => {

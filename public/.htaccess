@@ -1,17 +1,14 @@
 Options -Indexes
 
-<IfModule mod_headers.c>
-  Header always set X-Content-Type-Options "nosniff"
-  Header always set X-Frame-Options "DENY"
-  Header always set Referrer-Policy "strict-origin-when-cross-origin"
-  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
-  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https:; frame-src https://www.youtube.com https://youtube.com; form-action 'self'; upgrade-insecure-requests"
-</IfModule>
-
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteRule ^api/(classes|members|support|submissions|progress|login|logout|profile|upload-file|upload-video|video|lynk-webhook|tripay-checkout|tripay-webhook)$ api/$1.php [L,QSA]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
+
+  RewriteRule ^api(/.*)?$ - [L]
+
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
   RewriteRule ^ index.html [L]
 </IfModule>
+

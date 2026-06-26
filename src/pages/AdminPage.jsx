@@ -210,6 +210,53 @@ async function uploadClassImage(file, sessionToken = '') {
   return data.url
 }
 
+function uploadVideoToHosting({ endpoint, file, sessionToken = '', onProgress }) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    const formData = new FormData()
+
+    formData.append('type', 'video')
+    formData.append('video', file)
+
+    xhr.open('POST', endpoint)
+    xhr.responseType = 'json'
+
+    if (sessionToken) {
+      xhr.setRequestHeader('X-Session-Token', sessionToken)
+    }
+
+    xhr.upload.onprogress = (progressEvent) => {
+      if (!progressEvent.lengthComputable) {
+        return
+      }
+
+      onProgress?.(Math.round((progressEvent.loaded / progressEvent.total) * 100))
+    }
+
+    xhr.onload = () => {
+      let data = typeof xhr.response === 'object' && xhr.response ? xhr.response : {}
+
+      if (!Object.keys(data).length && xhr.responseText) {
+        try {
+          data = JSON.parse(xhr.responseText)
+        } catch {
+          data = {}
+        }
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(data.message || 'Video tidak bisa diupload.'))
+        return
+      }
+
+      resolve(data)
+    }
+
+    xhr.onerror = () => reject(new Error('Upload video gagal. Periksa koneksi hosting.'))
+    xhr.send(formData)
+  })
+}
+
 function formatDateInput(date) {
   const value = date instanceof Date ? date : new Date(date)
   const localDate = new Date(value.getTime() - value.getTimezoneOffset() * 60000)
@@ -2271,16 +2318,59 @@ function AdminPage({
         xhr.send(file)
       })
       .catch((error) => {
-        setVideoUploads((current) => ({
-          ...current,
-          [materialId]: {
-            ...(current[materialId] ?? {}),
-            percent: 0,
-            status: 'error',
+        uploadVideoToHosting({
+          endpoint: uploadVideoApiPath,
+          file,
+          sessionToken,
+          onProgress: (percent) => {
+            setVideoUploads((current) => ({
+              ...current,
+              [materialId]: {
+                ...(current[materialId] ?? {}),
+                percent,
+                status: 'uploading',
+              },
+            }))
           },
-        }))
-        onNotify(error.message || 'Video tidak bisa diupload.')
-        event.target.value = ''
+        })
+          .then((upload) => {
+            setClassForm((current) => ({
+              ...current,
+              materials: current.materials.map((material) =>
+                material.id === materialId
+                  ? {
+                    ...material,
+                    videoFile: upload.file || upload.path || '',
+                    videoName: upload.name || file.name,
+                    videoType: upload.type || file.type,
+                  }
+                  : material,
+              ),
+            }))
+            setVideoUploads((current) => ({
+              ...current,
+              [materialId]: {
+                fileName: upload.name || file.name,
+                percent: 100,
+                status: 'done',
+              },
+            }))
+            onNotify('Video berhasil diupload. Klik Simpan Kelas agar masuk ke materi.')
+          })
+          .catch((hostingError) => {
+            setVideoUploads((current) => ({
+              ...current,
+              [materialId]: {
+                ...(current[materialId] ?? {}),
+                percent: 0,
+                status: 'error',
+              },
+            }))
+            onNotify(hostingError.message || error.message || 'Video tidak bisa diupload.')
+          })
+          .finally(() => {
+            event.target.value = ''
+          })
       })
   }
 

@@ -10,6 +10,15 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 function ensure_material_support_columns(PDO $pdo): void
 {
     $columns = [
+        'description' => 'LONGTEXT NULL AFTER title',
+        'display_students' => 'INT NULL AFTER students',
+        'rating' => 'DECIMAL(2,1) NULL AFTER display_students',
+        'sale_price' => 'INT NOT NULL DEFAULT 0 AFTER price',
+        'purchase_button_label' => "VARCHAR(80) NOT NULL DEFAULT 'Beli Sekarang' AFTER sale_price",
+        'register_button_label' => "VARCHAR(80) NOT NULL DEFAULT 'Daftar' AFTER purchase_button_label",
+        'show_on_homepage' => 'TINYINT(1) NOT NULL DEFAULT 1 AFTER lessons',
+        'show_on_member' => 'TINYINT(1) NOT NULL DEFAULT 1 AFTER show_on_homepage',
+        'highlighted' => 'TINYINT(1) NOT NULL DEFAULT 0 AFTER show_on_member',
         'image_file' => 'MEDIUMTEXT NULL AFTER video_type',
         'image_name' => "VARCHAR(180) NOT NULL DEFAULT '' AFTER image_file",
         'pdf_file' => 'MEDIUMTEXT NULL AFTER image_name',
@@ -104,8 +113,8 @@ $classes = is_array($payload['classes'] ?? null) ? $payload['classes'] : [];
 
 $insertClass = $pdo->prepare(
     'INSERT INTO classes
-    (id, title, students, status, revenue, price, lynk_product_key, tripay_product_key, thumbnail, mentor, progress, next_label, live_at, lessons)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    (id, title, description, students, display_students, rating, status, revenue, price, sale_price, purchase_button_label, register_button_label, lynk_product_key, tripay_product_key, thumbnail, mentor, progress, next_label, live_at, lessons, show_on_homepage, show_on_member, highlighted)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 $insertMaterial = $pdo->prepare(
     'INSERT INTO materials
@@ -138,10 +147,20 @@ try {
         $insertClass->execute([
             $classId,
             clean_text($class['title'] ?? 'Kelas ' . ($classIndex + 1), 160),
+            clean_rich_html($class['description'] ?? '', 20000),
             clean_number($class['students'] ?? 0, 0, 1000000),
+            isset($class['displayStudents']) && $class['displayStudents'] !== ''
+                ? clean_number($class['displayStudents'], 0, 10000000)
+                : null,
+            isset($class['rating']) && $class['rating'] !== ''
+                ? min(5, max(0, (float) $class['rating']))
+                : null,
             clean_text($class['status'] ?? 'Aktif', 40),
             clean_text($class['revenue'] ?? 'Rp 0', 80),
             clean_number($class['price'] ?? 0, 0, 1000000000),
+            clean_number($class['salePrice'] ?? 0, 0, 1000000000),
+            clean_text($class['purchaseButtonLabel'] ?? 'Beli Sekarang', 80),
+            clean_text($class['registerButtonLabel'] ?? 'Daftar', 80),
             clean_text($class['lynkProductKey'] ?? '', 180),
             clean_text($class['tripayProductKey'] ?? '', 180),
             clean_image($class['thumbnail'] ?? ''),
@@ -150,6 +169,9 @@ try {
             clean_text($class['next'] ?? 'Lanjutkan modul berikutnya', 160),
             clean_text($class['liveAt'] ?? 'Jadwal menyusul', 160),
             clean_text($class['lessons'] ?? count($materials) . ' materi', 80),
+            array_key_exists('showOnHomepage', $class) && empty($class['showOnHomepage']) ? 0 : 1,
+            array_key_exists('showOnMember', $class) && empty($class['showOnMember']) ? 0 : 1,
+            !empty($class['highlighted']) ? 1 : 0,
         ]);
 
         foreach (array_slice($materials, 0, 80) as $materialIndex => $material) {

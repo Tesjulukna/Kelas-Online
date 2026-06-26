@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_tripay.php';
+require __DIR__ . '/_email.php';
+require __DIR__ . '/_commerce.php';
 
 ensure_method(['POST']);
 
@@ -12,20 +14,14 @@ $pdo = db();
 $config = api_config();
 $payload = read_json_body();
 $classId = clean_text($payload['classId'] ?? '', 120);
+$productId = clean_text($payload['productId'] ?? '', 120);
+$checkoutType = $productId !== '' ? 'digital_product' : 'class';
 
-if ($classId === '') {
-    send_json(400, ['message' => 'ID kelas wajib dikirim.']);
+if ($classId === '' && $productId === '') {
+    send_json(400, ['message' => 'ID kelas atau produk wajib dikirim.']);
 }
 
 tripay_ensure_schema($pdo);
-
-$classQuery = $pdo->prepare('SELECT * FROM classes WHERE id = ? AND status = ? LIMIT 1');
-$classQuery->execute([$classId, 'Aktif']);
-$class = $classQuery->fetch();
-
-if (!$class) {
-    send_json(404, ['message' => 'Kelas aktif tidak ditemukan.']);
-}
 
 $memberQuery = $pdo->prepare('SELECT * FROM accounts WHERE id = ? AND role = ? LIMIT 1');
 $memberQuery->execute([$user['userId'], 'member']);
@@ -35,7 +31,40 @@ if (!$member) {
     send_json(404, ['message' => 'Akun member tidak ditemukan.']);
 }
 
-if (tripay_has_class_access($member, $classId)) {
+$checkoutItem = null;
+
+if ($checkoutType === 'digital_product') {
+    $checkoutItem = commerce_fetch_product($pdo, $productId, true);
+
+    if (!$checkoutItem) {
+        send_json(404, ['message' => 'Produk digital aktif tidak ditemukan.']);
+    }
+
+    $accessQuery = $pdo->prepare(
+        'SELECT id FROM digital_product_access
+        WHERE product_id = ? AND (member_id = ? OR buyer_email = ?)
+        LIMIT 1',
+    );
+    $accessQuery->execute([$productId, $member['id'], clean_email($member['email'] ?? '')]);
+
+    if ($accessQuery->fetch()) {
+        send_json(200, [
+            'ok' => true,
+            'alreadyHasAccess' => true,
+            'message' => 'Akses produk digital sudah aktif.',
+        ]);
+    }
+} else {
+    $classQuery = $pdo->prepare('SELECT * FROM classes WHERE id = ? AND status = ? LIMIT 1');
+    $classQuery->execute([$classId, 'Aktif']);
+    $checkoutItem = $classQuery->fetch();
+
+    if (!$checkoutItem) {
+        send_json(404, ['message' => 'Kelas aktif tidak ditemukan.']);
+    }
+}
+
+if ($checkoutType === 'class' && tripay_has_class_access($member, $classId)) {
     send_json(200, [
         'ok' => true,
         'alreadyHasAccess' => true,
@@ -43,10 +72,40 @@ if (tripay_has_class_access($member, $classId)) {
     ]);
 }
 
-$amount = clean_number($class['price'] ?? 0, 0, 1000000000);
+$amount = $checkoutType === 'digital_product'
+    ? commerce_product_effective_price($checkoutItem)
+    : commerce_class_effective_price($checkoutItem);
 
 if ($amount <= 0) {
-    $accessGranted = tripay_grant_class_access($pdo, $member['id'], $class['id']);
+    if ($checkoutType === 'digital_product') {
+        $orderCode = 'FREE-MEMBER-' . $checkoutItem['id'] . '-' . time();
+        $accessResult = commerce_grant_digital_product_access($pdo, [
+            'productId' => $checkoutItem['id'],
+            'memberId' => $member['id'],
+            'buyerEmail' => $member['email'] ?? '',
+            'buyerName' => $member['name'] ?? 'Member',
+            'source' => 'free-member',
+            'orderId' => $orderCode,
+        ]);
+        send_digital_product_delivery_email([
+            'buyerName' => $member['name'] ?? 'Member',
+            'buyerEmail' => $member['email'] ?? '',
+            'productTitle' => $checkoutItem['title'] ?? 'Produk digital',
+            'downloadUrl' => clean_asset_url($checkoutItem['file_url'] ?? commerce_public_product_access_url($orderCode), 1000),
+            'deliveryNote' => $checkoutItem['delivery_note'] ?? '',
+        ]);
+
+        send_json(200, [
+            'ok' => true,
+            'freeAccessGranted' => $accessResult['granted'],
+            'alreadyHasAccess' => !$accessResult['granted'],
+            'message' => $accessResult['granted']
+                ? 'Akses produk gratis sudah aktif.'
+                : 'Akses produk sudah aktif.',
+        ]);
+    }
+
+    $accessGranted = tripay_grant_class_access($pdo, $member['id'], $checkoutItem['id']);
 
     send_json(200, [
         'ok' => true,
@@ -94,14 +153,16 @@ $checkoutPayload = [
     'customer_phone' => $customerPhone,
     'order_items' => [
         [
-            'sku' => clean_text(($class['tripay_product_key'] ?? '') ?: $class['id'], 80),
-            'name' => clean_text($class['title'] ?? 'Kelas IbnuCreative', 160),
+            'sku' => clean_text(($checkoutItem['tripay_product_key'] ?? '') ?: $checkoutItem['id'], 80),
+            'name' => clean_text($checkoutItem['title'] ?? 'IbnuCreative', 160),
             'price' => $amount,
             'quantity' => 1,
         ],
     ],
     'callback_url' => $callbackUrl,
-    'return_url' => $returnUrl,
+    'return_url' => $checkoutType === 'digital_product'
+        ? commerce_public_product_access_url($merchantRef)
+        : $returnUrl,
     'expired_time' => time() + ($expiredMinutes * 60),
     'signature' => tripay_checkout_signature($merchantCode, $merchantRef, $amount, $privateKey),
 ];
@@ -131,12 +192,32 @@ $insert->execute([
     $member['id'],
     clean_text($member['name'] ?? ($user['name'] ?? 'Member'), 160),
     $buyerEmail,
-    $class['id'],
-    $class['title'],
+    $checkoutType === 'digital_product' ? 'product:' . $checkoutItem['id'] : $checkoutItem['id'],
+    $checkoutItem['title'],
     $amount,
     'pending',
     $checkoutUrl,
-    $tripayResponse['body'],
+    json_encode([
+        'order_type' => $checkoutType,
+        'product_id' => $checkoutType === 'digital_product' ? $checkoutItem['id'] : '',
+        'product_title' => $checkoutType === 'digital_product' ? $checkoutItem['title'] : '',
+        'delivery_url' => $checkoutType === 'digital_product' ? ($checkoutItem['file_url'] ?? '') : '',
+        'delivery_note' => $checkoutType === 'digital_product' ? ($checkoutItem['delivery_note'] ?? '') : '',
+        'payment_method' => $method,
+        'payment_name' => $method,
+        'data' => $tripayData,
+        'response' => $tripayResponse['data'],
+    ], JSON_UNESCAPED_UNICODE),
+]);
+
+$emailResult = send_tripay_payment_email([
+    'buyerName' => clean_text($member['name'] ?? ($user['name'] ?? 'Member'), 160),
+    'buyerEmail' => $buyerEmail,
+    'itemTitle' => clean_text($checkoutItem['title'] ?? 'IbnuCreative', 160),
+    'amount' => $amount,
+    'totalAmount' => $amount,
+    'paymentMethod' => $method,
+    'checkoutUrl' => $checkoutUrl,
 ]);
 
 send_json(200, [
@@ -145,5 +226,7 @@ send_json(200, [
     'merchantRef' => $merchantRef,
     'reference' => $reference,
     'paymentMethod' => $method,
+    'emailSent' => $emailResult['sent'] ?? false,
+    'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
     'message' => 'Checkout Tripay berhasil dibuat.',
 ]);

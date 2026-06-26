@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import Icon from '../../components/Icon'
 import './Detail.css'
 
@@ -155,6 +155,7 @@ function formatRupiah(value) {
 function DetailProduk({
   product,
   priceLabel,
+  salesCount = 0,
   wishlistCount = 0,
   onAddToWishlist,
   onBack,
@@ -175,6 +176,13 @@ function DetailProduk({
     message: 'Kamu harus membeli produk ini dulu sebelum bisa memberikan ulasan.',
   })
   const [pendingReviewLikeIds, setPendingReviewLikeIds] = useState([])
+
+  useEffect(() => {
+    const nextLikedReviewIds = readLikedReviewIds(product?.id)
+    setLikedReviewIds(nextLikedReviewIds)
+    setReviewsList(buildProductReviewList(product, nextLikedReviewIds))
+  }, [product?.id, product?.reviews])
+
   if (!product) {
     return null
   }
@@ -309,6 +317,7 @@ function DetailProduk({
               <Icon name="download" style={{ marginRight: '4px', width: '12px' }} />
               {product.fileName || 'Digital Delivery'}
             </span>
+            <span>{Math.max(0, Math.round(Number(salesCount) || 0))} terjual</span>
             <span>Akses Instant via Email</span>
           </div>
 

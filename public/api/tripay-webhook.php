@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_tripay.php';
+require __DIR__ . '/_email.php';
+require __DIR__ . '/_commerce.php';
 
 ensure_method(['POST']);
 
@@ -106,6 +108,58 @@ if (in_array($order['status'] ?? '', ['processed', 'paid'], true)) {
         'ok' => true,
         'duplicate' => true,
         'message' => 'Order Tripay sudah pernah diproses.',
+    ]);
+}
+
+$orderPayload = commerce_json($order['payload'] ?? '{}');
+$isDigitalProductOrder = clean_text($orderPayload['order_type'] ?? '', 60) === 'digital_product';
+
+if ($isDigitalProductOrder) {
+    $productId = clean_text($orderPayload['product_id'] ?? '', 120);
+    $accessResult = commerce_grant_digital_product_access($pdo, [
+        'productId' => $productId,
+        'memberId' => $order['member_id'] ?? '',
+        'buyerEmail' => $order['buyer_email'] ?? '',
+        'buyerName' => $order['buyer_name'] ?? 'Pelanggan',
+        'source' => 'tripay',
+        'orderId' => $order['merchant_ref'] ?: ($reference ?: ($order['reference'] ?? '')),
+    ]);
+
+    $update = $pdo->prepare(
+        'UPDATE tripay_orders
+        SET reference = ?, status = ?, access_granted = ?, payload = ?
+        WHERE id = ?',
+    );
+    $update->execute([
+        $reference ?: ($order['reference'] ?? ''),
+        'processed',
+        $accessResult['granted'] ? 1 : 0,
+        json_encode(array_merge($orderPayload, ['callback' => $payload]), JSON_UNESCAPED_UNICODE),
+        $order['id'],
+    ]);
+
+    $accessUrl = !empty($orderPayload['public_checkout'])
+        ? commerce_public_product_access_url($order['merchant_ref'] ?: ($reference ?: ($order['reference'] ?? '')))
+        : clean_asset_url($accessResult['product']['file_url'] ?? '', 1000);
+    $emailResult = send_digital_product_delivery_email([
+        'buyerName' => clean_text($order['buyer_name'] ?? 'Pelanggan', 160),
+        'buyerEmail' => clean_email($order['buyer_email'] ?? ''),
+        'productTitle' => clean_text($accessResult['product']['title'] ?? $order['class_title'] ?? 'Produk digital', 180),
+        'downloadUrl' => $accessUrl,
+        'deliveryNote' => clean_text($accessResult['product']['delivery_note'] ?? ($orderPayload['delivery_note'] ?? ''), 1200),
+    ]);
+
+    send_json(200, [
+        'ok' => true,
+        'message' => $accessResult['granted']
+            ? 'Pembayaran Tripay sukses dan produk digital sudah aktif.'
+            : 'Pembayaran Tripay sukses. Pembeli sudah memiliki akses produk.',
+        'merchantRef' => $order['merchant_ref'],
+        'reference' => $reference ?: ($order['reference'] ?? ''),
+        'productId' => $productId,
+        'accessGranted' => $accessResult['granted'],
+        'emailSent' => $emailResult['sent'] ?? false,
+        'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
     ]);
 }
 
