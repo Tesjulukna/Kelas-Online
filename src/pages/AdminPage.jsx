@@ -817,6 +817,7 @@ function AdminPage({
   onUpdateSupportTicket = async () => { },
   onDeleteSupportTicket = async () => { },
   onUpdateSubmission = async () => { },
+  onCreateTestimonial = async () => { },
   onUpdateTestimonial = async () => { },
   onDeleteTestimonial = async () => { },
   onReviewCertificateNameChange = async () => { },
@@ -861,6 +862,15 @@ function AdminPage({
   const [isDigitalProductBuilderOpen, setIsDigitalProductBuilderOpen] = useState(false)
   const [isDigitalReviewManagerOpen, setIsDigitalReviewManagerOpen] = useState(false)
   const [digitalReviewDraft, setDigitalReviewDraft] = useState(() => createEmptyDigitalProductReview())
+  const [adminTestimonialForm, setAdminTestimonialForm] = useState({
+    sourceType: 'member',
+    memberId: '',
+    customName: '',
+    customAvatar: '',
+    classId: '',
+    message: '',
+    status: 'approved',
+  })
   const [memberForm, setMemberForm] = useState(() => createEmptyMemberForm())
   const [editingMemberId, setEditingMemberId] = useState(null)
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false)
@@ -948,6 +958,13 @@ function AdminPage({
   )
   const pendingTestimonials = testimonials.filter((item) => item.status === 'pending').length
   const approvedTestimonials = testimonials.filter((item) => item.status === 'approved').length
+  const adminTestimonialSelectedMember = members.find(
+    (member) => member.id === adminTestimonialForm.memberId,
+  )
+  const adminTestimonialClassOptions =
+    adminTestimonialForm.sourceType === 'member' && adminTestimonialSelectedMember
+      ? getMemberAccessibleClasses(adminTestimonialSelectedMember, classes)
+      : classes.filter((course) => course.status === 'Aktif')
   const pendingCertificateNameRequests = certificateNameChangeRequests.filter(
     (request) => request.status === 'pending',
   )
@@ -987,6 +1004,76 @@ function AdminPage({
       testimonial,
       testimonial.status === 'approved' ? 'hidden' : 'approved',
     )
+  }
+
+  const updateAdminTestimonialForm = (field, value) => {
+    setAdminTestimonialForm((current) => {
+      const next = { ...current, [field]: value }
+
+      if (field === 'sourceType') {
+        next.memberId = ''
+        next.classId = ''
+        next.customName = ''
+        next.customAvatar = ''
+      }
+
+      if (field === 'memberId') {
+        next.classId = ''
+      }
+
+      return next
+    })
+  }
+
+  const handleCreateAdminTestimonial = async (event) => {
+    event.preventDefault()
+
+    const selectedClass = classes.find((course) => course.id === adminTestimonialForm.classId)
+    const selectedMember = members.find((member) => member.id === adminTestimonialForm.memberId)
+    const message = adminTestimonialForm.message.trim()
+    const memberName = adminTestimonialForm.sourceType === 'member'
+      ? selectedMember?.name || ''
+      : adminTestimonialForm.customName.trim()
+
+    if (!selectedClass) {
+      onNotify('Pilih kelas untuk testimoni.')
+      return
+    }
+
+    if (!memberName) {
+      onNotify('Pilih member atau isi nama orang custom.')
+      return
+    }
+
+    if (!message) {
+      onNotify('Isi testimoni dulu.')
+      return
+    }
+
+    try {
+      await onCreateTestimonial({
+        classId: selectedClass.id,
+        memberId: adminTestimonialForm.sourceType === 'member' ? selectedMember?.id || '' : '',
+        memberName,
+        memberAvatar: adminTestimonialForm.sourceType === 'member'
+          ? selectedMember?.avatar || ''
+          : adminTestimonialForm.customAvatar.trim(),
+        message,
+        status: adminTestimonialForm.status,
+      })
+      setAdminTestimonialForm({
+        sourceType: 'member',
+        memberId: '',
+        customName: '',
+        customAvatar: '',
+        classId: '',
+        message: '',
+        status: 'approved',
+      })
+      onNotify('Testimoni admin berhasil ditambahkan.')
+    } catch (error) {
+      onNotify(error.message || 'Testimoni admin belum bisa ditambahkan.')
+    }
   }
 
   const handleRemoveTestimonial = async (testimonial) => {
@@ -1558,7 +1645,7 @@ function AdminPage({
           message,
         },
         ...(current.reviews || []),
-      ].slice(0, 10),
+      ].slice(0, 1230),
     }))
     setDigitalReviewDraft(createEmptyDigitalProductReview())
   }
@@ -3844,7 +3931,7 @@ function AdminPage({
               <div className="digital-builder-column">
                 <section className="digital-builder-card">
                   <div className="digital-builder-card-heading compact">
-                    <h3>Review ({digitalProductForm.reviews?.length || 0}/10)</h3>
+                    <h3>Review ({digitalProductForm.reviews?.length || 0}/1230)</h3>
                     <button
                       type="button"
                       onClick={openDigitalReviewManager}
@@ -4060,7 +4147,7 @@ function AdminPage({
                     <div>
                       <p className="eyebrow">Review produk</p>
                       <h3 id="digital-review-manager-title">Kelola ulasan pembeli</h3>
-                      <small>{digitalProductForm.reviews?.length || 0} dari 10 ulasan tersimpan.</small>
+                      <small>{digitalProductForm.reviews?.length || 0} dari 1230 ulasan tersimpan.</small>
                     </div>
                     <button
                       className="icon-action-button"
@@ -4202,7 +4289,7 @@ function AdminPage({
                         className="btn btn-primary"
                         type="button"
                         onClick={addDigitalProductReview}
-                        disabled={(digitalProductForm.reviews || []).length >= 10}
+                        disabled={(digitalProductForm.reviews || []).length >= 1230}
                       >
                         <Icon name="message" />
                         Tambahkan Ulasan
@@ -4881,6 +4968,101 @@ function AdminPage({
               <small>{approvedTestimonials} testimoni sudah tampil di homepage.</small>
             </div>
           </div>
+          <form className="digital-builder-card" onSubmit={handleCreateAdminTestimonial}>
+            <div className="digital-builder-card-heading">
+              <h3>Tambah testimoni manual</h3>
+              <small>Pilih member yang sudah join kelas, atau buat orang custom dari admin.</small>
+            </div>
+            <div className="digital-review-admin-grid">
+              <label>
+                Sumber orang
+                <select
+                  value={adminTestimonialForm.sourceType}
+                  onChange={(event) => updateAdminTestimonialForm('sourceType', event.target.value)}
+                >
+                  <option value="member">Pilih dari member</option>
+                  <option value="custom">Orang custom</option>
+                </select>
+              </label>
+              {adminTestimonialForm.sourceType === 'member' ? (
+                <label>
+                  Member
+                  <select
+                    value={adminTestimonialForm.memberId}
+                    onChange={(event) => updateAdminTestimonialForm('memberId', event.target.value)}
+                  >
+                    <option value="">Pilih member</option>
+                    {members.map((member) => (
+                      <option value={member.id} key={member.id}>
+                        {member.name} - {member.email || member.username}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label>
+                  Nama orang
+                  <input
+                    type="text"
+                    value={adminTestimonialForm.customName}
+                    onChange={(event) => updateAdminTestimonialForm('customName', event.target.value)}
+                    placeholder="Nama pemberi testimoni"
+                  />
+                </label>
+              )}
+              <label>
+                Kelas
+                <select
+                  value={adminTestimonialForm.classId}
+                  onChange={(event) => updateAdminTestimonialForm('classId', event.target.value)}
+                >
+                  <option value="">Pilih kelas</option>
+                  {adminTestimonialClassOptions.map((course) => (
+                    <option value={course.id} key={course.id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Status
+                <select
+                  value={adminTestimonialForm.status}
+                  onChange={(event) => updateAdminTestimonialForm('status', event.target.value)}
+                >
+                  <option value="approved">Tampilkan di homepage</option>
+                  <option value="pending">Menunggu review</option>
+                  <option value="hidden">Simpan tapi sembunyikan</option>
+                </select>
+              </label>
+            </div>
+            {adminTestimonialForm.sourceType === 'custom' && (
+              <label>
+                Link foto profil opsional
+                <input
+                  type="text"
+                  value={adminTestimonialForm.customAvatar}
+                  onChange={(event) => updateAdminTestimonialForm('customAvatar', event.target.value)}
+                  placeholder="https://... atau /uploads/profiles/..."
+                />
+              </label>
+            )}
+            <label>
+              Isi testimoni
+              <textarea
+                value={adminTestimonialForm.message}
+                onChange={(event) => updateAdminTestimonialForm('message', event.target.value)}
+                placeholder="Tulis testimoni yang akan tampil di homepage."
+                rows={4}
+              />
+            </label>
+            <div className="form-actions">
+              <button className="btn btn-primary" type="submit">
+                <Icon name="message" />
+                Tambahkan Testimoni
+              </button>
+            </div>
+          </form>
           <div className="testimonial-admin-list">
             {testimonials.map((testimonial) => (
               <article className="testimonial-admin-card" key={testimonial.id}>

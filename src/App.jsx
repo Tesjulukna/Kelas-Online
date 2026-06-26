@@ -789,7 +789,7 @@ function cleanDigitalProducts(value) {
       customMessageEnabled: item.customMessageEnabled === true,
       customMessage: cleanLongText(item.customMessage || '', 800),
       reviews: Array.isArray(item.reviews)
-        ? item.reviews.slice(0, 10).map((review, index) => ({
+        ? item.reviews.slice(0, 1230).map((review, index) => ({
             id: cleanText(review.id || `review-${index + 1}`),
             name: cleanText(review.name || ''),
             instagram: cleanText(String(review.instagram || '').replace(/^@/, '')),
@@ -3116,6 +3116,7 @@ function App() {
               onUpdateSupportTicket={handleUpdateSupportTicket}
               onDeleteSupportTicket={handleDeleteSupportTicket}
               onUpdateSubmission={handleUpdateSubmission}
+              onCreateTestimonial={handleCreateTestimonial}
               onUpdateTestimonial={handleUpdateTestimonial}
               onDeleteTestimonial={handleDeleteTestimonial}
               onReviewCertificateNameChange={handleReviewCertificateNameChange}
