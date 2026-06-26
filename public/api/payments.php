@@ -151,6 +151,31 @@ function payment_product_amount(array $product): int
     return $salePrice > 0 ? $salePrice : max(0, $price);
 }
 
+function payment_fetch_class_map(PDO $pdo): array
+{
+    $classes = [];
+
+    try {
+        $rows = $pdo->query('SELECT id, title, price, sale_price FROM classes')->fetchAll();
+    } catch (Throwable $error) {
+        try {
+            $rows = $pdo->query('SELECT id, title, price FROM classes')->fetchAll();
+        } catch (Throwable $innerError) {
+            return [];
+        }
+    }
+
+    foreach ($rows as $row) {
+        if (!array_key_exists('sale_price', $row)) {
+            $row['sale_price'] = 0;
+        }
+
+        $classes[(string) ($row['id'] ?? '')] = $row;
+    }
+
+    return $classes;
+}
+
 function payment_snapshot_created_at(array $row): string
 {
     foreach (['created_at', 'joined_at', 'updated_at'] as $key) {
@@ -538,14 +563,35 @@ try {
 
 if (($user['role'] ?? '') === 'admin') {
     try {
+        $classMap = payment_fetch_class_map($pdo);
+
         foreach ($pdo->query('SELECT * FROM lynk_orders ORDER BY created_at DESC LIMIT 1000')->fetchAll() as $row) {
             if (($row['status'] ?? '') === 'product_processed') {
                 continue;
             }
 
             $classIds = json_decode((string) ($row['class_ids'] ?? '[]'), true);
+            $classIds = is_array($classIds) ? array_values(array_filter(array_map(static function ($classId): string {
+                return clean_text($classId, 120);
+            }, $classIds))) : [];
             $payload = payment_order_payload($row);
             $amount = payment_amount_from_payload($payload);
+            $mappedClassTitles = [];
+            $mappedClassAmount = 0;
+
+            foreach ($classIds as $classId) {
+                if (empty($classMap[$classId])) {
+                    continue;
+                }
+
+                $mappedClassTitles[] = clean_text($classMap[$classId]['title'] ?? '', 180);
+                $mappedClassAmount += payment_class_amount($classMap[$classId]);
+            }
+
+            if ($amount <= 0 && $mappedClassAmount > 0) {
+                $amount = $mappedClassAmount;
+            }
+
             $payloadProductName = payment_payload_value($payload, [
                 'product.name',
                 'product.title',
@@ -564,13 +610,18 @@ if (($user['role'] ?? '') === 'admin') {
                 'title',
                 'name',
             ]);
-            $productName = clean_text($payloadProductName ?: ($row['product_name'] ?: 'Pembayaran Lynk.id'), 180);
+            $productName = clean_text(
+                implode(', ', array_filter($mappedClassTitles))
+                    ?: $payloadProductName
+                    ?: ($row['product_name'] ?: 'Pembayaran Lynk.id'),
+                180,
+            );
             $payments[] = payment_public(array_merge($row, [
                 'id' => 'lynk:' . $row['id'],
                 'source' => 'lynk',
                 'sourceLabel' => 'Lynk.id',
                 'orderCode' => $row['order_id'],
-                'classId' => is_array($classIds) ? clean_text($classIds[0] ?? '', 120) : '',
+                'classId' => clean_text($classIds[0] ?? '', 120),
                 'classTitle' => $productName,
                 'amount' => $amount,
                 'paymentMethod' => 'Lynk.id',

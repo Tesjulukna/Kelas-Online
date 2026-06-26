@@ -287,7 +287,7 @@ function lynk_is_paid_event(array $payload): bool
     }
 
     foreach ($statusValues as $status) {
-        if (preg_match('/paid|success|settled|complete|berhasil|lunas|sukses/', $status)) {
+        if (preg_match('/paid|payment\.received|payment_received|received|success|settled|complete|completed|berhasil|lunas|sukses/', $status)) {
             return true;
         }
     }
