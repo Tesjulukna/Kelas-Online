@@ -163,6 +163,21 @@ function lynk_first_value(array $payload, array $paths): string
     return '';
 }
 
+function lynk_nested_array(array $payload, string $path): array
+{
+    $current = $payload;
+
+    foreach (explode('.', $path) as $segment) {
+        if (!is_array($current) || !array_key_exists($segment, $current)) {
+            return [];
+        }
+
+        $current = $current[$segment];
+    }
+
+    return is_array($current) ? $current : [];
+}
+
 function lynk_first_email($value): string
 {
     foreach (lynk_flatten_values($value) as $item) {
@@ -217,17 +232,49 @@ function lynk_collect_product_candidates(array $payload): array
     $paths = [
         'product.id',
         'product.slug',
+        'product.code',
+        'product.sku',
+        'product.product_code',
+        'product.productCode',
+        'product.product_key',
+        'product.productKey',
+        'product.external_id',
+        'product.externalId',
         'product.name',
         'product.title',
         'product_id',
+        'productId',
+        'product_code',
+        'productCode',
+        'product_key',
+        'productKey',
+        'product_sku',
         'product_slug',
         'product_name',
+        'productName',
         'item.id',
         'item.slug',
+        'item.code',
+        'item.sku',
+        'item.product_code',
+        'item.productCode',
+        'item.product_key',
+        'item.productKey',
         'item.name',
         'item.title',
         'item_id',
+        'itemId',
         'item_name',
+        'itemName',
+        'link.id',
+        'link.slug',
+        'link.code',
+        'page.id',
+        'page.slug',
+        'page.code',
+        'sku',
+        'code',
+        'slug',
         'name',
         'title',
     ];
@@ -241,19 +288,69 @@ function lynk_collect_product_candidates(array $payload): array
         }
     }
 
-    foreach (['items', 'products', 'line_items', 'order_items'] as $listKey) {
-        if (empty($payload[$listKey]) || !is_array($payload[$listKey])) {
+    foreach ([
+        'items',
+        'products',
+        'line_items',
+        'lineItems',
+        'order_items',
+        'orderItems',
+        'order.items',
+        'order.products',
+        'order.line_items',
+        'order.lineItems',
+        'order.order_items',
+        'order.orderItems',
+        'cart.items',
+        'invoice.items',
+        'payment.items',
+        'transaction.items',
+        'message_data.items',
+        'message_data.order_items',
+        'messageData.items',
+        'messageData.orderItems',
+    ] as $listPath) {
+        $items = lynk_nested_array($payload, $listPath);
+
+        if (!$items) {
             continue;
         }
 
-        foreach ($payload[$listKey] as $item) {
+        foreach ($items as $item) {
             if (!is_array($item)) {
                 continue;
             }
 
-            foreach (['id', 'product_id', 'slug', 'name', 'title', 'product_name'] as $key) {
-                if (!empty($item[$key])) {
-                    $candidates[] = clean_text($item[$key], 240);
+            foreach ([
+                'id',
+                'product_id',
+                'productId',
+                'product_code',
+                'productCode',
+                'product_key',
+                'productKey',
+                'sku',
+                'code',
+                'slug',
+                'name',
+                'title',
+                'product_name',
+                'productName',
+                'item_name',
+                'itemName',
+                'product.id',
+                'product.code',
+                'product.sku',
+                'product.slug',
+                'product.name',
+                'product.title',
+            ] as $key) {
+                $value = strpos($key, '.') === false
+                    ? ($item[$key] ?? null)
+                    : lynk_first_value($item, [$key]);
+
+                if (is_scalar($value) && trim((string) $value) !== '') {
+                    $candidates[] = clean_text($value, 240);
                 }
             }
         }
