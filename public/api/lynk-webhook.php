@@ -5,7 +5,11 @@ require_once __DIR__ . '/_email.php';
 require_once __DIR__ . '/_tripay.php';
 require_once __DIR__ . '/_commerce.php';
 
-ensure_method(['POST']);
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+if (!in_array($method, ['GET', 'POST'], true)) {
+    send_json(405, ['message' => 'Method tidak diizinkan.']);
+}
 
 $config = api_config();
 $secret = (string) ($config['lynk_webhook_secret'] ?? '');
@@ -57,10 +61,6 @@ if (is_array($payload)) {
     }
 }
 
-if (!is_array($payload)) {
-    send_json(400, ['message' => 'Payload webhook tidak valid.']);
-}
-
 function lynk_valid_signature(string $rawBody, string $secret): bool
 {
     $headers = [
@@ -91,6 +91,25 @@ function lynk_valid_signature(string $rawBody, string $secret): bool
 
 if ($secret === '') {
     send_json(500, ['message' => 'Merchant Key Lynk.id belum diisi di config website.']);
+}
+
+if ($method === 'GET') {
+    if ($givenSecret === '' || !hash_equals($secret, $givenSecret)) {
+        send_json(401, ['message' => 'Secret webhook Lynk.id tidak valid.']);
+    }
+
+    send_json(200, [
+        'ok' => true,
+        'message' => 'Webhook Lynk.id aktif. Gunakan POST dari Lynk.id untuk memproses order.',
+        'webhookUrl' => '/api/lynk-webhook.php?secret=***',
+        'extensionlessUrlSupported' => true,
+        'resendConfigured' => !empty($config['resend_api_key']) && !empty($config['resend_from_email']),
+        'curlEnabled' => function_exists('curl_init'),
+    ]);
+}
+
+if (!is_array($payload)) {
+    send_json(400, ['message' => 'Payload webhook tidak valid.']);
 }
 
 if (!hash_equals($secret, $givenSecret) && !lynk_valid_signature($rawBody, $secret)) {
@@ -450,10 +469,10 @@ function lynk_login_url(array $config): string
     return $host ? $scheme . '://' . $host . '/login' : '/login';
 }
 
-function lynk_send_credentials_email(string $email, string $name, array $account, array $config): bool
+function lynk_send_credentials_email(string $email, string $name, array $account, array $config): array
 {
     if (empty($config['lynk_send_credentials_email'])) {
-        return false;
+        return ['sent' => false, 'message' => 'Pengiriman email kredensial Lynk.id dinonaktifkan.'];
     }
 
     $passwordLine = $account['password']
@@ -486,7 +505,7 @@ function lynk_send_credentials_email(string $email, string $name, array $account
         'html' => $html,
     ]);
 
-    return !empty($result['sent']);
+    return $result;
 }
 
 function lynk_ensure_tables(PDO $pdo): void
@@ -661,6 +680,7 @@ if (!$classIds && !$productIds) {
 }
 
 $productAccessResults = [];
+$productEmailResults = [];
 
 foreach ($productIds as $productId) {
     try {
@@ -680,7 +700,7 @@ foreach ($productIds as $productId) {
             $orderId,
         );
 
-        send_digital_product_delivery_email([
+        $productEmailResults[] = send_digital_product_delivery_email([
             'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
             'buyerEmail' => $buyerEmail,
             'productTitle' => $accessResult['product']['title'] ?? 'Produk digital',
@@ -720,6 +740,7 @@ if (!$classIds) {
         'ok' => true,
         'message' => 'Akses produk digital berhasil dibuat dari pembayaran Lynk.id.',
         'productIds' => $productIds,
+        'emailResults' => $productEmailResults,
     ]);
 }
 
@@ -818,7 +839,7 @@ $account = [
     'loginUrl' => lynk_login_url($config),
     'classIds' => $classIds,
 ];
-$emailSent = lynk_send_credentials_email(
+$emailResult = lynk_send_credentials_email(
     $buyerEmail,
     $buyerName ?: 'Pembeli Lynk.id',
     $account,
@@ -828,7 +849,9 @@ $emailSent = lynk_send_credentials_email(
 send_json(200, [
     'ok' => true,
     'message' => 'Akun member berhasil dibuat atau diperbarui dari pembayaran Lynk.id.',
-    'emailSent' => $emailSent,
+    'emailSent' => !empty($emailResult['sent']),
+    'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? 'Email Resend gagal dikirim.'),
+    'productEmailResults' => $productEmailResults,
     'fulfillmentMessage' => sprintf(
         "Akses kelas aktif.\nLogin: %s\nUsername: %s%s",
         $account['loginUrl'],

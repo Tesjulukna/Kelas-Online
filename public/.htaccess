@@ -3,6 +3,9 @@ Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  RewriteCond %{DOCUMENT_ROOT}/api/$1.php -f
+  RewriteRule ^api/([^/.]+)$ api/$1.php [L,QSA]
+
   RewriteRule ^api(/.*)?$ - [L]
 
   RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -11,4 +14,3 @@ Options -Indexes
 
   RewriteRule ^ index.html [L]
 </IfModule>
-
