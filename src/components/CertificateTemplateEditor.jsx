@@ -17,7 +17,7 @@ import CertificateTemplateCanvas from './CertificateTemplateCanvas'
 import Icon from './Icon'
 
 const uploadFileApiPath = '/api/upload-file'
-const fontOptions = ['Inter', 'Arial', 'Georgia', 'Times New Roman', 'Poppins', 'Montserrat']
+const fontOptions = ['Plus Jakarta Sans', 'Inter', 'Arial', 'Georgia', 'Times New Roman', 'Poppins', 'Montserrat']
 const historyLimit = 40
 
 function createDuplicateElementId(type = 'element') {

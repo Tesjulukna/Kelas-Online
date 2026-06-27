@@ -1181,6 +1181,7 @@ function HomePage({
       <>
         <DetailKelas
           course={selectedClass}
+          testimonials={testimonials}
           wishlistCount={wishlistCount}
           onBack={closePublicDetail}
           onBuy={onRequestClassCheckout}

@@ -21,7 +21,8 @@ function apply_security_headers(): void
         "Content-Security-Policy: default-src 'self'; " .
         "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " .
         "img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; " .
-        "style-src 'self' 'unsafe-inline'; script-src 'self'; " .
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
+        "font-src 'self' data: https://fonts.gstatic.com; script-src 'self'; " .
         "connect-src 'self' https:; frame-src https://www.youtube.com https://youtube.com; " .
         "form-action 'self'; upgrade-insecure-requests"
     );

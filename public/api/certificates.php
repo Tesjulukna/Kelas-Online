@@ -14,6 +14,147 @@ function cert_json($value): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function certificate_ensure_column(PDO $pdo, string $table, string $column, string $definition): void
+{
+    try {
+        $query = $pdo->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+        $query->execute([$column]);
+
+        if (!$query->fetch()) {
+            $pdo->exec("ALTER TABLE `$table` ADD `$column` {$definition}");
+        }
+    } catch (Throwable $error) {
+        // Hosting that blocks runtime ALTER can still be fixed through install.php/schema.sql.
+    }
+}
+
+function certificate_ensure_runtime_schema(PDO $pdo): void
+{
+    try {
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS certificate_templates (
+                id VARCHAR(120) PRIMARY KEY,
+                class_id VARCHAR(120) NOT NULL DEFAULT '',
+                name VARCHAR(180) NOT NULL DEFAULT 'Template Sertifikat',
+                mentor_name VARCHAR(160) NOT NULL DEFAULT 'Ibnu Creative',
+                size_type VARCHAR(60) NOT NULL DEFAULT 'a4Landscape',
+                width INT NOT NULL DEFAULT 1123,
+                height INT NOT NULL DEFAULT 794,
+                payload LONGTEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX certificate_template_class_index (class_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS certificates (
+                id VARCHAR(120) PRIMARY KEY,
+                certificate_id VARCHAR(120) NOT NULL,
+                member_id VARCHAR(120) NOT NULL DEFAULT '',
+                member_name VARCHAR(160) NOT NULL DEFAULT '',
+                class_id VARCHAR(120) NOT NULL DEFAULT '',
+                class_title VARCHAR(180) NOT NULL DEFAULT '',
+                mentor_name VARCHAR(160) NOT NULL DEFAULT 'Ibnu Creative',
+                participant_name VARCHAR(160) NOT NULL DEFAULT '',
+                template_id VARCHAR(120) NOT NULL DEFAULT '',
+                template_snapshot LONGTEXT,
+                completed_at VARCHAR(60) NOT NULL DEFAULT '',
+                issued_at VARCHAR(60) NOT NULL DEFAULT '',
+                name_change_used TINYINT(1) NOT NULL DEFAULT 0,
+                version INT NOT NULL DEFAULT 1,
+                revoked_at VARCHAR(60) NOT NULL DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY certificate_public_id_unique (certificate_id),
+                UNIQUE KEY certificate_member_class_unique (member_id, class_id),
+                INDEX certificate_member_index (member_id),
+                INDEX certificate_class_index (class_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS certificate_name_change_requests (
+                id VARCHAR(120) PRIMARY KEY,
+                certificate_row_id VARCHAR(120) NOT NULL DEFAULT '',
+                public_certificate_id VARCHAR(120) NOT NULL DEFAULT '',
+                member_id VARCHAR(120) NOT NULL DEFAULT '',
+                member_name VARCHAR(160) NOT NULL DEFAULT '',
+                class_id VARCHAR(120) NOT NULL DEFAULT '',
+                class_title VARCHAR(180) NOT NULL DEFAULT '',
+                old_name VARCHAR(160) NOT NULL DEFAULT '',
+                new_name VARCHAR(160) NOT NULL DEFAULT '',
+                reason TEXT,
+                status VARCHAR(40) NOT NULL DEFAULT 'pending',
+                admin_note TEXT,
+                reviewed_at VARCHAR(60) NOT NULL DEFAULT '',
+                created_at VARCHAR(60) NOT NULL DEFAULT '',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY certificate_change_once_unique (certificate_row_id),
+                INDEX certificate_change_status_index (status),
+                INDEX certificate_change_member_index (member_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    } catch (Throwable $error) {
+        // The verification endpoint should keep returning JSON even if schema creation fails.
+    }
+
+    foreach ([
+        'id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'certificate_id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'member_id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'member_name' => "VARCHAR(160) NOT NULL DEFAULT ''",
+        'class_id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'class_title' => "VARCHAR(180) NOT NULL DEFAULT ''",
+        'mentor_name' => "VARCHAR(160) NOT NULL DEFAULT 'Ibnu Creative'",
+        'participant_name' => "VARCHAR(160) NOT NULL DEFAULT ''",
+        'template_id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'template_snapshot' => 'LONGTEXT NULL',
+        'completed_at' => "VARCHAR(60) NOT NULL DEFAULT ''",
+        'issued_at' => "VARCHAR(60) NOT NULL DEFAULT ''",
+        'name_change_used' => 'TINYINT(1) NOT NULL DEFAULT 0',
+        'version' => 'INT NOT NULL DEFAULT 1',
+        'revoked_at' => "VARCHAR(60) NOT NULL DEFAULT ''",
+        'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+        'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+    ] as $column => $definition) {
+        certificate_ensure_column($pdo, 'certificates', $column, $definition);
+    }
+
+    foreach ([
+        'id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'class_id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'name' => "VARCHAR(180) NOT NULL DEFAULT 'Template Sertifikat'",
+        'mentor_name' => "VARCHAR(160) NOT NULL DEFAULT 'Ibnu Creative'",
+        'size_type' => "VARCHAR(60) NOT NULL DEFAULT 'a4Landscape'",
+        'width' => 'INT NOT NULL DEFAULT 1123',
+        'height' => 'INT NOT NULL DEFAULT 794',
+        'payload' => 'LONGTEXT NULL',
+        'created_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+        'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+    ] as $column => $definition) {
+        certificate_ensure_column($pdo, 'certificate_templates', $column, $definition);
+    }
+
+    foreach ([
+        'id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'certificate_row_id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'public_certificate_id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'member_id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'member_name' => "VARCHAR(160) NOT NULL DEFAULT ''",
+        'class_id' => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'class_title' => "VARCHAR(180) NOT NULL DEFAULT ''",
+        'old_name' => "VARCHAR(160) NOT NULL DEFAULT ''",
+        'new_name' => "VARCHAR(160) NOT NULL DEFAULT ''",
+        'reason' => 'TEXT NULL',
+        'status' => "VARCHAR(40) NOT NULL DEFAULT 'pending'",
+        'admin_note' => 'TEXT NULL',
+        'reviewed_at' => "VARCHAR(60) NOT NULL DEFAULT ''",
+        'created_at' => "VARCHAR(60) NOT NULL DEFAULT ''",
+        'updated_at' => 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+    ] as $column => $definition) {
+        certificate_ensure_column($pdo, 'certificate_name_change_requests', $column, $definition);
+    }
+}
+
 function certificate_asset_url($value): string
 {
     $url = is_string($value) ? trim($value) : '';
@@ -27,6 +168,7 @@ function certificate_asset_url($value): string
 
     if ($position !== false) {
         $path = substr($url, $position + strlen($needle));
+        $path = preg_replace('#^ibnu-assets/#', '', ltrim($path, '/')) ?? $path;
 
         return '/uploads/' . ltrim($path, '/');
     }
@@ -59,21 +201,21 @@ function certificate_normalize_template_payload($payload): array
 function certificate_public(array $row): array
 {
     return [
-        'id' => $row['id'],
-        'certificateId' => $row['certificate_id'] ?? '',
-        'memberId' => $row['member_id'] ?? '',
-        'memberName' => $row['member_name'] ?? 'Member',
-        'classId' => $row['class_id'] ?? '',
-        'classTitle' => $row['class_title'] ?? 'Kelas',
-        'mentorName' => $row['mentor_name'] ?? 'Ibnu Creative',
-        'participantName' => $row['participant_name'] ?? ($row['member_name'] ?? 'Member'),
-        'templateId' => $row['template_id'] ?? '',
-        'templateSnapshot' => cert_json($row['template_snapshot'] ?? '{}'),
-        'completedAt' => $row['completed_at'] ?? '',
-        'issuedAt' => $row['issued_at'] ?? '',
+        'id' => $row['id'] ?? '',
+        'certificateId' => $row['certificate_id'] ?? ($row['certificateId'] ?? ''),
+        'memberId' => $row['member_id'] ?? ($row['memberId'] ?? ''),
+        'memberName' => $row['member_name'] ?? ($row['memberName'] ?? 'Member'),
+        'classId' => $row['class_id'] ?? ($row['classId'] ?? ''),
+        'classTitle' => $row['class_title'] ?? ($row['classTitle'] ?? 'Kelas'),
+        'mentorName' => $row['mentor_name'] ?? ($row['mentorName'] ?? 'Ibnu Creative'),
+        'participantName' => $row['participant_name'] ?? ($row['participantName'] ?? ($row['member_name'] ?? 'Member')),
+        'templateId' => $row['template_id'] ?? ($row['templateId'] ?? ''),
+        'templateSnapshot' => cert_json($row['template_snapshot'] ?? ($row['templateSnapshot'] ?? '{}')),
+        'completedAt' => $row['completed_at'] ?? ($row['completedAt'] ?? ''),
+        'issuedAt' => $row['issued_at'] ?? ($row['issuedAt'] ?? ''),
         'nameChangeUsed' => !empty($row['name_change_used']),
         'version' => (int) ($row['version'] ?? 1),
-        'revokedAt' => $row['revoked_at'] ?? '',
+        'revokedAt' => $row['revoked_at'] ?? ($row['revokedAt'] ?? ''),
         'createdAt' => (string) ($row['created_at'] ?? ''),
         'updatedAt' => (string) ($row['updated_at'] ?? ''),
     ];
@@ -82,7 +224,7 @@ function certificate_public(array $row): array
 function certificate_template_public(array $row): array
 {
     return [
-        'id' => $row['id'],
+        'id' => $row['id'] ?? '',
         'classId' => $row['class_id'] ?? '',
         'name' => $row['name'] ?? 'Template Sertifikat',
         'mentorName' => $row['mentor_name'] ?? 'Ibnu Creative',
@@ -98,7 +240,7 @@ function certificate_template_public(array $row): array
 function certificate_change_public(array $row): array
 {
     return [
-        'id' => $row['id'],
+        'id' => $row['id'] ?? '',
         'certificateRowId' => $row['certificate_row_id'] ?? '',
         'publicCertificateId' => $row['public_certificate_id'] ?? '',
         'memberId' => $row['member_id'] ?? '',
@@ -155,16 +297,136 @@ function certificate_generate_public_id(PDO $pdo): string
     return 'IC-' . date('Y') . '-' . strtoupper(substr(md5(uniqid('', true)), 0, 8));
 }
 
+function certificate_normalize_lookup_value($value): string
+{
+    $text = trim(urldecode((string) ($value ?? '')));
+    $text = preg_replace('/[\x00-\x20]+/', '', $text) ?? $text;
+
+    return trim($text, "/ \t\n\r\0\x0B");
+}
+
+function certificate_lookup_candidates($value): array
+{
+    $items = [];
+    $raw = (string) ($value ?? '');
+    $decoded = urldecode($raw);
+
+    foreach ([$raw, $decoded] as $item) {
+        $item = trim((string) $item);
+
+        if ($item === '') {
+            continue;
+        }
+
+        $items[] = $item;
+        $path = parse_url($item, PHP_URL_PATH);
+
+        if (is_string($path) && $path !== '') {
+            $items[] = $path;
+
+            if (preg_match('~/sertifikat/([^/?#]+)~i', $path, $matches)) {
+                $items[] = $matches[1];
+            }
+
+            $basename = basename($path);
+
+            if ($basename !== '' && $basename !== '.' && $basename !== '/') {
+                $items[] = $basename;
+            }
+        }
+
+        if (preg_match('~/sertifikat/([^/?#]+)~i', $item, $matches)) {
+            $items[] = $matches[1];
+        }
+
+        $queryString = parse_url($item, PHP_URL_QUERY);
+
+        if (is_string($queryString) && $queryString !== '') {
+            parse_str($queryString, $query);
+
+            foreach (['verify', 'id', 'certificateId', 'certificate_id'] as $key) {
+                if (!empty($query[$key]) && is_scalar($query[$key])) {
+                    $items[] = (string) $query[$key];
+                }
+            }
+        }
+    }
+
+    $candidates = [];
+
+    foreach ($items as $item) {
+        $candidate = certificate_normalize_lookup_value($item);
+
+        if ($candidate === '') {
+            continue;
+        }
+
+        $candidates[$candidate] = $candidate;
+        $upperCandidate = strtoupper($candidate);
+        $candidates[$upperCandidate] = $upperCandidate;
+    }
+
+    return array_values($candidates);
+}
+
+function certificate_find_for_verification(PDO $pdo, array $candidates): ?array
+{
+    if (!$candidates) {
+        return null;
+    }
+
+    try {
+        $placeholders = implode(',', array_fill(0, count($candidates), '?'));
+        $query = $pdo->prepare("SELECT * FROM certificates WHERE certificate_id IN ({$placeholders}) OR id IN ({$placeholders}) LIMIT 1");
+        $query->execute(array_merge($candidates, $candidates));
+        $certificate = $query->fetch();
+
+        if ($certificate) {
+            return $certificate;
+        }
+    } catch (Throwable $error) {
+        // Fall back to scanning recent rows for migrated/camelCase columns.
+    }
+
+    $candidateIndex = array_flip(array_map('strtoupper', $candidates));
+
+    try {
+        $rows = $pdo->query('SELECT * FROM certificates ORDER BY issued_at DESC, created_at DESC LIMIT 5000')->fetchAll();
+    } catch (Throwable $error) {
+        try {
+            $rows = $pdo->query('SELECT * FROM certificates LIMIT 5000')->fetchAll();
+        } catch (Throwable $fallbackError) {
+            return null;
+        }
+    }
+
+    foreach ($rows as $row) {
+        foreach ([
+            $row['certificate_id'] ?? '',
+            $row['certificateId'] ?? '',
+            $row['public_certificate_id'] ?? '',
+            $row['id'] ?? '',
+        ] as $value) {
+            foreach (certificate_lookup_candidates($value) as $candidate) {
+                if (isset($candidateIndex[strtoupper($candidate)])) {
+                    return $row;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+certificate_ensure_runtime_schema($pdo);
+
 if ($method === 'GET' && isset($_GET['verify'])) {
-    $certificateId = clean_text($_GET['verify'], 120);
-    $query = $pdo->prepare('SELECT * FROM certificates WHERE certificate_id = ? OR id = ? LIMIT 1');
-    $query->execute([$certificateId, $certificateId]);
-    $certificate = $query->fetch();
+    $certificate = certificate_find_for_verification($pdo, certificate_lookup_candidates($_GET['verify']));
 
     if (!$certificate || !empty($certificate['revoked_at'])) {
         send_json(404, [
             'valid' => false,
-            'message' => 'Sertifikat tidak ditemukan atau sudah dicabut.',
+            'message' => 'Sertifikat tidak ditemukan di database hosting atau sudah dicabut.',
         ]);
     }
 

@@ -22,8 +22,23 @@ function formatRupiah(value) {
   }).format(amount)
 }
 
+function formatTestimonialDate(value) {
+  const time = Date.parse(value || '')
+
+  if (!time) {
+    return ''
+  }
+
+  return new Date(time).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 function DetailKelas({
   course,
+  testimonials = [],
   wishlistCount = 0,
   onAddToWishlist,
   onBack,
@@ -60,6 +75,15 @@ function DetailKelas({
   const benefitItems = websiteSettings.benefits.items && websiteSettings.benefits.items.length
     ? websiteSettings.benefits.items
     : benefits
+  const courseTestimonials = testimonials
+    .filter((testimonial) =>
+      testimonial.status === 'approved' &&
+      testimonial.classId === course.id &&
+      testimonial.message,
+    )
+    .sort((first, second) =>
+      (Date.parse(second.createdAt || '') || 0) - (Date.parse(first.createdAt || '') || 0),
+    )
 
   const scheduleSteps = websiteSettings.schedule.steps || []
   const hasRichDescription = /<\/?[a-z][\s\S]*>/i.test(course.description || '')
@@ -126,6 +150,48 @@ function DetailKelas({
           </div>
         </div>
       </article>
+
+      {courseTestimonials.length > 0 && (
+        <section className="course-testimonials-section" aria-labelledby="course-testimonials-title">
+          <div className="course-testimonials-header">
+            <div>
+              <p className="eyebrow">TESTIMONI PESERTA</p>
+              <h2 id="course-testimonials-title">Yang mereka rasakan setelah belajar</h2>
+            </div>
+            <span>{courseTestimonials.length} testimoni</span>
+          </div>
+          <div className="course-testimonials-scroll">
+            <div className="course-testimonials-list">
+              {courseTestimonials.map((testimonial) => (
+                <article className="course-testimonial-card" key={testimonial.id}>
+                  <div className="course-testimonial-avatar-wrap">
+                    {testimonial.memberAvatar ? (
+                      <img
+                        className="course-testimonial-avatar"
+                        src={testimonial.memberAvatar}
+                        alt={testimonial.memberName}
+                      />
+                    ) : (
+                      <span className="course-testimonial-avatar course-testimonial-avatar-fallback" aria-hidden="true">
+                        {(testimonial.memberName || 'P').charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="course-testimonial-content">
+                    <div className="course-testimonial-heading">
+                      <strong>{testimonial.memberName || 'Peserta'}</strong>
+                      {formatTestimonialDate(testimonial.createdAt) && (
+                        <span>{formatTestimonialDate(testimonial.createdAt)}</span>
+                      )}
+                    </div>
+                    <p>{testimonial.message}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="detail-accordion-group">
         <div className={`detail-accordion-item ${openAccordion === 'benefit' ? 'open' : ''}`}>

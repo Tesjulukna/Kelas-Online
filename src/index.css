@@ -12,7 +12,7 @@
   --shadow-sm: 0 4px 14px rgba(31, 41, 55, 0.04);
   --shadow-md: 0 12px 34px rgba(31, 41, 55, 0.07);
   --font-sans:
-    'Poppins', Inter, 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui,
+    'Plus Jakarta Sans', Inter, 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui,
     -apple-system, BlinkMacSystemFont, sans-serif;
 
   font-family: var(--font-sans);
