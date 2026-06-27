@@ -14,6 +14,71 @@ function cert_json($value): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function certificate_has_date_value($value): bool
+{
+    return preg_match('/^\d{4}-\d{2}-\d{2}[T\s]/', trim((string) ($value ?? ''))) === 1;
+}
+
+function certificate_empty_value($value): bool
+{
+    $text = strtolower(trim((string) ($value ?? '')));
+
+    return $text === '' || $text === '0' || $text === 'null' || strpos($text, '0000-00-00') === 0;
+}
+
+function certificate_truthy_value($value): bool
+{
+    return in_array(strtolower(trim((string) ($value ?? ''))), ['1', 'true', 'yes', 'on'], true);
+}
+
+function certificate_is_header_row(array $row): bool
+{
+    return strtolower(trim((string) ($row['id'] ?? ''))) === 'id'
+        || strtolower(trim((string) ($row['certificate_id'] ?? ''))) === 'certificate_id';
+}
+
+function certificate_looks_like_shifted_csv_import(array $row): bool
+{
+    $completedAt = $row['completed_at'] ?? '';
+    $issuedAt = $row['issued_at'] ?? '';
+
+    return certificate_has_date_value($row['template_id'] ?? '')
+        && certificate_has_date_value($row['template_snapshot'] ?? '')
+        && in_array(strtolower(trim((string) $completedAt)), ['false', 'true', '0', '1'], true)
+        && preg_match('/^\d+$/', trim((string) $issuedAt)) === 1;
+}
+
+function certificate_normalized_row(array $row): array
+{
+    if (!certificate_looks_like_shifted_csv_import($row)) {
+        return $row;
+    }
+
+    $completedAt = (string) ($row['template_id'] ?? '');
+    $issuedAt = (string) ($row['template_snapshot'] ?? '');
+    $updatedAt = (string) ($row['revoked_at'] ?? '');
+    $revokedAt = certificate_empty_value($row['name_change_used'] ?? '') ? '' : (string) ($row['name_change_used'] ?? '');
+
+    return array_merge($row, [
+        'template_id' => '',
+        'template_snapshot' => '{}',
+        'completed_at' => $completedAt,
+        'issued_at' => $issuedAt,
+        'name_change_used' => certificate_truthy_value($row['completed_at'] ?? '') ? 1 : 0,
+        'version' => max(1, (int) ($row['issued_at'] ?? 1)),
+        'revoked_at' => $revokedAt,
+        'created_at' => certificate_empty_value($row['created_at'] ?? '') ? $issuedAt : (string) ($row['created_at'] ?? ''),
+        'updated_at' => certificate_empty_value($updatedAt) ? $issuedAt : $updatedAt,
+    ]);
+}
+
+function certificate_is_revoked(array $row): bool
+{
+    $certificate = certificate_normalized_row($row);
+
+    return !certificate_empty_value($certificate['revoked_at'] ?? '');
+}
+
 function certificate_ensure_column(PDO $pdo, string $table, string $column, string $definition): void
 {
     try {
@@ -200,6 +265,8 @@ function certificate_normalize_template_payload($payload): array
 
 function certificate_public(array $row): array
 {
+    $row = certificate_normalized_row($row);
+
     return [
         'id' => $row['id'] ?? '',
         'certificateId' => $row['certificate_id'] ?? ($row['certificateId'] ?? ''),
@@ -271,6 +338,10 @@ function fetch_certificates_response(PDO $pdo, array $user): array
         $requestQuery->execute([$user['userId'] ?? '']);
         $requestRows = $requestQuery->fetchAll();
     }
+
+    $certificateRows = array_values(array_filter($certificateRows, function ($row): bool {
+        return is_array($row) && !certificate_is_header_row($row);
+    }));
 
     $templateRows = $pdo->query('SELECT * FROM certificate_templates ORDER BY updated_at DESC, created_at DESC')->fetchAll();
 
@@ -401,6 +472,10 @@ function certificate_find_for_verification(PDO $pdo, array $candidates): ?array
     }
 
     foreach ($rows as $row) {
+        if (certificate_is_header_row($row)) {
+            continue;
+        }
+
         foreach ([
             $row['certificate_id'] ?? '',
             $row['certificateId'] ?? '',
@@ -423,7 +498,7 @@ certificate_ensure_runtime_schema($pdo);
 if ($method === 'GET' && isset($_GET['verify'])) {
     $certificate = certificate_find_for_verification($pdo, certificate_lookup_candidates($_GET['verify']));
 
-    if (!$certificate || !empty($certificate['revoked_at'])) {
+    if (!$certificate || certificate_is_revoked($certificate)) {
         send_json(404, [
             'valid' => false,
             'message' => 'Sertifikat tidak ditemukan di database hosting atau sudah dicabut.',
