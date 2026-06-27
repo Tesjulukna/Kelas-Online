@@ -250,7 +250,7 @@ function clean_rich_html($value, int $maxLength = 6000): string
     $dom = new DOMDocument('1.0', 'UTF-8');
     libxml_use_internal_errors(true);
     $dom->loadHTML(
-        '<!DOCTYPE html><html><body><div id="rich-root">' . $html . '</div></body></html>',
+        '<?xml encoding="UTF-8"><!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><div id="rich-root">' . $html . '</div></body></html>',
         LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
     );
     libxml_clear_errors();

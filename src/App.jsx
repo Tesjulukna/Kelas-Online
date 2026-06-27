@@ -299,8 +299,27 @@ function convertYoutubeLinesToEmbeds(value) {
     .join('\n')
 }
 
+function repairUtf8Mojibake(value) {
+  const text = String(value ?? '')
+
+  if (!/[ÃÂâð]/.test(text) || typeof TextDecoder === 'undefined') {
+    return text
+  }
+
+  try {
+    const bytes = new Uint8Array([...text].map((char) => char.charCodeAt(0) & 0xff))
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    const beforeScore = (text.match(/[ÃÂâð][\u0080-\u00ff]?/g) || []).length
+    const afterScore = (decoded.match(/[ÃÂâð][\u0080-\u00ff]?/g) || []).length
+
+    return afterScore < beforeScore ? decoded : text
+  } catch {
+    return text
+  }
+}
+
 function cleanRichHtml(value, maxLength = 6000) {
-  const safeHtml = convertYoutubeLinesToEmbeds(value).slice(0, maxLength)
+  const safeHtml = convertYoutubeLinesToEmbeds(repairUtf8Mojibake(value)).slice(0, maxLength)
 
   if (typeof window === 'undefined' || !safeHtml) {
     return ''

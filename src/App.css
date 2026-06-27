@@ -7724,11 +7724,15 @@ img {
 
 .public-rich-description img {
   display: block;
-  width: 100%;
-  max-width: 100%;
+  width: auto;
+  max-width: min(100%, 560px);
+  max-height: 460px;
   height: auto;
+  object-fit: contain;
+  margin: 12px auto;
   border: 1px solid rgba(205, 217, 232, 0.9);
   border-radius: 8px;
+  background: #ffffff;
 }
 
 .public-rich-description iframe {
@@ -14849,6 +14853,13 @@ img {
 .certificate-qr i.active,
 .verify-qr i.active {
   background: #0f172a;
+}
+
+@media (max-width: 680px) {
+  .public-rich-description img {
+    max-width: 100%;
+    max-height: 360px;
+  }
 }
 
 .admin-certificate-layout {
