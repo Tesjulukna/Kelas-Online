@@ -49,6 +49,7 @@ function PaymentMethodLogo({ method }) {
 
 function CheckoutProduk({
   product,
+  itemType = 'product',
   form,
   checkoutCustomer = null,
   isMemberCheckout = false,
@@ -73,10 +74,24 @@ function CheckoutProduk({
     return null
   }
 
+  const isClassCheckout = itemType === 'class'
+  const checkoutTitle = isClassCheckout ? 'Checkout kelas' : 'Checkout produk'
+  const freeNote = isClassCheckout
+    ? 'Kelas ini gratis. Isi data peserta, lalu daftar tanpa memilih metode pembayaran.'
+    : 'Produk ini gratis. Isi data penerima, lalu ambil produk tanpa memilih metode pembayaran.'
+  const priceLabelTitle = isClassCheckout ? 'Harga kelas' : 'Harga produk'
+  const submitLabel = isFree
+    ? (isClassCheckout ? 'Daftar Kelas' : 'Ambil Produk')
+    : 'Buat Pembayaran'
+  const marketingConsentText = isClassCheckout
+    ? 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima akses kelas, invoice, atau pesan pembelajaran dan pemasaran.'
+    : 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima produk atau pesan pemasaran.'
   const selectedMethodLabel =
     paymentMethods.find((method) => method.code === form.paymentMethod)?.label ||
     form.paymentMethod
-  const customerQuestions = Array.isArray(product.customerQuestions) ? product.customerQuestions : []
+  const customerQuestions = !isClassCheckout && Array.isArray(product.customerQuestions)
+    ? product.customerQuestions
+    : []
   const memberName = checkoutCustomer?.name || form.buyerName || 'Member'
   const memberEmail = checkoutCustomer?.email || form.buyerEmail || '-'
 
@@ -96,7 +111,7 @@ function CheckoutProduk({
       </div>
       <form className="public-checkout-panel" onSubmit={onSubmit}>
         <div className="section-heading">
-          <p className="eyebrow">Checkout produk</p>
+          <p className="eyebrow">{checkoutTitle}</p>
           <h2>{product.title}</h2>
           <small>{priceLabel}</small>
         </div>
@@ -180,14 +195,14 @@ function CheckoutProduk({
             )}
           </>
         ) : (
-          <p className="public-checkout-free-note">Produk ini gratis. Isi data penerima, lalu ambil produk tanpa memilih metode pembayaran.</p>
+          <p className="public-checkout-free-note">{freeNote}</p>
         )}
         {!isFree && form.paymentMethod && (
           <>
             <p className="public-checkout-status">Metode dipilih: {selectedMethodLabel}</p>
             <div className="payment-breakdown public-checkout-breakdown" aria-live="polite">
               <span>
-                <small>Harga produk</small>
+                <small>{priceLabelTitle}</small>
                 <strong>{priceLabel}</strong>
               </span>
               <span>
@@ -244,7 +259,7 @@ function CheckoutProduk({
             checked={form.acceptedMarketing}
             onChange={onChange}
           />
-          <span>Saya setuju alamat email dan nomor telepon digunakan untuk menerima produk atau pesan pemasaran.</span>
+          <span>{marketingConsentText}</span>
         </label>
         {status && <p className="public-checkout-status">{status}</p>}
         <button
@@ -258,7 +273,7 @@ function CheckoutProduk({
             (memberNeedsPhone && !form.buyerPhone)
           }
         >
-          {isFree ? 'Ambil Produk' : 'Buat Pembayaran'}
+          {submitLabel}
           <Icon name="arrowRight" />
         </button>
       </form>

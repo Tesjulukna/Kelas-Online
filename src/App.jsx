@@ -31,6 +31,7 @@ const settingsApiPath = '/api/settings'
 const backupApiPath = '/api/backup'
 const tripayPaymentMethodsApiPath = '/api/tripay-payment-methods'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
+const publicClassCheckoutApiPath = '/api/public-class-checkout'
 const publicProductCheckoutApiPath = '/api/public-product-checkout'
 const publicProductAccessApiPath = '/api/public-product-access'
 const digitalProductReviewLikeApiPath = '/api/digital-product-review-like'
@@ -2110,25 +2111,6 @@ function App() {
     showNotice(message || `Berhasil masuk sebagai ${nextSession.role}.`)
   }
 
-  const requestPublicClassCheckout = (classId) => {
-    const nextClassId = cleanText(classId || '')
-
-    if (!nextClassId) {
-      return
-    }
-
-    setPendingCheckoutClassId(nextClassId)
-    window.sessionStorage.setItem(pendingClassCheckoutKey, nextClassId)
-
-    if (session?.role === 'member') {
-      navigateToDashboardMenu('member', 'available-classes')
-      return
-    }
-
-    goToLogin()
-    showNotice('Silakan login dulu untuk melanjutkan pembayaran kelas.')
-  }
-
   const clearPendingClassCheckout = () => {
     setPendingCheckoutClassId('')
     window.sessionStorage.removeItem(pendingClassCheckoutKey)
@@ -2950,6 +2932,16 @@ function App() {
     return data
   }
 
+  const handlePublicClassCheckout = async (payload) => {
+    const data = await requestJson(publicClassCheckoutApiPath, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    showNotice(data.message || 'Checkout kelas berhasil dibuat.')
+    return data
+  }
+
   const currentMember = session?.role === 'member'
     ? members.find((member) => member.id === session.userId)
     : null
@@ -3009,7 +3001,7 @@ function App() {
             isLoggedIn={Boolean(session)}
             onLogin={goToDashboard}
             onExplore={goToHomeSection}
-            onRequestClassCheckout={requestPublicClassCheckout}
+            onPublicClassCheckout={handlePublicClassCheckout}
             onPublicProductCheckout={handlePublicProductCheckout}
             publicProductAccessApiPath={publicProductAccessApiPath}
             initialDetail={publicDetailTarget}

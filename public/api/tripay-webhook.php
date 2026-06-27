@@ -113,6 +113,7 @@ if (in_array($order['status'] ?? '', ['processed', 'paid'], true)) {
 
 $orderPayload = commerce_json($order['payload'] ?? '{}');
 $isDigitalProductOrder = clean_text($orderPayload['order_type'] ?? '', 60) === 'digital_product';
+$isPublicClassOrder = clean_text($orderPayload['order_type'] ?? '', 60) === 'public_class';
 
 if ($isDigitalProductOrder) {
     $productId = clean_text($orderPayload['product_id'] ?? '', 120);
@@ -158,6 +159,52 @@ if ($isDigitalProductOrder) {
         'reference' => $reference ?: ($order['reference'] ?? ''),
         'productId' => $productId,
         'accessGranted' => $accessResult['granted'],
+        'emailSent' => $emailResult['sent'] ?? false,
+        'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
+    ]);
+}
+
+if ($isPublicClassOrder) {
+    $accessResult = commerce_grant_class_account_access($pdo, [
+        'classId' => $order['class_id'] ?? ($orderPayload['class_id'] ?? ''),
+        'buyerName' => $order['buyer_name'] ?? 'Peserta IbnuCreative',
+        'buyerEmail' => $order['buyer_email'] ?? '',
+        'buyerPhone' => $orderPayload['buyer_phone'] ?? '',
+    ], $config);
+
+    $update = $pdo->prepare(
+        'UPDATE tripay_orders
+        SET reference = ?, member_id = ?, status = ?, access_granted = ?, payload = ?
+        WHERE id = ?',
+    );
+    $update->execute([
+        $reference ?: ($order['reference'] ?? ''),
+        $accessResult['member']['id'] ?? '',
+        'processed',
+        $accessResult['accessGranted'] ? 1 : 0,
+        json_encode(array_merge($orderPayload, ['callback' => $payload]), JSON_UNESCAPED_UNICODE),
+        $order['id'],
+    ]);
+
+    $emailResult = send_class_access_credentials_email([
+        'buyerName' => clean_text($order['buyer_name'] ?? 'Peserta IbnuCreative', 160),
+        'buyerEmail' => clean_email($order['buyer_email'] ?? ''),
+        'username' => clean_text($accessResult['member']['username'] ?? '', 120),
+        'password' => $accessResult['password'],
+        'classTitle' => clean_text($accessResult['class']['title'] ?? ($order['class_title'] ?? 'Kelas IbnuCreative'), 180),
+        'loginUrl' => $accessResult['loginUrl'],
+    ]);
+
+    send_json(200, [
+        'ok' => true,
+        'message' => $accessResult['accessGranted']
+            ? 'Pembayaran Tripay sukses, akun member dibuat/diperbarui, dan akses kelas sudah aktif.'
+            : 'Pembayaran Tripay sukses. Member sudah memiliki akses kelas.',
+        'merchantRef' => $order['merchant_ref'],
+        'reference' => $reference ?: ($order['reference'] ?? ''),
+        'classId' => $order['class_id'],
+        'memberId' => $accessResult['member']['id'] ?? '',
+        'accessGranted' => $accessResult['accessGranted'],
         'emailSent' => $emailResult['sent'] ?? false,
         'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
     ]);

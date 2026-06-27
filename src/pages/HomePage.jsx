@@ -157,7 +157,8 @@ function getInitialDetailState(initialDetail) {
   const action = initialDetail?.action || ''
 
   return {
-    selectedClassId: type === 'kelas' ? id : '',
+    selectedClassId: type === 'kelas' && action !== 'checkout' ? id : '',
+    checkoutClassId: type === 'kelas' && action === 'checkout' ? id : '',
     selectedProductId: type === 'produk' && action !== 'checkout' ? id : '',
     checkoutProductId: type === 'produk' && action === 'checkout' ? id : '',
     accessOrderCode: type === 'produk-akses' ? id : '',
@@ -165,7 +166,7 @@ function getInitialDetailState(initialDetail) {
 }
 
 function HomePage({
-  onRequestClassCheckout = () => {},
+  onPublicClassCheckout = async () => {},
   onPublicProductCheckout = async () => {},
   publicProductAccessApiPath = '/api/public-product-access',
   initialDetail = null,
@@ -185,6 +186,7 @@ function HomePage({
   const websiteSettings = cleanWebsiteSettings(settings)
   const initialState = getInitialDetailState(initialDetail)
   const [selectedClassId, setSelectedClassId] = useState(initialState.selectedClassId)
+  const [checkoutClassId, setCheckoutClassId] = useState(initialState.checkoutClassId)
   const [selectedProductId, setSelectedProductId] = useState(initialState.selectedProductId)
   const [checkoutProductId, setCheckoutProductId] = useState(initialState.checkoutProductId)
   const [isPaymentPickerOpen, setIsPaymentPickerOpen] = useState(false)
@@ -223,6 +225,7 @@ function HomePage({
   const publicActivitiesRef = useRef(publicActivities)
   const detailSelectionRef = useRef({
     selectedClassId,
+    checkoutClassId,
     selectedProductId,
     checkoutProductId,
     accessOrderCode,
@@ -237,6 +240,7 @@ function HomePage({
     publicActivitiesRef.current = publicActivities
     detailSelectionRef.current = {
       selectedClassId,
+      checkoutClassId,
       selectedProductId,
       checkoutProductId,
       accessOrderCode,
@@ -249,6 +253,7 @@ function HomePage({
     digitalProductAccess,
     publicActivities,
     selectedClassId,
+    checkoutClassId,
     selectedProductId,
     checkoutProductId,
     accessOrderCode,
@@ -261,7 +266,7 @@ function HomePage({
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [selectedClassId, selectedProductId, checkoutProductId, accessOrderCode])
+  }, [selectedClassId, checkoutClassId, selectedProductId, checkoutProductId, accessOrderCode])
 
   useEffect(() => {
     let currentIndex = 0
@@ -293,11 +298,12 @@ function HomePage({
       const visibleClasses = withPublicCodes(currentClasses.filter((c) => c.status === 'Aktif'))
       const visibleProducts = withPublicCodes(currentProducts.filter((p) => p.status === 'Aktif'))
       const currentDetailSelection = detailSelectionRef.current || {}
-      const detailClass = currentDetailSelection.selectedClassId
+      const detailClassId = currentDetailSelection.selectedClassId || currentDetailSelection.checkoutClassId
+      const detailClass = detailClassId
         ? visibleClasses.find(
             (item) =>
-              item.id === currentDetailSelection.selectedClassId ||
-              item.publicCode === currentDetailSelection.selectedClassId,
+              item.id === detailClassId ||
+              item.publicCode === detailClassId,
           )
         : null
       const detailProductId =
@@ -671,6 +677,7 @@ function HomePage({
   })
 
   const selectedClass = detailClasses.find((course) => course.id === selectedClassId || course.publicCode === selectedClassId)
+  const checkoutClass = detailClasses.find((course) => course.id === checkoutClassId || course.publicCode === checkoutClassId)
   const approvedTestimonials = testimonials.filter((testimonial) => testimonial.status === 'approved')
   const activeTestimonial = approvedTestimonials.length
     ? approvedTestimonials[testimonialIndex % approvedTestimonials.length]
@@ -678,6 +685,7 @@ function HomePage({
   const selectedProduct = detailProducts.find((product) => product.id === selectedProductId || product.publicCode === selectedProductId)
   const checkoutProduct = detailProducts.find((product) => product.id === checkoutProductId || product.publicCode === checkoutProductId)
   const activeCheckoutProduct = checkoutProduct || selectedProduct
+  const activeCheckoutClass = checkoutClass || selectedClass
   const selectedProductSalesCount = selectedProduct
     ? resolveCount(
         selectedProduct.displaySales,
@@ -690,13 +698,18 @@ function HomePage({
   const selectedProductSalePrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.salePrice) || 0))
   const selectedProductNormalPrice = Math.max(0, Math.round(Number(activeCheckoutProduct?.price) || 0))
   const selectedProductPrice = selectedProductSalePrice || selectedProductNormalPrice
+  const selectedClassSalePrice = Math.max(0, Math.round(Number(activeCheckoutClass?.salePrice) || 0))
+  const selectedClassNormalPrice = Math.max(0, Math.round(Number(activeCheckoutClass?.price) || 0))
+  const selectedClassPrice = selectedClassSalePrice || selectedClassNormalPrice
   const isPublicProductFree = selectedProductPrice <= 0
+  const isPublicClassFree = selectedClassPrice <= 0
   const paymentMethods = websiteSettings.paymentMethods || []
   const selectedPublicPaymentMethod = paymentMethods.find(
     (method) => method.code === publicCheckoutForm.paymentMethod,
   )
-  const publicCheckoutFee = getPaymentMethodFee(selectedPublicPaymentMethod, selectedProductPrice)
-  const publicCheckoutTotal = selectedProductPrice + publicCheckoutFee
+  const publicCheckoutAmount = checkoutClass ? selectedClassPrice : selectedProductPrice
+  const publicCheckoutFee = getPaymentMethodFee(selectedPublicPaymentMethod, publicCheckoutAmount)
+  const publicCheckoutTotal = publicCheckoutAmount + publicCheckoutFee
   const initialDetailType = initialDetail?.type || ''
   const initialDetailId = initialDetail?.id || ''
   const initialDetailAction = initialDetail?.action || ''
@@ -711,6 +724,7 @@ function HomePage({
     const timer = window.setTimeout(() => {
       if (!initialDetailId) {
         setSelectedClassId('')
+        setCheckoutClassId('')
         setSelectedProductId('')
         setCheckoutProductId('')
         setAccessOrderCode('')
@@ -723,6 +737,7 @@ function HomePage({
         setProductAccessState({ isLoading: true, data: null, error: '' })
         setAccessOrderCode(initialDetailId)
         setSelectedClassId('')
+        setCheckoutClassId('')
         setSelectedProductId('')
         setCheckoutProductId('')
         setIsWishlistOpen(false)
@@ -731,13 +746,20 @@ function HomePage({
       }
 
       if (initialDetailType === 'kelas') {
-        setSelectedClassId(initialDetailId)
+        if (initialDetailAction === 'checkout') {
+          setCheckoutClassId(initialDetailId)
+          setSelectedClassId('')
+        } else {
+          setSelectedClassId(initialDetailId)
+          setCheckoutClassId('')
+        }
         setSelectedProductId('')
         setCheckoutProductId('')
         setAccessOrderCode('')
       }
 
       if (initialDetailType === 'produk') {
+        setCheckoutClassId('')
         if (initialDetailAction === 'checkout') {
           setCheckoutProductId(initialDetailId)
           setSelectedProductId('')
@@ -767,6 +789,15 @@ function HomePage({
       }
     }
 
+    if (checkoutClass?.publicCode && window.location.pathname.startsWith('/kelas/')) {
+      const nextPath = `/kelas/${encodeURIComponent(checkoutClass.publicCode)}/checkout`
+
+      if (window.location.pathname !== nextPath) {
+        window.history.replaceState({}, '', nextPath)
+        notifyRouteChange()
+      }
+    }
+
     if (selectedProduct?.publicCode && window.location.pathname.startsWith('/produk/')) {
       const nextPath = `/produk/${encodeURIComponent(selectedProduct.publicCode)}`
 
@@ -784,7 +815,7 @@ function HomePage({
         notifyRouteChange()
       }
     }
-  }, [checkoutProduct?.publicCode, selectedClass?.publicCode, selectedProduct?.publicCode])
+  }, [checkoutClass?.publicCode, checkoutProduct?.publicCode, selectedClass?.publicCode, selectedProduct?.publicCode])
 
   useEffect(() => {
     writePublicWishlist(wishlistItems)
@@ -842,6 +873,7 @@ function HomePage({
     const course = homepageClasses.find((item) => item.id === classId || item.publicCode === classId)
 
     setSelectedClassId(classId)
+    setCheckoutClassId('')
     setSelectedProductId('')
     setCheckoutProductId('')
     window.history.pushState(
@@ -858,6 +890,7 @@ function HomePage({
 
     setSelectedProductId(productId)
     setSelectedClassId('')
+    setCheckoutClassId('')
     setCheckoutProductId('')
     setIsPaymentPickerOpen(false)
     window.history.pushState(
@@ -879,6 +912,7 @@ function HomePage({
 
     setSelectedProductId(productId)
     setSelectedClassId('')
+    setCheckoutClassId('')
     setCheckoutProductId('')
     setIsPaymentPickerOpen(false)
     window.history.replaceState(
@@ -898,6 +932,7 @@ function HomePage({
 
     if (window.history.state?.returnToMemberProducts) {
       setSelectedClassId('')
+      setCheckoutClassId('')
       setSelectedProductId('')
       setCheckoutProductId('')
       setAccessOrderCode('')
@@ -911,6 +946,7 @@ function HomePage({
     }
 
     setSelectedClassId('')
+    setCheckoutClassId('')
     setSelectedProductId('')
     setCheckoutProductId('')
     setAccessOrderCode('')
@@ -966,10 +1002,52 @@ function HomePage({
     openProductDetail(item.publicCode || item.id)
   }
 
+  const openClassCheckout = (classId) => {
+    const course = detailClasses.find((item) => item.id === classId || item.publicCode === classId)
+
+    setCheckoutClassId(classId)
+    setSelectedClassId('')
+    setSelectedProductId('')
+    setCheckoutProductId('')
+    setIsPaymentPickerOpen(false)
+    setPublicCheckoutStatus('')
+    window.history.pushState(
+      { publicDetailFromApp: true, checkoutFromClassDetail: true },
+      '',
+      `/kelas/${encodeURIComponent(course?.publicCode || classId)}/checkout`,
+    )
+    notifyRouteChange()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const navigateBackFromClassCheckout = (classId) => {
+    const course = detailClasses.find((item) => item.id === classId || item.publicCode === classId)
+
+    if (window.history.state?.checkoutFromClassDetail && window.history.length > 1) {
+      window.history.back()
+      return
+    }
+
+    setSelectedClassId(classId)
+    setCheckoutClassId('')
+    setSelectedProductId('')
+    setCheckoutProductId('')
+    setIsPaymentPickerOpen(false)
+    window.history.replaceState(
+      { publicDetailFromApp: true },
+      '',
+      `/kelas/${encodeURIComponent(course?.publicCode || classId)}`,
+    )
+    notifyRouteChange()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const openProductCheckout = (productId) => {
     const product = detailProducts.find((item) => item.id === productId || item.publicCode === productId)
 
     setCheckoutProductId(productId)
+    setCheckoutClassId('')
+    setSelectedClassId('')
     setSelectedProductId('')
     setIsPaymentPickerOpen(false)
     window.history.pushState(
@@ -1015,6 +1093,43 @@ function HomePage({
         [questionId]: value,
       },
     }))
+  }
+
+  const submitPublicClassCheckout = async (event) => {
+    event.preventDefault()
+
+    if (!checkoutClass) {
+      return
+    }
+
+    setPublicCheckoutStatus(isPublicClassFree ? 'Memproses pendaftaran kelas gratis...' : 'Membuat invoice kelas...')
+
+    try {
+      const data = await onPublicClassCheckout({
+        classId: checkoutClass.id,
+        ...publicCheckoutForm,
+        buyerName: isMemberCheckout
+          ? checkoutCustomer?.name || publicCheckoutForm.buyerName || 'Member'
+          : publicCheckoutForm.buyerName,
+        buyerEmail: isMemberCheckout
+          ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
+          : publicCheckoutForm.buyerEmail,
+        buyerPhone: isMemberCheckout
+          ? memberCheckoutPhone || publicCheckoutForm.buyerPhone
+          : publicCheckoutForm.buyerPhone,
+        paymentMethod: isPublicClassFree ? '' : publicCheckoutForm.paymentMethod,
+      })
+
+      if (data?.checkoutUrl) {
+        window.location.assign(data.checkoutUrl)
+      } else if (data?.loginUrl) {
+        setPublicCheckoutStatus(data?.message || 'Akses kelas aktif. Cek email untuk data login.')
+      } else {
+        setPublicCheckoutStatus(data?.message || 'Pendaftaran kelas berhasil diproses.')
+      }
+    } catch (error) {
+      setPublicCheckoutStatus(error.message || 'Checkout kelas belum bisa dibuat.')
+    }
   }
 
   const submitPublicProductCheckout = async (event) => {
@@ -1124,7 +1239,7 @@ function HomePage({
   ) : null
 
   const isDetailNotificationPosition = Boolean(
-    selectedClass || selectedProduct || checkoutProduct || accessOrderCode,
+    selectedClass || checkoutClass || selectedProduct || checkoutProduct || accessOrderCode,
   )
   const activityToast = activeNotification ? (
     <div
@@ -1176,6 +1291,38 @@ function HomePage({
     </section>
   )
 
+  if (checkoutClass) {
+    return (
+      <>
+        <CheckoutProduk
+          product={checkoutClass}
+          itemType="class"
+          form={publicCheckoutForm}
+          checkoutCustomer={checkoutCustomer}
+          isMemberCheckout={isMemberCheckout}
+          memberNeedsPhone={memberNeedsCheckoutPhone}
+          isFree={isPublicClassFree}
+          isPaymentPickerOpen={isPaymentPickerOpen}
+          paymentMethods={paymentMethods}
+          paymentAmount={selectedClassPrice}
+          paymentFee={publicCheckoutFee}
+          paymentTotal={publicCheckoutTotal}
+          priceLabel={selectedClassPrice ? formatRupiah(selectedClassPrice) : 'Gratis'}
+          status={publicCheckoutStatus}
+          onBack={() => navigateBackFromClassCheckout(checkoutClass.id)}
+          onChange={handlePublicCheckoutChange}
+          onAnswerChange={handlePublicCheckoutAnswerChange}
+          onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
+          onPaymentMethodSelect={selectPublicPaymentMethod}
+          onShare={shareItem}
+          onSubmit={submitPublicClassCheckout}
+        />
+        {wishlistPopup}
+        {activityToast}
+      </>
+    )
+  }
+
   if (selectedClass) {
     return (
       <>
@@ -1184,7 +1331,7 @@ function HomePage({
           testimonials={testimonials}
           wishlistCount={wishlistCount}
           onBack={closePublicDetail}
-          onBuy={onRequestClassCheckout}
+          onBuy={openClassCheckout}
           onAddToWishlist={() => addWishlistItem(selectedClass, 'kelas')}
           onOpenWishlist={openWishlist}
           onShare={shareItem}

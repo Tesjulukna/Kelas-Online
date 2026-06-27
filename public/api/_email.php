@@ -143,3 +143,48 @@ function send_tripay_payment_email(array $order): array
         'html' => $html,
     ]);
 }
+
+function send_class_access_credentials_email(array $account): array
+{
+    $loginUrl = clean_asset_url($account['loginUrl'] ?? '', 1000);
+    $passwordText = !empty($account['password'])
+        ? (string) $account['password']
+        : 'Gunakan password akun yang sudah pernah dibuat.';
+    $classTitle = clean_text($account['classTitle'] ?? 'Kelas IbnuCreative', 180);
+    $buyerName = clean_text($account['buyerName'] ?? 'Peserta', 160);
+    $username = clean_text($account['username'] ?? '', 120);
+    $buyerEmail = clean_email($account['buyerEmail'] ?? '');
+
+    $text = "Halo {$buyerName},\n\n"
+        . "Pembayaran kelas Anda sudah berhasil dan akses belajar sudah aktif.\n\n"
+        . "Kelas: {$classTitle}\n"
+        . "Login: {$loginUrl}\n"
+        . "Email: {$buyerEmail}\n"
+        . "Username: {$username}\n"
+        . "Password: {$passwordText}\n\n"
+        . "Silakan login dan buka menu Kelas Saya.\n\n"
+        . "IbnuCreative Academy";
+
+    $loginButton = $loginUrl
+        ? '<p><a href="' . email_escape($loginUrl) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">Masuk ke Kelas Saya</a></p>'
+        : '';
+    $html = '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">'
+        . '<h2>Akses kelas Anda sudah aktif</h2>'
+        . '<p>Halo ' . email_escape($buyerName) . ',</p>'
+        . '<p>Pembayaran kelas Anda sudah berhasil dan akses belajar sudah aktif.</p>'
+        . '<p><strong>Kelas:</strong> ' . email_escape($classTitle) . '</p>'
+        . '<p><strong>Email:</strong> ' . email_escape($buyerEmail) . '<br>'
+        . '<strong>Username:</strong> ' . email_escape($username) . '<br>'
+        . '<strong>Password:</strong> ' . email_escape($passwordText) . '</p>'
+        . $loginButton
+        . ($loginUrl ? '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($loginUrl) . '">' . email_escape($loginUrl) . '</a></p>' : '')
+        . '<p>IbnuCreative Academy</p>'
+        . '</div>';
+
+    return send_resend_email([
+        'to' => $buyerEmail,
+        'subject' => 'Akses kelas ' . $classTitle . ' sudah aktif',
+        'text' => $text,
+        'html' => $html,
+    ]);
+}

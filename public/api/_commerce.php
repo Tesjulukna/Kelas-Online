@@ -34,6 +34,46 @@ function commerce_public_product_access_url(string $orderCode): string
     return $code !== '' ? tripay_absolute_url('/produk-akses/' . rawurlencode($code)) : '';
 }
 
+function commerce_login_url(array $config): string
+{
+    $configured = clean_external_url($config['site_login_url'] ?? '');
+
+    if ($configured !== '') {
+        return $configured;
+    }
+
+    return tripay_absolute_url('/login') ?: '/login';
+}
+
+function commerce_generated_password(string $email, array $config): string
+{
+    $secret = tripay_config_value($config, 'tripay_private_key', 300)
+        ?: clean_text($config['lynk_webhook_secret'] ?? '', 300)
+        ?: 'ibnucreative-public-class';
+
+    return 'IC-' . substr(hash_hmac('sha256', strtolower($email), $secret), 0, 10);
+}
+
+function commerce_unique_username(PDO $pdo, string $email, string $name): string
+{
+    $base = clean_username(strtok($email, '@') ?: $name);
+    $base = $base !== '' ? $base : 'member';
+    $username = $base;
+    $counter = 2;
+    $query = $pdo->prepare('SELECT id FROM accounts WHERE role = ? AND username = ? LIMIT 1');
+
+    while (true) {
+        $query->execute(['member', $username]);
+
+        if (!$query->fetch()) {
+            return $username;
+        }
+
+        $username = $base . $counter;
+        $counter++;
+    }
+}
+
 function commerce_fetch_product(PDO $pdo, string $productId, bool $activeOnly = true): ?array
 {
     $sql = $activeOnly
@@ -114,3 +154,102 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
     ];
 }
 
+function commerce_grant_class_account_access(PDO $pdo, array $args, array $config): array
+{
+    $classId = clean_text($args['classId'] ?? '', 120);
+    $buyerEmail = clean_email($args['buyerEmail'] ?? '');
+    $buyerName = clean_text($args['buyerName'] ?? '', 160) ?: 'Peserta IbnuCreative';
+    $buyerPhone = clean_phone($args['buyerPhone'] ?? '');
+
+    if ($classId === '' || $buyerEmail === '') {
+        send_json(422, ['message' => 'ID kelas dan email pembeli wajib tersedia untuk aktivasi akses.']);
+    }
+
+    $classQuery = $pdo->prepare('SELECT * FROM classes WHERE id = ? LIMIT 1');
+    $classQuery->execute([$classId]);
+    $class = $classQuery->fetch();
+
+    if (!$class) {
+        send_json(404, ['message' => 'Kelas untuk aktivasi akses tidak ditemukan.']);
+    }
+
+    $password = commerce_generated_password($buyerEmail, $config);
+    $passwordCreated = false;
+    $accessGranted = false;
+    $memberQuery = $pdo->prepare('SELECT * FROM accounts WHERE role = ? AND email = ? LIMIT 1');
+    $memberQuery->execute(['member', $buyerEmail]);
+    $member = $memberQuery->fetch();
+
+    if ($member) {
+        $currentClassIds = clean_allowed_class_ids($member['allowed_class_ids'] ?? null);
+        $nextClassIds = $currentClassIds;
+
+        if (is_array($currentClassIds) && !in_array($classId, $currentClassIds, true)) {
+            $nextClassIds = array_values(array_unique(array_merge($currentClassIds, [$classId])));
+            $accessGranted = true;
+        }
+
+        $passwordHash = !empty($config['lynk_reset_existing_member_password'])
+            ? hash_password_value($password)
+            : $member['password_hash'];
+        $passwordCreated = !empty($config['lynk_reset_existing_member_password']);
+        $update = $pdo->prepare(
+            'UPDATE accounts
+            SET name = ?, phone = ?, status = ?, allowed_class_ids = ?, password_hash = ?
+            WHERE id = ? AND role = ?',
+        );
+        $update->execute([
+            $buyerName ?: ($member['name'] ?? 'Peserta IbnuCreative'),
+            $buyerPhone ?: ($member['phone'] ?? ''),
+            'Aktif',
+            is_array($nextClassIds) ? json_encode($nextClassIds, JSON_UNESCAPED_UNICODE) : null,
+            $passwordHash,
+            $member['id'],
+            'member',
+        ]);
+        $member['name'] = $buyerName ?: ($member['name'] ?? 'Peserta IbnuCreative');
+        $member['phone'] = $buyerPhone ?: ($member['phone'] ?? '');
+        $member['allowed_class_ids'] = is_array($nextClassIds) ? json_encode($nextClassIds, JSON_UNESCAPED_UNICODE) : null;
+    } else {
+        $member = [
+            'id' => make_id('member'),
+            'username' => commerce_unique_username($pdo, $buyerEmail, $buyerName),
+            'name' => $buyerName,
+            'email' => $buyerEmail,
+        ];
+        $passwordCreated = true;
+        $accessGranted = true;
+        $insert = $pdo->prepare(
+            'INSERT INTO accounts
+            (id, role, name, username, email, phone, status, avatar, allowed_class_ids, password_hash, joined_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        );
+        $insert->execute([
+            $member['id'],
+            'member',
+            $buyerName,
+            $member['username'],
+            $buyerEmail,
+            $buyerPhone,
+            'Aktif',
+            '',
+            json_encode([$classId], JSON_UNESCAPED_UNICODE),
+            hash_password_value($password),
+            date('Y-m-d'),
+        ]);
+    }
+
+    if ($accessGranted) {
+        $updateClass = $pdo->prepare('UPDATE classes SET students = COALESCE(students, 0) + 1 WHERE id = ?');
+        $updateClass->execute([$classId]);
+    }
+
+    return [
+        'member' => $member,
+        'class' => $class,
+        'accessGranted' => $accessGranted,
+        'passwordCreated' => $passwordCreated,
+        'password' => $passwordCreated ? $password : null,
+        'loginUrl' => commerce_login_url($config),
+    ];
+}
