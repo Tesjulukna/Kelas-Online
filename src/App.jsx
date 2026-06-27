@@ -347,7 +347,9 @@ function cleanRichHtml(value, maxLength = 6000) {
 
       if (node.tagName === 'IMG' && attribute.name === 'src') {
         const src = node.getAttribute('src') || ''
-        if (!/^https?:\/\//i.test(src) && !src.startsWith('data:image/')) {
+        const isLocalUpload = src.startsWith('/uploads/')
+
+        if (!/^https?:\/\//i.test(src) && !src.startsWith('data:image/') && !isLocalUpload) {
           node.removeAttribute('src')
         }
         return

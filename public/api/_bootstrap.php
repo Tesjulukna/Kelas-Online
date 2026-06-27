@@ -79,29 +79,196 @@ function clean_text($value, int $maxLength = 80): string
     return substr($text, 0, $maxLength);
 }
 
+function rich_youtube_embed_url($value): string
+{
+    $rawUrl = trim(strip_tags((string) ($value ?? '')));
+
+    if ($rawUrl === '') {
+        return '';
+    }
+
+    if (!preg_match('/^https?:\/\//i', $rawUrl)) {
+        return '';
+    }
+
+    $parts = parse_url($rawUrl);
+    $host = strtolower(preg_replace('/^www\./', '', (string) ($parts['host'] ?? '')));
+    $path = (string) ($parts['path'] ?? '');
+    $query = [];
+    parse_str((string) ($parts['query'] ?? ''), $query);
+    $videoId = '';
+
+    if ($host === 'youtu.be') {
+        $videoId = explode('/', trim($path, '/'))[0] ?? '';
+    }
+
+    if (in_array($host, ['youtube.com', 'm.youtube.com', 'youtube-nocookie.com'], true)) {
+        if (strpos($path, '/shorts/') === 0 || strpos($path, '/embed/') === 0) {
+            $segments = explode('/', trim($path, '/'));
+            $videoId = $segments[1] ?? '';
+        } else {
+            $videoId = (string) ($query['v'] ?? '');
+        }
+    }
+
+    $videoId = preg_replace('/[^a-zA-Z0-9_-]/', '', $videoId) ?? '';
+
+    return $videoId !== '' ? 'https://www.youtube.com/embed/' . rawurlencode($videoId) : '';
+}
+
+function rich_convert_youtube_lines_to_embeds(string $html): string
+{
+    $lines = preg_split("/\r\n|\r|\n/", $html);
+
+    if (!is_array($lines)) {
+        return $html;
+    }
+
+    return implode("\n", array_map(static function ($line): string {
+        $trimmed = trim($line);
+        $embedUrl = preg_match('/^https?:\/\/\S+$/i', $trimmed) ? rich_youtube_embed_url($trimmed) : '';
+
+        return $embedUrl !== ''
+            ? '<iframe src="' . htmlspecialchars($embedUrl, ENT_QUOTES, 'UTF-8') . '" title="Video YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
+            : $line;
+    }, $lines));
+}
+
+function rich_clean_style(string $styleValue): string
+{
+    $allowed = [];
+
+    foreach (explode(';', $styleValue) as $style) {
+        $parts = explode(':', $style, 2);
+
+        if (count($parts) !== 2) {
+            continue;
+        }
+
+        $name = strtolower(trim($parts[0]));
+        $value = trim($parts[1]);
+
+        if (!in_array($name, ['color', 'text-align'], true)) {
+            continue;
+        }
+
+        if (preg_match('/expression|url\s*\(|javascript:/i', $value)) {
+            continue;
+        }
+
+        $allowed[] = $name . ': ' . substr($value, 0, 80);
+    }
+
+    return implode('; ', $allowed);
+}
+
+function rich_sanitize_node(DOMNode $node, DOMDocument $dom): void
+{
+    $allowedTags = [
+        'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'span', 'div',
+        'a', 'img', 'iframe', 'h2', 'h3', 'h4',
+    ];
+
+    foreach (iterator_to_array($node->childNodes) as $child) {
+        if (!$child instanceof DOMElement) {
+            continue;
+        }
+
+        $tag = strtolower($child->tagName);
+
+        if (!in_array($tag, $allowedTags, true)) {
+            if (in_array($tag, ['script', 'style', 'object', 'embed'], true)) {
+                if ($child->parentNode) {
+                    $child->parentNode->removeChild($child);
+                }
+            } else {
+                if ($child->parentNode) {
+                    $child->parentNode->replaceChild($dom->createTextNode($child->textContent ?? ''), $child);
+                }
+            }
+            continue;
+        }
+
+        $attrs = [];
+        foreach (iterator_to_array($child->attributes) as $attribute) {
+            $attrs[strtolower($attribute->name)] = $attribute->value;
+            $child->removeAttribute($attribute->name);
+        }
+
+        if ($tag === 'a') {
+            $href = clean_external_url($attrs['href'] ?? '');
+            if ($href !== '') {
+                $child->setAttribute('href', $href);
+                $child->setAttribute('target', '_blank');
+                $child->setAttribute('rel', 'noreferrer');
+            }
+        } elseif ($tag === 'img') {
+            $src = clean_asset_url($attrs['src'] ?? '', 2000);
+            if ($src === '') {
+                if ($child->parentNode) {
+                    $child->parentNode->removeChild($child);
+                }
+                continue;
+            }
+            $child->setAttribute('src', $src);
+            $child->setAttribute('alt', clean_text($attrs['alt'] ?? 'Gambar deskripsi', 160));
+            $child->setAttribute('loading', 'lazy');
+        } elseif ($tag === 'iframe') {
+            $src = rich_youtube_embed_url($attrs['src'] ?? '');
+            if ($src === '') {
+                if ($child->parentNode) {
+                    $child->parentNode->removeChild($child);
+                }
+                continue;
+            }
+            $child->setAttribute('src', $src);
+            $child->setAttribute('title', clean_text($attrs['title'] ?? 'Video YouTube', 120));
+            $child->setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+            $child->setAttribute('allowfullscreen', '');
+        } elseif (!empty($attrs['style'])) {
+            $style = rich_clean_style($attrs['style']);
+            if ($style !== '') {
+                $child->setAttribute('style', $style);
+            }
+        }
+
+        rich_sanitize_node($child, $dom);
+    }
+}
+
 function clean_rich_html($value, int $maxLength = 6000): string
 {
     $html = substr((string) ($value ?? ''), 0, $maxLength);
     $html = preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $html) ?? '';
-    $html = preg_replace('/\son\w+\s*=\s*"[^"]*"/i', '', $html) ?? '';
-    $html = preg_replace("/\son\w+\s*=\s*'[^']*'/i", '', $html) ?? '';
-    $html = strip_tags($html, '<p><br><strong><b><em><i><ul><ol><li><span><div>');
-    $html = preg_replace_callback('/\sstyle\s*=\s*"([^"]*)"/i', function ($matches): string {
-        $allowed = [];
+    $html = preg_replace('/<style\b[^>]*>.*?<\/style>/is', '', $html) ?? '';
+    $html = rich_convert_youtube_lines_to_embeds($html);
 
-        foreach (explode(';', $matches[1]) as $style) {
-            $style = trim($style);
+    if (!class_exists('DOMDocument')) {
+        return strip_tags($html, '<p><br><strong><b><em><i><u><ul><ol><li><span><div><a><img><iframe><h2><h3><h4>');
+    }
 
-            if (preg_match('/^(color|text-align)\s*:/i', $style)) {
-                $allowed[] = $style;
-            }
-        }
+    $dom = new DOMDocument('1.0', 'UTF-8');
+    libxml_use_internal_errors(true);
+    $dom->loadHTML(
+        '<!DOCTYPE html><html><body><div id="rich-root">' . $html . '</div></body></html>',
+        LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+    );
+    libxml_clear_errors();
 
-        return $allowed ? ' style="' . implode('; ', $allowed) . '"' : '';
-    }, $html) ?? '';
-    $html = preg_replace("/\sstyle\s*=\s*'[^']*'/i", '', $html) ?? '';
+    $root = $dom->getElementById('rich-root');
 
-    return $html;
+    if (!$root) {
+        return '';
+    }
+
+    rich_sanitize_node($root, $dom);
+
+    $cleaned = '';
+    foreach ($root->childNodes as $child) {
+        $cleaned .= $dom->saveHTML($child);
+    }
+
+    return substr($cleaned, 0, $maxLength);
 }
 
 function clean_username($value): string

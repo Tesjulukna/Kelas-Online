@@ -633,6 +633,13 @@ function DescriptionVideoPreview({ value }) {
   )
 }
 
+function descriptionHtmlToEditorText(value) {
+  return String(value || '').replace(
+    /<iframe\b[^>]*\bsrc=(["'])(.*?)\1[^>]*>\s*<\/iframe>/gi,
+    (_, _quote, src) => `\n${src}\n`,
+  )
+}
+
 function cleanEditorUrl(value) {
   try {
     const url = new URL(value)
@@ -953,6 +960,7 @@ function AdminPage({
   const materialDescriptionRef = useRef(null)
   const materialDescriptionEditorMaterialIdRef = useRef(null)
   const descriptionSelectionRef = useRef(null)
+  const classDescriptionImageInputRef = useRef(null)
   const digitalDescriptionImageInputRef = useRef(null)
   const lastMaterialDragTargetRef = useRef('')
 
@@ -1529,6 +1537,18 @@ function AdminPage({
     }
     const [prefix, suffix] = wrappers[tool] || ['', '']
 
+    if (tool === 'link') {
+      const url = window.prompt('Masukkan link')
+      if (!url) return
+      const safeUrl = cleanEditorUrl(url)
+      if (!safeUrl) {
+        onNotify('Link harus diawali http:// atau https://.')
+        return
+      }
+      insertClassDescriptionHtml(`<a href="${safeUrl}" target="_blank" rel="noreferrer">${content}</a>`)
+      return
+    }
+
     if (tool === 'youtube') {
       const url = window.prompt('Masukkan link YouTube atau Shorts')
       const embedUrl = getYoutubeEmbedUrl(url)
@@ -1543,6 +1563,32 @@ function AdminPage({
     }
 
     insertClassDescriptionHtml(`${prefix}${content}${suffix}`)
+  }
+
+  const handleClassDescriptionImageChange = async (event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      onNotify('Gambar deskripsi harus berupa file gambar.')
+      event.target.value = ''
+      return
+    }
+
+    try {
+      onNotify('Mengupload gambar deskripsi...')
+      const imageUrl = await uploadClassImage(file, sessionToken)
+      const altText = cleanHtmlAttribute(file.name.replace(/\.[^.]+$/, '') || 'Gambar kelas')
+      insertClassDescriptionHtml(`<p><img src="${imageUrl}" alt="${altText}" loading="lazy"></p>`)
+      onNotify('Gambar berhasil ditambahkan ke deskripsi kelas.')
+    } catch (error) {
+      onNotify(error.message || 'Gambar deskripsi tidak bisa diupload.')
+    } finally {
+      event.target.value = ''
+    }
   }
 
   const insertDigitalDescriptionHtml = (html) => {
@@ -1820,7 +1866,7 @@ function AdminPage({
     setDigitalProductForm({
       id: product.id,
       title: product.title,
-      description: product.description || '',
+      description: descriptionHtmlToEditorText(product.description || ''),
       price: product.price || '0',
       displaySales: product.displaySales ?? '',
       rating: product.rating ?? '',
@@ -2720,7 +2766,7 @@ function AdminPage({
     setClassForm({
       id: item.id,
       title: item.title,
-      description: item.description ?? '',
+      description: descriptionHtmlToEditorText(item.description ?? ''),
       students: item.students,
       displayStudents: item.displayStudents ?? '',
       rating: item.rating ?? '',
@@ -6243,6 +6289,13 @@ function AdminPage({
                   <button type="button" onClick={() => applyClassDescriptionTool('align-left')} title="Rata kiri">L</button>
                   <button type="button" onClick={() => applyClassDescriptionTool('align-center')} title="Rata tengah">C</button>
                   <button type="button" onClick={() => applyClassDescriptionTool('align-justify')} title="Justify">J</button>
+                  <button
+                    type="button"
+                    onClick={() => classDescriptionImageInputRef.current?.click()}
+                    title="Tambah gambar"
+                  >
+                    <Icon name="image" />
+                  </button>
                   <button type="button" onClick={() => applyClassDescriptionTool('youtube')} title="Tambah video YouTube"><Icon name="youtube" /></button>
                   <button type="button" onClick={() => applyClassDescriptionTool('list')}><Icon name="menu" /></button>
                   <button type="button" onClick={() => applyClassDescriptionTool('link')}><Icon name="link" /></button>
@@ -6257,6 +6310,14 @@ function AdminPage({
                   rows={12}
                 />
                 <DescriptionVideoPreview value={classForm.description} />
+                <input
+                  ref={classDescriptionImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  tabIndex={-1}
+                  onChange={handleClassDescriptionImageChange}
+                />
               </label>
               <label>
                 Status
