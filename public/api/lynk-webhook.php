@@ -895,10 +895,7 @@ function lynk_find_products(PDO $pdo, array $productCandidates): array
 
 function lynk_snapshot_amount(array $item): int
 {
-    $salePrice = (int) ($item['sale_price'] ?? 0);
-    $price = (int) ($item['price'] ?? 0);
-
-    return $salePrice > 0 ? $salePrice : max(0, $price);
+    return 0;
 }
 
 function lynk_insert_product_payment_snapshot(PDO $pdo, array $product, array $access, string $orderId, int $paidAmount = 0): void
@@ -921,7 +918,7 @@ function lynk_insert_product_payment_snapshot(PDO $pdo, array $product, array $a
             clean_text($product['id'] ?? '', 120),
             clean_text($product['title'] ?? 'Produk digital', 180),
             'digital_product',
-            $paidAmount > 0 ? $paidAmount : lynk_snapshot_amount($product),
+            max(0, $paidAmount),
             'paid',
             'Lynk.id',
             1,

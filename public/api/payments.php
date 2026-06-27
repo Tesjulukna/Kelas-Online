@@ -943,7 +943,7 @@ function payment_backfill_member_access_snapshots(PDO $pdo): void
                     $classId,
                     clean_text($class['title'] ?? 'Kelas', 180),
                     'class',
-                    payment_class_amount($class),
+                    0,
                     'paid',
                     'Lynk.id',
                     1,
@@ -1024,7 +1024,7 @@ function payment_backfill_product_access_snapshots(PDO $pdo): void
                 $productId,
                 clean_text($access['product_title'] ?? ($product['title'] ?? 'Produk digital'), 180),
                 'digital_product',
-                payment_product_amount($product),
+                0,
                 'paid',
                 $isLynk ? 'Lynk.id' : clean_text($access['source'] ?? 'Produk digital', 80),
                 1,
@@ -1314,8 +1314,48 @@ function payment_ensure_runtime_schema(PDO $pdo): void
     payment_ensure_column($pdo, 'lynk_orders', 'payload', 'MEDIUMTEXT');
 }
 
+function payment_repair_derived_snapshot_amounts(PDO $pdo): void
+{
+    try {
+        $pdo->exec(
+            "UPDATE payment_snapshots
+            SET amount = 0
+            WHERE source IN ('legacy_lynk_access', 'legacy_lynk_product_access', 'legacy_product_access')",
+        );
+    } catch (Throwable $error) {
+        // Continue. The public list can still avoid current-price fallbacks below.
+    }
+
+    try {
+        $snapshots = $pdo
+            ->query("SELECT id, order_code FROM payment_snapshots WHERE source = 'lynk_product'")
+            ->fetchAll();
+        $findOrder = $pdo->prepare('SELECT payload FROM lynk_orders WHERE order_id = ? LIMIT 1');
+        $updateSnapshot = $pdo->prepare('UPDATE payment_snapshots SET amount = ? WHERE id = ?');
+
+        foreach ($snapshots as $snapshot) {
+            $orderCode = clean_text($snapshot['order_code'] ?? '', 180);
+
+            if ($orderCode === '') {
+                $updateSnapshot->execute([0, $snapshot['id']]);
+                continue;
+            }
+
+            $findOrder->execute([$orderCode]);
+            $order = $findOrder->fetch();
+            $payload = $order ? payment_order_payload($order) : [];
+            $amount = payment_amount_from_payload($payload);
+
+            $updateSnapshot->execute([$amount, $snapshot['id']]);
+        }
+    } catch (Throwable $error) {
+        // Continue. Missing payload means the exact old price is unknown.
+    }
+}
+
 $payments = [];
 payment_ensure_runtime_schema($pdo);
+payment_repair_derived_snapshot_amounts($pdo);
 
 try {
     $expiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
@@ -1410,9 +1450,7 @@ if (($user['role'] ?? '') === 'admin') {
             ]);
             $mappedProducts = payment_find_products_by_candidates($productMap, $productCandidates);
             $mappedClassTitles = [];
-            $mappedClassAmount = 0;
             $mappedProductTitles = [];
-            $mappedProductAmount = 0;
 
             foreach ($classIds as $classId) {
                 if (empty($classMap[$classId])) {
@@ -1420,20 +1458,10 @@ if (($user['role'] ?? '') === 'admin') {
                 }
 
                 $mappedClassTitles[] = clean_text($classMap[$classId]['title'] ?? '', 180);
-                $mappedClassAmount += payment_class_amount($classMap[$classId]);
             }
 
             foreach ($mappedProducts as $product) {
                 $mappedProductTitles[] = clean_text($product['title'] ?? '', 180);
-                $mappedProductAmount += payment_product_amount($product);
-            }
-
-            if ($amount <= 0 && $mappedClassAmount > 0) {
-                $amount = $mappedClassAmount;
-            }
-
-            if ($amount <= 0 && $mappedProductAmount > 0) {
-                $amount = $mappedProductAmount;
             }
 
             $status = clean_text($row['status'] ?? '', 40);
