@@ -12534,6 +12534,7 @@ img {
 .catalog-card {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -12657,12 +12658,14 @@ img {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  min-width: 0;
 }
 
 .card-rating-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
 }
 
@@ -12682,19 +12685,27 @@ img {
   font-size: 0.8rem;
   color: #64748b;
   font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .card-title {
-  font-size: 1.05rem;
+  font-size: clamp(0.98rem, 1.1vw, 1.05rem);
   font-weight: 700;
   color: #0f172a;
-  line-height: 1.35;
+  line-height: 1.28;
   margin: 0 0 8px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  height: 2.7em; /* Fix title height to align descriptions */
+  min-height: 2.56em;
+  max-height: 2.56em;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .card-desc {
@@ -12797,10 +12808,28 @@ img {
 }
 
 @media (max-width: 600px) {
+  .catalog-section {
+    padding: 34px 0 64px;
+  }
+
   .catalog-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
+
+  .catalog-card {
+    border-radius: 10px;
+  }
+
+  .card-media,
+  .card-type-kelas .card-media {
+    aspect-ratio: 16 / 8.7;
+  }
+
+  .card-type-kelas .card-media img {
+    padding: 2px;
+  }
+
   .category-tabs-track {
     justify-content: flex-start;
     flex-wrap: nowrap;
@@ -12822,13 +12851,18 @@ img {
 
   /* Mobile card specific scaling */
   .card-content {
-    padding: 10px;
+    padding: 9px 10px 8px;
   }
+
   .card-title {
-    font-size: 0.86rem;
-    height: 2.7em;
-    margin-bottom: 4px;
+    font-size: clamp(0.8rem, 3.55vw, 0.94rem);
+    line-height: 1.18;
+    -webkit-line-clamp: 3;
+    min-height: 3.54em;
+    max-height: 3.54em;
+    margin-bottom: 0;
   }
+
   .card-desc {
     display: none;
   }
@@ -12836,30 +12870,33 @@ img {
     display: none;
   }
   .card-price-action {
-    padding: 10px;
+    padding: 8px 10px 10px;
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
     background: #ffffff;
   }
   .current-price {
-    font-size: 0.95rem;
+    font-size: clamp(0.95rem, 4vw, 1.06rem);
   }
   .original-price {
     font-size: 0.72rem;
   }
   .card-action-btn {
     width: 100%;
-    min-height: 32px !important;
-    font-size: 0.78rem !important;
+    min-height: 34px !important;
+    font-size: 0.82rem !important;
     padding: 0 8px !important;
   }
+
   .card-rating-row {
     margin-bottom: 4px;
   }
+
   .rating-stars, .sales-count {
-    font-size: 0.72rem;
+    font-size: clamp(0.66rem, 3.1vw, 0.76rem);
   }
+
   .card-badge {
     font-size: 0.65rem;
     padding: 2px 6px;
@@ -13419,6 +13456,46 @@ img {
   .course-testimonial-avatar {
     width: 36px;
     height: 36px;
+  }
+}
+
+@media (max-width: 380px) {
+  .catalog-grid {
+    gap: 8px;
+  }
+
+  .card-content {
+    padding: 8px 8px 7px;
+  }
+
+  .card-title {
+    font-size: 0.78rem;
+    line-height: 1.16;
+    min-height: 3.48em;
+    max-height: 3.48em;
+  }
+
+  .card-price-action {
+    padding: 7px 8px 9px;
+  }
+
+  .rating-stars,
+  .sales-count {
+    font-size: 0.64rem;
+  }
+}
+
+@media (max-width: 340px) {
+  .catalog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-title {
+    display: block;
+    font-size: 0.94rem;
+    -webkit-line-clamp: initial;
+    min-height: 0;
+    max-height: none;
   }
 }
 
