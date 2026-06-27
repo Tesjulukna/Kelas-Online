@@ -448,6 +448,11 @@ function default_website_settings(): array
             'selectedActivityIds' => [],
             'customActivities' => [],
         ],
+        'memberAbout' => [
+            'menuLabel' => 'Tentang',
+            'title' => 'Tentang IbnuCreative',
+            'html' => '',
+        ],
         'paymentMethods' => [
             ['code' => 'QRIS', 'label' => 'QRIS', 'brand' => 'qris', 'logoUrl' => ''],
             ['code' => 'QRIS2', 'label' => 'QRIS 2', 'brand' => 'qris', 'logoUrl' => ''],
@@ -637,6 +642,11 @@ function clean_homepage_notifications($value): array
     ];
 }
 
+function clean_website_html_setting($value, int $maxLength = 240000): string
+{
+    return substr(str_replace("\0", '', (string) ($value ?? '')), 0, $maxLength);
+}
+
 function clean_website_settings($value): array
 {
     $source = is_array($value) ? $value : [];
@@ -645,6 +655,7 @@ function clean_website_settings($value): array
     $hero = is_array($source['hero'] ?? null) ? $source['hero'] : [];
     $courses = is_array($source['courses'] ?? null) ? $source['courses'] : [];
     $benefits = is_array($source['benefits'] ?? null) ? $source['benefits'] : [];
+    $memberAbout = is_array($source['memberAbout'] ?? null) ? $source['memberAbout'] : [];
     $schedule = is_array($source['schedule'] ?? null) ? $source['schedule'] : [];
     $footer = is_array($source['footer'] ?? null) ? $source['footer'] : [];
 
@@ -769,6 +780,11 @@ function clean_website_settings($value): array
             'emptyPrice' => clean_text($courses['emptyPrice'] ?? $defaults['courses']['emptyPrice'], 90),
         ],
         'homepageNotifications' => clean_homepage_notifications($source['homepageNotifications'] ?? []),
+        'memberAbout' => [
+            'menuLabel' => clean_text($memberAbout['menuLabel'] ?? $defaults['memberAbout']['menuLabel'], 40),
+            'title' => clean_text($memberAbout['title'] ?? $defaults['memberAbout']['title'], 100),
+            'html' => clean_website_html_setting($memberAbout['html'] ?? $defaults['memberAbout']['html']),
+        ],
         'paymentMethods' => clean_payment_methods($source['paymentMethods'] ?? [], $defaults['paymentMethods']),
         'benefits' => [
             'eyebrow' => clean_text($benefits['eyebrow'] ?? $defaults['benefits']['eyebrow'], 60),

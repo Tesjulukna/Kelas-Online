@@ -180,6 +180,49 @@ function createCustomActivityForm(itemValue = '') {
   }
 }
 
+function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
+  const trimmedHtml = String(html || '').trim()
+  const safeTitle = String(title || 'Tentang')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+  const content = trimmedHtml || `
+    <section style="min-height:100vh;display:grid;place-items:center;padding:48px 20px;background:#f8fafc;color:#0f172a;font-family:Inter,Arial,sans-serif;text-align:center">
+      <div style="max-width:680px">
+        <p style="margin:0 0 10px;color:#2563eb;font-weight:800;letter-spacing:.08em;text-transform:uppercase">Tentang</p>
+        <h1 style="margin:0 0 14px;font-size:clamp(32px,7vw,64px);line-height:1.05">${safeTitle}</h1>
+        <p style="margin:0;color:#64748b;font-size:18px;line-height:1.7">Paste HTML landing page dari Gemini di pengaturan ini, lalu tampilannya akan muncul untuk member.</p>
+      </div>
+    </section>
+  `
+
+  if (/<html[\s>]/i.test(content) || /<!doctype/i.test(content)) {
+    if (/<head[\s>]/i.test(content)) {
+      return content.replace(/<head([^>]*)>/i, '<head$1><base target="_blank">')
+    }
+
+    return content.replace(/<html([^>]*)>/i, '<html$1><head><base target="_blank"></head>')
+  }
+
+  return `<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base target="_blank">
+    <title>${safeTitle}</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
+      * { box-sizing: border-box; }
+      img, video, iframe { max-width: 100%; }
+    </style>
+  </head>
+  <body>${content}</body>
+</html>`
+}
+
 function WebsiteSettingsPanel({
   settings,
   onSave,
@@ -470,6 +513,13 @@ function WebsiteSettingsPanel({
       title: 'Toast aktivitas homepage',
       icon: 'bell',
       description: 'Pilih siapa saja yang boleh tampil di notifikasi pembelian/pendaftaran.',
+    },
+    {
+      id: 'member-about',
+      eyebrow: 'Tentang Member',
+      title: 'HTML halaman Tentang',
+      icon: 'fileText',
+      description: 'Paste kode HTML/CSS dari Gemini untuk halaman Tentang di dashboard member.',
     },
     {
       id: 'schedule',
@@ -943,6 +993,52 @@ function WebsiteSettingsPanel({
               )}
             </div>
           )}
+        </div>
+
+        <div className={`settings-section ${activeSectionId === 'member-about' ? 'is-active' : ''}`}>
+          <SectionHeader eyebrow="Tentang Member" title="HTML halaman Tentang" icon="fileText" />
+          <div className="settings-grid">
+            <TextField
+              label="Label menu member"
+              value={draft.memberAbout.menuLabel}
+              onChange={(value) => updateValue(['memberAbout', 'menuLabel'], value)}
+              placeholder="Tentang"
+            />
+            <TextField
+              label="Judul fallback"
+              value={draft.memberAbout.title}
+              onChange={(value) => updateValue(['memberAbout', 'title'], value)}
+              placeholder="Tentang IbnuCreative"
+            />
+          </div>
+          <label className="settings-field settings-code-field">
+            <span>HTML / kode landing page</span>
+            <textarea
+              value={draft.memberAbout.html}
+              onChange={(event) => updateValue(['memberAbout', 'html'], event.target.value)}
+              placeholder="Paste kode HTML dari Gemini di sini. HTML dan CSS akan tampil di halaman Tentang member."
+              rows={18}
+              spellCheck="false"
+            />
+          </label>
+          <div className="settings-about-preview">
+            <div className="settings-section-toolbar">
+              <p>Preview halaman Tentang member</p>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => updateValue(['memberAbout', 'html'], '')}
+              >
+                <Icon name="x" />
+                Kosongkan
+              </button>
+            </div>
+            <iframe
+              title="Preview halaman Tentang member"
+              srcDoc={buildMemberAboutSrcDoc(draft.memberAbout.html, draft.memberAbout.title)}
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+            />
+          </div>
         </div>
 
         <div className={`settings-section ${activeSectionId === 'schedule' ? 'is-active' : ''}`}>

@@ -64,6 +64,11 @@ export const defaultWebsiteSettings = {
     selectedActivityIds: [],
     customActivities: [],
   },
+  memberAbout: {
+    menuLabel: 'Tentang',
+    title: 'Tentang IbnuCreative',
+    html: '',
+  },
   paymentMethods: [
     { code: 'QRIS', label: 'QRIS', brand: 'qris', logoUrl: '' },
     { code: 'QRIS2', label: 'QRIS 2', brand: 'qris', logoUrl: '' },
@@ -141,6 +146,12 @@ export const defaultWebsiteSettings = {
 
 function cleanText(value, maxLength = 80) {
   return String(value ?? '').trim().replace(/[<>]/g, '').slice(0, maxLength)
+}
+
+function cleanHtmlSnippet(value, maxLength = 240000) {
+  return String(value ?? '')
+    .replace(/\u0000/g, '')
+    .slice(0, maxLength)
 }
 
 function cleanUrl(value, maxLength = 2000) {
@@ -420,6 +431,17 @@ export function cleanWebsiteSettings(value = {}) {
       ),
     },
     homepageNotifications: cleanHomepageNotifications(source.homepageNotifications),
+    memberAbout: {
+      menuLabel: cleanText(
+        source.memberAbout?.menuLabel || defaultWebsiteSettings.memberAbout.menuLabel,
+        40,
+      ),
+      title: cleanText(
+        source.memberAbout?.title || defaultWebsiteSettings.memberAbout.title,
+        100,
+      ),
+      html: cleanHtmlSnippet(source.memberAbout?.html || defaultWebsiteSettings.memberAbout.html),
+    },
     paymentMethods: cleanPaymentMethods(source.paymentMethods),
     benefits: {
       eyebrow: cleanText(

@@ -103,6 +103,49 @@ function getProtectedVideoUrl(material, sessionToken = '') {
   return `/api/video?${params.toString()}`
 }
 
+function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
+  const trimmedHtml = String(html || '').trim()
+  const safeTitle = String(title || 'Tentang')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+  const content = trimmedHtml || `
+    <section style="min-height:100vh;display:grid;place-items:center;padding:48px 20px;background:#f8fafc;color:#0f172a;font-family:Inter,Arial,sans-serif;text-align:center">
+      <div style="max-width:680px">
+        <p style="margin:0 0 10px;color:#2563eb;font-weight:800;letter-spacing:.08em;text-transform:uppercase">Tentang</p>
+        <h1 style="margin:0 0 14px;font-size:clamp(32px,7vw,64px);line-height:1.05">${safeTitle}</h1>
+        <p style="margin:0;color:#64748b;font-size:18px;line-height:1.7">Halaman ini belum diatur admin. Konten HTML bisa ditambahkan dari menu Pengaturan Website.</p>
+      </div>
+    </section>
+  `
+
+  if (/<html[\s>]/i.test(content) || /<!doctype/i.test(content)) {
+    if (/<head[\s>]/i.test(content)) {
+      return content.replace(/<head([^>]*)>/i, '<head$1><base target="_blank">')
+    }
+
+    return content.replace(/<html([^>]*)>/i, '<html$1><head><base target="_blank"></head>')
+  }
+
+  return `<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base target="_blank">
+    <title>${safeTitle}</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; }
+      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
+      * { box-sizing: border-box; }
+      img, video, iframe { max-width: 100%; }
+    </style>
+  </head>
+  <body>${content}</body>
+</html>`
+}
+
 function formatRupiah(value) {
   const amount = Math.max(0, Math.round(Number(value) || 0))
 
@@ -423,6 +466,14 @@ function MemberPage({
 }) {
   const safeWebsiteSettings = cleanWebsiteSettings(websiteSettings)
   const tripayPaymentMethods = safeWebsiteSettings.paymentMethods
+  const memberDashboardMenuItems = memberMenuItems.map((item) =>
+    item.id === 'about'
+      ? {
+          ...item,
+          label: safeWebsiteSettings.memberAbout.menuLabel || item.label,
+        }
+      : item,
+  )
   const courses = classes.filter((course) => course.status === 'Aktif')
   const allActiveCourses = allClasses.filter((course) => course.status === 'Aktif')
   const memberVisibleCourses = allActiveCourses.filter((course) => course.showOnMember !== false)
@@ -1401,7 +1452,7 @@ function MemberPage({
       role="member"
       loginName={loginName}
       avatar={avatar}
-      menuItems={memberMenuItems}
+      menuItems={memberDashboardMenuItems}
       activeMenu={activeMenu}
       onMenuChange={handleDashboardMenuChange}
       isMenuOpen={isMenuOpen}
@@ -2955,6 +3006,27 @@ function MemberPage({
                 <p>Riwayat dan balasan admin akan muncul di sini.</p>
               </article>
             )}
+          </div>
+        </section>
+      )}
+
+      {activeMenu === 'about' && (
+        <section className="panel member-about-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Tentang</p>
+              <h2>{safeWebsiteSettings.memberAbout.title || 'Tentang'}</h2>
+            </div>
+          </div>
+          <div className="member-about-frame-wrap">
+            <iframe
+              title={safeWebsiteSettings.memberAbout.title || 'Tentang member'}
+              srcDoc={buildMemberAboutSrcDoc(
+                safeWebsiteSettings.memberAbout.html,
+                safeWebsiteSettings.memberAbout.title || 'Tentang',
+              )}
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+            />
           </div>
         </section>
       )}

@@ -11930,6 +11930,56 @@ img {
   font-weight: 500;
 }
 
+.settings-code-field {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-code-field textarea {
+  min-height: 320px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.settings-about-preview {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.settings-about-preview iframe {
+  width: 100%;
+  min-height: 520px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.member-about-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.member-about-panel > .panel-heading {
+  padding: 18px 18px 0;
+}
+
+.member-about-frame-wrap {
+  padding: 0 18px 18px;
+}
+
+.member-about-frame-wrap iframe {
+  display: block;
+  width: 100%;
+  min-height: min(900px, calc(100vh - 210px));
+  min-height: min(900px, calc(100dvh - 210px));
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
 @media (max-width: 1180px) {
   .settings-card-grid,
   .settings-grid {
@@ -12084,6 +12134,24 @@ img {
 
   .settings-section-toolbar .btn {
     width: 100%;
+  }
+
+  .settings-about-preview iframe {
+    min-height: 430px;
+    border-radius: 10px;
+  }
+
+  .member-about-panel > .panel-heading {
+    padding: 14px 14px 0;
+  }
+
+  .member-about-frame-wrap {
+    padding: 0 14px 14px;
+  }
+
+  .member-about-frame-wrap iframe {
+    min-height: calc(100dvh - 190px);
+    border-radius: 10px;
   }
 
   .settings-mini-modal-backdrop {

@@ -182,6 +182,7 @@ function getDashboardMenuFromUrl(role) {
         'testimonials',
         'certificates',
         'support',
+        'about',
       ]
 
   return allowedMenus.includes(menuId) ? menuId : 'overview'
