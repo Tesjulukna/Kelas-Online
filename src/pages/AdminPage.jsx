@@ -1176,7 +1176,9 @@ function AdminPage({
       [
         payment.buyerName,
         payment.buyerEmail,
+        payment.itemTitle,
         payment.classTitle,
+        payment.productTitle,
         payment.orderCode,
         payment.reference,
         payment.merchantRef,
@@ -4881,7 +4883,7 @@ function AdminPage({
               <div className="table-row table-head" role="row">
                 <span role="columnheader">Transaksi</span>
                 <span role="columnheader">Member</span>
-                <span role="columnheader">Kelas</span>
+                <span role="columnheader">Item</span>
                 <span role="columnheader">Nominal</span>
                 <span role="columnheader">Status</span>
                 <span role="columnheader">Waktu</span>
@@ -4909,8 +4911,8 @@ function AdminPage({
                         <small>{payment.buyerEmail || '-'}</small>
                       </span>
                     </span>
-                    <span data-label="Kelas" role="cell">
-                      {payment.classTitle}
+                    <span data-label="Item" role="cell">
+                      {payment.itemTitle || payment.productTitle || payment.classTitle}
                     </span>
                     <span data-label="Nominal" role="cell">
                       <strong>{payment.amount ? formatRupiah(payment.amount) : '-'}</strong>

@@ -372,6 +372,270 @@ function lynk_first_name(array $payload): string
     return '';
 }
 
+function lynk_amount_value($value): int
+{
+    if ($value === null || $value === '') {
+        return 0;
+    }
+
+    if (is_numeric($value)) {
+        return max(0, (int) round((float) $value));
+    }
+
+    $normalized = preg_replace('/[^0-9]/', '', (string) $value) ?? '';
+
+    return $normalized === '' ? 0 : (int) $normalized;
+}
+
+function lynk_amount_from_payload(array $payload): int
+{
+    $value = lynk_first_value($payload, [
+        'amount',
+        'total',
+        'total_amount',
+        'total_price',
+        'grand_total',
+        'grandTotal',
+        'paid_amount',
+        'amount_paid',
+        'payment_amount',
+        'gross_amount',
+        'price',
+        'nominal',
+        'order.amount',
+        'order.total',
+        'order.total_amount',
+        'order.total_price',
+        'order.grand_total',
+        'invoice.amount',
+        'invoice.total',
+        'invoice.total_amount',
+        'invoice.total_price',
+        'invoice.grand_total',
+        'payment.amount',
+        'payment.total',
+        'payment.total_amount',
+        'transaction.amount',
+        'transaction.total',
+        'transaction.gross_amount',
+        'data.amount',
+        'data.total',
+        'data.total_amount',
+        'data.total_price',
+        'data.grand_total',
+        'data.paid_amount',
+        'data.amount_paid',
+        'data.payment_amount',
+        'data.gross_amount',
+        'data.price',
+        'data.nominal',
+        'data.order.amount',
+        'data.order.total',
+        'data.order.total_amount',
+        'data.order.total_price',
+        'data.invoice.amount',
+        'data.invoice.total',
+        'data.invoice.total_amount',
+        'data.payment.amount',
+        'data.payment.total',
+        'data.transaction.amount',
+        'data.transaction.total',
+        'data.transaction.gross_amount',
+    ]);
+    $amount = lynk_amount_value($value);
+
+    if ($amount > 0) {
+        return $amount;
+    }
+
+    $sum = 0;
+
+    foreach ([
+        'items',
+        'products',
+        'line_items',
+        'lineItems',
+        'order_items',
+        'orderItems',
+        'order.items',
+        'order.products',
+        'cart.items',
+        'invoice.items',
+        'payment.items',
+        'transaction.items',
+        'message_data.items',
+        'messageData.items',
+        'data.items',
+        'data.products',
+        'data.line_items',
+        'data.lineItems',
+        'data.order_items',
+        'data.orderItems',
+        'data.order.items',
+        'data.order.products',
+        'data.cart.items',
+        'data.invoice.items',
+        'data.payment.items',
+        'data.transaction.items',
+        'data.message_data.items',
+        'data.messageData.items',
+    ] as $listPath) {
+        foreach (lynk_nested_array($payload, $listPath) as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $itemAmount = lynk_amount_value(lynk_first_value($item, [
+                'total',
+                'total_amount',
+                'total_price',
+                'grand_total',
+                'amount',
+                'paid_amount',
+                'price',
+                'subtotal',
+                'product.price',
+                'product.amount',
+                'product.total',
+            ]));
+
+            if ($itemAmount <= 0) {
+                continue;
+            }
+
+            $qty = lynk_amount_value(lynk_first_value($item, ['quantity', 'qty']));
+            $sum += $itemAmount * max(1, $qty);
+        }
+    }
+
+    return $sum;
+}
+
+function lynk_first_product_name(array $payload): string
+{
+    $name = lynk_first_value($payload, [
+        'product.name',
+        'product.title',
+        'product.product_name',
+        'product.productName',
+        'product.label',
+        'item.name',
+        'item.title',
+        'item.product_name',
+        'item.productName',
+        'item.label',
+        'order.product_name',
+        'order.productName',
+        'order.item_name',
+        'order.itemName',
+        'order.title',
+        'order.items.0.name',
+        'order.items.0.title',
+        'order.products.0.name',
+        'order.products.0.title',
+        'invoice.items.0.name',
+        'invoice.items.0.title',
+        'payment.items.0.name',
+        'payment.items.0.title',
+        'transaction.items.0.name',
+        'transaction.items.0.title',
+        'data.product.name',
+        'data.product.title',
+        'data.product.product_name',
+        'data.product.productName',
+        'data.product.label',
+        'data.item.name',
+        'data.item.title',
+        'data.item.product_name',
+        'data.item.productName',
+        'data.item.label',
+        'data.product_name',
+        'data.productName',
+        'data.item_name',
+        'data.itemName',
+        'data.title',
+        'data.order.product_name',
+        'data.order.productName',
+        'data.order.item_name',
+        'data.order.itemName',
+        'data.order.title',
+        'data.order.items.0.name',
+        'data.order.items.0.title',
+        'data.order.products.0.name',
+        'data.order.products.0.title',
+        'data.invoice.items.0.name',
+        'data.invoice.items.0.title',
+        'data.payment.items.0.name',
+        'data.payment.items.0.title',
+        'data.transaction.items.0.name',
+        'data.transaction.items.0.title',
+        'product_name',
+        'productName',
+        'item_name',
+        'itemName',
+        'title',
+    ]);
+
+    if ($name !== '' && !filter_var($name, FILTER_VALIDATE_EMAIL) && !preg_match('/https?:\/\//i', $name)) {
+        return clean_text($name, 240);
+    }
+
+    foreach ([
+        'items',
+        'products',
+        'line_items',
+        'lineItems',
+        'order_items',
+        'orderItems',
+        'order.items',
+        'order.products',
+        'cart.items',
+        'invoice.items',
+        'payment.items',
+        'transaction.items',
+        'message_data.items',
+        'messageData.items',
+        'data.items',
+        'data.products',
+        'data.line_items',
+        'data.lineItems',
+        'data.order_items',
+        'data.orderItems',
+        'data.order.items',
+        'data.order.products',
+        'data.cart.items',
+        'data.invoice.items',
+        'data.payment.items',
+        'data.transaction.items',
+        'data.message_data.items',
+        'data.messageData.items',
+    ] as $listPath) {
+        foreach (lynk_nested_array($payload, $listPath) as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $itemName = lynk_first_value($item, [
+                'product.name',
+                'product.title',
+                'name',
+                'title',
+                'label',
+                'product_name',
+                'productName',
+                'item_name',
+                'itemName',
+            ]);
+
+            if ($itemName !== '' && !filter_var($itemName, FILTER_VALIDATE_EMAIL) && !preg_match('/https?:\/\//i', $itemName)) {
+                return clean_text($itemName, 240);
+            }
+        }
+    }
+
+    return '';
+}
+
 function lynk_collect_product_candidates(array $payload): array
 {
     $paths = [
@@ -637,7 +901,7 @@ function lynk_snapshot_amount(array $item): int
     return $salePrice > 0 ? $salePrice : max(0, $price);
 }
 
-function lynk_insert_product_payment_snapshot(PDO $pdo, array $product, array $access, string $orderId): void
+function lynk_insert_product_payment_snapshot(PDO $pdo, array $product, array $access, string $orderId, int $paidAmount = 0): void
 {
     try {
         $snapshotId = 'lynk-product-' . substr(hash('sha256', $orderId . '::' . ($product['id'] ?? '')), 0, 40);
@@ -657,7 +921,7 @@ function lynk_insert_product_payment_snapshot(PDO $pdo, array $product, array $a
             clean_text($product['id'] ?? '', 120),
             clean_text($product['title'] ?? 'Produk digital', 180),
             'digital_product',
-            lynk_snapshot_amount($product),
+            $paidAmount > 0 ? $paidAmount : lynk_snapshot_amount($product),
             'paid',
             'Lynk.id',
             1,
@@ -750,6 +1014,20 @@ function lynk_send_credentials_email(string $email, string $name, array $account
     return $result;
 }
 
+function lynk_ensure_column(PDO $pdo, string $table, string $column, string $definition): void
+{
+    try {
+        $query = $pdo->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+        $query->execute([$column]);
+
+        if (!$query->fetch()) {
+            $pdo->exec("ALTER TABLE `$table` ADD `$column` $definition");
+        }
+    } catch (Throwable $error) {
+        // Webhook should continue even if a hosting DB user cannot alter columns.
+    }
+}
+
 function lynk_ensure_tables(PDO $pdo): void
 {
     try {
@@ -813,6 +1091,52 @@ function lynk_ensure_tables(PDO $pdo): void
             INDEX digital_product_access_order_index (order_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
     );
+
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS payment_snapshots (
+            id VARCHAR(240) PRIMARY KEY,
+            source VARCHAR(80) NOT NULL DEFAULT 'legacy_access',
+            source_label VARCHAR(80) NOT NULL DEFAULT 'Akses lama',
+            order_code VARCHAR(180) NOT NULL DEFAULT '',
+            buyer_name VARCHAR(160) NOT NULL DEFAULT '',
+            buyer_email VARCHAR(180) NOT NULL DEFAULT '',
+            member_id VARCHAR(120) NOT NULL DEFAULT '',
+            class_id VARCHAR(120) NOT NULL DEFAULT '',
+            class_title VARCHAR(180) NOT NULL DEFAULT '',
+            product_id VARCHAR(120) NOT NULL DEFAULT '',
+            product_title VARCHAR(180) NOT NULL DEFAULT '',
+            item_type VARCHAR(40) NOT NULL DEFAULT 'class',
+            amount INT NOT NULL DEFAULT 0,
+            status VARCHAR(40) NOT NULL DEFAULT 'paid',
+            payment_method VARCHAR(80) NOT NULL DEFAULT 'Akses kelas',
+            access_granted TINYINT(1) NOT NULL DEFAULT 1,
+            created_at VARCHAR(60) NOT NULL DEFAULT '',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX payment_snapshot_member_index (member_id),
+            INDEX payment_snapshot_class_index (class_id),
+            INDEX payment_snapshot_product_index (product_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    );
+
+    lynk_ensure_column($pdo, 'lynk_orders', 'product_key', "VARCHAR(240) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'lynk_orders', 'product_name', "VARCHAR(240) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'lynk_orders', 'payload', 'MEDIUMTEXT');
+    lynk_ensure_column($pdo, 'payment_snapshots', 'source', "VARCHAR(80) NOT NULL DEFAULT 'legacy_access'");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'source_label', "VARCHAR(80) NOT NULL DEFAULT 'Akses lama'");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'order_code', "VARCHAR(180) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'buyer_name', "VARCHAR(160) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'buyer_email', "VARCHAR(180) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'member_id', "VARCHAR(120) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'class_id', "VARCHAR(120) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'class_title', "VARCHAR(180) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'product_id', "VARCHAR(120) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'product_title', "VARCHAR(180) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'item_type', "VARCHAR(40) NOT NULL DEFAULT 'class'");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'amount', 'INT NOT NULL DEFAULT 0');
+    lynk_ensure_column($pdo, 'payment_snapshots', 'status', "VARCHAR(40) NOT NULL DEFAULT 'paid'");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'payment_method', "VARCHAR(80) NOT NULL DEFAULT 'Akses kelas'");
+    lynk_ensure_column($pdo, 'payment_snapshots', 'access_granted', 'TINYINT(1) NOT NULL DEFAULT 1');
+    lynk_ensure_column($pdo, 'payment_snapshots', 'created_at', "VARCHAR(60) NOT NULL DEFAULT ''");
 }
 
 lynk_ensure_tables($pdo);
@@ -840,6 +1164,8 @@ $productCandidates = array_values(array_unique(array_merge(
     lynk_collect_product_candidates($data),
 )));
 $productKey = clean_text($productCandidates[0] ?? '', 240);
+$productDisplayName = lynk_first_product_name($payload) ?: lynk_first_product_name($data);
+$paidAmount = lynk_amount_from_payload($payload) ?: lynk_amount_from_payload($data);
 $classIds = lynk_find_classes($pdo, $payload, $productCandidates, $config);
 $productIds = lynk_find_products($pdo, $productCandidates);
 
@@ -896,7 +1222,7 @@ if (!$classIds && !$productIds) {
         $buyerName ?: 'Pembeli Lynk.id',
         $buyerEmail,
         $productKey,
-        $productKey,
+        $productDisplayName ?: $productKey,
         json_encode([], JSON_UNESCAPED_UNICODE),
         'unmapped',
         $rawBody,
@@ -930,6 +1256,7 @@ foreach ($productIds as $productId) {
             $accessResult['product'] ?? [],
             $accessResult['access'] ?? [],
             $orderId,
+            $paidAmount,
         );
 
         $productEmailResults[] = send_digital_product_delivery_email([
@@ -962,7 +1289,7 @@ if (!$classIds) {
         $buyerName ?: 'Pembeli Lynk.id',
         $buyerEmail,
         $productKey,
-        clean_text($firstProduct['title'] ?? ($productKey ?: 'Produk digital'), 240),
+        clean_text($firstProduct['title'] ?? ($productDisplayName ?: ($productKey ?: 'Produk digital')), 240),
         json_encode([], JSON_UNESCAPED_UNICODE),
         'product_processed',
         $rawBody,
@@ -1054,7 +1381,7 @@ $insertOrder->execute([
     $buyerName ?: 'Pembeli Lynk.id',
     $buyerEmail,
     $productKey,
-    $productKey,
+    $productDisplayName ?: $productKey,
     json_encode($classIds, JSON_UNESCAPED_UNICODE),
     $member['id'],
     $member['username'],

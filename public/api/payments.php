@@ -37,43 +37,9 @@ function payment_payload_value(array $payload, array $paths)
     return null;
 }
 
-function payment_amount_from_payload(array $payload): int
+function payment_amount_value($value): int
 {
-    $value = payment_payload_value($payload, [
-        'amount',
-        'total',
-        'total_amount',
-        'paid_amount',
-        'gross_amount',
-        'price',
-        'nominal',
-        'order.amount',
-        'order.total',
-        'order.total_amount',
-        'invoice.amount',
-        'invoice.total',
-        'payment.amount',
-        'payment.total',
-        'transaction.amount',
-        'transaction.total',
-        'data.amount',
-        'data.total',
-        'data.total_amount',
-        'data.paid_amount',
-        'data.gross_amount',
-        'data.price',
-        'data.order.amount',
-        'data.order.total',
-        'data.order.total_amount',
-        'data.invoice.amount',
-        'data.invoice.total',
-        'data.payment.amount',
-        'data.payment.total',
-        'data.transaction.amount',
-        'data.transaction.total',
-    ]);
-
-    if ($value === null) {
+    if ($value === null || $value === '') {
         return 0;
     }
 
@@ -84,6 +50,160 @@ function payment_amount_from_payload(array $payload): int
     $normalized = preg_replace('/[^0-9]/', '', (string) $value) ?? '';
 
     return $normalized === '' ? 0 : (int) $normalized;
+}
+
+function payment_amount_from_payload(array $payload): int
+{
+    $value = payment_payload_value($payload, [
+        'amount',
+        'total',
+        'total_amount',
+        'total_price',
+        'grand_total',
+        'grandTotal',
+        'paid_amount',
+        'amount_paid',
+        'payment_amount',
+        'gross_amount',
+        'price',
+        'nominal',
+        'subtotal',
+        'order.amount',
+        'order.total',
+        'order.total_amount',
+        'order.total_price',
+        'order.grand_total',
+        'order.grandTotal',
+        'order.paid_amount',
+        'order.amount_paid',
+        'invoice.amount',
+        'invoice.total',
+        'invoice.total_amount',
+        'invoice.total_price',
+        'invoice.grand_total',
+        'invoice.grandTotal',
+        'payment.amount',
+        'payment.total',
+        'payment.total_amount',
+        'payment.total_price',
+        'payment.grand_total',
+        'payment.grandTotal',
+        'transaction.amount',
+        'transaction.total',
+        'transaction.total_amount',
+        'transaction.total_price',
+        'transaction.gross_amount',
+        'data.amount',
+        'data.total',
+        'data.total_amount',
+        'data.total_price',
+        'data.grand_total',
+        'data.grandTotal',
+        'data.paid_amount',
+        'data.amount_paid',
+        'data.payment_amount',
+        'data.gross_amount',
+        'data.price',
+        'data.nominal',
+        'data.order.amount',
+        'data.order.total',
+        'data.order.total_amount',
+        'data.order.total_price',
+        'data.order.grand_total',
+        'data.order.grandTotal',
+        'data.order.paid_amount',
+        'data.invoice.amount',
+        'data.invoice.total',
+        'data.invoice.total_amount',
+        'data.invoice.total_price',
+        'data.invoice.grand_total',
+        'data.invoice.grandTotal',
+        'data.payment.amount',
+        'data.payment.total',
+        'data.payment.total_amount',
+        'data.payment.total_price',
+        'data.payment.grand_total',
+        'data.payment.grandTotal',
+        'data.transaction.amount',
+        'data.transaction.total',
+        'data.transaction.total_amount',
+        'data.transaction.total_price',
+        'data.transaction.gross_amount',
+    ]);
+    $amount = payment_amount_value($value);
+
+    if ($amount > 0) {
+        return $amount;
+    }
+
+    $sum = 0;
+
+    foreach ([
+        'items',
+        'products',
+        'line_items',
+        'lineItems',
+        'order_items',
+        'orderItems',
+        'order.items',
+        'order.products',
+        'order.line_items',
+        'order.lineItems',
+        'cart.items',
+        'invoice.items',
+        'payment.items',
+        'transaction.items',
+        'message_data.items',
+        'messageData.items',
+        'data.items',
+        'data.products',
+        'data.line_items',
+        'data.lineItems',
+        'data.order_items',
+        'data.orderItems',
+        'data.order.items',
+        'data.order.products',
+        'data.order.line_items',
+        'data.order.lineItems',
+        'data.cart.items',
+        'data.invoice.items',
+        'data.payment.items',
+        'data.transaction.items',
+        'data.message_data.items',
+        'data.messageData.items',
+    ] as $listPath) {
+        $items = payment_nested_array($payload, $listPath);
+
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $itemAmount = payment_amount_value(payment_payload_value($item, [
+                'total',
+                'total_amount',
+                'total_price',
+                'grand_total',
+                'grandTotal',
+                'amount',
+                'paid_amount',
+                'price',
+                'subtotal',
+                'product.price',
+                'product.amount',
+                'product.total',
+            ]));
+
+            if ($itemAmount <= 0) {
+                continue;
+            }
+
+            $qty = payment_amount_value(payment_payload_value($item, ['quantity', 'qty']));
+            $sum += $itemAmount * max(1, $qty);
+        }
+    }
+
+    return $sum;
 }
 
 function payment_nested_array(array $payload, string $path): array
@@ -107,21 +227,34 @@ function payment_buyer_name_from_payload(array $payload): string
         'buyer.name',
         'buyer.full_name',
         'buyer.fullName',
+        'buyer.fullname',
         'buyer_name',
         'buyer_full_name',
         'buyerFullName',
+        'buyerFullname',
         'customer.name',
         'customer.full_name',
         'customer.fullName',
+        'customer.fullname',
         'customer_name',
         'customer_full_name',
         'customerFullName',
+        'customerFullname',
         'user.name',
         'user.full_name',
+        'user.fullName',
+        'user.fullname',
         'contact.name',
+        'contact.full_name',
+        'contact.fullName',
         'order.customer_name',
+        'order.customer.name',
+        'order.customer.full_name',
+        'order.customer.fullName',
         'order.buyer_name',
         'order.buyer.name',
+        'order.buyer.full_name',
+        'order.buyer.fullName',
         'order.name',
         'transaction.customer_name',
         'transaction.buyer_name',
@@ -129,6 +262,10 @@ function payment_buyer_name_from_payload(array $payload): string
         'payment.buyer_name',
         'checkout.customer_name',
         'checkout.name',
+        'metadata.customer_name',
+        'metadata.buyer_name',
+        'metadata.full_name',
+        'metadata.fullName',
         'message_data.customer.name',
         'message_data.customer.full_name',
         'message_data.buyer.name',
@@ -142,14 +279,27 @@ function payment_buyer_name_from_payload(array $payload): string
         'data.customer.name',
         'data.customer.full_name',
         'data.customer.fullName',
+        'data.customer.fullname',
         'data.customer_name',
         'data.buyer_name',
         'data.user.name',
+        'data.user.full_name',
+        'data.user.fullName',
         'data.contact.name',
         'data.order.customer_name',
+        'data.order.customer.name',
+        'data.order.customer.full_name',
+        'data.order.customer.fullName',
         'data.order.buyer_name',
+        'data.order.buyer.name',
+        'data.order.buyer.full_name',
+        'data.order.buyer.fullName',
         'data.transaction.customer_name',
         'data.payment.customer_name',
+        'data.metadata.customer_name',
+        'data.metadata.buyer_name',
+        'data.metadata.full_name',
+        'data.metadata.fullName',
         'data.message_data.customer.name',
         'data.message_data.customer.full_name',
         'data.message_data.name',
@@ -226,6 +376,207 @@ function payment_buyer_name_from_payload(array $payload): string
             foreach (['value', 'answer', 'text', 'content'] as $valueKey) {
                 if (!empty($item[$valueKey]) && is_scalar($item[$valueKey])) {
                     return clean_text($item[$valueKey], 160);
+                }
+            }
+        }
+    }
+
+    return '';
+}
+
+function payment_product_name_from_payload(array $payload): string
+{
+    $value = payment_payload_value($payload, [
+        'product.name',
+        'product.title',
+        'product.product_name',
+        'product.productName',
+        'product.label',
+        'item.name',
+        'item.title',
+        'item.product_name',
+        'item.productName',
+        'item.label',
+        'order.product_name',
+        'order.productName',
+        'order.item_name',
+        'order.itemName',
+        'order.title',
+        'order.items.0.name',
+        'order.items.0.title',
+        'order.products.0.name',
+        'order.products.0.title',
+        'invoice.items.0.name',
+        'invoice.items.0.title',
+        'payment.items.0.name',
+        'payment.items.0.title',
+        'transaction.items.0.name',
+        'transaction.items.0.title',
+        'data.product.name',
+        'data.product.title',
+        'data.product.product_name',
+        'data.product.productName',
+        'data.product.label',
+        'data.item.name',
+        'data.item.title',
+        'data.item.product_name',
+        'data.item.productName',
+        'data.item.label',
+        'data.product_name',
+        'data.productName',
+        'data.item_name',
+        'data.itemName',
+        'data.title',
+        'data.order.product_name',
+        'data.order.productName',
+        'data.order.item_name',
+        'data.order.itemName',
+        'data.order.title',
+        'data.order.items.0.name',
+        'data.order.items.0.title',
+        'data.order.products.0.name',
+        'data.order.products.0.title',
+        'data.invoice.items.0.name',
+        'data.invoice.items.0.title',
+        'data.payment.items.0.name',
+        'data.payment.items.0.title',
+        'data.transaction.items.0.name',
+        'data.transaction.items.0.title',
+        'product_name',
+        'productName',
+        'item_name',
+        'itemName',
+        'title',
+    ]);
+
+    if ($value !== null) {
+        $name = clean_text($value, 180);
+
+        if ($name !== '' && !filter_var($name, FILTER_VALIDATE_EMAIL) && !preg_match('/https?:\/\//i', $name)) {
+            return $name;
+        }
+    }
+
+    foreach ([
+        'items',
+        'products',
+        'line_items',
+        'lineItems',
+        'order_items',
+        'orderItems',
+        'order.items',
+        'order.products',
+        'order.line_items',
+        'order.lineItems',
+        'cart.items',
+        'invoice.items',
+        'payment.items',
+        'transaction.items',
+        'message_data.items',
+        'messageData.items',
+        'data.items',
+        'data.products',
+        'data.line_items',
+        'data.lineItems',
+        'data.order_items',
+        'data.orderItems',
+        'data.order.items',
+        'data.order.products',
+        'data.order.line_items',
+        'data.order.lineItems',
+        'data.cart.items',
+        'data.invoice.items',
+        'data.payment.items',
+        'data.transaction.items',
+        'data.message_data.items',
+        'data.messageData.items',
+    ] as $listPath) {
+        foreach (payment_nested_array($payload, $listPath) as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $name = payment_payload_value($item, [
+                'product.name',
+                'product.title',
+                'product.product_name',
+                'product.productName',
+                'name',
+                'title',
+                'label',
+                'product_name',
+                'productName',
+                'item_name',
+                'itemName',
+            ]);
+
+            if ($name !== null) {
+                $name = clean_text($name, 180);
+
+                if ($name !== '' && !filter_var($name, FILTER_VALIDATE_EMAIL) && !preg_match('/https?:\/\//i', $name)) {
+                    return $name;
+                }
+            }
+        }
+    }
+
+    foreach ([
+        'custom_fields',
+        'customFields',
+        'fields',
+        'answers',
+        'form',
+        'form_data',
+        'formData',
+        'message_data.custom_fields',
+        'message_data.fields',
+        'message_data.answers',
+        'messageData.customFields',
+        'messageData.fields',
+        'messageData.answers',
+        'data.custom_fields',
+        'data.customFields',
+        'data.fields',
+        'data.answers',
+        'data.form',
+        'data.form_data',
+        'data.formData',
+        'data.message_data.custom_fields',
+        'data.message_data.fields',
+        'data.message_data.answers',
+    ] as $path) {
+        $group = payment_nested_array($payload, $path);
+
+        if (!$group) {
+            continue;
+        }
+
+        foreach (['product_name', 'productName', 'item_name', 'itemName', 'kelas', 'class', 'course'] as $key) {
+            if (!empty($group[$key]) && is_scalar($group[$key])) {
+                return clean_text($group[$key], 180);
+            }
+        }
+
+        foreach ($group as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $label = strtolower(implode(' ', array_filter([
+                clean_text($item['label'] ?? '', 80),
+                clean_text($item['name'] ?? '', 80),
+                clean_text($item['key'] ?? '', 80),
+                clean_text($item['question'] ?? '', 80),
+                clean_text($item['title'] ?? '', 80),
+            ])));
+
+            if ($label === '' || !preg_match('/product|produk|item|kelas|class|course/', $label)) {
+                continue;
+            }
+
+            foreach (['value', 'answer', 'text', 'content'] as $valueKey) {
+                if (!empty($item[$valueKey]) && is_scalar($item[$valueKey])) {
+                    return clean_text($item[$valueKey], 180);
                 }
             }
         }
@@ -322,6 +673,85 @@ function payment_fetch_class_map(PDO $pdo): array
     }
 
     return $classes;
+}
+
+function payment_normalize_key($value): string
+{
+    $key = strtolower(clean_text($value, 240));
+    $key = preg_replace('/[^a-z0-9]+/', '-', $key) ?? '';
+
+    return trim($key, '-');
+}
+
+function payment_fetch_product_map(PDO $pdo): array
+{
+    $products = [];
+
+    try {
+        $rows = $pdo->query('SELECT id, title, price, sale_price, lynk_product_key FROM digital_products')->fetchAll();
+    } catch (Throwable $error) {
+        try {
+            $rows = $pdo->query('SELECT id, title, price, sale_price FROM digital_products')->fetchAll();
+        } catch (Throwable $innerError) {
+            try {
+                $rows = $pdo->query('SELECT id, title, price FROM digital_products')->fetchAll();
+            } catch (Throwable $fallbackError) {
+                return [];
+            }
+        }
+    }
+
+    foreach ($rows as $row) {
+        if (!array_key_exists('sale_price', $row)) {
+            $row['sale_price'] = 0;
+        }
+
+        if (!array_key_exists('lynk_product_key', $row)) {
+            $row['lynk_product_key'] = '';
+        }
+
+        $products[(string) ($row['id'] ?? '')] = $row;
+    }
+
+    return $products;
+}
+
+function payment_find_products_by_candidates(array $productMap, array $candidates): array
+{
+    $candidateKeys = array_values(array_unique(array_filter(array_map('payment_normalize_key', $candidates))));
+    $matches = [];
+
+    if (!$candidateKeys) {
+        return [];
+    }
+
+    foreach ($productMap as $product) {
+        $keys = [
+            payment_normalize_key($product['id'] ?? ''),
+            payment_normalize_key($product['title'] ?? ''),
+            payment_normalize_key($product['lynk_product_key'] ?? ''),
+        ];
+
+        foreach ($candidateKeys as $candidateKey) {
+            if ($candidateKey === '') {
+                continue;
+            }
+
+            if (in_array($candidateKey, $keys, true)) {
+                $matches[] = $product;
+                continue 2;
+            }
+
+            foreach ($keys as $productKey) {
+                if ($productKey !== '' && (strpos($candidateKey, $productKey) !== false || strpos($productKey, $candidateKey) !== false)) {
+                    $matches[] = $product;
+                    continue 3;
+                }
+            }
+        }
+    }
+
+    return $matches;
 }
 
 function payment_snapshot_created_at(array $row): string
@@ -609,6 +1039,25 @@ function payment_backfill_product_access_snapshots(PDO $pdo): void
 
 function payment_public(array $row): array
 {
+    $itemType = clean_text($row['itemType'] ?? ($row['item_type'] ?? 'class'), 40);
+    $productTitle = clean_text($row['productTitle'] ?? ($row['product_title'] ?? ''), 180);
+    $classTitle = clean_text($row['classTitle'] ?? ($row['class_title'] ?? ''), 180);
+    $itemTitle = clean_text($row['itemTitle'] ?? ($row['item_title'] ?? ''), 180);
+
+    if ($itemTitle === '') {
+        $itemTitle = $itemType === 'digital_product' && $productTitle !== ''
+            ? $productTitle
+            : $classTitle;
+    }
+
+    if ($itemTitle === '') {
+        $itemTitle = $itemType === 'digital_product' ? 'Produk digital' : 'Kelas';
+    }
+
+    if ($classTitle === '' || ($classTitle === 'Kelas' && $itemTitle !== 'Kelas')) {
+        $classTitle = $itemTitle;
+    }
+
     return [
         'id' => clean_text($row['id'] ?? make_id('payment'), 240),
         'source' => clean_text($row['source'] ?? '', 80),
@@ -620,10 +1069,11 @@ function payment_public(array $row): array
         'buyerEmail' => clean_email($row['buyerEmail'] ?? ($row['buyer_email'] ?? '')),
         'memberId' => clean_text($row['memberId'] ?? ($row['member_id'] ?? ''), 120),
         'classId' => clean_text($row['classId'] ?? ($row['class_id'] ?? ''), 120),
-        'itemType' => clean_text($row['itemType'] ?? ($row['item_type'] ?? 'class'), 40),
+        'itemType' => $itemType,
         'productId' => clean_text($row['productId'] ?? ($row['product_id'] ?? ''), 120),
-        'productTitle' => clean_text($row['productTitle'] ?? ($row['product_title'] ?? ''), 180),
-        'classTitle' => clean_text($row['classTitle'] ?? ($row['class_title'] ?? 'Kelas'), 180),
+        'productTitle' => $productTitle,
+        'classTitle' => $classTitle,
+        'itemTitle' => $itemTitle,
         'amount' => (int) ($row['amount'] ?? 0),
         'status' => clean_text($row['status'] ?? 'pending', 40),
         'paymentMethod' => clean_text($row['paymentMethod'] ?? ($row['payment_method'] ?? ($row['sourceLabel'] ?? '-')), 120),
@@ -636,7 +1086,129 @@ function payment_public(array $row): array
     ];
 }
 
+function payment_display_is_generic(string $value): bool
+{
+    $value = strtolower(trim($value));
+
+    return in_array($value, [
+        '',
+        'kelas',
+        'produk digital',
+        'pembayaran lynk.id',
+        'pembeli lynk.id',
+        'member',
+        'pelanggan',
+    ], true);
+}
+
+function payment_row_score(array $payment): int
+{
+    $score = 0;
+
+    if ((int) ($payment['amount'] ?? 0) > 0) {
+        $score += 40;
+    }
+
+    if (!payment_display_is_generic((string) ($payment['itemTitle'] ?? $payment['classTitle'] ?? ''))) {
+        $score += 30;
+    }
+
+    if (!payment_display_is_generic((string) ($payment['buyerName'] ?? ''))) {
+        $score += 20;
+    }
+
+    if (!empty($payment['accessGranted'])) {
+        $score += 5;
+    }
+
+    if (($payment['source'] ?? '') === 'lynk') {
+        $score += 3;
+    }
+
+    return $score;
+}
+
+function payment_dedupe_key(array $payment): string
+{
+    foreach (['orderCode', 'merchantRef', 'reference'] as $key) {
+        $value = payment_normalize_key($payment[$key] ?? '');
+
+        if ($value !== '') {
+            return 'order:' . $value;
+        }
+    }
+
+    $email = strtolower(clean_email($payment['buyerEmail'] ?? ''));
+    $title = payment_normalize_key($payment['itemTitle'] ?? ($payment['classTitle'] ?? ''));
+    $created = clean_text($payment['createdAt'] ?? '', 19);
+
+    if ($email !== '' && $title !== '' && $created !== '') {
+        return 'fallback:' . $email . ':' . $title . ':' . substr($created, 0, 16);
+    }
+
+    return '';
+}
+
+function payment_dedupe_rows(array $payments): array
+{
+    $deduped = [];
+    $withoutKey = [];
+
+    foreach ($payments as $payment) {
+        $key = payment_dedupe_key($payment);
+
+        if ($key === '') {
+            $withoutKey[] = $payment;
+            continue;
+        }
+
+        if (empty($deduped[$key]) || payment_row_score($payment) > payment_row_score($deduped[$key])) {
+            $deduped[$key] = $payment;
+        }
+    }
+
+    return array_values(array_merge($deduped, $withoutKey));
+}
+
+function payment_ensure_column(PDO $pdo, string $table, string $column, string $definition): void
+{
+    try {
+        $query = $pdo->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+        $query->execute([$column]);
+
+        if (!$query->fetch()) {
+            $pdo->exec("ALTER TABLE `$table` ADD `$column` $definition");
+        }
+    } catch (Throwable $error) {
+        // Older hosting or limited DB users should not block the payment list.
+    }
+}
+
+function payment_ensure_runtime_schema(PDO $pdo): void
+{
+    payment_ensure_column($pdo, 'payment_snapshots', 'source', "VARCHAR(80) NOT NULL DEFAULT 'legacy_access'");
+    payment_ensure_column($pdo, 'payment_snapshots', 'source_label', "VARCHAR(80) NOT NULL DEFAULT 'Akses lama'");
+    payment_ensure_column($pdo, 'payment_snapshots', 'order_code', "VARCHAR(180) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'payment_snapshots', 'buyer_name', "VARCHAR(160) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'payment_snapshots', 'buyer_email', "VARCHAR(180) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'payment_snapshots', 'member_id', "VARCHAR(120) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'payment_snapshots', 'class_id', "VARCHAR(120) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'payment_snapshots', 'class_title', "VARCHAR(180) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'payment_snapshots', 'product_id', "VARCHAR(120) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'payment_snapshots', 'product_title', "VARCHAR(180) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'payment_snapshots', 'item_type', "VARCHAR(40) NOT NULL DEFAULT 'class'");
+    payment_ensure_column($pdo, 'payment_snapshots', 'amount', 'INT NOT NULL DEFAULT 0');
+    payment_ensure_column($pdo, 'payment_snapshots', 'status', "VARCHAR(40) NOT NULL DEFAULT 'paid'");
+    payment_ensure_column($pdo, 'payment_snapshots', 'payment_method', "VARCHAR(80) NOT NULL DEFAULT 'Akses kelas'");
+    payment_ensure_column($pdo, 'payment_snapshots', 'access_granted', 'TINYINT(1) NOT NULL DEFAULT 1');
+    payment_ensure_column($pdo, 'payment_snapshots', 'created_at', "VARCHAR(60) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'lynk_orders', 'product_key', "VARCHAR(240) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'lynk_orders', 'product_name', "VARCHAR(240) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'lynk_orders', 'payload', 'MEDIUMTEXT');
+}
+
 $payments = [];
+payment_ensure_runtime_schema($pdo);
 
 try {
     $expiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
@@ -712,12 +1284,9 @@ try {
 if (($user['role'] ?? '') === 'admin') {
     try {
         $classMap = payment_fetch_class_map($pdo);
+        $productMap = payment_fetch_product_map($pdo);
 
         foreach ($pdo->query('SELECT * FROM lynk_orders ORDER BY created_at DESC LIMIT 1000')->fetchAll() as $row) {
-            if (($row['status'] ?? '') === 'product_processed') {
-                continue;
-            }
-
             $classIds = json_decode((string) ($row['class_ids'] ?? '[]'), true);
             $classIds = is_array($classIds) ? array_values(array_filter(array_map(static function ($classId): string {
                 return clean_text($classId, 120);
@@ -725,8 +1294,18 @@ if (($user['role'] ?? '') === 'admin') {
             $payload = payment_order_payload($row);
             $amount = payment_amount_from_payload($payload);
             $payloadBuyerName = payment_buyer_name_from_payload($payload);
+            $payloadProductName = payment_product_name_from_payload($payload);
+            $productCandidates = array_filter([
+                $row['product_key'] ?? '',
+                $row['product_name'] ?? '',
+                $payloadProductName,
+                payment_payload_value($payload, ['product.id', 'product.code', 'product.sku', 'data.product.id', 'data.product.code', 'data.product.sku']),
+            ]);
+            $mappedProducts = payment_find_products_by_candidates($productMap, $productCandidates);
             $mappedClassTitles = [];
             $mappedClassAmount = 0;
+            $mappedProductTitles = [];
+            $mappedProductAmount = 0;
 
             foreach ($classIds as $classId) {
                 if (empty($classMap[$classId])) {
@@ -737,30 +1316,25 @@ if (($user['role'] ?? '') === 'admin') {
                 $mappedClassAmount += payment_class_amount($classMap[$classId]);
             }
 
+            foreach ($mappedProducts as $product) {
+                $mappedProductTitles[] = clean_text($product['title'] ?? '', 180);
+                $mappedProductAmount += payment_product_amount($product);
+            }
+
             if ($amount <= 0 && $mappedClassAmount > 0) {
                 $amount = $mappedClassAmount;
             }
 
-            $payloadProductName = payment_payload_value($payload, [
-                'product.name',
-                'product.title',
-                'item.name',
-                'item.title',
-                'order.product_name',
-                'order.item_name',
-                'data.product.name',
-                'data.product.title',
-                'data.item.name',
-                'data.item.title',
-                'data.product_name',
-                'data.item_name',
-                'product_name',
-                'item_name',
-                'title',
-                'name',
-            ]);
+            if ($amount <= 0 && $mappedProductAmount > 0) {
+                $amount = $mappedProductAmount;
+            }
+
+            $status = clean_text($row['status'] ?? '', 40);
+            $isProductOrder = $status === 'product_processed' || (!$classIds && ($mappedProducts || $payloadProductName !== ''));
             $productName = clean_text(
-                implode(', ', array_filter($mappedClassTitles))
+                implode(', ', array_filter($isProductOrder ? $mappedProductTitles : $mappedClassTitles))
+                    ?: implode(', ', array_filter($mappedClassTitles))
+                    ?: implode(', ', array_filter($mappedProductTitles))
                     ?: $payloadProductName
                     ?: ($row['product_name'] ?: 'Pembayaran Lynk.id'),
                 180,
@@ -772,16 +1346,22 @@ if (($user['role'] ?? '') === 'admin') {
                 'orderCode' => $row['order_id'],
                 'buyerName' => $payloadBuyerName ?: ($row['buyer_name'] ?? 'Pembeli Lynk.id'),
                 'classId' => clean_text($classIds[0] ?? '', 120),
+                'itemType' => $isProductOrder ? 'digital_product' : 'class',
+                'productId' => $isProductOrder ? clean_text($mappedProducts[0]['id'] ?? '', 120) : '',
+                'productTitle' => $isProductOrder ? $productName : '',
                 'classTitle' => $productName,
+                'itemTitle' => $productName,
                 'amount' => $amount,
                 'paymentMethod' => 'Lynk.id',
-                'accessGranted' => ($row['status'] ?? '') === 'processed',
+                'accessGranted' => in_array($status, ['processed', 'product_processed'], true),
             ]));
         }
     } catch (Throwable $error) {
         // Continue.
     }
 }
+
+$payments = payment_dedupe_rows($payments);
 
 usort($payments, static function (array $first, array $second): int {
     return (strtotime($second['createdAt'] ?? '') ?: 0) <=> (strtotime($first['createdAt'] ?? '') ?: 0);

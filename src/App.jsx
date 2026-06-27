@@ -1115,6 +1115,7 @@ function cleanPayments(value) {
       productId: cleanText(item.productId || ''),
       productTitle: cleanLongText(item.productTitle || '', 180),
       classTitle: cleanLongText(item.classTitle || 'Kelas', 180),
+      itemTitle: cleanLongText(item.itemTitle || item.productTitle || item.classTitle || 'Kelas', 180),
       amount: Math.max(0, Math.round(Number(item.amount) || 0)),
       status: cleanText(item.status || 'pending'),
       paymentMethod: cleanText(item.paymentMethod || item.sourceLabel || '-'),
