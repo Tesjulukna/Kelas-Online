@@ -334,6 +334,20 @@ function formatRupiah(value) {
   }).format(number)
 }
 
+function formatTransactionCode(value) {
+  const code = String(value || '').trim()
+
+  if (!code) {
+    return '-'
+  }
+
+  if (code.length <= 18) {
+    return code
+  }
+
+  return `${code.slice(0, 8)}...${code.slice(-6)}`
+}
+
 function formatClassPrice(value) {
   const number = Math.max(0, Number(String(value ?? '').replace(/[^\d]/g, '')) || 0)
 
@@ -4882,7 +4896,9 @@ function AdminPage({
                 return (
                   <div className="table-row" role="row" key={payment.id}>
                     <span className="payment-identity" data-label="Transaksi" role="cell">
-                      <strong>{payment.orderCode || payment.reference || '-'}</strong>
+                      <strong title={payment.orderCode || payment.reference || ''}>
+                        {formatTransactionCode(payment.orderCode || payment.reference)}
+                      </strong>
                       <small>
                         {payment.sourceLabel} / {payment.paymentMethod || '-'}
                       </small>

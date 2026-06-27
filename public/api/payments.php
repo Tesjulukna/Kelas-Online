@@ -86,6 +86,154 @@ function payment_amount_from_payload(array $payload): int
     return $normalized === '' ? 0 : (int) $normalized;
 }
 
+function payment_nested_array(array $payload, string $path): array
+{
+    $current = $payload;
+
+    foreach (explode('.', $path) as $segment) {
+        if (!is_array($current) || !array_key_exists($segment, $current)) {
+            return [];
+        }
+
+        $current = $current[$segment];
+    }
+
+    return is_array($current) ? $current : [];
+}
+
+function payment_buyer_name_from_payload(array $payload): string
+{
+    $value = payment_payload_value($payload, [
+        'buyer.name',
+        'buyer.full_name',
+        'buyer.fullName',
+        'buyer_name',
+        'buyer_full_name',
+        'buyerFullName',
+        'customer.name',
+        'customer.full_name',
+        'customer.fullName',
+        'customer_name',
+        'customer_full_name',
+        'customerFullName',
+        'user.name',
+        'user.full_name',
+        'contact.name',
+        'order.customer_name',
+        'order.buyer_name',
+        'order.buyer.name',
+        'order.name',
+        'transaction.customer_name',
+        'transaction.buyer_name',
+        'payment.customer_name',
+        'payment.buyer_name',
+        'checkout.customer_name',
+        'checkout.name',
+        'message_data.customer.name',
+        'message_data.customer.full_name',
+        'message_data.buyer.name',
+        'message_data.name',
+        'messageData.customer.name',
+        'messageData.customer.fullName',
+        'messageData.name',
+        'data.buyer.name',
+        'data.buyer.full_name',
+        'data.buyer.fullName',
+        'data.customer.name',
+        'data.customer.full_name',
+        'data.customer.fullName',
+        'data.customer_name',
+        'data.buyer_name',
+        'data.user.name',
+        'data.contact.name',
+        'data.order.customer_name',
+        'data.order.buyer_name',
+        'data.transaction.customer_name',
+        'data.payment.customer_name',
+        'data.message_data.customer.name',
+        'data.message_data.customer.full_name',
+        'data.message_data.name',
+        'data.messageData.customer.name',
+        'data.messageData.name',
+    ]);
+
+    if ($value !== null) {
+        $name = clean_text($value, 160);
+
+        if ($name !== '' && !filter_var($name, FILTER_VALIDATE_EMAIL) && !preg_match('/https?:\/\//i', $name)) {
+            return $name;
+        }
+    }
+
+    foreach ([
+        'custom_fields',
+        'customFields',
+        'fields',
+        'answers',
+        'form',
+        'form_data',
+        'formData',
+        'message_data.custom_fields',
+        'message_data.fields',
+        'message_data.answers',
+        'messageData.customFields',
+        'messageData.fields',
+        'messageData.answers',
+        'data.custom_fields',
+        'data.customFields',
+        'data.fields',
+        'data.answers',
+        'data.form',
+        'data.form_data',
+        'data.formData',
+        'data.message_data.custom_fields',
+        'data.message_data.fields',
+        'data.message_data.answers',
+    ] as $path) {
+        $group = payment_nested_array($payload, $path);
+
+        if (!$group) {
+            continue;
+        }
+
+        foreach (['nama', 'name', 'full_name', 'fullName', 'customer_name', 'buyer_name'] as $key) {
+            if (!empty($group[$key]) && is_scalar($group[$key])) {
+                return clean_text($group[$key], 160);
+            }
+        }
+
+        foreach ($group as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $label = strtolower(implode(' ', array_filter([
+                clean_text($item['label'] ?? '', 80),
+                clean_text($item['name'] ?? '', 80),
+                clean_text($item['key'] ?? '', 80),
+                clean_text($item['question'] ?? '', 80),
+                clean_text($item['title'] ?? '', 80),
+            ])));
+
+            if ($label === '' || !preg_match('/\bnama\b|\bname\b|full.?name|customer.?name|buyer.?name/', $label)) {
+                continue;
+            }
+
+            if (preg_match('/product|produk|item|kelas|class|course/', $label)) {
+                continue;
+            }
+
+            foreach (['value', 'answer', 'text', 'content'] as $valueKey) {
+                if (!empty($item[$valueKey]) && is_scalar($item[$valueKey])) {
+                    return clean_text($item[$valueKey], 160);
+                }
+            }
+        }
+    }
+
+    return '';
+}
+
 function payment_time_value($value): int
 {
     if (is_numeric($value)) {
@@ -576,6 +724,7 @@ if (($user['role'] ?? '') === 'admin') {
             }, $classIds))) : [];
             $payload = payment_order_payload($row);
             $amount = payment_amount_from_payload($payload);
+            $payloadBuyerName = payment_buyer_name_from_payload($payload);
             $mappedClassTitles = [];
             $mappedClassAmount = 0;
 
@@ -621,6 +770,7 @@ if (($user['role'] ?? '') === 'admin') {
                 'source' => 'lynk',
                 'sourceLabel' => 'Lynk.id',
                 'orderCode' => $row['order_id'],
+                'buyerName' => $payloadBuyerName ?: ($row['buyer_name'] ?? 'Pembeli Lynk.id'),
                 'classId' => clean_text($classIds[0] ?? '', 120),
                 'classTitle' => $productName,
                 'amount' => $amount,

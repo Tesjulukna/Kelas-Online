@@ -4,12 +4,59 @@ require __DIR__ . '/_bootstrap.php';
 
 ensure_method(['POST']);
 
+function upload_size_to_bytes($value): int
+{
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return 0;
+    }
+
+    $unit = strtolower($value[strlen($value) - 1]);
+    $number = (float) $value;
+
+    if ($unit === 'g') {
+        return (int) ($number * 1024 * 1024 * 1024);
+    }
+
+    if ($unit === 'm') {
+        return (int) ($number * 1024 * 1024);
+    }
+
+    if ($unit === 'k') {
+        return (int) ($number * 1024);
+    }
+
+    return (int) $number;
+}
+
+$postMax = upload_size_to_bytes(ini_get('post_max_size') ?: '0');
+$contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+
+if ($postMax > 0 && $contentLength > $postMax) {
+    send_json(413, [
+        'message' => 'Ukuran upload melebihi batas server hosting. Kompres gambar atau naikkan post_max_size di hosting.',
+    ]);
+}
+
 $user = require_user();
 $type = clean_text($_POST['type'] ?? $_GET['type'] ?? '', 40);
 $file = $_FILES['file'] ?? null;
+$fileError = is_array($file) ? (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
 
-if (!$file || !is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-    send_json(400, ['message' => 'File upload wajib dikirim.']);
+if (!$file || !is_array($file) || $fileError !== UPLOAD_ERR_OK) {
+    $messages = [
+        UPLOAD_ERR_INI_SIZE => 'Ukuran file melebihi upload_max_filesize server hosting.',
+        UPLOAD_ERR_FORM_SIZE => 'Ukuran file melebihi batas form upload.',
+        UPLOAD_ERR_PARTIAL => 'Upload file terputus. Coba ulangi dengan koneksi yang lebih stabil.',
+        UPLOAD_ERR_NO_FILE => 'File upload wajib dikirim.',
+        UPLOAD_ERR_NO_TMP_DIR => 'Folder temporary upload hosting belum tersedia.',
+        UPLOAD_ERR_CANT_WRITE => 'Hosting tidak bisa menulis file upload.',
+        UPLOAD_ERR_EXTENSION => 'Upload dihentikan ekstensi PHP hosting.',
+    ];
+    $statusCode = in_array($fileError, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true) ? 413 : 400;
+
+    send_json($statusCode, ['message' => $messages[$fileError] ?? 'File upload tidak diterima server.']);
 }
 
 $config = [

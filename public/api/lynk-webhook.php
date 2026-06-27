@@ -227,6 +227,151 @@ function lynk_first_phone(array $payload): string
     ]));
 }
 
+function lynk_name_from_field_groups(array $payload): string
+{
+    foreach ([
+        'custom_fields',
+        'customFields',
+        'fields',
+        'answers',
+        'form',
+        'form_data',
+        'formData',
+        'customer_fields',
+        'customerFields',
+        'message_data.custom_fields',
+        'message_data.fields',
+        'message_data.answers',
+        'messageData.customFields',
+        'messageData.fields',
+        'messageData.answers',
+        'data.custom_fields',
+        'data.customFields',
+        'data.fields',
+        'data.answers',
+        'data.form',
+        'data.form_data',
+        'data.formData',
+        'data.customer_fields',
+        'data.customerFields',
+        'data.message_data.custom_fields',
+        'data.message_data.fields',
+        'data.message_data.answers',
+    ] as $path) {
+        $group = lynk_nested_array($payload, $path);
+
+        if (!$group) {
+            continue;
+        }
+
+        foreach (['nama', 'name', 'full_name', 'fullName', 'customer_name', 'buyer_name'] as $key) {
+            if (!empty($group[$key]) && is_scalar($group[$key])) {
+                return clean_text($group[$key], 160);
+            }
+        }
+
+        foreach ($group as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $label = strtolower(implode(' ', array_filter([
+                clean_text($item['label'] ?? '', 80),
+                clean_text($item['name'] ?? '', 80),
+                clean_text($item['key'] ?? '', 80),
+                clean_text($item['question'] ?? '', 80),
+                clean_text($item['title'] ?? '', 80),
+            ])));
+
+            if ($label === '' || !preg_match('/\bnama\b|\bname\b|full.?name|customer.?name|buyer.?name/', $label)) {
+                continue;
+            }
+
+            if (preg_match('/product|produk|item|kelas|class|course/', $label)) {
+                continue;
+            }
+
+            foreach (['value', 'answer', 'text', 'content'] as $valueKey) {
+                if (!empty($item[$valueKey]) && is_scalar($item[$valueKey])) {
+                    return clean_text($item[$valueKey], 160);
+                }
+            }
+        }
+    }
+
+    return '';
+}
+
+function lynk_first_name(array $payload): string
+{
+    $name = lynk_first_value($payload, [
+        'buyer.name',
+        'buyer.full_name',
+        'buyer.fullName',
+        'buyer_name',
+        'buyer_full_name',
+        'buyerFullName',
+        'customer.name',
+        'customer.full_name',
+        'customer.fullName',
+        'customer_name',
+        'customer_full_name',
+        'customerFullName',
+        'user.name',
+        'user.full_name',
+        'user.fullName',
+        'contact.name',
+        'contact.full_name',
+        'order.customer_name',
+        'order.customer.full_name',
+        'order.buyer_name',
+        'order.buyer.name',
+        'order.name',
+        'transaction.customer_name',
+        'transaction.buyer_name',
+        'payment.customer_name',
+        'payment.buyer_name',
+        'checkout.customer_name',
+        'checkout.name',
+        'message_data.customer.name',
+        'message_data.customer.full_name',
+        'message_data.buyer.name',
+        'message_data.name',
+        'messageData.customer.name',
+        'messageData.customer.fullName',
+        'messageData.name',
+        'data.buyer.name',
+        'data.buyer.full_name',
+        'data.buyer.fullName',
+        'data.customer.name',
+        'data.customer.full_name',
+        'data.customer.fullName',
+        'data.customer_name',
+        'data.buyer_name',
+        'data.user.name',
+        'data.contact.name',
+        'data.order.customer_name',
+        'data.order.buyer_name',
+        'data.transaction.customer_name',
+        'data.payment.customer_name',
+        'data.message_data.customer.name',
+        'data.message_data.customer.full_name',
+        'data.message_data.name',
+        'data.messageData.customer.name',
+        'data.messageData.name',
+    ]);
+
+    if ($name === '') {
+        $name = lynk_name_from_field_groups($payload);
+    }
+
+    if ($name !== '' && !filter_var($name, FILTER_VALIDATE_EMAIL) && !preg_match('/https?:\/\//i', $name)) {
+        return $name;
+    }
+
+    return '';
+}
+
 function lynk_collect_product_candidates(array $payload): array
 {
     $paths = [
@@ -689,17 +834,7 @@ $orderId = lynk_first_value($payload, [
 ]);
 $buyerEmail = lynk_first_email($payload);
 $buyerPhone = lynk_first_phone($payload);
-$buyerName = lynk_first_value($payload, [
-    'buyer.name',
-    'customer.name',
-    'user.name',
-    'order.customer_name',
-    'data.buyer.name',
-    'data.customer.name',
-    'buyer_name',
-    'customer_name',
-    'name',
-]);
+$buyerName = lynk_first_name($payload);
 $productCandidates = array_values(array_unique(array_merge(
     lynk_collect_product_candidates($payload),
     lynk_collect_product_candidates($data),
