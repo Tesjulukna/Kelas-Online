@@ -1089,6 +1089,7 @@ function payment_public(array $row): array
 function payment_display_is_generic(string $value): bool
 {
     $value = strtolower(trim($value));
+    $normalized = payment_normalize_key($value);
 
     return in_array($value, [
         '',
@@ -1098,12 +1099,36 @@ function payment_display_is_generic(string $value): bool
         'pembeli lynk.id',
         'member',
         'pelanggan',
+    ], true) || in_array($normalized, [
+        '',
+        'kelas',
+        'produk-digital',
+        'pembayaran-lynk-id',
+        'pembeli-lynk-id',
+        'member',
+        'pelanggan',
     ], true);
+}
+
+function payment_is_revenue_payment(array $payment): bool
+{
+    $status = strtolower(clean_text($payment['status'] ?? '', 40));
+
+    if ($status === 'unmapped') {
+        return false;
+    }
+
+    return !empty($payment['accessGranted'])
+        || in_array($status, ['paid', 'processed', 'success', 'settlement'], true);
 }
 
 function payment_row_score(array $payment): int
 {
     $score = 0;
+
+    if (payment_is_revenue_payment($payment)) {
+        $score += 60;
+    }
 
     if ((int) ($payment['amount'] ?? 0) > 0) {
         $score += 40;
@@ -1128,46 +1153,128 @@ function payment_row_score(array $payment): int
     return $score;
 }
 
-function payment_dedupe_key(array $payment): string
+function payment_date_key($value): string
 {
-    foreach (['orderCode', 'merchantRef', 'reference'] as $key) {
+    $time = strtotime((string) $value);
+
+    return $time ? date('Y-m-d', $time) : '';
+}
+
+function payment_item_key(array $payment): string
+{
+    foreach (['productId', 'classId', 'itemTitle', 'productTitle', 'classTitle'] as $key) {
         $value = payment_normalize_key($payment[$key] ?? '');
 
-        if ($value !== '') {
-            return 'order:' . $value;
+        if ($value !== '' && !payment_display_is_generic($value)) {
+            return $value;
         }
-    }
-
-    $email = strtolower(clean_email($payment['buyerEmail'] ?? ''));
-    $title = payment_normalize_key($payment['itemTitle'] ?? ($payment['classTitle'] ?? ''));
-    $created = clean_text($payment['createdAt'] ?? '', 19);
-
-    if ($email !== '' && $title !== '' && $created !== '') {
-        return 'fallback:' . $email . ':' . $title . ':' . substr($created, 0, 16);
     }
 
     return '';
 }
 
+function payment_buyer_key(array $payment): string
+{
+    $memberId = payment_normalize_key($payment['memberId'] ?? '');
+
+    if ($memberId !== '') {
+        return 'member:' . $memberId;
+    }
+
+    $email = strtolower(clean_email($payment['buyerEmail'] ?? ''));
+
+    if ($email !== '') {
+        return 'email:' . $email;
+    }
+
+    return '';
+}
+
+function payment_dedupe_keys(array $payment): array
+{
+    $keys = [];
+
+    foreach (['orderCode', 'merchantRef', 'reference'] as $key) {
+        $value = payment_normalize_key($payment[$key] ?? '');
+
+        if ($value !== '') {
+            $keys[] = 'order:' . $value;
+        }
+    }
+
+    $buyerKey = payment_buyer_key($payment);
+    $itemKey = payment_item_key($payment);
+    $dateKey = payment_date_key($payment['createdAt'] ?? '');
+    $amount = (int) ($payment['amount'] ?? 0);
+
+    if ($buyerKey !== '' && $itemKey !== '' && $dateKey !== '') {
+        $keys[] = 'buyer-item-day:' . $buyerKey . ':' . $itemKey . ':' . $dateKey;
+
+        if ($amount > 0) {
+            $keys[] = 'buyer-item-amount-day:' . $buyerKey . ':' . $itemKey . ':' . $amount . ':' . $dateKey;
+        }
+    }
+
+    return array_values(array_unique($keys));
+}
+
 function payment_dedupe_rows(array $payments): array
 {
-    $deduped = [];
+    $groups = [];
+    $groupKeys = [];
+    $keyToGroup = [];
     $withoutKey = [];
 
     foreach ($payments as $payment) {
-        $key = payment_dedupe_key($payment);
+        $keys = payment_dedupe_keys($payment);
 
-        if ($key === '') {
+        if (!$keys) {
             $withoutKey[] = $payment;
             continue;
         }
 
-        if (empty($deduped[$key]) || payment_row_score($payment) > payment_row_score($deduped[$key])) {
-            $deduped[$key] = $payment;
+        $matchedGroupIds = [];
+
+        foreach ($keys as $key) {
+            if (isset($keyToGroup[$key])) {
+                $matchedGroupIds[$keyToGroup[$key]] = true;
+            }
+        }
+
+        $groupId = array_key_first($matchedGroupIds);
+
+        if ($groupId === null) {
+            $groupId = 'group-' . count($groups);
+            $groups[$groupId] = $payment;
+            $groupKeys[$groupId] = [];
+        } elseif (payment_row_score($payment) > payment_row_score($groups[$groupId])) {
+            $groups[$groupId] = $payment;
+        }
+
+        foreach (array_keys($matchedGroupIds) as $matchedGroupId) {
+            if ($matchedGroupId === $groupId) {
+                continue;
+            }
+
+            if (!empty($groups[$matchedGroupId]) && payment_row_score($groups[$matchedGroupId]) > payment_row_score($groups[$groupId])) {
+                $groups[$groupId] = $groups[$matchedGroupId];
+            }
+
+            foreach ($groupKeys[$matchedGroupId] ?? [] as $matchedKey) {
+                $groupKeys[$groupId][$matchedKey] = true;
+                $keyToGroup[$matchedKey] = $groupId;
+            }
+
+            unset($groups[$matchedGroupId], $groupKeys[$matchedGroupId]);
+        }
+
+        foreach ($keys as $key) {
+            $groupKeys[$groupId][$key] = true;
+            $keyToGroup[$key] = $groupId;
         }
     }
 
-    return array_values(array_merge($deduped, $withoutKey));
+    return array_values(array_merge($groups, $withoutKey));
 }
 
 function payment_ensure_column(PDO $pdo, string $table, string $column, string $definition): void

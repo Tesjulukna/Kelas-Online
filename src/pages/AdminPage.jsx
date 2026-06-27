@@ -264,6 +264,20 @@ function formatDateInput(date) {
   return localDate.toISOString().slice(0, 10)
 }
 
+function getLocalDateKey(value) {
+  const date = value instanceof Date ? value : new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 function getAnalyticsPresetRange(preset = '7d') {
   const endDate = new Date()
   const startDate = new Date(endDate)
@@ -1101,7 +1115,7 @@ function AdminPage({
     }
   }
   const paymentSearchQuery = paymentSearchTerm.trim().toLowerCase()
-  const paidPaymentStatuses = ['paid', 'processed', 'success', 'settlement', 'unmapped']
+  const paidPaymentStatuses = ['paid', 'processed', 'success', 'settlement']
   const pendingPaymentStatuses = ['pending', 'unpaid', 'waiting', 'callback']
   const failedPaymentStatuses = ['failed', 'expired', 'cancelled', 'canceled']
   const isPaidPayment = (payment) =>
@@ -1146,7 +1160,11 @@ function AdminPage({
       return items
     }
 
-    const dateKey = new Date(time).toISOString().slice(0, 10)
+    const dateKey = getLocalDateKey(time)
+
+    if (!dateKey) {
+      return items
+    }
     const current = items.get(dateKey) || { dateKey, total: 0, count: 0 }
 
     items.set(dateKey, {
