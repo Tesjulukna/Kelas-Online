@@ -198,11 +198,7 @@ function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
   `
 
   if (/<html[\s>]/i.test(content) || /<!doctype/i.test(content)) {
-    if (/<head[\s>]/i.test(content)) {
-      return content.replace(/<head([^>]*)>/i, '<head$1><base target="_blank">')
-    }
-
-    return content.replace(/<html([^>]*)>/i, '<html$1><head><base target="_blank"></head>')
+    return content
   }
 
   return `<!doctype html>
@@ -210,9 +206,9 @@ function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <base target="_blank">
     <title>${safeTitle}</title>
     <style>
+      html { scroll-behavior: smooth; }
       html, body { margin: 0; min-height: 100%; }
       body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
       * { box-sizing: border-box; }
