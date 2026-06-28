@@ -1496,16 +1496,19 @@ mark {
   display: grid;
   place-items: center;
   padding: 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(15, 23, 42, 0.54);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 
 .digital-review-modal {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   width: min(980px, 100%);
   max-height: calc(100dvh - 36px);
+  min-height: 0;
   overflow: hidden;
   border: 1px solid rgba(205, 217, 232, 0.94);
   border-radius: 16px;
@@ -1514,6 +1517,7 @@ mark {
 }
 
 .digital-review-modal-heading {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1532,11 +1536,13 @@ mark {
 }
 
 .digital-review-modal-body {
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
   gap: 16px;
   min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 18px;
   background: #f8fafc;
 }
@@ -1551,6 +1557,30 @@ mark {
   border: 1px solid #dbe4ef;
   border-radius: 14px;
   background: #ffffff;
+}
+
+.digital-review-modal > .digital-review-add-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 0;
+  border-radius: 0;
+  padding: 18px;
+}
+
+.digital-review-modal > .digital-review-add-panel .form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 8px -18px -18px;
+  padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), #ffffff 24%);
 }
 
 .digital-review-admin-list h4,
@@ -2178,10 +2208,12 @@ textarea:focus-visible {
   }
 
   .digital-review-modal-backdrop {
+    align-items: start;
     padding: 10px;
   }
 
   .digital-review-modal {
+    width: 100%;
     max-height: calc(100dvh - 20px);
     border-radius: 14px;
   }
@@ -2192,6 +2224,22 @@ textarea:focus-visible {
 
   .digital-review-modal-body {
     padding: 12px;
+  }
+
+  .digital-review-modal > .digital-review-add-panel {
+    padding: 12px;
+  }
+
+  .digital-review-modal > .digital-review-add-panel .form-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin: 8px -12px -12px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .digital-review-modal > .digital-review-add-panel .form-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .digital-review-admin-item {
