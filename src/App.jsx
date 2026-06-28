@@ -2234,10 +2234,9 @@ function App() {
 
     Promise.allSettled([
       fetchStoredDigitalProducts(null),
-      fetchStoredMembers(),
       fetchPublicActivities(),
     ])
-      .then(([productResult, memberResult, publicActivityResult]) => {
+      .then(([productResult, publicActivityResult]) => {
         if (!isCurrent) {
           return
         }
@@ -2245,10 +2244,6 @@ function App() {
         if (productResult.status === 'fulfilled') {
           setDigitalProducts(productResult.value.digitalProducts)
           setDigitalProductAccess(productResult.value.digitalProductAccess)
-        }
-
-        if (memberResult.status === 'fulfilled') {
-          setMembers(memberResult.value)
         }
 
         if (publicActivityResult.status === 'fulfilled') {
