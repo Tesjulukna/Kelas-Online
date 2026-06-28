@@ -14360,6 +14360,10 @@ img {
   width: 100% !important;
 }
 
+.class-editor-form .field-span-2 {
+  grid-column: 1 / -1 !important;
+}
+
 .class-description-field .digital-rich-toolbar {
   position: sticky !important;
   top: 0 !important;

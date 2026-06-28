@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS classes (
   sale_price INT NOT NULL DEFAULT 0,
   purchase_button_label VARCHAR(80) NOT NULL DEFAULT 'Beli Sekarang',
   register_button_label VARCHAR(80) NOT NULL DEFAULT 'Daftar',
+  purchase_message LONGTEXT,
   lynk_product_key VARCHAR(180) NOT NULL DEFAULT '',
   tripay_product_key VARCHAR(180) NOT NULL DEFAULT '',
   thumbnail MEDIUMTEXT,

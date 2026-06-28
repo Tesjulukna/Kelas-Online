@@ -220,6 +220,7 @@ if ($isPublicClassOrder) {
         'username' => clean_text($accessResult['member']['username'] ?? '', 120),
         'password' => $accessResult['password'],
         'classTitle' => clean_text($accessResult['class']['title'] ?? ($order['class_title'] ?? 'Kelas IbnuCreative'), 180),
+        'purchaseMessage' => clean_text($accessResult['class']['purchase_message'] ?? '', 2000),
         'loginUrl' => $accessResult['loginUrl'],
     ]);
 
@@ -252,6 +253,38 @@ $update->execute([
     $order['id'],
 ]);
 
+$classInfo = [];
+$memberInfo = [];
+
+try {
+    $classQuery = $pdo->prepare('SELECT * FROM classes WHERE id = ? LIMIT 1');
+    $classQuery->execute([$order['class_id']]);
+    $classInfo = $classQuery->fetch() ?: [];
+} catch (Throwable $error) {
+    $classInfo = [];
+}
+
+try {
+    $memberQuery = $pdo->prepare('SELECT * FROM accounts WHERE id = ? AND role = ? LIMIT 1');
+    $memberQuery->execute([$order['member_id'], 'member']);
+    $memberInfo = $memberQuery->fetch() ?: [];
+} catch (Throwable $error) {
+    $memberInfo = [];
+}
+
+$memberEmail = clean_email($order['buyer_email'] ?? ($memberInfo['email'] ?? ''));
+$emailResult = $memberEmail !== ''
+    ? send_class_access_credentials_email([
+        'buyerName' => clean_text($order['buyer_name'] ?? ($memberInfo['name'] ?? 'Peserta IbnuCreative'), 160),
+        'buyerEmail' => $memberEmail,
+        'username' => clean_text($memberInfo['username'] ?? '', 120),
+        'password' => '',
+        'classTitle' => clean_text($classInfo['title'] ?? ($order['class_title'] ?? 'Kelas IbnuCreative'), 180),
+        'purchaseMessage' => clean_text($classInfo['purchase_message'] ?? '', 2000),
+        'loginUrl' => commerce_login_url($config),
+    ])
+    : ['sent' => false, 'message' => 'Email member tidak tersedia.'];
+
 send_json(200, [
     'ok' => true,
     'message' => $accessGranted
@@ -262,4 +295,6 @@ send_json(200, [
     'classId' => $order['class_id'],
     'memberId' => $order['member_id'],
     'accessGranted' => $accessGranted,
+    'emailSent' => $emailResult['sent'] ?? false,
+    'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
 ]);

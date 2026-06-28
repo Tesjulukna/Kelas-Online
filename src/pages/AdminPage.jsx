@@ -420,6 +420,7 @@ function createEmptyClassForm() {
     salePrice: '0',
     purchaseButtonLabel: 'Beli Sekarang',
     registerButtonLabel: 'Beli Sekarang',
+    purchaseMessage: '',
     lynkProductKey: '',
     tripayProductKey: '',
     thumbnail: '',
@@ -2785,6 +2786,7 @@ function AdminPage({
           : Math.max(0, Number(classForm.salePrice) || 0),
       purchaseButtonLabel: classForm.purchaseButtonLabel.trim() || 'Beli Sekarang',
       registerButtonLabel: classForm.purchaseButtonLabel.trim() || 'Beli Sekarang',
+      purchaseMessage: classForm.purchaseMessage.trim(),
       lynkProductKey: classForm.lynkProductKey.trim(),
       tripayProductKey: classForm.tripayProductKey.trim(),
       thumbnail: classForm.thumbnail,
@@ -2836,6 +2838,7 @@ function AdminPage({
       salePrice: parseRupiahValue(item.salePrice),
       purchaseButtonLabel: item.purchaseButtonLabel || item.registerButtonLabel || 'Beli Sekarang',
       registerButtonLabel: item.registerButtonLabel || item.purchaseButtonLabel || 'Beli Sekarang',
+      purchaseMessage: item.purchaseMessage ?? '',
       lynkProductKey: item.lynkProductKey ?? '',
       tripayProductKey: item.tripayProductKey ?? '',
       thumbnail: item.thumbnail ?? '',
@@ -6481,6 +6484,20 @@ function AdminPage({
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="field-span-2">
+                Pesan email setelah pembelian
+                <textarea
+                  name="purchaseMessage"
+                  value={classForm.purchaseMessage}
+                  onChange={handleClassFormChange}
+                  placeholder="Contoh: Link grup WhatsApp, jadwal onboarding, atau catatan khusus setelah pembayaran berhasil."
+                  rows={4}
+                  maxLength={2000}
+                />
+                <span>
+                  Pesan ini dikirim lewat Resend setelah akses kelas aktif. Kosongkan jika tidak perlu.
+                </span>
               </label>
               <div className="digital-metric-grid">
                 <label>

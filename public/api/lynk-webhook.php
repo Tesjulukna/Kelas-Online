@@ -894,6 +894,44 @@ function lynk_find_explicit_classes(PDO $pdo, array $productCandidates, array $c
     return array_values(array_unique(array_filter($classIds)));
 }
 
+function lynk_fetch_class_purchase_messages(PDO $pdo, array $classIds): array
+{
+    $classIds = array_values(array_unique(array_filter(array_map(static function ($classId) {
+        return clean_text($classId, 120);
+    }, $classIds))));
+
+    if (!$classIds) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($classIds), '?'));
+
+    try {
+        $query = $pdo->prepare("SELECT id, title, purchase_message FROM classes WHERE id IN ({$placeholders})");
+        $query->execute($classIds);
+    } catch (Throwable $error) {
+        return [];
+    }
+
+    $messages = [];
+
+    foreach ($query->fetchAll() as $class) {
+        $message = clean_text($class['purchase_message'] ?? '', 2000);
+
+        if ($message === '') {
+            continue;
+        }
+
+        $messages[] = [
+            'classId' => clean_text($class['id'] ?? '', 120),
+            'title' => clean_text($class['title'] ?? 'Kelas IbnuCreative', 180),
+            'message' => $message,
+        ];
+    }
+
+    return $messages;
+}
+
 function lynk_find_products(PDO $pdo, array $productCandidates): array
 {
     try {
@@ -1024,13 +1062,37 @@ function lynk_send_credentials_email(string $email, string $name, array $account
     $passwordLine = $account['password']
         ? "Password: {$account['password']}\n"
         : "Password: gunakan password akun yang sudah pernah dibuat.\n";
+    $purchaseMessages = is_array($account['purchaseMessages'] ?? null) ? $account['purchaseMessages'] : [];
+    $purchaseMessageText = '';
+    $purchaseMessageHtml = '';
+
+    foreach ($purchaseMessages as $messageItem) {
+        if (!is_array($messageItem)) {
+            continue;
+        }
+
+        $messageTitle = clean_text($messageItem['title'] ?? 'Kelas IbnuCreative', 180);
+        $messageBody = clean_text($messageItem['message'] ?? '', 2000);
+
+        if ($messageBody === '') {
+            continue;
+        }
+
+        $purchaseMessageText .= "Pesan dari admin untuk {$messageTitle}:\n{$messageBody}\n\n";
+        $purchaseMessageHtml .= '<p><strong>Pesan dari admin untuk ' . email_escape($messageTitle) . ':</strong><br>'
+            . email_escape_breaks($messageBody)
+            . '</p>';
+    }
+
     $message = "Halo {$name},\n\n"
         . "Pembayaran kelas Anda melalui Lynk.id sudah berhasil dan akses belajar sudah aktif.\n\n"
         . "Login: {$account['loginUrl']}\n"
         . "Email: {$email}\n"
         . "Username: {$account['username']}\n"
         . $passwordLine
-        . "\nSilakan login dan buka menu Kelas Saya.\n\n"
+        . "\n"
+        . $purchaseMessageText
+        . "Silakan login dan buka menu Kelas Saya.\n\n"
         . "IbnuCreative Academy";
     $loginButton = '<p><a href="' . email_escape($account['loginUrl']) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">Masuk ke Kelas Saya</a></p>';
     $html = '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">'
@@ -1040,6 +1102,7 @@ function lynk_send_credentials_email(string $email, string $name, array $account
         . '<p><strong>Email:</strong> ' . email_escape($email) . '<br>'
         . '<strong>Username:</strong> ' . email_escape($account['username'] ?? '') . '<br>'
         . '<strong>Password:</strong> ' . email_escape($account['password'] ?: 'Gunakan password akun yang sudah pernah dibuat.') . '</p>'
+        . $purchaseMessageHtml
         . $loginButton
         . '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($account['loginUrl']) . '">' . email_escape($account['loginUrl']) . '</a></p>'
         . '<p>IbnuCreative Academy</p>'
@@ -1083,6 +1146,12 @@ function lynk_ensure_tables(PDO $pdo): void
 
         if (!$query->fetch()) {
             $pdo->exec("ALTER TABLE classes ADD lynk_product_key VARCHAR(180) NOT NULL DEFAULT '' AFTER revenue");
+        }
+
+        $query->execute(['purchase_message']);
+
+        if (!$query->fetch()) {
+            $pdo->exec('ALTER TABLE classes ADD purchase_message LONGTEXT NULL AFTER register_button_label');
         }
     } catch (Throwable $error) {
         // Installer can add this column if runtime ALTER is blocked.
@@ -1472,6 +1541,7 @@ $account = [
     'password' => $passwordCreated ? $password : null,
     'loginUrl' => lynk_login_url($config),
     'classIds' => $classIds,
+    'purchaseMessages' => lynk_fetch_class_purchase_messages($pdo, $classIds),
 ];
 $emailResult = lynk_send_credentials_email(
     $buyerEmail,

@@ -154,6 +154,13 @@ function send_class_access_credentials_email(array $account): array
     $buyerName = clean_text($account['buyerName'] ?? 'Peserta', 160);
     $username = clean_text($account['username'] ?? '', 120);
     $buyerEmail = clean_email($account['buyerEmail'] ?? '');
+    $purchaseMessage = clean_text($account['purchaseMessage'] ?? '', 2000);
+    $purchaseMessageText = $purchaseMessage !== ''
+        ? "Pesan dari admin:\n{$purchaseMessage}\n\n"
+        : '';
+    $purchaseMessageHtml = $purchaseMessage !== ''
+        ? '<p><strong>Pesan dari admin:</strong><br>' . email_escape_breaks($purchaseMessage) . '</p>'
+        : '';
 
     $text = "Halo {$buyerName},\n\n"
         . "Pembayaran kelas Anda sudah berhasil dan akses belajar sudah aktif.\n\n"
@@ -162,6 +169,7 @@ function send_class_access_credentials_email(array $account): array
         . "Email: {$buyerEmail}\n"
         . "Username: {$username}\n"
         . "Password: {$passwordText}\n\n"
+        . $purchaseMessageText
         . "Silakan login dan buka menu Kelas Saya.\n\n"
         . "IbnuCreative Academy";
 
@@ -176,6 +184,7 @@ function send_class_access_credentials_email(array $account): array
         . '<p><strong>Email:</strong> ' . email_escape($buyerEmail) . '<br>'
         . '<strong>Username:</strong> ' . email_escape($username) . '<br>'
         . '<strong>Password:</strong> ' . email_escape($passwordText) . '</p>'
+        . $purchaseMessageHtml
         . $loginButton
         . ($loginUrl ? '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($loginUrl) . '">' . email_escape($loginUrl) . '</a></p>' : '')
         . '<p>IbnuCreative Academy</p>'

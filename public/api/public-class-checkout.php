@@ -57,6 +57,7 @@ if ($amount <= 0) {
         'username' => $accessResult['member']['username'] ?? '',
         'password' => $accessResult['password'],
         'classTitle' => $class['title'] ?? 'Kelas IbnuCreative',
+        'purchaseMessage' => $class['purchase_message'] ?? '',
         'loginUrl' => $accessResult['loginUrl'],
     ]);
 

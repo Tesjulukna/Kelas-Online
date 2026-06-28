@@ -95,6 +95,12 @@ try {
     if (!$query->fetch()) {
         $pdo->exec("ALTER TABLE classes ADD tripay_product_key VARCHAR(180) NOT NULL DEFAULT '' AFTER lynk_product_key");
     }
+
+    $query->execute(['purchase_message']);
+
+    if (!$query->fetch()) {
+        $pdo->exec('ALTER TABLE classes ADD purchase_message LONGTEXT NULL AFTER register_button_label');
+    }
 } catch (Throwable $error) {
     // Installer can add the column if runtime ALTER is blocked.
 }
@@ -113,8 +119,8 @@ $classes = is_array($payload['classes'] ?? null) ? $payload['classes'] : [];
 
 $insertClass = $pdo->prepare(
     'INSERT INTO classes
-    (id, title, description, students, display_students, rating, status, revenue, price, sale_price, purchase_button_label, register_button_label, lynk_product_key, tripay_product_key, thumbnail, mentor, progress, next_label, live_at, lessons, show_on_homepage, show_on_member, highlighted)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    (id, title, description, students, display_students, rating, status, revenue, price, sale_price, purchase_button_label, register_button_label, purchase_message, lynk_product_key, tripay_product_key, thumbnail, mentor, progress, next_label, live_at, lessons, show_on_homepage, show_on_member, highlighted)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 $insertMaterial = $pdo->prepare(
     'INSERT INTO materials
@@ -161,6 +167,7 @@ try {
             clean_number($class['salePrice'] ?? 0, 0, 1000000000),
             clean_text($class['purchaseButtonLabel'] ?? 'Beli Sekarang', 80),
             clean_text($class['registerButtonLabel'] ?? 'Daftar', 80),
+            clean_text($class['purchaseMessage'] ?? '', 2000),
             clean_text($class['lynkProductKey'] ?? '', 180),
             clean_text($class['tripayProductKey'] ?? '', 180),
             clean_image($class['thumbnail'] ?? ''),

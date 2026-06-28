@@ -1111,6 +1111,7 @@ function fetch_classes(PDO $pdo): array
             'salePrice' => (int) ($class['sale_price'] ?? 0),
             'purchaseButtonLabel' => $class['purchase_button_label'] ?? 'Beli Sekarang',
             'registerButtonLabel' => $class['register_button_label'] ?? 'Daftar',
+            'purchaseMessage' => $class['purchase_message'] ?? '',
             'lynkProductKey' => $class['lynk_product_key'] ?? '',
             'tripayProductKey' => $class['tripay_product_key'] ?? '',
             'thumbnail' => $class['thumbnail'],

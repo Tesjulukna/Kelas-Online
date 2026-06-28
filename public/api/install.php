@@ -58,6 +58,7 @@ $statements = [
         sale_price INT NOT NULL DEFAULT 0,
         purchase_button_label VARCHAR(80) NOT NULL DEFAULT 'Beli Sekarang',
         register_button_label VARCHAR(80) NOT NULL DEFAULT 'Daftar',
+        purchase_message LONGTEXT,
         lynk_product_key VARCHAR(180) NOT NULL DEFAULT '',
         tripay_product_key VARCHAR(180) NOT NULL DEFAULT '',
         thumbnail MEDIUMTEXT,
@@ -455,6 +456,7 @@ ensure_column($pdo, 'classes', 'rating', 'DECIMAL(2,1) NULL AFTER display_studen
 ensure_column($pdo, 'classes', 'sale_price', 'INT NOT NULL DEFAULT 0 AFTER price');
 ensure_column($pdo, 'classes', 'purchase_button_label', "VARCHAR(80) NOT NULL DEFAULT 'Beli Sekarang' AFTER sale_price");
 ensure_column($pdo, 'classes', 'register_button_label', "VARCHAR(80) NOT NULL DEFAULT 'Daftar' AFTER purchase_button_label");
+ensure_column($pdo, 'classes', 'purchase_message', 'LONGTEXT NULL AFTER register_button_label');
 ensure_column($pdo, 'classes', 'lynk_product_key', "VARCHAR(180) NOT NULL DEFAULT '' AFTER revenue");
 ensure_column($pdo, 'classes', 'tripay_product_key', "VARCHAR(180) NOT NULL DEFAULT '' AFTER lynk_product_key");
 ensure_column($pdo, 'classes', 'show_on_homepage', 'TINYINT(1) NOT NULL DEFAULT 1 AFTER lessons');

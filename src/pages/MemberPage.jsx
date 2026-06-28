@@ -21,6 +21,21 @@ function scopedStorageKey(baseKey, userId = '') {
   return userId ? `${baseKey}.${userId}` : baseKey
 }
 
+function parsePaymentTime(value) {
+  if (!value) {
+    return 0
+  }
+
+  if (typeof value === 'number') {
+    return value > 1000000000000 ? value : value * 1000
+  }
+
+  const normalized = String(value).trim().replace(' ', 'T')
+  const time = Date.parse(normalized)
+
+  return Number.isNaN(time) ? 0 : time
+}
+
 function readSubmittedTasks(userId = '') {
   if (typeof window === 'undefined') {
     return {}
@@ -584,6 +599,7 @@ function MemberPage({
   const [dismissedExpiredPayments, setDismissedExpiredPayments] = useState(() =>
     readDismissedExpiredPaymentNotices(userId),
   )
+  const [paymentExpiryTick, setPaymentExpiryTick] = useState(() => Date.now())
   const handledCheckoutRequestRef = useRef('')
   const coursesRef = useRef(courses)
   const onTrackProgressRef = useRef(onTrackProgress)
@@ -728,17 +744,20 @@ function MemberPage({
         const status = String(payment.status || '').toLowerCase()
         const isProductPayment = payment.itemType === 'digital_product' || Boolean(payment.productId)
         const productId = payment.productId || String(payment.classId || '').replace(/^product:/, '')
+        const pendingStatuses = ['pending', 'unpaid', 'waiting', 'callback']
+        const isPendingStatus = pendingStatuses.includes(status)
+        const expiresAtTime = parsePaymentTime(payment.expiresAt)
+        const isExpired =
+          payment.isExpired === true ||
+          status === 'expired' ||
+          (isPendingStatus && expiresAtTime > 0 && expiresAtTime <= paymentExpiryTick)
         const pendingMap = isProductPayment ? nextActivePaymentsByProduct : nextActivePaymentsByClass
         const expiredMap = isProductPayment ? nextExpiredPaymentsByProduct : nextExpiredPaymentsByClass
         const key = isProductPayment ? productId : payment.classId
         const currentPending = pendingMap.get(key)
         const currentExpired = expiredMap.get(key)
 
-        if (
-          ['pending', 'unpaid', 'waiting', 'callback'].includes(status) &&
-          payment.checkoutUrl &&
-          !payment.isExpired
-        ) {
+        if (isPendingStatus && payment.checkoutUrl && !isExpired) {
           if (
             !currentPending ||
             Date.parse(payment.createdAt || '') > Date.parse(currentPending.createdAt || '')
@@ -747,7 +766,7 @@ function MemberPage({
           }
         }
 
-        if (status === 'expired' || payment.isExpired) {
+        if (isExpired) {
           if (
             !currentExpired ||
             Date.parse(payment.createdAt || '') > Date.parse(currentExpired.createdAt || '')
@@ -763,11 +782,19 @@ function MemberPage({
       activePaymentsByProduct: nextActivePaymentsByProduct,
       expiredPaymentsByProduct: nextExpiredPaymentsByProduct,
     }
-  }, [payments])
+  }, [paymentExpiryTick, payments])
 
   useEffect(() => {
     coursesRef.current = courses
   }, [courses])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setPaymentExpiryTick(Date.now())
+    }, 30000)
+
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     onTrackProgressRef.current = onTrackProgress
