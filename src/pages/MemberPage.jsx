@@ -103,6 +103,83 @@ function getProtectedVideoUrl(material, sessionToken = '') {
   return `/api/video?${params.toString()}`
 }
 
+const memberAboutFrameStyle = `<style>
+  html { scroll-behavior: smooth; }
+  img, video, iframe { max-width: 100%; }
+  * { box-sizing: border-box; }
+</style>`
+
+const memberAboutAnchorScript = `<script>
+(() => {
+  document.addEventListener('click', (event) => {
+    const clickedElement = event.target && event.target.nodeType === 1
+      ? event.target
+      : event.target?.parentElement
+    const link = clickedElement?.closest?.('a[href^="#"]')
+
+    if (!link) {
+      return
+    }
+
+    const hash = link.getAttribute('href') || ''
+
+    if (hash.length < 2 || hash === '#') {
+      return
+    }
+
+    let targetId = hash.slice(1)
+
+    try {
+      targetId = decodeURIComponent(targetId)
+    } catch {
+      targetId = hash.slice(1)
+    }
+
+    const namedTargets = document.getElementsByName
+      ? document.getElementsByName(targetId)
+      : []
+    const target = document.getElementById(targetId) || namedTargets[0]
+
+    if (!target) {
+      event.preventDefault()
+      return
+    }
+
+    event.preventDefault()
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+    try {
+      history.replaceState(null, '', hash)
+    } catch {
+      // Ignore history updates in sandboxed frames.
+    }
+  })
+})()
+</script>`
+
+function stripExecutableMemberAboutHtml(value) {
+  return String(value || '')
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<base\b[^>]*>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
+}
+
+function enhanceMemberAboutSrcDoc(value) {
+  let content = stripExecutableMemberAboutHtml(value)
+
+  if (/<head[\s>]/i.test(content)) {
+    content = content.replace(/<head([^>]*)>/i, `<head$1>${memberAboutFrameStyle}`)
+  }
+
+  if (/<\/body>/i.test(content)) {
+    return content.replace(/<\/body>/i, `${memberAboutAnchorScript}</body>`)
+  }
+
+  return `${content}${memberAboutFrameStyle}${memberAboutAnchorScript}`
+}
+
 function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
   const trimmedHtml = String(html || '').trim()
   const safeTitle = String(title || 'Tentang')
@@ -121,7 +198,7 @@ function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
   `
 
   if (/<html[\s>]/i.test(content) || /<!doctype/i.test(content)) {
-    return content
+    return enhanceMemberAboutSrcDoc(content)
   }
 
   return `<!doctype html>
@@ -138,7 +215,7 @@ function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
       img, video, iframe { max-width: 100%; }
     </style>
   </head>
-  <body>${content}</body>
+  <body>${stripExecutableMemberAboutHtml(content)}${memberAboutAnchorScript}</body>
 </html>`
 }
 
@@ -3015,7 +3092,7 @@ function MemberPage({
                 safeWebsiteSettings.memberAbout.html,
                 safeWebsiteSettings.memberAbout.title || 'Tentang',
               )}
-              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
             />
           </div>
         </section>
