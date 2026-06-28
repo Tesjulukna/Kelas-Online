@@ -3011,13 +3011,7 @@ function MemberPage({
       )}
 
       {activeMenu === 'about' && (
-        <section className="panel member-about-panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Tentang</p>
-              <h2>{safeWebsiteSettings.memberAbout.title || 'Tentang'}</h2>
-            </div>
-          </div>
+        <section className="member-about-page">
           <div className="member-about-frame-wrap">
             <iframe
               title={safeWebsiteSettings.memberAbout.title || 'Tentang member'}
