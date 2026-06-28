@@ -42,7 +42,7 @@ return [
     'tripay_default_method' => config_env('TRIPAY_DEFAULT_METHOD', 'QRIS'),
     'tripay_default_customer_phone' => config_env('TRIPAY_DEFAULT_CUSTOMER_PHONE', '081234567890'),
     'tripay_expired_minutes' => (int) config_env('TRIPAY_EXPIRED_MINUTES', '1440'),
-    'tripay_callback_url' => config_env('TRIPAY_CALLBACK_URL', 'https://ibnucreative.com/api/tripay-webhook'),
+    'tripay_callback_url' => config_env('TRIPAY_CALLBACK_URL', 'https://ibnucreative.com/api/tripay-webhook.php'),
     'tripay_return_url' => config_env('TRIPAY_RETURN_URL', 'https://ibnucreative.com/member?menu=my-courses'),
 
 

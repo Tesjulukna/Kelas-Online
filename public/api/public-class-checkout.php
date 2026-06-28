@@ -86,7 +86,7 @@ try {
 $merchantCode = tripay_config_value($config, 'tripay_merchant_code', 80);
 $privateKey = tripay_config_value($config, 'tripay_private_key', 300);
 $expiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
-$callbackUrl = clean_external_url($config['tripay_callback_url'] ?? '') ?: tripay_absolute_url('/api/tripay-webhook');
+$callbackUrl = clean_external_url($config['tripay_callback_url'] ?? '') ?: tripay_absolute_url('/api/tripay-webhook.php');
 $returnUrl = commerce_login_url($config);
 
 $checkoutPayload = [
