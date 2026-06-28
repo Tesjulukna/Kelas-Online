@@ -17050,24 +17050,24 @@ img {
   }
 
   .catalog-section .catalog-card .card-title {
-    display: -webkit-box !important;
-    font-size: clamp(0.76rem, 3.35vw, 0.9rem) !important;
-    line-height: 1.14 !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
-    min-height: 2.38em !important;
-    max-height: 2.38em !important;
+    display: block !important;
+    font-size: clamp(0.68rem, 2.92vw, 0.78rem) !important;
+    line-height: 1.18 !important;
+    -webkit-line-clamp: initial !important;
+    min-height: 0 !important;
+    max-height: none !important;
     margin: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     overflow-wrap: anywhere !important;
+    word-break: break-word !important;
   }
 }
 
 @media (max-width: 380px) {
   .catalog-section .catalog-card .card-title {
-    font-size: clamp(0.72rem, 3.15vw, 0.82rem) !important;
-    line-height: 1.12 !important;
-    min-height: 2.34em !important;
-    max-height: 2.34em !important;
+    font-size: clamp(0.64rem, 2.82vw, 0.72rem) !important;
+    line-height: 1.18 !important;
+    min-height: 0 !important;
+    max-height: none !important;
   }
 }
