@@ -87,6 +87,7 @@ create table if not exists public.digital_products (
   block_layout text not null default 'default',
   require_customer_name boolean not null default false,
   require_customer_phone boolean not null default false,
+  auto_create_member boolean not null default false,
   lynk_product_key text not null default '',
   tripay_product_key text not null default '',
   show_on_homepage boolean not null default true,
@@ -133,6 +134,7 @@ alter table public.digital_products add column if not exists customer_questions 
 alter table public.digital_products add column if not exists block_layout text not null default 'default';
 alter table public.digital_products add column if not exists require_customer_name boolean not null default false;
 alter table public.digital_products add column if not exists require_customer_phone boolean not null default false;
+alter table public.digital_products add column if not exists auto_create_member boolean not null default false;
 alter table public.digital_products add column if not exists show_on_homepage boolean not null default true;
 alter table public.digital_products add column if not exists show_on_member boolean not null default true;
 alter table public.digital_products add column if not exists highlighted boolean not null default false;

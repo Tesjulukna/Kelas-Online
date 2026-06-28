@@ -851,6 +851,49 @@ function lynk_find_classes(PDO $pdo, array $payload, array $productCandidates, a
     return array_values(array_unique(array_filter($classIds)));
 }
 
+function lynk_find_explicit_classes(PDO $pdo, array $productCandidates, array $config): array
+{
+    $map = is_array($config['lynk_product_class_map'] ?? null)
+        ? $config['lynk_product_class_map']
+        : [];
+    $candidateKeys = array_values(array_unique(array_filter(array_map('lynk_normalize_key', $productCandidates))));
+    $classIds = [];
+
+    foreach ($map as $productKey => $mappedClassIds) {
+        if (!in_array(lynk_normalize_key($productKey), $candidateKeys, true)) {
+            continue;
+        }
+
+        foreach ((array) $mappedClassIds as $classId) {
+            $classIds[] = clean_text($classId, 120);
+        }
+    }
+
+    try {
+        $classes = $pdo
+            ->query("SELECT id, lynk_product_key FROM classes WHERE lynk_product_key <> '' ORDER BY id ASC")
+            ->fetchAll();
+    } catch (Throwable $error) {
+        return array_values(array_unique(array_filter($classIds)));
+    }
+
+    foreach ($classes as $class) {
+        $keys = [
+            lynk_normalize_key($class['id'] ?? ''),
+            lynk_normalize_key($class['lynk_product_key'] ?? ''),
+        ];
+
+        foreach ($candidateKeys as $candidateKey) {
+            if ($candidateKey !== '' && in_array($candidateKey, $keys, true)) {
+                $classIds[] = $class['id'];
+                continue 2;
+            }
+        }
+    }
+
+    return array_values(array_unique(array_filter($classIds)));
+}
+
 function lynk_find_products(PDO $pdo, array $productCandidates): array
 {
     try {
@@ -1166,6 +1209,10 @@ $paidAmount = lynk_amount_from_payload($payload) ?: lynk_amount_from_payload($da
 $classIds = lynk_find_classes($pdo, $payload, $productCandidates, $config);
 $productIds = lynk_find_products($pdo, $productCandidates);
 
+if ($productIds) {
+    $classIds = lynk_find_explicit_classes($pdo, $productCandidates, $config);
+}
+
 if ($orderId === '') {
     $orderId = $eventId ?: hash('sha256', $rawBody);
 }
@@ -1236,12 +1283,23 @@ if (!$classIds && !$productIds) {
 
 $productAccessResults = [];
 $productEmailResults = [];
+$productAccountEmailResults = [];
+$firstProductAccountResult = null;
 
 foreach ($productIds as $productId) {
     try {
+        $accountResult = commerce_grant_product_member_account($pdo, [
+            'productId' => $productId,
+            'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
+            'buyerEmail' => $buyerEmail,
+            'buyerPhone' => $buyerPhone,
+        ], $config);
+        if (!empty($accountResult['enabled']) && $firstProductAccountResult === null) {
+            $firstProductAccountResult = $accountResult;
+        }
         $accessResult = commerce_grant_digital_product_access($pdo, [
             'productId' => $productId,
-            'memberId' => '',
+            'memberId' => $accountResult['member']['id'] ?? '',
             'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
             'buyerEmail' => $buyerEmail,
             'source' => 'lynk',
@@ -1267,6 +1325,22 @@ foreach ($productIds as $productId) {
             ),
             'deliveryNote' => $accessResult['product']['delivery_note'] ?? '',
         ]);
+        $accessUrl = clean_asset_url(
+            ($accessResult['product']['file_url'] ?? '')
+                ?: commerce_public_product_access_url($accessResult['access']['order_id'] ?? ($orderId . '-' . $productId)),
+            1000,
+        );
+        $productAccountEmailResults[] = !empty($accountResult['enabled'])
+            ? send_product_access_credentials_email([
+                'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
+                'buyerEmail' => $buyerEmail,
+                'username' => clean_text($accountResult['member']['username'] ?? '', 120),
+                'password' => $accountResult['password'],
+                'productTitle' => clean_text($accessResult['product']['title'] ?? 'Produk digital', 180),
+                'loginUrl' => $accountResult['loginUrl'],
+                'accessUrl' => $accessUrl,
+            ])
+            : ['sent' => false, 'message' => 'Akun otomatis produk tidak aktif.'];
     } catch (Throwable $error) {
         // Continue with other mapped products/classes.
     }
@@ -1276,8 +1350,8 @@ if (!$classIds) {
     $firstProduct = $productAccessResults[0]['product'] ?? [];
     $insertOrder = $pdo->prepare(
         'INSERT INTO lynk_orders
-        (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, status, payload)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, member_id, username, password_created, status, payload)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     );
     $insertOrder->execute([
         make_id('lynk'),
@@ -1288,6 +1362,9 @@ if (!$classIds) {
         $productKey,
         clean_text($firstProduct['title'] ?? ($productDisplayName ?: ($productKey ?: 'Produk digital')), 240),
         json_encode([], JSON_UNESCAPED_UNICODE),
+        $firstProductAccountResult['member']['id'] ?? '',
+        $firstProductAccountResult['member']['username'] ?? '',
+        !empty($firstProductAccountResult['passwordCreated']) ? 1 : 0,
         'product_processed',
         $rawBody,
     ]);
@@ -1297,6 +1374,7 @@ if (!$classIds) {
         'message' => 'Akses produk digital berhasil dibuat dari pembayaran Lynk.id.',
         'productIds' => $productIds,
         'emailResults' => $productEmailResults,
+        'accountEmailResults' => $productAccountEmailResults,
     ]);
 }
 
@@ -1408,6 +1486,7 @@ send_json(200, [
     'emailSent' => !empty($emailResult['sent']),
     'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? 'Email Resend gagal dikirim.'),
     'productEmailResults' => $productEmailResults,
+    'productAccountEmailResults' => $productAccountEmailResults,
     'fulfillmentMessage' => sprintf(
         "Akses kelas aktif.\nLogin: %s\nUsername: %s%s",
         $account['loginUrl'],

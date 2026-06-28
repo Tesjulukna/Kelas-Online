@@ -35,12 +35,20 @@ if (!$product) {
     send_json(404, ['message' => 'Produk digital aktif tidak ditemukan.']);
 }
 
+$config = api_config();
 $amount = commerce_product_effective_price($product);
 
 if ($amount <= 0) {
     $freeOrderId = 'FREE-PUBLIC-' . $product['id'] . '-' . time();
+    $accountResult = commerce_grant_product_member_account($pdo, [
+        'productId' => $product['id'],
+        'buyerEmail' => $buyerEmail,
+        'buyerName' => $buyerName,
+        'buyerPhone' => $buyerPhone,
+    ], $config);
     $accessResult = commerce_grant_digital_product_access($pdo, [
         'productId' => $product['id'],
+        'memberId' => $accountResult['member']['id'] ?? '',
         'buyerEmail' => $buyerEmail,
         'buyerName' => $buyerName,
         'source' => 'free-public',
@@ -54,12 +62,25 @@ if ($amount <= 0) {
         'downloadUrl' => $accessUrl ?: clean_asset_url($product['file_url'] ?? '', 1000),
         'deliveryNote' => $product['delivery_note'] ?? '',
     ]);
+    $accountEmailResult = !empty($accountResult['enabled'])
+        ? send_product_access_credentials_email([
+            'buyerName' => $buyerName,
+            'buyerEmail' => $buyerEmail,
+            'username' => clean_text($accountResult['member']['username'] ?? '', 120),
+            'password' => $accountResult['password'],
+            'productTitle' => clean_text($product['title'] ?? 'Produk digital', 180),
+            'loginUrl' => $accountResult['loginUrl'],
+            'accessUrl' => $accessUrl,
+        ])
+        : ['sent' => false, 'message' => 'Akun otomatis produk tidak aktif.'];
 
     send_json(200, [
         'ok' => true,
         'freeAccessGranted' => $accessResult['granted'],
+        'memberAccountCreated' => !empty($accountResult['enabled']),
         'accessUrl' => $accessUrl,
         'emailSent' => $emailResult['sent'] ?? false,
+        'accountEmailSent' => $accountEmailResult['sent'] ?? false,
         'message' => 'Produk gratis sudah bisa diakses dan dikirim ke email.',
     ]);
 }
@@ -68,7 +89,6 @@ if ($paymentMethod === '') {
     send_json(422, ['message' => 'Pilih metode pembayaran dulu.']);
 }
 
-$config = api_config();
 tripay_assert_config($config);
 
 try {
@@ -141,6 +161,7 @@ $insert->execute([
         'product_title' => $product['title'],
         'delivery_url' => $product['file_url'] ?? '',
         'delivery_note' => $product['delivery_note'] ?? '',
+        'auto_create_member' => !empty($product['auto_create_member']),
         'buyer_phone' => $buyerPhone,
         'accepted_marketing' => $acceptedMarketing,
         'payment_method' => $paymentMethod,

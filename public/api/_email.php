@@ -188,3 +188,54 @@ function send_class_access_credentials_email(array $account): array
         'html' => $html,
     ]);
 }
+
+function send_product_access_credentials_email(array $account): array
+{
+    $loginUrl = clean_asset_url($account['loginUrl'] ?? '', 1000);
+    $accessUrl = clean_asset_url($account['accessUrl'] ?? '', 1000);
+    $passwordText = !empty($account['password'])
+        ? (string) $account['password']
+        : 'Gunakan password akun yang sudah pernah dibuat.';
+    $productTitle = clean_text($account['productTitle'] ?? 'Produk digital IbnuCreative', 180);
+    $buyerName = clean_text($account['buyerName'] ?? 'Pelanggan', 160);
+    $username = clean_text($account['username'] ?? '', 120);
+    $buyerEmail = clean_email($account['buyerEmail'] ?? '');
+
+    $text = "Halo {$buyerName},\n\n"
+        . "Pembelian produk digital Anda sudah berhasil. Kami juga sudah menyiapkan akun member untuk mengakses produk dari dashboard.\n\n"
+        . "Produk: {$productTitle}\n"
+        . "Login: {$loginUrl}\n"
+        . "Email: {$buyerEmail}\n"
+        . "Username: {$username}\n"
+        . "Password: {$passwordText}\n"
+        . ($accessUrl ? "\nLink akses produk: {$accessUrl}\n" : '')
+        . "\nSilakan login dan buka menu Produk Digital.\n\n"
+        . "IbnuCreative Academy";
+
+    $loginButton = $loginUrl
+        ? '<p><a href="' . email_escape($loginUrl) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">Masuk ke Produk Digital</a></p>'
+        : '';
+    $accessButton = $accessUrl
+        ? '<p><a href="' . email_escape($accessUrl) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#eef2ff;color:#1d4ed8;text-decoration:none;font-weight:700">Buka Akses Produk</a></p>'
+        : '';
+    $html = '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">'
+        . '<h2>Akun produk digital Anda sudah aktif</h2>'
+        . '<p>Halo ' . email_escape($buyerName) . ',</p>'
+        . '<p>Pembelian produk digital Anda sudah berhasil. Kami juga sudah menyiapkan akun member untuk mengakses produk dari dashboard.</p>'
+        . '<p><strong>Produk:</strong> ' . email_escape($productTitle) . '</p>'
+        . '<p><strong>Email:</strong> ' . email_escape($buyerEmail) . '<br>'
+        . '<strong>Username:</strong> ' . email_escape($username) . '<br>'
+        . '<strong>Password:</strong> ' . email_escape($passwordText) . '</p>'
+        . $loginButton
+        . $accessButton
+        . ($loginUrl ? '<p>Jika tombol login tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($loginUrl) . '">' . email_escape($loginUrl) . '</a></p>' : '')
+        . '<p>IbnuCreative Academy</p>'
+        . '</div>';
+
+    return send_resend_email([
+        'to' => $buyerEmail,
+        'subject' => 'Akun akses produk ' . $productTitle . ' sudah aktif',
+        'text' => $text,
+        'html' => $html,
+    ]);
+}

@@ -842,6 +842,7 @@ function cleanDigitalProducts(value) {
       blockLayout: cleanText(item.blockLayout || 'default'),
       requireCustomerName: item.requireCustomerName === true,
       requireCustomerPhone: item.requireCustomerPhone === true,
+      autoCreateMember: item.autoCreateMember === true,
       lynkProductKey: cleanLongText(item.lynkProductKey || '', 160),
       tripayProductKey: cleanLongText(item.tripayProductKey || '', 160),
       showOnHomepage: item.showOnHomepage !== false,

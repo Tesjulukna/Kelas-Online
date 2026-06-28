@@ -20,8 +20,8 @@ $products = is_array($payload['digitalProducts'] ?? null) ? $payload['digitalPro
 
 $insert = $pdo->prepare(
     'INSERT INTO digital_products
-    (id, title, description, price, display_sales, rating, status, thumbnail, add_video, video_url, file_url, file_name, delivery_note, platform_type, pay_what_you_want, sale_price, item_quantity_enabled, item_quantity, limit_qty_per_checkout, purchase_button_label, release_time_enabled, release_time, whatsapp_notification, custom_message_enabled, custom_message, reviews, add_ons, customer_questions, block_layout, require_customer_name, require_customer_phone, lynk_product_key, tripay_product_key, show_on_homepage, show_on_member, highlighted)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    (id, title, description, price, display_sales, rating, status, thumbnail, add_video, video_url, file_url, file_name, delivery_note, platform_type, pay_what_you_want, sale_price, item_quantity_enabled, item_quantity, limit_qty_per_checkout, purchase_button_label, release_time_enabled, release_time, whatsapp_notification, custom_message_enabled, custom_message, reviews, add_ons, customer_questions, block_layout, require_customer_name, require_customer_phone, auto_create_member, lynk_product_key, tripay_product_key, show_on_homepage, show_on_member, highlighted)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 
 try {
@@ -66,6 +66,7 @@ try {
             clean_text($product['blockLayout'] ?? 'default', 40),
             !empty($product['requireCustomerName']) ? 1 : 0,
             !empty($product['requireCustomerPhone']) ? 1 : 0,
+            !empty($product['autoCreateMember']) ? 1 : 0,
             clean_text($product['lynkProductKey'] ?? '', 180),
             clean_text($product['tripayProductKey'] ?? '', 180),
             array_key_exists('showOnHomepage', $product) && empty($product['showOnHomepage']) ? 0 : 1,

@@ -480,6 +480,7 @@ function createEmptyDigitalProductForm() {
     blockLayout: 'default',
     requireCustomerName: false,
     requireCustomerPhone: false,
+    autoCreateMember: false,
     customerQuestions: [],
     lynkProductKey: '',
     tripayProductKey: '',
@@ -1953,6 +1954,7 @@ function AdminPage({
       blockLayout: product.blockLayout || 'default',
       requireCustomerName: product.requireCustomerName === true,
       requireCustomerPhone: product.requireCustomerPhone === true,
+      autoCreateMember: product.autoCreateMember === true,
       customerQuestions: Array.isArray(product.customerQuestions) ? product.customerQuestions : [],
       lynkProductKey: product.lynkProductKey || '',
       tripayProductKey: product.tripayProductKey || '',
@@ -4010,6 +4012,19 @@ function AdminPage({
                       name="showOnMember"
                       type="checkbox"
                       checked={digitalProductForm.showOnMember !== false}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Buat akun member otomatis
+                      <small>Aktifkan jika pembeli produk perlu login dan menerima username/password lewat email.</small>
+                    </span>
+                    <input
+                      name="autoCreateMember"
+                      type="checkbox"
+                      checked={digitalProductForm.autoCreateMember === true}
                       onChange={handleDigitalProductFormChange}
                     />
                   </label>

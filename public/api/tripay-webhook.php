@@ -117,9 +117,23 @@ $isPublicClassOrder = clean_text($orderPayload['order_type'] ?? '', 60) === 'pub
 
 if ($isDigitalProductOrder) {
     $productId = clean_text($orderPayload['product_id'] ?? '', 120);
+    $accountResult = empty($order['member_id'])
+        ? commerce_grant_product_member_account($pdo, [
+            'productId' => $productId,
+            'buyerName' => $order['buyer_name'] ?? 'Pelanggan',
+            'buyerEmail' => $order['buyer_email'] ?? '',
+            'buyerPhone' => $orderPayload['buyer_phone'] ?? '',
+        ], $config)
+        : [
+            'enabled' => false,
+            'member' => null,
+            'password' => null,
+            'loginUrl' => commerce_login_url($config),
+        ];
+    $memberId = clean_text(($order['member_id'] ?? '') ?: ($accountResult['member']['id'] ?? ''), 120);
     $accessResult = commerce_grant_digital_product_access($pdo, [
         'productId' => $productId,
-        'memberId' => $order['member_id'] ?? '',
+        'memberId' => $memberId,
         'buyerEmail' => $order['buyer_email'] ?? '',
         'buyerName' => $order['buyer_name'] ?? 'Pelanggan',
         'source' => 'tripay',
@@ -128,11 +142,12 @@ if ($isDigitalProductOrder) {
 
     $update = $pdo->prepare(
         'UPDATE tripay_orders
-        SET reference = ?, status = ?, access_granted = ?, payload = ?
+        SET reference = ?, member_id = ?, status = ?, access_granted = ?, payload = ?
         WHERE id = ?',
     );
     $update->execute([
         $reference ?: ($order['reference'] ?? ''),
+        $memberId,
         'processed',
         $accessResult['granted'] ? 1 : 0,
         json_encode(array_merge($orderPayload, ['callback' => $payload]), JSON_UNESCAPED_UNICODE),
@@ -149,6 +164,17 @@ if ($isDigitalProductOrder) {
         'downloadUrl' => $accessUrl,
         'deliveryNote' => clean_text($accessResult['product']['delivery_note'] ?? ($orderPayload['delivery_note'] ?? ''), 1200),
     ]);
+    $accountEmailResult = !empty($accountResult['enabled'])
+        ? send_product_access_credentials_email([
+            'buyerName' => clean_text($order['buyer_name'] ?? 'Pelanggan', 160),
+            'buyerEmail' => clean_email($order['buyer_email'] ?? ''),
+            'username' => clean_text($accountResult['member']['username'] ?? '', 120),
+            'password' => $accountResult['password'],
+            'productTitle' => clean_text($accessResult['product']['title'] ?? $order['class_title'] ?? 'Produk digital', 180),
+            'loginUrl' => $accountResult['loginUrl'],
+            'accessUrl' => $accessUrl,
+        ])
+        : ['sent' => false, 'message' => 'Akun otomatis produk tidak aktif.'];
 
     send_json(200, [
         'ok' => true,
@@ -159,7 +185,9 @@ if ($isDigitalProductOrder) {
         'reference' => $reference ?: ($order['reference'] ?? ''),
         'productId' => $productId,
         'accessGranted' => $accessResult['granted'],
+        'memberAccountCreated' => !empty($accountResult['enabled']),
         'emailSent' => $emailResult['sent'] ?? false,
+        'accountEmailSent' => $accountEmailResult['sent'] ?? false,
         'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
     ]);
 }

@@ -68,6 +68,7 @@ function ensure_digital_products_schema(PDO $pdo): void
     ensure_digital_product_column($pdo, 'block_layout', "VARCHAR(40) NOT NULL DEFAULT 'default'");
     ensure_digital_product_column($pdo, 'require_customer_name', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'require_customer_phone', 'TINYINT(1) NOT NULL DEFAULT 0');
+    ensure_digital_product_column($pdo, 'auto_create_member', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'lynk_product_key', "VARCHAR(180) NOT NULL DEFAULT ''");
     ensure_digital_product_column($pdo, 'tripay_product_key', "VARCHAR(180) NOT NULL DEFAULT ''");
     ensure_digital_product_column($pdo, 'show_on_homepage', 'TINYINT(1) NOT NULL DEFAULT 1');
@@ -110,6 +111,7 @@ function digital_product_public(array $row): array
         'blockLayout' => $row['block_layout'] ?? 'default',
         'requireCustomerName' => !empty($row['require_customer_name']),
         'requireCustomerPhone' => !empty($row['require_customer_phone']),
+        'autoCreateMember' => !empty($row['auto_create_member']),
         'lynkProductKey' => $row['lynk_product_key'] ?? '',
         'tripayProductKey' => $row['tripay_product_key'] ?? '',
         'showOnHomepage' => array_key_exists('show_on_homepage', $row) ? (bool) $row['show_on_homepage'] : true,

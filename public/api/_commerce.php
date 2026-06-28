@@ -118,6 +118,23 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
     }
 
     if ($existing) {
+        if ($memberId !== '' && empty($existing['member_id'])) {
+            $update = $pdo->prepare(
+                'UPDATE digital_product_access
+                SET member_id = ?, buyer_name = ?
+                WHERE id = ?',
+            );
+            $update->execute([
+                $memberId,
+                clean_text($args['buyerName'] ?? ($existing['buyer_name'] ?? 'Pelanggan'), 160),
+                $existing['id'],
+            ]);
+
+            $query = $pdo->prepare('SELECT * FROM digital_product_access WHERE id = ? LIMIT 1');
+            $query->execute([$existing['id']]);
+            $existing = $query->fetch() ?: $existing;
+        }
+
         return [
             'granted' => false,
             'access' => $existing,
@@ -151,6 +168,98 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
         'granted' => true,
         'access' => $query->fetch(),
         'product' => $product,
+    ];
+}
+
+function commerce_grant_product_member_account(PDO $pdo, array $args, array $config): array
+{
+    $productId = clean_text($args['productId'] ?? '', 120);
+    $product = commerce_fetch_product($pdo, $productId, false);
+
+    if (!$product) {
+        send_json(404, ['message' => 'Produk digital untuk aktivasi akun tidak ditemukan.']);
+    }
+
+    if (empty($product['auto_create_member'])) {
+        return [
+            'enabled' => false,
+            'member' => null,
+            'product' => $product,
+            'passwordCreated' => false,
+            'password' => null,
+            'loginUrl' => commerce_login_url($config),
+        ];
+    }
+
+    $buyerEmail = clean_email($args['buyerEmail'] ?? '');
+    $buyerName = clean_text($args['buyerName'] ?? '', 160) ?: 'Pelanggan IbnuCreative';
+    $buyerPhone = clean_phone($args['buyerPhone'] ?? '');
+
+    if ($buyerEmail === '') {
+        send_json(422, ['message' => 'Email pembeli wajib tersedia untuk membuat akun produk digital.']);
+    }
+
+    $password = commerce_generated_password($buyerEmail, $config);
+    $passwordCreated = false;
+    $memberQuery = $pdo->prepare('SELECT * FROM accounts WHERE role = ? AND email = ? LIMIT 1');
+    $memberQuery->execute(['member', $buyerEmail]);
+    $member = $memberQuery->fetch();
+
+    if ($member) {
+        $passwordHash = !empty($config['lynk_reset_existing_member_password'])
+            ? hash_password_value($password)
+            : $member['password_hash'];
+        $passwordCreated = !empty($config['lynk_reset_existing_member_password']);
+        $update = $pdo->prepare(
+            'UPDATE accounts
+            SET name = ?, phone = ?, status = ?, password_hash = ?
+            WHERE id = ? AND role = ?',
+        );
+        $update->execute([
+            $buyerName ?: ($member['name'] ?? 'Pelanggan IbnuCreative'),
+            $buyerPhone ?: ($member['phone'] ?? ''),
+            'Aktif',
+            $passwordHash,
+            $member['id'],
+            'member',
+        ]);
+        $member['name'] = $buyerName ?: ($member['name'] ?? 'Pelanggan IbnuCreative');
+        $member['phone'] = $buyerPhone ?: ($member['phone'] ?? '');
+    } else {
+        $member = [
+            'id' => make_id('member'),
+            'username' => commerce_unique_username($pdo, $buyerEmail, $buyerName),
+            'name' => $buyerName,
+            'email' => $buyerEmail,
+        ];
+        $passwordCreated = true;
+        $insert = $pdo->prepare(
+            'INSERT INTO accounts
+            (id, role, name, username, email, phone, status, avatar, allowed_class_ids, password_hash, joined_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        );
+        $insert->execute([
+            $member['id'],
+            'member',
+            $buyerName,
+            $member['username'],
+            $buyerEmail,
+            $buyerPhone,
+            'Aktif',
+            '',
+            json_encode([], JSON_UNESCAPED_UNICODE),
+            hash_password_value($password),
+            date('Y-m-d'),
+        ]);
+    }
+
+    return [
+        'enabled' => true,
+        'member' => $member,
+        'product' => $product,
+        'passwordCreated' => $passwordCreated,
+        'password' => $passwordCreated ? $password : null,
+        'loginUrl' => commerce_login_url($config),
     ];
 }
 

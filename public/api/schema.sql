@@ -261,6 +261,7 @@ CREATE TABLE IF NOT EXISTS digital_products (
   block_layout VARCHAR(40) NOT NULL DEFAULT 'default',
   require_customer_name TINYINT(1) NOT NULL DEFAULT 0,
   require_customer_phone TINYINT(1) NOT NULL DEFAULT 0,
+  auto_create_member TINYINT(1) NOT NULL DEFAULT 0,
   lynk_product_key VARCHAR(180) NOT NULL DEFAULT '',
   tripay_product_key VARCHAR(180) NOT NULL DEFAULT '',
   show_on_homepage TINYINT(1) NOT NULL DEFAULT 1,
