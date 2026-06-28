@@ -140,6 +140,62 @@ function tripay_post_transaction(array $config, array $payload): array
     ];
 }
 
+function tripay_fetch_transaction_detail(array $config, string $reference): array
+{
+    $reference = clean_text($reference, 180);
+
+    if ($reference === '') {
+        return ['ok' => false, 'message' => 'Reference Tripay kosong.'];
+    }
+
+    if (!function_exists('curl_init')) {
+        return ['ok' => false, 'message' => 'Ekstensi cURL PHP belum aktif.'];
+    }
+
+    $curl = curl_init(tripay_api_base_url($config) . '/transaction/detail?' . http_build_query([
+        'reference' => $reference,
+    ]));
+
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . tripay_config_value($config, 'tripay_api_key', 300),
+            'Accept: application/json',
+            'User-Agent: ibnucreative-tripay-status-sync',
+        ],
+        CURLOPT_TIMEOUT => 15,
+    ]);
+
+    $body = curl_exec($curl);
+    $error = curl_error($curl);
+    $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+
+    curl_close($curl);
+
+    if ($body === false || $error !== '') {
+        return ['ok' => false, 'message' => 'Koneksi detail Tripay gagal.'];
+    }
+
+    $data = json_decode((string) $body, true);
+    $data = is_array($data) ? $data : [];
+
+    if ($status < 200 || $status >= 300 || ($data['success'] ?? true) === false) {
+        return [
+            'ok' => false,
+            'status' => $status,
+            'message' => clean_text($data['message'] ?? $data['error'] ?? 'Detail Tripay gagal diambil.', 240),
+            'raw' => $data,
+        ];
+    }
+
+    return [
+        'ok' => true,
+        'status' => $status,
+        'data' => is_array($data['data'] ?? null) ? $data['data'] : $data,
+        'raw' => $data,
+    ];
+}
+
 function tripay_has_class_access(array $member, string $classId): bool
 {
     $classIds = clean_allowed_class_ids($member['allowed_class_ids'] ?? null);

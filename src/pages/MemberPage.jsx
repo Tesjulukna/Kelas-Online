@@ -414,6 +414,18 @@ function saveDismissedExpiredPaymentNotices(userId = '', value = []) {
   )
 }
 
+function getExpiredPaymentDismissKey(payment) {
+  if (!payment?.id) {
+    return ''
+  }
+
+  return [
+    payment.id,
+    payment.status || 'expired',
+    payment.expiresAt || payment.createdAt || '',
+  ].filter(Boolean).join(':')
+}
+
 function PaymentMethodLogo({ method }) {
   if (method.logoUrl) {
     return (
@@ -2190,8 +2202,9 @@ function MemberPage({
               const isCheckingOut = checkoutClassId === course.id
               const pendingPayment = activePaymentsByClass.get(course.id)
               const expiredPayment = expiredPaymentsByClass.get(course.id)
+              const expiredNoticeKey = getExpiredPaymentDismissKey(expiredPayment)
               const showExpiredNotice =
-                expiredPayment && !dismissedExpiredPayments.includes(expiredPayment.id)
+                Boolean(expiredPayment && expiredNoticeKey && !dismissedExpiredPayments.includes(expiredNoticeKey))
               const accessNote = price
                 ? 'Akses materi dibuka otomatis setelah pembayaran sukses.'
                 : 'Kelas gratis bisa langsung dibuka dari akun member.'
@@ -2238,7 +2251,7 @@ function MemberPage({
                         <button
                           type="button"
                           aria-label="Tutup pemberitahuan pembayaran expired"
-                          onClick={() => dismissExpiredPaymentNotice(expiredPayment.id)}
+                          onClick={() => dismissExpiredPaymentNotice(expiredNoticeKey)}
                         >
                           <Icon name="x" />
                         </button>
@@ -2406,8 +2419,9 @@ function MemberPage({
               const isOwned = ownedDigitalProductIds.has(product.id)
               const pendingPayment = activePaymentsByProduct.get(product.id)
               const expiredPayment = expiredPaymentsByProduct.get(product.id)
+              const expiredNoticeKey = getExpiredPaymentDismissKey(expiredPayment)
               const showExpiredNotice =
-                expiredPayment && !dismissedExpiredPayments.includes(expiredPayment.id)
+                Boolean(expiredPayment && expiredNoticeKey && !dismissedExpiredPayments.includes(expiredNoticeKey))
               const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
               const isInCart = digitalProductCartIds.includes(product.id)
               let buttonLabel = isOwned
@@ -2516,7 +2530,7 @@ function MemberPage({
                         <button
                           type="button"
                           aria-label="Tutup pemberitahuan pembayaran expired"
-                          onClick={() => dismissExpiredPaymentNotice(expiredPayment.id)}
+                          onClick={() => dismissExpiredPaymentNotice(expiredNoticeKey)}
                         >
                           <Icon name="x" />
                         </button>
@@ -2579,8 +2593,9 @@ function MemberPage({
                 const isOwned = ownedDigitalProductIds.has(product.id)
                 const pendingPayment = activePaymentsByProduct.get(product.id)
                 const expiredPayment = expiredPaymentsByProduct.get(product.id)
+                const expiredNoticeKey = getExpiredPaymentDismissKey(expiredPayment)
                 const showExpiredNotice =
-                  expiredPayment && !dismissedExpiredPayments.includes(expiredPayment.id)
+                  Boolean(expiredPayment && expiredNoticeKey && !dismissedExpiredPayments.includes(expiredNoticeKey))
                 const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
                 let buttonLabel = isOwned
                   ? 'Lihat Akses'
@@ -2623,7 +2638,7 @@ function MemberPage({
                           <button
                             type="button"
                             aria-label="Tutup pemberitahuan pembayaran expired"
-                            onClick={() => dismissExpiredPaymentNotice(expiredPayment.id)}
+                            onClick={() => dismissExpiredPaymentNotice(expiredNoticeKey)}
                           >
                             <Icon name="x" />
                           </button>

@@ -1,6 +1,7 @@
 <?php
 
 require __DIR__ . '/_bootstrap.php';
+require_once __DIR__ . '/_tripay.php';
 
 ensure_method(['GET']);
 
@@ -632,6 +633,91 @@ function payment_tripay_expires_at(array $row, array $payload, int $defaultMinut
 function payment_is_pending_status(string $status): bool
 {
     return in_array(strtolower($status), ['pending', 'unpaid', 'waiting', 'callback'], true);
+}
+
+function payment_remote_expired_status(string $status): bool
+{
+    return in_array(strtolower($status), [
+        'expired',
+        'expire',
+        'failed',
+        'failure',
+        'cancel',
+        'canceled',
+        'cancelled',
+        'closed',
+    ], true);
+}
+
+function payment_sync_pending_tripay_order(PDO $pdo, array $config, array $row, array $payload): array
+{
+    $status = strtolower(clean_text($row['status'] ?? 'pending', 40));
+
+    if (!payment_is_pending_status($status) || !empty($row['access_granted'])) {
+        return [$row, $payload];
+    }
+
+    $reference = clean_text($row['reference'] ?? '', 180);
+
+    if ($reference === '' || !function_exists('tripay_fetch_transaction_detail')) {
+        return [$row, $payload];
+    }
+
+    $detailResult = tripay_fetch_transaction_detail($config, $reference);
+
+    if (empty($detailResult['ok']) || !is_array($detailResult['data'] ?? null)) {
+        return [$row, $payload];
+    }
+
+    $detail = $detailResult['data'];
+    $remoteStatus = strtolower(clean_text(payment_payload_value($detail, [
+        'status',
+        'data.status',
+        'payment_status',
+        'data.payment_status',
+    ]) ?? '', 40));
+    $remoteExpiresAt = payment_time_value(payment_payload_value($detail, [
+        'expired_time',
+        'expires_at',
+        'expired_at',
+        'data.expired_time',
+        'data.expires_at',
+        'data.expired_at',
+    ]));
+
+    if ($remoteStatus !== '') {
+        $payload['tripay_status'] = $remoteStatus;
+    }
+
+    if ($remoteExpiresAt > 0) {
+        $payload['expired_time'] = $remoteExpiresAt;
+    }
+
+    $payload['tripay_detail'] = $detail;
+    $shouldMarkExpired =
+        payment_remote_expired_status($remoteStatus) ||
+        ($remoteExpiresAt > 0 && $remoteExpiresAt <= time());
+
+    if (!$shouldMarkExpired) {
+        return [$row, $payload];
+    }
+
+    $encodedPayload = json_encode($payload, JSON_UNESCAPED_UNICODE);
+    $row['status'] = 'expired';
+    $row['payload'] = $encodedPayload;
+
+    try {
+        $update = $pdo->prepare(
+            "UPDATE tripay_orders
+            SET status = ?, payload = ?
+            WHERE id = ? AND status IN ('pending', 'unpaid', 'waiting', 'callback')",
+        );
+        $update->execute(['expired', $encodedPayload, $row['id']]);
+    } catch (Throwable $error) {
+        // The response can still mark the order expired even if DB update is blocked.
+    }
+
+    return [$row, $payload];
 }
 
 function payment_class_amount(array $class): int
@@ -1369,9 +1455,15 @@ try {
 
     foreach ($query->fetchAll() as $row) {
         $payload = payment_order_payload($row);
+        $status = strtolower(clean_text($row['status'] ?? 'pending', 40));
+
+        if (($user['role'] ?? '') !== 'admin') {
+            [$row, $payload] = payment_sync_pending_tripay_order($pdo, $config, $row, $payload);
+            $status = strtolower(clean_text($row['status'] ?? $status, 40));
+        }
+
         $isProduct = clean_text($payload['order_type'] ?? '', 60) === 'digital_product';
         $expiresAt = payment_tripay_expires_at($row, $payload, $expiredMinutes);
-        $status = strtolower(clean_text($row['status'] ?? 'pending', 40));
         $isExpired = payment_is_pending_status($status)
             && empty($row['access_granted'])
             && $expiresAt > 0
