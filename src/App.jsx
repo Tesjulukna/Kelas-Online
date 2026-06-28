@@ -1029,6 +1029,46 @@ function cleanTestimonials(value) {
     }))
 }
 
+function cleanCertificateTemplateItem(item, { requireClassId = true } = {}) {
+  if (!item || typeof item !== 'object') {
+    return null
+  }
+
+  const payload = item.payload && typeof item.payload === 'object' ? item.payload : {}
+  const template = { ...payload, ...item }
+  const id = cleanText(template.id || item.id || '')
+  const classId = cleanText(template.classId || payload.classId || item.classId || '')
+  const elements = Array.isArray(template.elements) ? template.elements : []
+  const hasContent = Boolean(
+    id ||
+      classId ||
+      template.name ||
+      template.backgroundImage ||
+      elements.length,
+  )
+
+  if (!hasContent || (requireClassId && (!id || !classId))) {
+    return null
+  }
+
+  return {
+    id,
+    classId,
+    name: cleanLongText(template.name || 'Template Sertifikat', 180),
+    mentorName: cleanLongText(template.mentorName || '', 140),
+    sizeType: cleanText(template.sizeType || 'a4Landscape'),
+    width: Math.max(320, Math.min(5000, Math.round(Number(template.width) || 1123))),
+    height: Math.max(320, Math.min(5000, Math.round(Number(template.height) || 794))),
+    backgroundColor: cleanText(template.backgroundColor || '#f8fafc'),
+    backgroundImage: cleanLongText(template.backgroundImage || '', 2000),
+    snapToGrid: template.snapToGrid !== false,
+    gridSize: Math.max(4, Math.min(80, Math.round(Number(template.gridSize) || 10))),
+    elements,
+    createdAt: cleanText(template.createdAt || item.createdAt || ''),
+    updatedAt: cleanText(template.updatedAt || item.updatedAt || ''),
+  }
+}
+
 function cleanCertificates(value) {
   if (!Array.isArray(value)) {
     return []
@@ -1048,7 +1088,7 @@ function cleanCertificates(value) {
       templateId: cleanText(item.templateId || ''),
       templateSnapshot:
         item.templateSnapshot && typeof item.templateSnapshot === 'object'
-          ? item.templateSnapshot
+          ? cleanCertificateTemplateItem(item.templateSnapshot, { requireClassId: false })
           : null,
       completedAt: cleanText(item.completedAt || ''),
       issuedAt: cleanText(item.issuedAt || ''),
@@ -1092,28 +1132,8 @@ function cleanCertificateTemplates(value) {
   }
 
   return value
-    .filter((item) => item?.id && item?.classId)
-    .map((item) => {
-      const payload = item.payload && typeof item.payload === 'object' ? item.payload : {}
-      const template = { ...payload, ...item }
-
-      return {
-        id: cleanText(item.id),
-        classId: cleanText(item.classId || payload.classId || ''),
-        name: cleanLongText(item.name || payload.name || 'Template Sertifikat', 180),
-        mentorName: cleanLongText(item.mentorName || payload.mentorName || '', 140),
-        sizeType: cleanText(item.sizeType || payload.sizeType || 'a4Landscape'),
-        width: Math.max(320, Math.min(5000, Math.round(Number(item.width || payload.width) || 1123))),
-        height: Math.max(320, Math.min(5000, Math.round(Number(item.height || payload.height) || 794))),
-        backgroundColor: cleanText(template.backgroundColor || '#f8fafc'),
-        backgroundImage: cleanLongText(template.backgroundImage || '', 2000),
-        snapToGrid: template.snapToGrid !== false,
-        gridSize: Math.max(4, Math.min(80, Math.round(Number(template.gridSize) || 10))),
-        elements: Array.isArray(template.elements) ? template.elements : [],
-        createdAt: cleanText(item.createdAt || ''),
-        updatedAt: cleanText(item.updatedAt || ''),
-      }
-    })
+    .map((item) => cleanCertificateTemplateItem(item))
+    .filter(Boolean)
 }
 
 function cleanPayments(value) {
