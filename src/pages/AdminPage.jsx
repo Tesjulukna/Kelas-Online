@@ -705,6 +705,37 @@ function formatRelativeActivity(value) {
   })
 }
 
+function toDateTimeLocalInputValue(value = '') {
+  const time = value ? Date.parse(value) : Date.now()
+  const date = Number.isNaN(time) ? new Date() : new Date(time)
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+
+  return localDate.toISOString().slice(0, 16)
+}
+
+function fromDateTimeLocalInputValue(value = '') {
+  if (!value) {
+    return new Date().toISOString()
+  }
+
+  const date = new Date(value)
+
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
+}
+
+function createEmptyAdminTestimonialForm() {
+  return {
+    sourceType: 'member',
+    memberId: '',
+    customName: '',
+    customAvatar: '',
+    classId: '',
+    message: '',
+    status: 'approved',
+    createdAt: toDateTimeLocalInputValue(),
+  }
+}
+
 function getMemberAccessibleClasses(member, classes) {
   const activeClasses = classes.filter((course) => course.status === 'Aktif')
 
@@ -898,15 +929,10 @@ function AdminPage({
   const [isDigitalReviewManagerOpen, setIsDigitalReviewManagerOpen] = useState(false)
   const [digitalReviewDraft, setDigitalReviewDraft] = useState(() => createEmptyDigitalProductReview())
   const [isAdminTestimonialModalOpen, setIsAdminTestimonialModalOpen] = useState(false)
-  const [adminTestimonialForm, setAdminTestimonialForm] = useState({
-    sourceType: 'member',
-    memberId: '',
-    customName: '',
-    customAvatar: '',
-    classId: '',
-    message: '',
-    status: 'approved',
-  })
+  const [editingAdminTestimonialId, setEditingAdminTestimonialId] = useState('')
+  const [adminTestimonialForm, setAdminTestimonialForm] = useState(() =>
+    createEmptyAdminTestimonialForm(),
+  )
   const [memberForm, setMemberForm] = useState(() => createEmptyMemberForm())
   const [editingMemberId, setEditingMemberId] = useState(null)
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false)
@@ -1043,6 +1069,33 @@ function AdminPage({
     )
   }
 
+  const openCreateAdminTestimonialModal = () => {
+    setEditingAdminTestimonialId('')
+    setAdminTestimonialForm(createEmptyAdminTestimonialForm())
+    setIsAdminTestimonialModalOpen(true)
+  }
+
+  const closeAdminTestimonialModal = () => {
+    setIsAdminTestimonialModalOpen(false)
+    setEditingAdminTestimonialId('')
+    setAdminTestimonialForm(createEmptyAdminTestimonialForm())
+  }
+
+  const openEditAdminTestimonialModal = (testimonial) => {
+    setEditingAdminTestimonialId(testimonial.id)
+    setAdminTestimonialForm({
+      sourceType: testimonial.memberId ? 'member' : 'custom',
+      memberId: testimonial.memberId || '',
+      customName: testimonial.memberId ? '' : testimonial.memberName || '',
+      customAvatar: testimonial.memberId ? '' : testimonial.memberAvatar || '',
+      classId: testimonial.classId || '',
+      message: testimonial.message || '',
+      status: testimonial.status || 'pending',
+      createdAt: toDateTimeLocalInputValue(testimonial.createdAt),
+    })
+    setIsAdminTestimonialModalOpen(true)
+  }
+
   const updateAdminTestimonialForm = (field, value) => {
     setAdminTestimonialForm((current) => {
       const next = { ...current, [field]: value }
@@ -1088,7 +1141,7 @@ function AdminPage({
     }
 
     try {
-      await onCreateTestimonial({
+      const payload = {
         classId: selectedClass.id,
         memberId: adminTestimonialForm.sourceType === 'member' ? selectedMember?.id || '' : '',
         memberName,
@@ -1097,20 +1150,26 @@ function AdminPage({
           : adminTestimonialForm.customAvatar.trim(),
         message,
         status: adminTestimonialForm.status,
-      })
-      setAdminTestimonialForm({
-        sourceType: 'member',
-        memberId: '',
-        customName: '',
-        customAvatar: '',
-        classId: '',
-        message: '',
-        status: 'approved',
-      })
-      setIsAdminTestimonialModalOpen(false)
-      onNotify('Testimoni admin berhasil ditambahkan.')
+        createdAt: fromDateTimeLocalInputValue(adminTestimonialForm.createdAt),
+      }
+
+      if (editingAdminTestimonialId) {
+        await onUpdateTestimonial({
+          id: editingAdminTestimonialId,
+          ...payload,
+        })
+      } else {
+        await onCreateTestimonial(payload)
+      }
+
+      closeAdminTestimonialModal()
+      onNotify(
+        editingAdminTestimonialId
+          ? 'Testimoni berhasil diperbarui.'
+          : 'Testimoni admin berhasil ditambahkan.',
+      )
     } catch (error) {
-      onNotify(error.message || 'Testimoni admin belum bisa ditambahkan.')
+      onNotify(error.message || 'Testimoni admin belum bisa disimpan.')
     }
   }
 
@@ -5054,7 +5113,7 @@ function AdminPage({
             <button
               className="btn btn-primary"
               type="button"
-              onClick={() => setIsAdminTestimonialModalOpen(true)}
+              onClick={openCreateAdminTestimonialModal}
             >
               <Icon name="message" />
               Tambahkan Testimoni
@@ -5075,7 +5134,10 @@ function AdminPage({
                     <strong>{testimonial.memberName}</strong>
                     <mark>{testimonial.status}</mark>
                   </div>
-                  <small>{testimonial.classTitle}</small>
+                  <small>
+                    {testimonial.classTitle}
+                    {testimonial.createdAt ? ` - ${formatRelativeActivity(testimonial.createdAt)}` : ''}
+                  </small>
                   <p>{testimonial.message}</p>
                   <div className="row-actions testimonial-admin-actions">
                     <button
@@ -5086,6 +5148,9 @@ function AdminPage({
                       onClick={() => handleToggleTestimonialVisibility(testimonial)}
                     >
                       <Icon name={testimonial.status === 'approved' ? 'eyeOff' : 'eye'} />
+                    </button>
+                    <button type="button" onClick={() => openEditAdminTestimonialModal(testimonial)}>
+                      Edit
                     </button>
                     <button
                       type="button"
@@ -5125,7 +5190,7 @@ function AdminPage({
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
-              setIsAdminTestimonialModalOpen(false)
+              closeAdminTestimonialModal()
             }
           }}
         >
@@ -5133,13 +5198,19 @@ function AdminPage({
             <div className="digital-review-modal-heading">
               <div>
                 <p className="eyebrow">Testimoni admin</p>
-                <h3 id="admin-testimonial-modal-title">Tambahkan testimoni</h3>
-                <small>Pilih member yang sudah join kelas, atau buat orang custom dari admin.</small>
+                <h3 id="admin-testimonial-modal-title">
+                  {editingAdminTestimonialId ? 'Edit testimoni' : 'Tambahkan testimoni'}
+                </h3>
+                <small>
+                  {editingAdminTestimonialId
+                    ? 'Ubah nama, kelas, isi testimoni, status, dan tanggal tampil.'
+                    : 'Pilih member yang sudah join kelas, atau buat orang custom dari admin.'}
+                </small>
               </div>
               <button
                 className="icon-action-button"
                 type="button"
-                onClick={() => setIsAdminTestimonialModalOpen(false)}
+                onClick={closeAdminTestimonialModal}
                 aria-label="Tutup tambah testimoni"
               >
                 <Icon name="x" />
@@ -5208,6 +5279,14 @@ function AdminPage({
                     <option value="hidden">Simpan tapi sembunyikan</option>
                   </select>
                 </label>
+                <label>
+                  Tanggal testimoni
+                  <input
+                    type="datetime-local"
+                    value={adminTestimonialForm.createdAt}
+                    onChange={(event) => updateAdminTestimonialForm('createdAt', event.target.value)}
+                  />
+                </label>
               </div>
               {adminTestimonialForm.sourceType === 'custom' && (
                 <label>
@@ -5230,12 +5309,12 @@ function AdminPage({
                 />
               </label>
               <div className="form-actions">
-                <button className="btn btn-secondary" type="button" onClick={() => setIsAdminTestimonialModalOpen(false)}>
+                <button className="btn btn-secondary" type="button" onClick={closeAdminTestimonialModal}>
                   Batal
                 </button>
                 <button className="btn btn-primary" type="submit">
                   <Icon name="message" />
-                  Tambahkan Testimoni
+                  {editingAdminTestimonialId ? 'Simpan Perubahan' : 'Tambahkan Testimoni'}
                 </button>
               </div>
             </form>

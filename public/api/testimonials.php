@@ -47,6 +47,32 @@ function testimonial_public(array $row): array
     ];
 }
 
+function clean_testimonial_status($value): string
+{
+    $status = clean_text($value, 40);
+
+    return in_array($status, ['approved', 'pending', 'hidden', 'rejected'], true)
+        ? $status
+        : 'pending';
+}
+
+function clean_testimonial_date($value): string
+{
+    $rawDate = trim((string) ($value ?? ''));
+
+    if ($rawDate === '') {
+        return date(DATE_ATOM);
+    }
+
+    $timestamp = strtotime($rawDate);
+
+    if ($timestamp === false) {
+        return date(DATE_ATOM);
+    }
+
+    return date(DATE_ATOM, $timestamp);
+}
+
 function fetch_testimonials(PDO $pdo, ?array $user): array
 {
     if (($user['role'] ?? '') === 'admin') {
@@ -94,7 +120,8 @@ if ($method === 'POST') {
     $memberId = clean_text($payload['memberId'] ?? '', 120);
     $memberName = clean_text($payload['memberName'] ?? '', 160);
     $memberAvatar = clean_asset_url($payload['memberAvatar'] ?? '');
-    $status = $isAdmin ? clean_text($payload['status'] ?? 'approved', 40) : 'pending';
+    $status = $isAdmin ? clean_testimonial_status($payload['status'] ?? 'approved') : 'pending';
+    $createdAt = $isAdmin ? clean_testimonial_date($payload['createdAt'] ?? '') : date(DATE_ATOM);
 
     if ($isAdmin) {
         if ($memberId !== '') {
@@ -109,10 +136,6 @@ if ($method === 'POST') {
         }
 
         $memberName = $memberName ?: 'Peserta Ibnu Creative';
-
-        if (!in_array($status, ['approved', 'pending', 'hidden', 'rejected'], true)) {
-            $status = 'approved';
-        }
     } else {
         if (($user['role'] ?? '') !== 'member') {
             send_json(403, ['message' => 'Testimoni hanya bisa dikirim oleh member atau admin.']);
@@ -148,7 +171,7 @@ if ($method === 'POST') {
         clean_text($class['title'] ?? 'Kelas', 180),
         $message,
         $status,
-        date(DATE_ATOM),
+        $createdAt,
     ]);
 
     send_json(200, fetch_testimonials($pdo, $user));
@@ -158,14 +181,74 @@ if ($method === 'PUT') {
     require_user('admin');
     $payload = read_json_body();
     $id = clean_text($payload['id'] ?? '', 120);
-    $status = clean_text($payload['status'] ?? 'pending', 40);
+    $status = clean_testimonial_status($payload['status'] ?? 'pending');
 
     if ($id === '') {
         send_json(400, ['message' => 'ID testimoni wajib dikirim.']);
     }
 
-    $update = $pdo->prepare('UPDATE testimonials SET status = ? WHERE id = ?');
-    $update->execute([$status, $id]);
+    $existingQuery = $pdo->prepare('SELECT * FROM testimonials WHERE id = ? LIMIT 1');
+    $existingQuery->execute([$id]);
+    $existing = $existingQuery->fetch();
+
+    if (!$existing) {
+        send_json(404, ['message' => 'Testimoni tidak ditemukan.']);
+    }
+
+    $classId = clean_text($payload['classId'] ?? ($existing['class_id'] ?? ''), 120);
+    $classTitle = clean_text($existing['class_title'] ?? 'Kelas', 180);
+
+    if ($classId !== ($existing['class_id'] ?? '')) {
+        $classQuery = $pdo->prepare('SELECT title FROM classes WHERE id = ? LIMIT 1');
+        $classQuery->execute([$classId]);
+        $class = $classQuery->fetch();
+
+        if (!$class) {
+            send_json(404, ['message' => 'Kelas tidak ditemukan.']);
+        }
+
+        $classTitle = clean_text($class['title'] ?? 'Kelas', 180);
+    }
+
+    $memberId = clean_text($payload['memberId'] ?? ($existing['member_id'] ?? ''), 120);
+    $memberName = clean_text($payload['memberName'] ?? ($existing['member_name'] ?? 'Member'), 160);
+    $memberAvatar = clean_asset_url($payload['memberAvatar'] ?? ($existing['member_avatar'] ?? ''));
+    $message = clean_text($payload['message'] ?? ($existing['message'] ?? ''), 1200);
+    $createdAt = array_key_exists('createdAt', $payload)
+        ? clean_testimonial_date($payload['createdAt'])
+        : (string) ($existing['created_at'] ?? date(DATE_ATOM));
+
+    if ($memberId !== '') {
+        $memberQuery = $pdo->prepare('SELECT id, name, avatar FROM accounts WHERE id = ? LIMIT 1');
+        $memberQuery->execute([$memberId]);
+        $member = $memberQuery->fetch();
+
+        if ($member) {
+            $memberName = $memberName ?: clean_text($member['name'] ?? 'Member', 160);
+            $memberAvatar = $memberAvatar ?: clean_asset_url($member['avatar'] ?? '');
+        }
+    }
+
+    if ($classId === '' || $message === '' || $memberName === '') {
+        send_json(400, ['message' => 'Nama, kelas, dan testimoni wajib diisi.']);
+    }
+
+    $update = $pdo->prepare(
+        'UPDATE testimonials
+        SET member_id = ?, member_name = ?, member_avatar = ?, class_id = ?, class_title = ?, message = ?, status = ?, created_at = ?
+        WHERE id = ?',
+    );
+    $update->execute([
+        $memberId,
+        $memberName,
+        $memberAvatar,
+        $classId,
+        $classTitle,
+        $message,
+        $status,
+        $createdAt,
+        $id,
+    ]);
     send_json(200, fetch_testimonials($pdo, current_user()));
 }
 
