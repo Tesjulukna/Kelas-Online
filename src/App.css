@@ -17031,3 +17031,43 @@ img {
     align-items: center !important;
   }
 }
+
+/* Homepage catalog mobile guard: keep two-column cards readable in Android in-app browsers. */
+@media (max-width: 600px) {
+  .catalog-section .catalog-card .card-content {
+    padding: 8px 9px 7px !important;
+  }
+
+  .catalog-section .catalog-card .card-rating-row {
+    gap: 6px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .catalog-section .catalog-card .rating-stars,
+  .catalog-section .catalog-card .sales-count {
+    font-size: clamp(0.64rem, 2.9vw, 0.76rem) !important;
+    line-height: 1.15 !important;
+  }
+
+  .catalog-section .catalog-card .card-title {
+    display: -webkit-box !important;
+    font-size: clamp(0.76rem, 3.35vw, 0.9rem) !important;
+    line-height: 1.14 !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    min-height: 2.38em !important;
+    max-height: 2.38em !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .catalog-section .catalog-card .card-title {
+    font-size: clamp(0.72rem, 3.15vw, 0.82rem) !important;
+    line-height: 1.12 !important;
+    min-height: 2.34em !important;
+    max-height: 2.34em !important;
+  }
+}
