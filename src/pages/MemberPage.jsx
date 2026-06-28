@@ -553,7 +553,6 @@ function MemberPage({
   const activeDigitalProducts = withPublicCodes(digitalProducts.filter(
     (product) => product.status === 'Aktif' && product.showOnMember !== false,
   ))
-  const ownedDigitalProductIds = new Set(digitalProductAccess.map((access) => access.productId))
   const accessibleClassIds = Array.isArray(allowedClassIds)
     ? new Set(allowedClassIds)
     : new Set(allActiveCourses.map((course) => course.id))
@@ -597,6 +596,49 @@ function MemberPage({
     () => new Map(digitalProductAccess.map((access) => [access.productId, access])),
     [digitalProductAccess],
   )
+  const paidDigitalProductOrdersByProduct = useMemo(() => {
+    const map = new Map()
+    const paidStatuses = new Set(['processed', 'paid', 'success', 'settlement', 'capture'])
+
+    payments.forEach((payment) => {
+      const isProductPayment = payment.itemType === 'digital_product' || Boolean(payment.productId)
+      const productId = payment.productId || String(payment.classId || '').replace(/^product:/, '')
+      const status = String(payment.status || '').toLowerCase()
+      const hasAccess = payment.accessGranted === true || paidStatuses.has(status)
+      const orderCode = payment.orderCode || payment.merchantRef || payment.reference || ''
+
+      if (!isProductPayment || !productId || !hasAccess || !orderCode) {
+        return
+      }
+
+      const current = map.get(productId)
+
+      if (
+        !current ||
+        Date.parse(payment.updatedAt || payment.createdAt || '') >
+          Date.parse(current.updatedAt || current.createdAt || '')
+      ) {
+        map.set(productId, {
+          ...payment,
+          accessOrderId: orderCode,
+          accessUrl: `/produk-akses/${encodeURIComponent(orderCode)}`,
+        })
+      }
+    })
+
+    return map
+  }, [payments])
+  const ownedDigitalProductIds = useMemo(() => {
+    const ids = new Set(digitalProductAccess.map((access) => access.productId))
+
+    paidDigitalProductOrdersByProduct.forEach((payment, productId) => {
+      if (payment?.accessOrderId) {
+        ids.add(productId)
+      }
+    })
+
+    return ids
+  }, [digitalProductAccess, paidDigitalProductOrdersByProduct])
   const certificatesByClass = useMemo(
     () => new Map(certificates.map((certificate) => [certificate.classId, certificate])),
     [certificates],
@@ -1287,6 +1329,7 @@ function MemberPage({
     const accessOrderId =
       data?.accessOrderId ||
       digitalProductAccessByProduct.get(product.id)?.orderId ||
+      paidDigitalProductOrdersByProduct.get(product.id)?.accessOrderId ||
       ''
     const accessUrl = data?.accessUrl || (accessOrderId
       ? `/produk-akses/${encodeURIComponent(accessOrderId)}`
@@ -1315,7 +1358,7 @@ function MemberPage({
 
     onNotify('Akses produk belum punya link. Hubungi admin.')
     return false
-  }, [digitalProductAccessByProduct, onNotify])
+  }, [digitalProductAccessByProduct, onNotify, paidDigitalProductOrdersByProduct])
 
   const handleStartCheckout = useCallback(async (item, paymentMethod = '', { forceNewPayment = false, itemType = 'class' } = {}) => {
     const price = getCheckoutAmount({ ...item, itemType })
@@ -2341,7 +2384,7 @@ function MemberPage({
               const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
               const isInCart = digitalProductCartIds.includes(product.id)
               let buttonLabel = isOwned
-                ? 'Akses Produk'
+                ? 'Lihat Akses'
                 : pendingPayment
                   ? 'Selesaikan Pembayaran'
                   : price
@@ -2513,7 +2556,7 @@ function MemberPage({
                   expiredPayment && !dismissedExpiredPayments.includes(expiredPayment.id)
                 const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
                 let buttonLabel = isOwned
-                  ? 'Akses Produk'
+                  ? 'Lihat Akses'
                   : pendingPayment
                     ? 'Selesaikan Pembayaran'
                     : price

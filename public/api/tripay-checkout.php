@@ -41,16 +41,21 @@ if ($checkoutType === 'digital_product') {
     }
 
     $accessQuery = $pdo->prepare(
-        'SELECT id FROM digital_product_access
+        'SELECT id, order_id FROM digital_product_access
         WHERE product_id = ? AND (member_id = ? OR buyer_email = ?)
         LIMIT 1',
     );
     $accessQuery->execute([$productId, $member['id'], clean_email($member['email'] ?? '')]);
+    $existingAccess = $accessQuery->fetch();
 
-    if ($accessQuery->fetch()) {
+    if ($existingAccess) {
+        $accessOrderId = clean_text($existingAccess['order_id'] ?? '', 180);
+
         send_json(200, [
             'ok' => true,
             'alreadyHasAccess' => true,
+            'accessOrderId' => $accessOrderId,
+            'accessUrl' => $accessOrderId !== '' ? commerce_public_product_access_url($accessOrderId) : '',
             'message' => 'Akses produk digital sudah aktif.',
         ]);
     }
@@ -99,6 +104,8 @@ if ($amount <= 0) {
             'ok' => true,
             'freeAccessGranted' => $accessResult['granted'],
             'alreadyHasAccess' => !$accessResult['granted'],
+            'accessOrderId' => $accessResult['access']['order_id'] ?? $orderCode,
+            'accessUrl' => commerce_public_product_access_url($accessResult['access']['order_id'] ?? $orderCode),
             'message' => $accessResult['granted']
                 ? 'Akses produk gratis sudah aktif.'
                 : 'Akses produk sudah aktif.',
