@@ -17,6 +17,106 @@ function email_escape_breaks($value): string
     return nl2br(email_escape($value), false);
 }
 
+function email_button(string $url, string $label, string $background = '#2563eb', string $color = '#ffffff'): string
+{
+    $safeUrl = email_escape($url);
+    $safeLabel = email_escape($label);
+
+    return '<a href="' . $safeUrl . '" style="display:inline-block;margin:6px 8px 6px 0;padding:12px 18px;border-radius:10px;background:' . $background . ';color:' . $color . ';text-decoration:none;font-weight:700;font-size:14px;line-height:1.2">' . $safeLabel . '</a>';
+}
+
+function email_panel(string $title, string $content): string
+{
+    return '<div style="margin:18px 0;padding:16px;border:1px solid #e5e7eb;border-radius:14px;background:#ffffff">'
+        . '<h3 style="margin:0 0 10px;font-size:15px;line-height:1.3;color:#111827">' . email_escape($title) . '</h3>'
+        . $content
+        . '</div>';
+}
+
+function email_extract_links(string $message): array
+{
+    if ($message === '') {
+        return [];
+    }
+
+    preg_match_all('/https?:\/\/[^\s<>"\']+/i', $message, $matches);
+    $links = [];
+
+    foreach ($matches[0] ?? [] as $link) {
+        $link = rtrim($link, ".,);]\r\n\t ");
+        $safeLink = clean_asset_url($link, 1200);
+
+        if ($safeLink !== '') {
+            $links[] = $safeLink;
+        }
+    }
+
+    return array_values(array_unique($links));
+}
+
+function email_admin_link_label(string $url): string
+{
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+    if (strpos($host, 'chat.whatsapp.com') !== false) {
+        return 'Masuk Grup';
+    }
+
+    if (strpos($host, 'wa.me') !== false || strpos($host, 'whatsapp.com') !== false) {
+        return 'Konfirmasi Pembayaran';
+    }
+
+    if (strpos($host, 't.me') !== false || strpos($host, 'telegram') !== false) {
+        return 'Masuk Grup';
+    }
+
+    return 'Buka Link';
+}
+
+function email_admin_message_text(string $message): string
+{
+    $message = trim($message);
+
+    if ($message === '') {
+        return '';
+    }
+
+    $cleaned = preg_replace('/https?:\/\/[^\s<>"\']+/i', '', $message) ?? $message;
+    $cleaned = preg_replace("/[ \t]+\n/", "\n", $cleaned) ?? $cleaned;
+    $cleaned = preg_replace("/\n{3,}/", "\n\n", $cleaned) ?? $cleaned;
+
+    return trim($cleaned);
+}
+
+function email_admin_message_html(string $message, string $title = 'Pesan dari admin'): string
+{
+    $message = trim($message);
+
+    if ($message === '') {
+        return '';
+    }
+
+    $links = email_extract_links($message);
+    $text = email_admin_message_text($message);
+    $body = $text !== ''
+        ? '<div style="margin:0;color:#374151;font-size:14px;line-height:1.65">' . email_escape_breaks($text) . '</div>'
+        : '<p style="margin:0;color:#374151;font-size:14px;line-height:1.65">Silakan gunakan tombol berikut untuk melanjutkan.</p>';
+
+    if ($links) {
+        $body .= '<div style="margin-top:12px">';
+
+        foreach ($links as $link) {
+            $label = email_admin_link_label($link);
+            $color = $label === 'Konfirmasi Pembayaran' ? '#16a34a' : '#0f766e';
+            $body .= email_button($link, $label, $color);
+        }
+
+        $body .= '</div>';
+    }
+
+    return email_panel($title, $body);
+}
+
 function send_resend_email(array $message): array
 {
     $config = api_config();
@@ -161,39 +261,75 @@ function send_class_access_credentials_email(array $account): array
     $username = clean_text($account['username'] ?? '', 120);
     $buyerEmail = clean_email($account['buyerEmail'] ?? '');
     $purchaseMessage = clean_text($account['purchaseMessage'] ?? '', 2000);
-    $purchaseMessageText = $purchaseMessage !== ''
-        ? "Pesan dari admin:\n{$purchaseMessage}\n\n"
-        : '';
-    $purchaseMessageHtml = $purchaseMessage !== ''
-        ? '<p><strong>Pesan dari admin:</strong><br>' . email_escape_breaks($purchaseMessage) . '</p>'
-        : '';
+    $purchaseMessageCleanText = email_admin_message_text($purchaseMessage);
+    $purchaseLinks = email_extract_links($purchaseMessage);
+    $purchaseMessageText = '';
+
+    if ($purchaseMessageCleanText !== '' || $purchaseLinks) {
+        $purchaseMessageText .= "Pesan dari admin:\n";
+
+        if ($purchaseMessageCleanText !== '') {
+            $purchaseMessageText .= $purchaseMessageCleanText . "\n";
+        }
+
+        foreach ($purchaseLinks as $link) {
+            $purchaseMessageText .= email_admin_link_label($link) . ": {$link}\n";
+        }
+
+        $purchaseMessageText .= "\n";
+    }
 
     $text = "Halo {$buyerName},\n\n"
         . "Pembayaran kelas Anda sudah berhasil dan akses belajar sudah aktif.\n\n"
         . "Kelas: {$classTitle}\n"
-        . "Login: {$loginUrl}\n"
         . "Email: {$buyerEmail}\n"
         . "Username: {$username}\n"
-        . "Password: {$passwordText}\n\n"
+        . "Password: {$passwordText}\n"
+        . ($loginUrl ? "Login: {$loginUrl}\n" : '')
+        . "\n"
         . $purchaseMessageText
         . "Silakan login dan buka menu Kelas Saya.\n\n"
         . "IbnuCreative Academy";
 
     $loginButton = $loginUrl
-        ? '<p><a href="' . email_escape($loginUrl) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">Masuk ke Kelas Saya</a></p>'
+        ? email_button($loginUrl, 'Masuk ke Kelas Saya', '#2563eb')
         : '';
-    $html = '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">'
-        . '<h2>Akses kelas Anda sudah aktif</h2>'
-        . '<p>Halo ' . email_escape($buyerName) . ',</p>'
-        . '<p>Pembayaran kelas Anda sudah berhasil dan akses belajar sudah aktif.</p>'
-        . '<p><strong>Kelas:</strong> ' . email_escape($classTitle) . '</p>'
-        . '<p><strong>Email:</strong> ' . email_escape($buyerEmail) . '<br>'
-        . '<strong>Username:</strong> ' . email_escape($username) . '<br>'
-        . '<strong>Password:</strong> ' . email_escape($passwordText) . '</p>'
-        . $purchaseMessageHtml
-        . $loginButton
-        . ($loginUrl ? '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($loginUrl) . '">' . email_escape($loginUrl) . '</a></p>' : '')
-        . '<p>IbnuCreative Academy</p>'
+    $classPanel = email_panel(
+        '1. Detail kelas',
+        '<p style="margin:0;color:#374151;font-size:14px;line-height:1.6"><strong style="color:#111827">' . email_escape($classTitle) . '</strong></p>'
+    );
+    $accountPanel = email_panel(
+        '2. Data login akun',
+        '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;color:#374151;font-size:14px;line-height:1.6">'
+            . '<tr><td style="padding:3px 0;width:96px;color:#6b7280">Email</td><td style="padding:3px 0;font-weight:700;color:#111827">' . email_escape($buyerEmail) . '</td></tr>'
+            . '<tr><td style="padding:3px 0;color:#6b7280">Username</td><td style="padding:3px 0;font-weight:700;color:#111827">' . email_escape($username) . '</td></tr>'
+            . '<tr><td style="padding:3px 0;color:#6b7280">Password</td><td style="padding:3px 0;font-weight:700;color:#111827">' . email_escape($passwordText) . '</td></tr>'
+        . '</table>'
+    );
+    $actionPanel = $loginButton
+        ? email_panel(
+            '3. Buka kelas',
+            '<p style="margin:0 0 10px;color:#374151;font-size:14px;line-height:1.6">Gunakan tombol ini untuk masuk ke dashboard belajar.</p>'
+            . '<div>' . $loginButton . '</div>'
+        )
+        : '';
+    $adminPanel = email_admin_message_html($purchaseMessage, $loginButton ? '4. Pesan dan link penting dari admin' : '3. Pesan dan link penting dari admin');
+    $html = '<div style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.6">'
+        . '<div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="padding:24px 24px 18px;background:#0f172a;color:#ffffff">'
+        . '<p style="margin:0 0 8px;color:#bfdbfe;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Pembayaran berhasil</p>'
+        . '<h2 style="margin:0;font-size:24px;line-height:1.25;color:#ffffff">Akses kelas Anda sudah aktif</h2>'
+        . '</div>'
+        . '<div style="padding:24px">'
+        . '<p style="margin:0 0 14px;color:#374151;font-size:15px;line-height:1.7">Halo <strong style="color:#111827">' . email_escape($buyerName) . '</strong>, pembayaran Anda sudah berhasil. Berikut detail akun dan langkah berikutnya.</p>'
+        . $classPanel
+        . $accountPanel
+        . $actionPanel
+        . $adminPanel
+        . ($loginUrl ? '<p style="margin:18px 0 0;color:#6b7280;font-size:13px;line-height:1.6">Jika tombol tidak bisa dibuka, salin link login ini:<br><a href="' . email_escape($loginUrl) . '" style="color:#2563eb">' . email_escape($loginUrl) . '</a></p>' : '')
+        . '<p style="margin:22px 0 0;color:#374151;font-size:14px">IbnuCreative Academy</p>'
+        . '</div>'
+        . '</div>'
         . '</div>';
 
     return send_resend_email([

@@ -1218,12 +1218,14 @@ function lynk_send_credentials_email(string $email, string $name, array $account
         return ['sent' => false, 'message' => 'Pengiriman email kredensial Lynk.id dinonaktifkan.'];
     }
 
-    $passwordLine = $account['password']
-        ? "Password: {$account['password']}\n"
-        : "Password: gunakan password akun yang sudah pernah dibuat.\n";
+    $passwordText = $account['password'] ?: 'Gunakan password akun yang sudah pernah dibuat.';
+    $loginUrl = clean_asset_url($account['loginUrl'] ?? lynk_login_url($config), 1000);
+    $username = clean_text($account['username'] ?? '', 120);
     $purchaseMessages = is_array($account['purchaseMessages'] ?? null) ? $account['purchaseMessages'] : [];
     $purchaseMessageText = '';
-    $purchaseMessageHtml = '';
+    $purchaseMessagePanels = '';
+    $classTitles = [];
+    $messageNumber = 4;
 
     foreach ($purchaseMessages as $messageItem) {
         if (!is_array($messageItem)) {
@@ -1237,34 +1239,73 @@ function lynk_send_credentials_email(string $email, string $name, array $account
             continue;
         }
 
-        $purchaseMessageText .= "Pesan dari admin untuk {$messageTitle}:\n{$messageBody}\n\n";
-        $purchaseMessageHtml .= '<p><strong>Pesan dari admin untuk ' . email_escape($messageTitle) . ':</strong><br>'
-            . email_escape_breaks($messageBody)
-            . '</p>';
+        $classTitles[] = $messageTitle;
+        $cleanMessageText = email_admin_message_text($messageBody);
+        $links = email_extract_links($messageBody);
+        $purchaseMessageText .= "Pesan dari admin untuk {$messageTitle}:\n";
+
+        if ($cleanMessageText !== '') {
+            $purchaseMessageText .= $cleanMessageText . "\n";
+        }
+
+        foreach ($links as $link) {
+            $purchaseMessageText .= email_admin_link_label($link) . ": {$link}\n";
+        }
+
+        $purchaseMessageText .= "\n";
+        $purchaseMessagePanels .= email_admin_message_html($messageBody, $messageNumber . '. Pesan admin - ' . $messageTitle);
+        $messageNumber++;
     }
 
+    $classTitles = array_values(array_unique(array_filter($classTitles)));
+    $classTitleText = $classTitles ? implode(', ', $classTitles) : 'Kelas IbnuCreative';
     $message = "Halo {$name},\n\n"
         . "Pembayaran kelas Anda melalui Lynk.id sudah berhasil dan akses belajar sudah aktif.\n\n"
-        . "Login: {$account['loginUrl']}\n"
+        . "Kelas: {$classTitleText}\n"
         . "Email: {$email}\n"
-        . "Username: {$account['username']}\n"
-        . $passwordLine
+        . "Username: {$username}\n"
+        . "Password: {$passwordText}\n"
+        . ($loginUrl ? "Login: {$loginUrl}\n" : '')
         . "\n"
         . $purchaseMessageText
         . "Silakan login dan buka menu Kelas Saya.\n\n"
         . "IbnuCreative Academy";
-    $loginButton = '<p><a href="' . email_escape($account['loginUrl']) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">Masuk ke Kelas Saya</a></p>';
-    $html = '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">'
-        . '<h2>Akses kelas Anda sudah aktif</h2>'
-        . '<p>Halo ' . email_escape($name) . ',</p>'
-        . '<p>Pembayaran kelas Anda melalui Lynk.id sudah berhasil dan akses belajar sudah aktif.</p>'
-        . '<p><strong>Email:</strong> ' . email_escape($email) . '<br>'
-        . '<strong>Username:</strong> ' . email_escape($account['username'] ?? '') . '<br>'
-        . '<strong>Password:</strong> ' . email_escape($account['password'] ?: 'Gunakan password akun yang sudah pernah dibuat.') . '</p>'
-        . $purchaseMessageHtml
-        . $loginButton
-        . '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($account['loginUrl']) . '">' . email_escape($account['loginUrl']) . '</a></p>'
-        . '<p>IbnuCreative Academy</p>'
+    $loginButton = $loginUrl ? email_button($loginUrl, 'Masuk ke Kelas Saya', '#2563eb') : '';
+    $classPanel = email_panel(
+        '1. Detail kelas',
+        '<p style="margin:0;color:#374151;font-size:14px;line-height:1.6"><strong style="color:#111827">' . email_escape($classTitleText) . '</strong></p>'
+    );
+    $accountPanel = email_panel(
+        '2. Data login akun',
+        '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;color:#374151;font-size:14px;line-height:1.6">'
+            . '<tr><td style="padding:3px 0;width:96px;color:#6b7280">Email</td><td style="padding:3px 0;font-weight:700;color:#111827">' . email_escape($email) . '</td></tr>'
+            . '<tr><td style="padding:3px 0;color:#6b7280">Username</td><td style="padding:3px 0;font-weight:700;color:#111827">' . email_escape($username) . '</td></tr>'
+            . '<tr><td style="padding:3px 0;color:#6b7280">Password</td><td style="padding:3px 0;font-weight:700;color:#111827">' . email_escape($passwordText) . '</td></tr>'
+        . '</table>'
+    );
+    $actionPanel = $loginButton
+        ? email_panel(
+            '3. Buka kelas',
+            '<p style="margin:0 0 10px;color:#374151;font-size:14px;line-height:1.6">Gunakan tombol ini untuk masuk ke dashboard belajar.</p>'
+            . '<div>' . $loginButton . '</div>'
+        )
+        : '';
+    $html = '<div style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.6">'
+        . '<div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="padding:24px 24px 18px;background:#0f172a;color:#ffffff">'
+        . '<p style="margin:0 0 8px;color:#bfdbfe;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Pembayaran Lynk.id berhasil</p>'
+        . '<h2 style="margin:0;font-size:24px;line-height:1.25;color:#ffffff">Akses kelas Anda sudah aktif</h2>'
+        . '</div>'
+        . '<div style="padding:24px">'
+        . '<p style="margin:0 0 14px;color:#374151;font-size:15px;line-height:1.7">Halo <strong style="color:#111827">' . email_escape($name) . '</strong>, pembayaran Anda sudah berhasil. Berikut detail akun dan langkah berikutnya.</p>'
+        . $classPanel
+        . $accountPanel
+        . $actionPanel
+        . $purchaseMessagePanels
+        . ($loginUrl ? '<p style="margin:18px 0 0;color:#6b7280;font-size:13px;line-height:1.6">Jika tombol tidak bisa dibuka, salin link login ini:<br><a href="' . email_escape($loginUrl) . '" style="color:#2563eb">' . email_escape($loginUrl) . '</a></p>' : '')
+        . '<p style="margin:22px 0 0;color:#374151;font-size:14px">IbnuCreative Academy</p>'
+        . '</div>'
+        . '</div>'
         . '</div>';
     $result = send_resend_email([
         'to' => $email,
