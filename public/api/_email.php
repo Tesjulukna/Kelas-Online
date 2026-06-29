@@ -67,11 +67,17 @@ function send_resend_email(array $message): array
     $data = is_array($data) ? $data : [];
 
     if ($body === false || $error !== '' || $status < 200 || $status >= 300) {
-        error_log('IbnuCreative Resend failed: HTTP ' . $status . ' ' . ($error ?: ($data['message'] ?? $data['error'] ?? 'unknown error')));
+        $responseMessage = clean_text($data['message'] ?? $data['error'] ?? '', 220);
+        $failureMessage = $error !== ''
+            ? 'cURL: ' . clean_text($error, 220)
+            : ($responseMessage !== '' ? $responseMessage : 'Email Resend gagal dikirim.');
+        $debugMessage = 'HTTP ' . ($status ?: 0) . ': ' . $failureMessage;
+
+        error_log('IbnuCreative Resend failed: ' . $debugMessage);
 
         return [
             'sent' => false,
-            'message' => clean_text($data['message'] ?? $data['error'] ?? 'Email Resend gagal dikirim.', 240),
+            'message' => clean_text($debugMessage, 260),
         ];
     }
 

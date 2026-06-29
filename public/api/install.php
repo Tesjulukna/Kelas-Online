@@ -197,6 +197,9 @@ $statements = [
         member_id VARCHAR(120) NOT NULL DEFAULT '',
         username VARCHAR(80) NOT NULL DEFAULT '',
         password_created TINYINT(1) NOT NULL DEFAULT 0,
+        email_sent TINYINT(1) NOT NULL DEFAULT 0,
+        email_error VARCHAR(260) NOT NULL DEFAULT '',
+        email_sent_at DATETIME NULL,
         status VARCHAR(40) NOT NULL DEFAULT 'processed',
         payload MEDIUMTEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -482,6 +485,9 @@ ensure_column($pdo, 'submissions', 'attachment_url', "VARCHAR(240) NOT NULL DEFA
 ensure_column($pdo, 'submissions', 'attachment_name', "VARCHAR(180) NOT NULL DEFAULT '' AFTER attachment_url");
 ensure_column($pdo, 'submissions', 'rating', 'TINYINT NOT NULL DEFAULT 0 AFTER feedback');
 ensure_column($pdo, 'lynk_orders', 'password_created', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER username');
+ensure_column($pdo, 'lynk_orders', 'email_sent', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER password_created');
+ensure_column($pdo, 'lynk_orders', 'email_error', "VARCHAR(260) NOT NULL DEFAULT '' AFTER email_sent");
+ensure_column($pdo, 'lynk_orders', 'email_sent_at', 'DATETIME NULL AFTER email_error');
 
 $defaultAdminUsername = clean_username($config['default_admin_username'] ?? 'admin');
 $defaultAdminPassword = (string) ($config['default_admin_password'] ?? 'admin123');

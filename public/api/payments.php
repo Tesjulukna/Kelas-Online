@@ -1397,6 +1397,9 @@ function payment_ensure_runtime_schema(PDO $pdo): void
     payment_ensure_column($pdo, 'payment_snapshots', 'created_at', "VARCHAR(60) NOT NULL DEFAULT ''");
     payment_ensure_column($pdo, 'lynk_orders', 'product_key', "VARCHAR(240) NOT NULL DEFAULT ''");
     payment_ensure_column($pdo, 'lynk_orders', 'product_name', "VARCHAR(240) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'lynk_orders', 'email_sent', 'TINYINT(1) NOT NULL DEFAULT 0');
+    payment_ensure_column($pdo, 'lynk_orders', 'email_error', "VARCHAR(260) NOT NULL DEFAULT ''");
+    payment_ensure_column($pdo, 'lynk_orders', 'email_sent_at', 'DATETIME NULL');
     payment_ensure_column($pdo, 'lynk_orders', 'payload', 'MEDIUMTEXT');
 }
 

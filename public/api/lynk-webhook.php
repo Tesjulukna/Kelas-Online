@@ -659,9 +659,17 @@ function lynk_collect_product_candidates(array $payload): array
         'productKey',
         'product_sku',
         'product_slug',
+        'uuid',
+        'refId',
+        'ref_id',
+        'message_id',
+        'messageId',
         'product_name',
         'productName',
         'item.id',
+        'item.uuid',
+        'item.refId',
+        'item.ref_id',
         'item.slug',
         'item.code',
         'item.sku',
@@ -681,6 +689,18 @@ function lynk_collect_product_candidates(array $payload): array
         'page.id',
         'page.slug',
         'page.code',
+        'message_data.refId',
+        'message_data.ref_id',
+        'message_data.message_id',
+        'data.message_data.refId',
+        'data.message_data.ref_id',
+        'data.message_data.message_id',
+        'messageData.refId',
+        'messageData.ref_id',
+        'messageData.messageId',
+        'data.messageData.refId',
+        'data.messageData.ref_id',
+        'data.messageData.messageId',
         'sku',
         'code',
         'slug',
@@ -718,6 +738,16 @@ function lynk_collect_product_candidates(array $payload): array
         'message_data.order_items',
         'messageData.items',
         'messageData.orderItems',
+        'data.items',
+        'data.products',
+        'data.line_items',
+        'data.lineItems',
+        'data.order_items',
+        'data.orderItems',
+        'data.message_data.items',
+        'data.message_data.order_items',
+        'data.messageData.items',
+        'data.messageData.orderItems',
     ] as $listPath) {
         $items = lynk_nested_array($payload, $listPath);
 
@@ -732,6 +762,9 @@ function lynk_collect_product_candidates(array $payload): array
 
             foreach ([
                 'id',
+                'uuid',
+                'refId',
+                'ref_id',
                 'product_id',
                 'productId',
                 'product_code',
@@ -748,6 +781,9 @@ function lynk_collect_product_candidates(array $payload): array
                 'item_name',
                 'itemName',
                 'product.id',
+                'product.uuid',
+                'product.refId',
+                'product.ref_id',
                 'product.code',
                 'product.sku',
                 'product.slug',
@@ -801,6 +837,44 @@ function lynk_is_paid_event(array $payload): bool
     return false;
 }
 
+function lynk_similarity_tokens(string $value): array
+{
+    $normalized = lynk_normalize_key($value);
+
+    if ($normalized === '') {
+        return [];
+    }
+
+    $tokens = preg_split('/-+/', $normalized) ?: [];
+    $tokens = array_filter($tokens, static function ($token) {
+        return strlen((string) $token) >= 2;
+    });
+
+    return array_values(array_unique($tokens));
+}
+
+function lynk_titles_are_similar(string $candidate, string $classTitle): bool
+{
+    $candidateTokens = lynk_similarity_tokens($candidate);
+    $classTokens = lynk_similarity_tokens($classTitle);
+
+    if (count($candidateTokens) < 4 || count($classTokens) < 4) {
+        return false;
+    }
+
+    $shared = array_values(array_intersect($candidateTokens, $classTokens));
+    $sharedCount = count($shared);
+
+    if ($sharedCount < 4) {
+        return false;
+    }
+
+    $candidateRatio = $sharedCount / max(1, count($candidateTokens));
+    $classRatio = $sharedCount / max(1, count($classTokens));
+
+    return $candidateRatio >= 0.58 || $classRatio >= 0.58;
+}
+
 function lynk_find_classes(PDO $pdo, array $payload, array $productCandidates, array $config): array
 {
     $classes = $pdo
@@ -844,6 +918,13 @@ function lynk_find_classes(PDO $pdo, array $payload, array $productCandidates, a
                     $classIds[] = $class['id'];
                     continue 3;
                 }
+            }
+
+            $classTitle = clean_text($class['title'] ?? '', 240);
+
+            if ($classTitle !== '' && lynk_titles_are_similar($candidateKey, $classTitle)) {
+                $classIds[] = $class['id'];
+                continue 2;
             }
         }
     }
@@ -930,6 +1011,84 @@ function lynk_fetch_class_purchase_messages(PDO $pdo, array $classIds): array
     }
 
     return $messages;
+}
+
+function lynk_decode_class_ids($value): array
+{
+    $decoded = json_decode((string) ($value ?? '[]'), true);
+
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    return array_values(array_unique(array_filter(array_map(static function ($classId) {
+        return clean_text($classId, 120);
+    }, $decoded))));
+}
+
+function lynk_store_email_result(PDO $pdo, string $orderId, array $result): void
+{
+    if ($orderId === '') {
+        return;
+    }
+
+    try {
+        $update = $pdo->prepare(
+            'UPDATE lynk_orders
+            SET email_sent = ?, email_error = ?, email_sent_at = ?
+            WHERE order_id = ?',
+        );
+        $sent = !empty($result['sent']);
+        $update->execute([
+            $sent ? 1 : 0,
+            $sent ? '' : clean_text($result['message'] ?? 'Email Resend gagal dikirim.', 240),
+            $sent ? date('Y-m-d H:i:s') : null,
+            $orderId,
+        ]);
+    } catch (Throwable $error) {
+        // Webhook must keep returning success to Lynk when access already exists.
+    }
+}
+
+function lynk_retry_saved_class_email(PDO $pdo, array $savedOrder, array $config, string $secret): array
+{
+    if (($savedOrder['status'] ?? '') !== 'processed' || !empty($savedOrder['email_sent'])) {
+        return ['attempted' => false, 'sent' => !empty($savedOrder['email_sent']), 'message' => 'Email sudah pernah berhasil atau order bukan kelas.'];
+    }
+
+    $email = clean_email($savedOrder['buyer_email'] ?? '');
+    $classIds = lynk_decode_class_ids($savedOrder['class_ids'] ?? '[]');
+
+    if ($email === '' || !$classIds) {
+        return ['attempted' => false, 'sent' => false, 'message' => 'Data email atau kelas pada order lama tidak lengkap.'];
+    }
+
+    $password = !empty($savedOrder['password_created'])
+        ? lynk_generated_password($email, $secret)
+        : null;
+    $account = [
+        'name' => clean_text($savedOrder['buyer_name'] ?? 'Pembeli Lynk.id', 160),
+        'email' => $email,
+        'username' => clean_text($savedOrder['username'] ?? '', 120),
+        'password' => $password,
+        'loginUrl' => lynk_login_url($config),
+        'classIds' => $classIds,
+        'purchaseMessages' => lynk_fetch_class_purchase_messages($pdo, $classIds),
+    ];
+    $result = lynk_send_credentials_email(
+        $email,
+        $account['name'] ?: 'Pembeli Lynk.id',
+        $account,
+        $config,
+    );
+
+    lynk_store_email_result($pdo, clean_text($savedOrder['order_id'] ?? '', 180), $result);
+
+    return [
+        'attempted' => true,
+        'sent' => !empty($result['sent']),
+        'message' => !empty($result['sent']) ? 'Email berhasil dikirim ulang.' : ($result['message'] ?? 'Email Resend gagal dikirim.'),
+    ];
 }
 
 function lynk_find_products(PDO $pdo, array $productCandidates): array
@@ -1170,6 +1329,9 @@ function lynk_ensure_tables(PDO $pdo): void
             member_id VARCHAR(120) NOT NULL DEFAULT '',
             username VARCHAR(80) NOT NULL DEFAULT '',
             password_created TINYINT(1) NOT NULL DEFAULT 0,
+            email_sent TINYINT(1) NOT NULL DEFAULT 0,
+            email_error VARCHAR(260) NOT NULL DEFAULT '',
+            email_sent_at DATETIME NULL,
             status VARCHAR(40) NOT NULL DEFAULT 'processed',
             payload MEDIUMTEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1229,6 +1391,9 @@ function lynk_ensure_tables(PDO $pdo): void
 
     lynk_ensure_column($pdo, 'lynk_orders', 'product_key', "VARCHAR(240) NOT NULL DEFAULT ''");
     lynk_ensure_column($pdo, 'lynk_orders', 'product_name', "VARCHAR(240) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'lynk_orders', 'email_sent', 'TINYINT(1) NOT NULL DEFAULT 0');
+    lynk_ensure_column($pdo, 'lynk_orders', 'email_error', "VARCHAR(260) NOT NULL DEFAULT ''");
+    lynk_ensure_column($pdo, 'lynk_orders', 'email_sent_at', 'DATETIME NULL');
     lynk_ensure_column($pdo, 'lynk_orders', 'payload', 'MEDIUMTEXT');
     lynk_ensure_column($pdo, 'payment_snapshots', 'source', "VARCHAR(80) NOT NULL DEFAULT 'legacy_access'");
     lynk_ensure_column($pdo, 'payment_snapshots', 'source_label', "VARCHAR(80) NOT NULL DEFAULT 'Akses lama'");
@@ -1278,8 +1443,14 @@ $paidAmount = lynk_amount_from_payload($payload) ?: lynk_amount_from_payload($da
 $classIds = lynk_find_classes($pdo, $payload, $productCandidates, $config);
 $productIds = lynk_find_products($pdo, $productCandidates);
 
-if ($productIds) {
+if ($classIds) {
+    $productIds = [];
+} elseif ($productIds) {
     $classIds = lynk_find_explicit_classes($pdo, $productCandidates, $config);
+
+    if ($classIds) {
+        $productIds = [];
+    }
 }
 
 if ($orderId === '') {
@@ -1297,25 +1468,35 @@ if (!lynk_is_paid_event($payload)) {
 $existingOrder = $pdo->prepare('SELECT * FROM lynk_orders WHERE order_id = ? LIMIT 1');
 $existingOrder->execute([$orderId]);
 $savedOrder = $existingOrder->fetch();
+$reprocessSavedOrderAsClass = false;
 
 if ($savedOrder) {
-    $savedEmail = clean_email($savedOrder['buyer_email'] ?? '');
-    $password = !empty($savedOrder['password_created']) && $savedEmail
-        ? lynk_generated_password($savedEmail, $secret)
-        : null;
+    $savedStatus = clean_text($savedOrder['status'] ?? '', 40);
+    $reprocessSavedOrderAsClass = $classIds && $savedStatus !== 'processed';
 
-    send_json(200, [
-        'ok' => true,
-        'duplicate' => true,
-        'message' => 'Order Lynk.id sudah pernah diproses.',
-        'account' => [
-            'name' => $savedOrder['buyer_name'],
-            'email' => $savedOrder['buyer_email'],
-            'username' => $savedOrder['username'],
-            'password' => $password,
-            'loginUrl' => lynk_login_url($config),
-        ],
-    ]);
+    if (!$reprocessSavedOrderAsClass) {
+        $savedEmail = clean_email($savedOrder['buyer_email'] ?? '');
+        $password = !empty($savedOrder['password_created']) && $savedEmail
+            ? lynk_generated_password($savedEmail, $secret)
+            : null;
+        $retryResult = lynk_retry_saved_class_email($pdo, $savedOrder, $config, $secret);
+
+        send_json(200, [
+            'ok' => true,
+            'duplicate' => true,
+            'message' => 'Order Lynk.id sudah pernah diproses.',
+            'emailRetried' => !empty($retryResult['attempted']),
+            'emailSent' => !empty($retryResult['sent']),
+            'emailError' => !empty($retryResult['sent']) ? '' : ($retryResult['message'] ?? ''),
+            'account' => [
+                'name' => $savedOrder['buyer_name'],
+                'email' => $savedOrder['buyer_email'],
+                'username' => $savedOrder['username'],
+                'password' => $password,
+                'loginUrl' => lynk_login_url($config),
+            ],
+        ]);
+    }
 }
 
 if ($buyerEmail === '') {
@@ -1417,10 +1598,24 @@ foreach ($productIds as $productId) {
 
 if (!$classIds) {
     $firstProduct = $productAccessResults[0]['product'] ?? [];
+    $productEmailSent = false;
+    $productEmailError = '';
+
+    foreach ($productEmailResults as $emailResult) {
+        if (!empty($emailResult['sent'])) {
+            $productEmailSent = true;
+            break;
+        }
+
+        if ($productEmailError === '' && !empty($emailResult['message'])) {
+            $productEmailError = clean_text($emailResult['message'], 240);
+        }
+    }
+
     $insertOrder = $pdo->prepare(
         'INSERT INTO lynk_orders
-        (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, member_id, username, password_created, status, payload)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, member_id, username, password_created, email_sent, email_error, email_sent_at, status, payload)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     );
     $insertOrder->execute([
         make_id('lynk'),
@@ -1434,6 +1629,9 @@ if (!$classIds) {
         $firstProductAccountResult['member']['id'] ?? '',
         $firstProductAccountResult['member']['username'] ?? '',
         !empty($firstProductAccountResult['passwordCreated']) ? 1 : 0,
+        $productEmailSent ? 1 : 0,
+        $productEmailSent ? '' : $productEmailError,
+        $productEmailSent ? date('Y-m-d H:i:s') : null,
         'product_processed',
         $rawBody,
     ]);
@@ -1441,6 +1639,7 @@ if (!$classIds) {
     send_json(200, [
         'ok' => true,
         'message' => 'Akses produk digital berhasil dibuat dari pembayaran Lynk.id.',
+        'mappedAs' => 'digital_product',
         'productIds' => $productIds,
         'emailResults' => $productEmailResults,
         'accountEmailResults' => $productAccountEmailResults,
@@ -1513,26 +1712,51 @@ if ($newAccessIds) {
     }
 }
 
-$insertOrder = $pdo->prepare(
-    'INSERT INTO lynk_orders
-    (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, member_id, username, password_created, status, payload)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-);
-$insertOrder->execute([
-    make_id('lynk'),
-    $eventId,
-    $orderId,
-    $buyerName ?: 'Pembeli Lynk.id',
-    $buyerEmail,
-    $productKey,
-    $productDisplayName ?: $productKey,
-    json_encode($classIds, JSON_UNESCAPED_UNICODE),
-    $member['id'],
-    $member['username'],
-    $passwordCreated ? 1 : 0,
-    'processed',
-    $rawBody,
-]);
+if ($reprocessSavedOrderAsClass) {
+    $updateOrder = $pdo->prepare(
+        'UPDATE lynk_orders
+        SET event_id = ?, buyer_name = ?, buyer_email = ?, product_key = ?, product_name = ?, class_ids = ?,
+            member_id = ?, username = ?, password_created = ?, status = ?, payload = ?,
+            email_sent = 0, email_error = ?, email_sent_at = NULL
+        WHERE order_id = ?',
+    );
+    $updateOrder->execute([
+        $eventId,
+        $buyerName ?: 'Pembeli Lynk.id',
+        $buyerEmail,
+        $productKey,
+        $productDisplayName ?: $productKey,
+        json_encode($classIds, JSON_UNESCAPED_UNICODE),
+        $member['id'],
+        $member['username'],
+        $passwordCreated ? 1 : 0,
+        'processed',
+        $rawBody,
+        '',
+        $orderId,
+    ]);
+} else {
+    $insertOrder = $pdo->prepare(
+        'INSERT INTO lynk_orders
+        (id, event_id, order_id, buyer_name, buyer_email, product_key, product_name, class_ids, member_id, username, password_created, status, payload)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    );
+    $insertOrder->execute([
+        make_id('lynk'),
+        $eventId,
+        $orderId,
+        $buyerName ?: 'Pembeli Lynk.id',
+        $buyerEmail,
+        $productKey,
+        $productDisplayName ?: $productKey,
+        json_encode($classIds, JSON_UNESCAPED_UNICODE),
+        $member['id'],
+        $member['username'],
+        $passwordCreated ? 1 : 0,
+        'processed',
+        $rawBody,
+    ]);
+}
 
 $account = [
     'name' => $buyerName ?: 'Pembeli Lynk.id',
@@ -1549,10 +1773,13 @@ $emailResult = lynk_send_credentials_email(
     $account,
     $config,
 );
+lynk_store_email_result($pdo, $orderId, $emailResult);
 
 send_json(200, [
     'ok' => true,
     'message' => 'Akun member berhasil dibuat atau diperbarui dari pembayaran Lynk.id.',
+    'mappedAs' => 'class',
+    'reprocessed' => $reprocessSavedOrderAsClass,
     'emailSent' => !empty($emailResult['sent']),
     'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? 'Email Resend gagal dikirim.'),
     'productEmailResults' => $productEmailResults,
