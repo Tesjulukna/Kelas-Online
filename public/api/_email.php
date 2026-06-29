@@ -22,15 +22,36 @@ function email_button(string $url, string $label, string $background = '#2563eb'
     $safeUrl = email_escape($url);
     $safeLabel = email_escape($label);
 
-    return '<a href="' . $safeUrl . '" style="display:inline-block;margin:6px 8px 6px 0;padding:12px 18px;border-radius:10px;background:' . $background . ';color:' . $color . ';text-decoration:none;font-weight:700;font-size:14px;line-height:1.2">' . $safeLabel . '</a>';
+    return '<a href="' . $safeUrl . '" style="display:inline-block;box-sizing:border-box;max-width:100%;margin:6px 8px 6px 0;padding:12px 18px;border-radius:10px;background:' . $background . ';color:' . $color . ';text-decoration:none;font-weight:700;font-size:14px;line-height:1.2;text-align:center;overflow-wrap:break-word">' . $safeLabel . '</a>';
 }
 
 function email_panel(string $title, string $content): string
 {
-    return '<div style="margin:18px 0;padding:16px;border:1px solid #e5e7eb;border-radius:14px;background:#ffffff">'
+    return '<div style="box-sizing:border-box;width:100%;max-width:100%;margin:16px 0;padding:14px;border:1px solid #e5e7eb;border-radius:14px;background:#ffffff;overflow-wrap:break-word;word-break:normal">'
         . '<h3 style="margin:0 0 10px;font-size:15px;line-height:1.3;color:#111827">' . email_escape($title) . '</h3>'
         . $content
         . '</div>';
+}
+
+function email_data_rows(array $rows): string
+{
+    $html = '<div style="box-sizing:border-box;width:100%;max-width:100%">';
+
+    foreach ($rows as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $label = email_escape($row['label'] ?? '');
+        $value = email_escape($row['value'] ?? '');
+
+        $html .= '<div style="box-sizing:border-box;width:100%;max-width:100%;padding:8px 0;border-bottom:1px solid #f1f5f9">'
+            . '<div style="margin:0 0 3px;color:#6b7280;font-size:12px;line-height:1.35;font-weight:700;text-transform:uppercase;letter-spacing:.03em">' . $label . '</div>'
+            . '<div style="margin:0;color:#111827;font-size:15px;line-height:1.5;font-weight:700;white-space:normal;overflow-wrap:anywhere;word-break:break-word">' . $value . '</div>'
+            . '</div>';
+    }
+
+    return $html . '</div>';
 }
 
 function email_extract_links(string $message): array
@@ -300,11 +321,11 @@ function send_class_access_credentials_email(array $account): array
     );
     $accountPanel = email_panel(
         '2. Data login akun',
-        '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;color:#374151;font-size:14px;line-height:1.6">'
-            . '<tr><td style="padding:3px 0;width:96px;color:#6b7280">Email</td><td style="padding:3px 0;font-weight:700;color:#111827">' . email_escape($buyerEmail) . '</td></tr>'
-            . '<tr><td style="padding:3px 0;color:#6b7280">Username</td><td style="padding:3px 0;font-weight:700;color:#111827">' . email_escape($username) . '</td></tr>'
-            . '<tr><td style="padding:3px 0;color:#6b7280">Password</td><td style="padding:3px 0;font-weight:700;color:#111827">' . email_escape($passwordText) . '</td></tr>'
-        . '</table>'
+        email_data_rows([
+            ['label' => 'Email', 'value' => $buyerEmail],
+            ['label' => 'Username', 'value' => $username],
+            ['label' => 'Password', 'value' => $passwordText],
+        ])
     );
     $actionPanel = $loginButton
         ? email_panel(
@@ -314,19 +335,19 @@ function send_class_access_credentials_email(array $account): array
         )
         : '';
     $adminPanel = email_admin_message_html($purchaseMessage, $loginButton ? '4. Pesan dan link penting dari admin' : '3. Pesan dan link penting dari admin');
-    $html = '<div style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.6">'
-        . '<div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
-        . '<div style="padding:24px 24px 18px;background:#0f172a;color:#ffffff">'
+    $html = '<div style="box-sizing:border-box;width:100%;margin:0;padding:16px 8px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.6;overflow-wrap:break-word">'
+        . '<div style="box-sizing:border-box;width:100%;max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="box-sizing:border-box;width:100%;padding:20px 16px 16px;background:#0f172a;color:#ffffff">'
         . '<p style="margin:0 0 8px;color:#bfdbfe;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Pembayaran berhasil</p>'
         . '<h2 style="margin:0;font-size:24px;line-height:1.25;color:#ffffff">Akses kelas Anda sudah aktif</h2>'
         . '</div>'
-        . '<div style="padding:24px">'
+        . '<div style="box-sizing:border-box;width:100%;padding:18px 14px">'
         . '<p style="margin:0 0 14px;color:#374151;font-size:15px;line-height:1.7">Halo <strong style="color:#111827">' . email_escape($buyerName) . '</strong>, pembayaran Anda sudah berhasil. Berikut detail akun dan langkah berikutnya.</p>'
         . $classPanel
         . $accountPanel
         . $actionPanel
         . $adminPanel
-        . ($loginUrl ? '<p style="margin:18px 0 0;color:#6b7280;font-size:13px;line-height:1.6">Jika tombol tidak bisa dibuka, salin link login ini:<br><a href="' . email_escape($loginUrl) . '" style="color:#2563eb">' . email_escape($loginUrl) . '</a></p>' : '')
+        . ($loginUrl ? '<p style="margin:18px 0 0;color:#6b7280;font-size:13px;line-height:1.6;overflow-wrap:anywhere;word-break:break-word">Jika tombol tidak bisa dibuka, salin link login ini:<br><a href="' . email_escape($loginUrl) . '" style="color:#2563eb;overflow-wrap:anywhere;word-break:break-word">' . email_escape($loginUrl) . '</a></p>' : '')
         . '<p style="margin:22px 0 0;color:#374151;font-size:14px">IbnuCreative Academy</p>'
         . '</div>'
         . '</div>'
