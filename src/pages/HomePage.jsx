@@ -1322,7 +1322,6 @@ function HomePage({
           onSubmit={submitPublicClassCheckout}
         />
         {wishlistPopup}
-        {activityToast}
       </>
     )
   }

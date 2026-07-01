@@ -12,6 +12,8 @@ function ProductAccessPage({
   const delivery = accessData?.delivery
   const isPrompt = accessProduct?.productType === 'prompt'
   const promptContent = delivery?.promptContent || accessProduct?.promptContent || ''
+  const promptInstructions = delivery?.promptInstructions || accessProduct?.promptInstructions || ''
+  const promptExamples = delivery?.promptExamples || accessProduct?.promptExamples || ''
   const handleCopyPrompt = async () => {
     if (!promptContent) {
       return
@@ -84,8 +86,9 @@ function ProductAccessPage({
             {isPrompt && promptContent ? (
               <section className="public-detail-section public-access-note prompt-access-box">
                 <p className="eyebrow">Isi prompt</p>
-                {delivery?.promptInstructions && <p>{delivery.promptInstructions}</p>}
-                <pre>{promptContent}</pre>
+                <div className="prompt-access-scroll">
+                  <pre>{promptContent}</pre>
+                </div>
                 <button className="btn btn-primary" type="button" onClick={handleCopyPrompt}>
                   <Icon name="copy" />
                   Salin Prompt
@@ -103,10 +106,17 @@ function ProductAccessPage({
               </p>
             )}
 
-            {isPrompt && delivery?.promptExamples && (
+            {isPrompt && promptInstructions && (
+              <section className="public-detail-section public-access-note prompt-access-guide">
+                <p className="eyebrow">Cara penggunaan</p>
+                <p>{promptInstructions}</p>
+              </section>
+            )}
+
+            {isPrompt && promptExamples && (
               <section className="public-detail-section public-access-note">
                 <p className="eyebrow">Contoh hasil</p>
-                <p>{delivery.promptExamples}</p>
+                <p>{promptExamples}</p>
               </section>
             )}
 

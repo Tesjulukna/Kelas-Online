@@ -677,25 +677,41 @@
 }
 
 .prompt-preview-card p,
-.prompt-access-box p {
+.prompt-access-box p,
+.prompt-access-guide p {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.prompt-access-scroll {
+  width: 100%;
+  max-height: min(52vh, 520px);
+  overflow: auto;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 16px;
+  background: #0f172a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .prompt-preview-card pre,
 .prompt-access-box pre {
   width: 100%;
   max-width: 100%;
-  overflow: auto;
+  overflow: visible;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
   margin: 0;
   padding: 14px;
-  border-radius: 14px;
+  border-radius: 0;
   background: #0f172a;
   color: #e0f2fe;
   font: 500 0.92rem/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.prompt-preview-card pre {
+  overflow: auto;
+  border-radius: 14px;
 }
 
 .prompt-access-box .btn {
@@ -758,5 +774,15 @@
   .review-gate-modal {
     border-radius: 18px;
     padding: 22px;
+  }
+
+  .prompt-access-scroll {
+    max-height: 46vh;
+  }
+
+  .prompt-access-box pre {
+    padding: 12px;
+    font-size: 0.84rem;
+    line-height: 1.65;
   }
 }
