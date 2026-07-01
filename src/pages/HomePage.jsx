@@ -1243,9 +1243,9 @@ function HomePage({
   ) : null
 
   const isDetailNotificationPosition = Boolean(
-    selectedClass || checkoutClass || selectedProduct || checkoutProduct || accessOrderCode,
+    selectedClass || checkoutClass || selectedProduct || checkoutProduct,
   )
-  const activityToast = activeNotification ? (
+  const activityToast = activeNotification && !accessOrderCode ? (
     <div
       className={`purchase-notification-toast ${isDetailNotificationPosition ? 'purchase-notification-toast--detail' : ''} ${showNotification ? 'show' : ''}`}
       role="status"
@@ -1322,6 +1322,7 @@ function HomePage({
           onSubmit={submitPublicClassCheckout}
         />
         {wishlistPopup}
+        {activityToast}
       </>
     )
   }
@@ -1373,7 +1374,6 @@ function HomePage({
           }}
         />
         {wishlistPopup}
-        {activityToast}
       </>
     )
   }
