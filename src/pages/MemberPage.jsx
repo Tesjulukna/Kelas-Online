@@ -651,7 +651,6 @@ function MemberPage({
         map.set(productId, {
           ...payment,
           accessOrderId: orderCode,
-          accessUrl: `/produk-akses/${encodeURIComponent(orderCode)}`,
         })
       }
     })
@@ -1011,7 +1010,7 @@ function MemberPage({
       setActiveMaterialIndex(0)
     }
 
-    if (menuId !== 'digital-products') {
+    if (menuId !== 'digital-products' && menuId !== 'prompts') {
       setSelectedDigitalProductId(null)
     }
 
@@ -1043,13 +1042,13 @@ function MemberPage({
   }, [certificateTestimonialPrompt, handleDashboardMenuChange, setCertificateTestimonialPrompt])
 
   const handleOpenDigitalProductDetail = (product) => {
-    if (onOpenPublicProductDetail) {
+    if (product.productType !== 'prompt' && onOpenPublicProductDetail) {
       onOpenPublicProductDetail(product)
       return
     }
 
     setSelectedDigitalProductId(product.id)
-    handleDashboardMenuChange('digital-products')
+    handleDashboardMenuChange(product.productType === 'prompt' ? 'prompts' : 'digital-products')
     onNotify(`Membuka detail ${product.title}.`)
   }
 
@@ -1058,8 +1057,9 @@ function MemberPage({
   }
 
   const handleShareDigitalProduct = async (product) => {
+    const detailPath = product.productType === 'prompt' ? 'prompt' : 'produk'
     const shareUrl = typeof window !== 'undefined'
-      ? `${window.location.origin}/produk/${encodeURIComponent(product.publicCode || product.id)}`
+      ? `${window.location.origin}/${detailPath}/${encodeURIComponent(product.publicCode || product.id)}`
       : ''
     const shareData = {
       title: product.title,
@@ -1372,8 +1372,9 @@ function MemberPage({
       digitalProductAccessByProduct.get(product.id)?.orderId ||
       paidDigitalProductOrdersByProduct.get(product.id)?.accessOrderId ||
       ''
+    const accessPath = product.productType === 'prompt' ? 'prompt-akses' : 'produk-akses'
     const accessUrl = data?.accessUrl || (accessOrderId
-      ? `/produk-akses/${encodeURIComponent(accessOrderId)}`
+      ? `/${accessPath}/${encodeURIComponent(accessOrderId)}`
       : '')
 
     if (accessUrl) {
@@ -1403,6 +1404,9 @@ function MemberPage({
 
   const handleStartCheckout = useCallback(async (item, paymentMethod = '', { forceNewPayment = false, itemType = 'class' } = {}) => {
     const price = getCheckoutAmount({ ...item, itemType })
+    const productMenu = itemType === 'digital_product' && item.productType === 'prompt'
+      ? 'prompts'
+      : 'digital-products'
 
     setCheckoutClassId(`${itemType}:${item.id}`)
 
@@ -1419,7 +1423,7 @@ function MemberPage({
         if (itemType === 'digital_product' && openDigitalProductAccessPage(item, data)) {
           return
         }
-        handleDashboardMenuChange(itemType === 'digital_product' ? 'digital-products' : 'my-courses')
+        handleDashboardMenuChange(itemType === 'digital_product' ? productMenu : 'my-courses')
         return
       }
 
@@ -1430,7 +1434,7 @@ function MemberPage({
         if (itemType === 'digital_product' && openDigitalProductAccessPage(item, data)) {
           return
         }
-        handleDashboardMenuChange(itemType === 'digital_product' ? 'digital-products' : 'my-courses')
+        handleDashboardMenuChange(itemType === 'digital_product' ? productMenu : 'my-courses')
         return
       }
 
