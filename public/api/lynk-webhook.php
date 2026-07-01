@@ -1133,6 +1133,36 @@ function lynk_find_products(PDO $pdo, array $productCandidates): array
     return array_values(array_unique(array_filter($productIds)));
 }
 
+function lynk_find_explicit_products(PDO $pdo, array $productCandidates): array
+{
+    try {
+        $products = $pdo
+            ->query("SELECT id, lynk_product_key FROM digital_products WHERE lynk_product_key <> '' ORDER BY id ASC")
+            ->fetchAll();
+    } catch (Throwable $error) {
+        return [];
+    }
+
+    $candidateKeys = array_values(array_unique(array_filter(array_map('lynk_normalize_key', $productCandidates))));
+    $productIds = [];
+
+    foreach ($products as $product) {
+        $keys = [
+            lynk_normalize_key($product['id'] ?? ''),
+            lynk_normalize_key($product['lynk_product_key'] ?? ''),
+        ];
+
+        foreach ($candidateKeys as $candidateKey) {
+            if ($candidateKey !== '' && in_array($candidateKey, $keys, true)) {
+                $productIds[] = $product['id'];
+                continue 2;
+            }
+        }
+    }
+
+    return array_values(array_unique(array_filter($productIds)));
+}
+
 function lynk_snapshot_amount(array $item): int
 {
     return 0;
@@ -1481,16 +1511,23 @@ $productCandidates = array_values(array_unique(array_merge(
 $productKey = clean_text($productCandidates[0] ?? '', 240);
 $productDisplayName = lynk_first_product_name($payload) ?: lynk_first_product_name($data);
 $paidAmount = lynk_amount_from_payload($payload) ?: lynk_amount_from_payload($data);
-$classIds = lynk_find_classes($pdo, $payload, $productCandidates, $config);
-$productIds = lynk_find_products($pdo, $productCandidates);
+$explicitClassIds = lynk_find_explicit_classes($pdo, $productCandidates, $config);
+$explicitProductIds = lynk_find_explicit_products($pdo, $productCandidates);
+$classIds = [];
+$productIds = [];
 
-if ($classIds) {
-    $productIds = [];
-} elseif ($productIds) {
-    $classIds = lynk_find_explicit_classes($pdo, $productCandidates, $config);
+if ($explicitClassIds && !$explicitProductIds) {
+    $classIds = $explicitClassIds;
+} elseif ($explicitProductIds) {
+    $productIds = $explicitProductIds;
+} else {
+    $matchedProductIds = lynk_find_products($pdo, $productCandidates);
+    $matchedClassIds = lynk_find_classes($pdo, $payload, $productCandidates, $config);
 
-    if ($classIds) {
-        $productIds = [];
+    if ($matchedProductIds) {
+        $productIds = $matchedProductIds;
+    } else {
+        $classIds = $matchedClassIds;
     }
 }
 

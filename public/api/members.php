@@ -183,7 +183,7 @@ function fetch_member_by_id(PDO $pdo, string $memberId): array
 function encode_allowed_class_ids($value): ?string
 {
     if ($value === null) {
-        return null;
+        return json_encode([], JSON_UNESCAPED_UNICODE);
     }
 
     $ids = clean_allowed_class_ids($value);

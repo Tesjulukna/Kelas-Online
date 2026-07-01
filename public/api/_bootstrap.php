@@ -963,6 +963,10 @@ function verify_password_value(string $password, string $hash): bool
 
 function session_payload_from_account(array $account, string $token = ''): array
 {
+    $allowedClassIds = ($account['role'] ?? '') === 'member'
+        ? clean_allowed_class_ids($account['allowed_class_ids'] ?? null)
+        : null;
+
     return [
         'userId' => $account['id'],
         'name' => $account['name'],
@@ -971,7 +975,7 @@ function session_payload_from_account(array $account, string $token = ''): array
         'role' => $account['role'],
         'avatar' => $account['avatar'] ?? '',
         'allowedClassIds' => ($account['role'] ?? '') === 'member'
-            ? clean_allowed_class_ids($account['allowed_class_ids'] ?? null)
+            ? ($allowedClassIds ?? [])
             : null,
         'token' => $token,
         'signedInAt' => date(DATE_ATOM),
@@ -1068,6 +1072,7 @@ function require_user(?string $role = null): array
 function public_account(array $account): array
 {
     unset($account['password_hash']);
+    $allowedClassIds = clean_allowed_class_ids($account['allowed_class_ids'] ?? null);
 
     return [
         'id' => $account['id'],
@@ -1077,7 +1082,7 @@ function public_account(array $account): array
         'phone' => $account['phone'] ?? '',
         'status' => $account['status'],
         'avatar' => $account['avatar'] ?? '',
-        'allowedClassIds' => clean_allowed_class_ids($account['allowed_class_ids'] ?? null),
+        'allowedClassIds' => $allowedClassIds ?? [],
         'joinedAt' => $account['joined_at'],
     ];
 }

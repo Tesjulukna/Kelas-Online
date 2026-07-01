@@ -111,7 +111,7 @@ function digital_product_public(array $row): array
         'blockLayout' => $row['block_layout'] ?? 'default',
         'requireCustomerName' => !empty($row['require_customer_name']),
         'requireCustomerPhone' => !empty($row['require_customer_phone']),
-        'autoCreateMember' => !empty($row['auto_create_member']),
+        'autoCreateMember' => in_array(strtolower(trim((string) ($row['auto_create_member'] ?? '0'))), ['1', 'true', 'yes', 'on'], true),
         'lynkProductKey' => $row['lynk_product_key'] ?? '',
         'tripayProductKey' => $row['tripay_product_key'] ?? '',
         'showOnHomepage' => array_key_exists('show_on_homepage', $row) ? (bool) $row['show_on_homepage'] : true,

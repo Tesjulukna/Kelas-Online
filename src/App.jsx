@@ -655,8 +655,10 @@ function readSession() {
       email: cleanEmail(saved.email || ''),
       role: saved.role,
       avatar: cleanAvatar(saved.avatar),
-      allowedClassIds: Array.isArray(saved.allowedClassIds)
-        ? saved.allowedClassIds.map((classId) => cleanText(classId)).filter(Boolean)
+      allowedClassIds: saved.role === 'member'
+        ? Array.isArray(saved.allowedClassIds)
+          ? saved.allowedClassIds.map((classId) => cleanText(classId)).filter(Boolean)
+          : []
         : null,
       token: cleanSessionToken(saved.token),
       signedInAt: saved.signedInAt,
@@ -916,7 +918,7 @@ function cleanMembers(value) {
       avatar: cleanAvatar(item.avatar),
       allowedClassIds: Array.isArray(item.allowedClassIds)
         ? item.allowedClassIds.map((classId) => cleanText(classId)).filter(Boolean)
-        : null,
+        : [],
       joinedAt: cleanText(item.joinedAt || ''),
       lastSeenAt: cleanText(item.lastSeenAt || ''),
       isOnline: item.isOnline === true || item.isOnline === 1 || item.isOnline === '1',
@@ -1246,7 +1248,7 @@ function syncSessionWithMemberAccount(currentSession, memberAccount) {
     avatar: cleanAvatar(memberAccount.avatar ?? currentSession.avatar),
     allowedClassIds: Array.isArray(memberAccount.allowedClassIds)
       ? memberAccount.allowedClassIds
-      : null,
+      : [],
   }
 }
 
@@ -2998,8 +3000,10 @@ function App() {
         phone: currentMember?.phone || '',
       }
     : null
-  const memberClasses = session?.role === 'member' && Array.isArray(currentMemberAccess)
-    ? classes.filter((course) => currentMemberAccess.includes(course.id))
+  const memberClasses = session?.role === 'member'
+    ? Array.isArray(currentMemberAccess)
+      ? classes.filter((course) => currentMemberAccess.includes(course.id))
+      : []
     : classes
   const publicDetailTarget = typeof window === 'undefined'
     ? null

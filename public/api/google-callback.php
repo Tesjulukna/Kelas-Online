@@ -140,7 +140,7 @@ if ($account) {
         '',
         'Aktif',
         $avatar,
-        null,
+        json_encode([], JSON_UNESCAPED_UNICODE),
         hash_password_value(bin2hex(random_bytes(16))),
         date('Y-m-d'),
     ]);
@@ -183,4 +183,3 @@ echo 'location.replace("/member");';
 echo '</script>';
 echo '<p>Login berhasil. Mengalihkan ke dashboard member...</p>';
 echo '</body></html>';
-

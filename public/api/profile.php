@@ -10,6 +10,10 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 function profile_session_from_account(array $account, string $token = ''): array
 {
+    $allowedClassIds = ($account['role'] ?? '') === 'member'
+        ? clean_allowed_class_ids($account['allowed_class_ids'] ?? null)
+        : null;
+
     return [
         'userId' => $account['id'],
         'name' => $account['name'],
@@ -18,7 +22,7 @@ function profile_session_from_account(array $account, string $token = ''): array
         'role' => $account['role'],
         'avatar' => $account['avatar'] ?? '',
         'allowedClassIds' => ($account['role'] ?? '') === 'member'
-            ? clean_allowed_class_ids($account['allowed_class_ids'] ?? null)
+            ? ($allowedClassIds ?? [])
             : null,
         'token' => $token,
         'signedInAt' => $_SESSION['user']['signedInAt'] ?? date(DATE_ATOM),

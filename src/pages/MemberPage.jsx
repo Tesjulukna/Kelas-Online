@@ -582,7 +582,7 @@ function MemberPage({
   ))
   const accessibleClassIds = Array.isArray(allowedClassIds)
     ? new Set(allowedClassIds)
-    : new Set(allActiveCourses.map((course) => course.id))
+    : new Set()
   const availableCourses = memberVisibleCourses.filter((course) => !accessibleClassIds.has(course.id))
   const [selectedCourseId, setSelectedCourseId] = useState(null)
   const [selectedDigitalProductId, setSelectedDigitalProductId] = useState(null)

@@ -745,7 +745,7 @@ function getMemberAccessibleClasses(member, classes) {
     return activeClasses.filter((course) => member.allowedClassIds.includes(course.id))
   }
 
-  return activeClasses
+  return []
 }
 
 function getMemberProgressSummary(member, classes, submissions) {
@@ -1309,9 +1309,10 @@ function AdminPage({
       (memberActivityFilter === 'online' && member.isOnline) ||
       (memberActivityFilter === 'offline' && !member.isOnline)
     const accessibleClasses = getMemberAccessibleClasses(member, classes)
+    const activeMemberClasses = classes.filter((course) => course.status === 'Aktif')
     const classMatches =
       memberClassFilter === 'all' ||
-      (memberClassFilter === 'all-access' && !Array.isArray(member.allowedClassIds)) ||
+      (memberClassFilter === 'all-access' && accessibleClasses.length === activeMemberClasses.length && activeMemberClasses.length > 0) ||
       (memberClassFilter === 'no-access' && !accessibleClasses.length) ||
       accessibleClasses.some((course) => course.id === memberClassFilter)
 
@@ -2992,7 +2993,7 @@ function AdminPage({
       status: memberForm.status,
       allowedClassIds:
         memberForm.classAccessMode === 'all'
-          ? null
+          ? classes.map((course) => course.id)
           : memberForm.classAccessMode === 'none'
             ? []
             : memberForm.allowedClassIds,
@@ -3039,7 +3040,7 @@ function AdminPage({
         ? member.allowedClassIds.length
           ? 'custom'
           : 'none'
-        : 'all',
+        : 'none',
       allowedClassIds: Array.isArray(member.allowedClassIds)
         ? member.allowedClassIds
         : [],

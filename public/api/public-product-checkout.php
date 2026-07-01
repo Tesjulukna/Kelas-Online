@@ -161,7 +161,7 @@ $insert->execute([
         'product_title' => $product['title'],
         'delivery_url' => $product['file_url'] ?? '',
         'delivery_note' => $product['delivery_note'] ?? '',
-        'auto_create_member' => !empty($product['auto_create_member']),
+        'auto_create_member' => commerce_flag_enabled($product['auto_create_member'] ?? 0),
         'buyer_phone' => $buyerPhone,
         'accepted_marketing' => $acceptedMarketing,
         'payment_method' => $paymentMethod,

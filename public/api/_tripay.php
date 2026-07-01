@@ -200,7 +200,7 @@ function tripay_has_class_access(array $member, string $classId): bool
 {
     $classIds = clean_allowed_class_ids($member['allowed_class_ids'] ?? null);
 
-    return $classIds === null || in_array($classId, $classIds, true);
+    return is_array($classIds) && in_array($classId, $classIds, true);
 }
 
 function tripay_grant_class_access(PDO $pdo, string $memberId, string $classId): bool
@@ -215,7 +215,9 @@ function tripay_grant_class_access(PDO $pdo, string $memberId, string $classId):
 
     $currentClassIds = clean_allowed_class_ids($member['allowed_class_ids'] ?? null);
 
-    if ($currentClassIds === null || in_array($classId, $currentClassIds, true)) {
+    $currentClassIds = is_array($currentClassIds) ? $currentClassIds : [];
+
+    if (in_array($classId, $currentClassIds, true)) {
         return false;
     }
 

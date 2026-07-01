@@ -92,7 +92,7 @@ if ($account) {
         '',
         'Aktif',
         $avatar,
-        null,
+        json_encode([], JSON_UNESCAPED_UNICODE),
         hash_password_value(bin2hex(random_bytes(16))),
         date('Y-m-d'),
     ]);
@@ -118,4 +118,3 @@ $insertSession->execute([
 
 $_SESSION['user'] = session_payload_from_account($account, $token);
 send_json(200, ['session' => $_SESSION['user']]);
-

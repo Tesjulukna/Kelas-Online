@@ -9,6 +9,21 @@ function commerce_json($value): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function commerce_flag_enabled($value): bool
+{
+    if (is_bool($value)) {
+        return $value;
+    }
+
+    if (is_numeric($value)) {
+        return (int) $value === 1;
+    }
+
+    $normalized = strtolower(trim((string) $value));
+
+    return in_array($normalized, ['1', 'true', 'yes', 'on'], true);
+}
+
 function commerce_product_effective_price(array $product): int
 {
     $salePrice = clean_number($product['sale_price'] ?? 0, 0, 1000000000);
@@ -180,7 +195,7 @@ function commerce_grant_product_member_account(PDO $pdo, array $args, array $con
         send_json(404, ['message' => 'Produk digital untuk aktivasi akun tidak ditemukan.']);
     }
 
-    if (empty($product['auto_create_member'])) {
+    if (!commerce_flag_enabled($product['auto_create_member'] ?? 0)) {
         return [
             'enabled' => false,
             'member' => null,
@@ -291,9 +306,10 @@ function commerce_grant_class_account_access(PDO $pdo, array $args, array $confi
 
     if ($member) {
         $currentClassIds = clean_allowed_class_ids($member['allowed_class_ids'] ?? null);
+        $currentClassIds = is_array($currentClassIds) ? $currentClassIds : [];
         $nextClassIds = $currentClassIds;
 
-        if (is_array($currentClassIds) && !in_array($classId, $currentClassIds, true)) {
+        if (!in_array($classId, $currentClassIds, true)) {
             $nextClassIds = array_values(array_unique(array_merge($currentClassIds, [$classId])));
             $accessGranted = true;
         }
@@ -311,14 +327,14 @@ function commerce_grant_class_account_access(PDO $pdo, array $args, array $confi
             $buyerName ?: ($member['name'] ?? 'Peserta IbnuCreative'),
             $buyerPhone ?: ($member['phone'] ?? ''),
             'Aktif',
-            is_array($nextClassIds) ? json_encode($nextClassIds, JSON_UNESCAPED_UNICODE) : null,
+            json_encode($nextClassIds, JSON_UNESCAPED_UNICODE),
             $passwordHash,
             $member['id'],
             'member',
         ]);
         $member['name'] = $buyerName ?: ($member['name'] ?? 'Peserta IbnuCreative');
         $member['phone'] = $buyerPhone ?: ($member['phone'] ?? '');
-        $member['allowed_class_ids'] = is_array($nextClassIds) ? json_encode($nextClassIds, JSON_UNESCAPED_UNICODE) : null;
+        $member['allowed_class_ids'] = json_encode($nextClassIds, JSON_UNESCAPED_UNICODE);
     } else {
         $member = [
             'id' => make_id('member'),
