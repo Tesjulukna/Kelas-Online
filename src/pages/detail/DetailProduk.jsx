@@ -190,11 +190,12 @@ function DetailProduk({
   const embedUrl = product.addVideo ? getYoutubeEmbedUrl(product.videoUrl) : ''
   const addOns = Array.isArray(product.addOns) ? product.addOns : []
   const hasRichDescription = /<\/?[a-z][\s\S]*>/i.test(product.description || '')
+  const isPrompt = product.productType === 'prompt'
 
   const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
   const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
   const paidPrice = salePrice || normalPrice
-  const purchaseButtonLabel = String(product.purchaseButtonLabel || '').trim() || (paidPrice ? 'Beli Sekarang' : 'Ambil Gratis')
+  const purchaseButtonLabel = String(product.purchaseButtonLabel || '').trim() || (paidPrice ? (isPrompt ? 'Beli Prompt' : 'Beli Sekarang') : (isPrompt ? 'Ambil Prompt' : 'Ambil Gratis'))
   const originalPrice = salePrice && normalPrice > salePrice
     ? formatRupiah(normalPrice)
     : null
@@ -303,7 +304,7 @@ function DetailProduk({
 
         <div className="public-detail-copy">
           <span className="card-badge badge-produk-digital" style={{ position: 'static', display: 'inline-block', marginBottom: '8px' }}>
-            Produk Digital
+            {isPrompt ? 'Prompt' : 'Produk Digital'}
           </span>
           <h1>{product.title}</h1>
           {hasRichDescription ? (
@@ -314,11 +315,11 @@ function DetailProduk({
 
           <div className="public-detail-meta">
             <span>
-              <Icon name="download" style={{ marginRight: '4px', width: '12px' }} />
-              {product.fileName || 'Digital Delivery'}
+              <Icon name={isPrompt ? 'spark' : 'download'} style={{ marginRight: '4px', width: '12px' }} />
+              {isPrompt ? 'Prompt siap copy' : (product.fileName || 'Digital Delivery')}
             </span>
             <span>{Math.max(0, Math.round(Number(salesCount) || 0))} terjual</span>
-            <span>Akses Instant via Email</span>
+            <span>{isPrompt ? (product.promptLicense || 'Lisensi penggunaan') : 'Akses Instant via Email'}</span>
           </div>
 
           <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -352,6 +353,30 @@ function DetailProduk({
               </article>
             ))}
           </div>
+        </section>
+      )}
+
+      {isPrompt && (product.promptPreview || product.promptInstructions || product.promptExamples) && (
+        <section className="public-detail-section prompt-preview-section">
+          <p className="eyebrow">DETAIL PROMPT</p>
+          {product.promptPreview && (
+            <article className="prompt-preview-card">
+              <strong>Preview prompt</strong>
+              <pre>{product.promptPreview}</pre>
+            </article>
+          )}
+          {product.promptInstructions && (
+            <article className="prompt-preview-card">
+              <strong>Cara pakai</strong>
+              <p>{product.promptInstructions}</p>
+            </article>
+          )}
+          {product.promptExamples && (
+            <article className="prompt-preview-card">
+              <strong>Contoh hasil</strong>
+              <p>{product.promptExamples}</p>
+            </article>
+          )}
         </section>
       )}
 

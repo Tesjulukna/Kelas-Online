@@ -96,7 +96,8 @@ if ($amount <= 0) {
             'buyerName' => $member['name'] ?? 'Member',
             'buyerEmail' => $member['email'] ?? '',
             'productTitle' => $checkoutItem['title'] ?? 'Produk digital',
-            'downloadUrl' => clean_asset_url($checkoutItem['file_url'] ?? commerce_public_product_access_url($orderCode), 1000),
+            'productType' => clean_text($checkoutItem['product_type'] ?? 'digital', 40),
+            'downloadUrl' => clean_asset_url($checkoutItem['file_url'] ?? commerce_public_product_access_url($orderCode, clean_text($checkoutItem['product_type'] ?? 'digital', 40)), 1000),
             'deliveryNote' => $checkoutItem['delivery_note'] ?? '',
         ]);
 
@@ -105,7 +106,7 @@ if ($amount <= 0) {
             'freeAccessGranted' => $accessResult['granted'],
             'alreadyHasAccess' => !$accessResult['granted'],
             'accessOrderId' => $accessResult['access']['order_id'] ?? $orderCode,
-            'accessUrl' => commerce_public_product_access_url($accessResult['access']['order_id'] ?? $orderCode),
+            'accessUrl' => commerce_public_product_access_url($accessResult['access']['order_id'] ?? $orderCode, clean_text($checkoutItem['product_type'] ?? 'digital', 40)),
             'message' => $accessResult['granted']
                 ? 'Akses produk gratis sudah aktif.'
                 : 'Akses produk sudah aktif.',
@@ -168,7 +169,7 @@ $checkoutPayload = [
     ],
     'callback_url' => $callbackUrl,
     'return_url' => $checkoutType === 'digital_product'
-        ? commerce_public_product_access_url($merchantRef)
+        ? commerce_public_product_access_url($merchantRef, clean_text($checkoutItem['product_type'] ?? 'digital', 40))
         : $returnUrl,
     'expired_time' => time() + ($expiredMinutes * 60),
     'signature' => tripay_checkout_signature($merchantCode, $merchantRef, $amount, $privateKey),
@@ -206,6 +207,7 @@ $insert->execute([
     $checkoutUrl,
     json_encode([
         'order_type' => $checkoutType,
+        'product_type' => $checkoutType === 'digital_product' ? clean_text($checkoutItem['product_type'] ?? 'digital', 40) : '',
         'product_id' => $checkoutType === 'digital_product' ? $checkoutItem['id'] : '',
         'product_title' => $checkoutType === 'digital_product' ? $checkoutItem['title'] : '',
         'delivery_url' => $checkoutType === 'digital_product' ? ($checkoutItem['file_url'] ?? '') : '',

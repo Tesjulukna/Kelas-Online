@@ -54,11 +54,13 @@ if ($amount <= 0) {
         'source' => 'free-public',
         'orderId' => $freeOrderId,
     ]);
-    $accessUrl = commerce_public_product_access_url($accessResult['access']['order_id'] ?? $freeOrderId);
+    $productType = clean_text($product['product_type'] ?? 'digital', 40);
+    $accessUrl = commerce_public_product_access_url($accessResult['access']['order_id'] ?? $freeOrderId, $productType);
     $emailResult = send_digital_product_delivery_email([
         'buyerName' => $buyerName,
         'buyerEmail' => $buyerEmail,
         'productTitle' => $product['title'] ?? 'Produk digital',
+        'productType' => clean_text($product['product_type'] ?? 'digital', 40),
         'downloadUrl' => $accessUrl ?: clean_asset_url($product['file_url'] ?? '', 1000),
         'deliveryNote' => $product['delivery_note'] ?? '',
     ]);
@@ -101,7 +103,8 @@ $merchantCode = tripay_config_value($config, 'tripay_merchant_code', 80);
 $privateKey = tripay_config_value($config, 'tripay_private_key', 300);
 $expiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
 $callbackUrl = clean_external_url($config['tripay_callback_url'] ?? '') ?: tripay_absolute_url('/api/tripay-webhook.php');
-$returnUrl = commerce_public_product_access_url($merchantRef) ?: (clean_external_url($config['tripay_return_url'] ?? '') ?: tripay_absolute_url('/'));
+$productType = clean_text($product['product_type'] ?? 'digital', 40);
+$returnUrl = commerce_public_product_access_url($merchantRef, $productType) ?: (clean_external_url($config['tripay_return_url'] ?? '') ?: tripay_absolute_url('/'));
 
 $checkoutPayload = [
     'method' => $paymentMethod,
@@ -156,6 +159,7 @@ $insert->execute([
     $checkoutUrl,
     json_encode([
         'order_type' => 'digital_product',
+        'product_type' => clean_text($product['product_type'] ?? 'digital', 40),
         'public_checkout' => true,
         'product_id' => $product['id'],
         'product_title' => $product['title'],

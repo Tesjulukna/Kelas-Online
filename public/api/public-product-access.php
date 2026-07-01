@@ -29,8 +29,10 @@ if ($order) {
     $paid = !empty($order['access_granted']) || in_array($status, ['processed', 'paid', 'success', 'settlement', 'capture'], true);
     $productId = clean_text($payload['product_id'] ?? '', 120);
     $product = $productId !== '' ? commerce_fetch_product($pdo, $productId, false) : null;
+    $productRow = $product ?: [];
     $productPublic = $product ? digital_product_public($product) : [
         'id' => $productId,
+        'productType' => clean_text($payload['product_type'] ?? 'digital', 40) === 'prompt' ? 'prompt' : 'digital',
         'title' => clean_text($payload['product_title'] ?? $order['class_title'] ?? 'Produk digital', 180),
         'description' => '',
         'thumbnail' => '',
@@ -48,12 +50,15 @@ if ($order) {
         'buyerName' => clean_text($order['buyer_name'] ?? '', 160),
         'product' => $productPublic,
         'delivery' => $paid ? [
-            'downloadUrl' => clean_asset_url($product['file_url'] ?? ($payload['delivery_url'] ?? ''), 1000),
-            'deliveryNote' => clean_text($product['delivery_note'] ?? ($payload['delivery_note'] ?? ''), 1200),
-            'customMessage' => clean_text(!empty($product['custom_message_enabled']) ? ($product['custom_message'] ?? '') : ($payload['custom_message'] ?? ''), 1200),
+            'downloadUrl' => clean_asset_url($productRow['file_url'] ?? ($payload['delivery_url'] ?? ''), 1000),
+            'deliveryNote' => clean_text($productRow['delivery_note'] ?? ($payload['delivery_note'] ?? ''), 1200),
+            'customMessage' => clean_text(!empty($productRow['custom_message_enabled']) ? ($productRow['custom_message'] ?? '') : ($payload['custom_message'] ?? ''), 1200),
+            'promptContent' => clean_text($productRow['prompt_content'] ?? '', 40000),
+            'promptInstructions' => clean_text($productRow['prompt_instructions'] ?? '', 4000),
+            'promptExamples' => clean_text($productRow['prompt_examples'] ?? '', 8000),
         ] : null,
         'message' => $paid
-            ? 'Pembayaran berhasil. Produk digital sudah bisa diakses.'
+            ? (($productRow['product_type'] ?? '') === 'prompt' ? 'Pembayaran berhasil. Prompt sudah bisa diakses.' : 'Pembayaran berhasil. Produk digital sudah bisa diakses.')
             : 'Pembayaran belum terkonfirmasi. Jika sudah bayar, tunggu callback Tripay beberapa saat lalu cek ulang.',
     ]);
 }
@@ -67,6 +72,7 @@ if (!$access) {
 }
 
 $product = commerce_fetch_product($pdo, $access['product_id'], false);
+$productRow = $product ?: [];
 
 send_json(200, [
     'ok' => true,
@@ -84,9 +90,12 @@ send_json(200, [
         'fileName' => '',
     ],
     'delivery' => [
-        'downloadUrl' => clean_asset_url($product['file_url'] ?? ($access['download_url'] ?? ''), 1000),
-        'deliveryNote' => clean_text($product['delivery_note'] ?? '', 1200),
-        'customMessage' => clean_text(!empty($product['custom_message_enabled']) ? ($product['custom_message'] ?? '') : '', 1200),
+        'downloadUrl' => clean_asset_url($productRow['file_url'] ?? ($access['download_url'] ?? ''), 1000),
+        'deliveryNote' => clean_text($productRow['delivery_note'] ?? '', 1200),
+        'customMessage' => clean_text(!empty($productRow['custom_message_enabled']) ? ($productRow['custom_message'] ?? '') : '', 1200),
+        'promptContent' => clean_text($productRow['prompt_content'] ?? '', 40000),
+        'promptInstructions' => clean_text($productRow['prompt_instructions'] ?? '', 4000),
+        'promptExamples' => clean_text($productRow['prompt_examples'] ?? '', 8000),
     ],
-    'message' => 'Produk digital sudah bisa diakses.',
+    'message' => (($productRow['product_type'] ?? '') === 'prompt' ? 'Prompt sudah bisa diakses.' : 'Produk digital sudah bisa diakses.'),
 ]);

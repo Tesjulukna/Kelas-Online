@@ -212,20 +212,22 @@ function send_digital_product_delivery_email(array $order): array
 {
     $downloadUrl = clean_asset_url($order['downloadUrl'] ?? '', 1000);
     $deliveryNote = (string) ($order['deliveryNote'] ?? '');
+    $isPrompt = clean_text($order['productType'] ?? '', 40) === 'prompt';
+    $itemLabel = $isPrompt ? 'Prompt' : 'Produk digital';
     $text = "Halo {$order['buyerName']},\n\n"
-        . "Produk digital Anda sudah siap diakses.\n\n"
-        . "Produk: {$order['productTitle']}\n"
+        . "{$itemLabel} Anda sudah siap diakses.\n\n"
+        . "{$itemLabel}: {$order['productTitle']}\n"
         . ($downloadUrl ? "Link akses: {$downloadUrl}\n" : '')
         . ($deliveryNote ? "Catatan akses:\n{$deliveryNote}\n" : '')
         . "\nSimpan email ini untuk mengakses produk Anda kembali.\n\nIbnuCreative Academy";
     $button = $downloadUrl
-        ? '<p><a href="' . email_escape($downloadUrl) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">Akses Produk</a></p>'
+        ? '<p><a href="' . email_escape($downloadUrl) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">' . ($isPrompt ? 'Akses Prompt' : 'Akses Produk') . '</a></p>'
         : '';
     $html = '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">'
-        . '<h2>Produk digital Anda sudah siap</h2>'
+        . '<h2>' . email_escape($itemLabel) . ' Anda sudah siap</h2>'
         . '<p>Halo ' . email_escape($order['buyerName'] ?? 'Pelanggan') . ',</p>'
-        . '<p>Produk digital Anda sudah siap. Silakan akses dari link berikut.</p>'
-        . '<p><strong>Produk:</strong> ' . email_escape($order['productTitle'] ?? 'Produk digital') . '</p>'
+        . '<p>' . email_escape($itemLabel) . ' Anda sudah siap. Silakan akses dari link berikut.</p>'
+        . '<p><strong>' . email_escape($itemLabel) . ':</strong> ' . email_escape($order['productTitle'] ?? $itemLabel) . '</p>'
         . $button
         . ($downloadUrl ? '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($downloadUrl) . '">' . email_escape($downloadUrl) . '</a></p>' : '')
         . ($deliveryNote ? '<p><strong>Catatan akses:</strong><br>' . email_escape_breaks($deliveryNote) . '</p>' : '')
@@ -234,7 +236,7 @@ function send_digital_product_delivery_email(array $order): array
 
     return send_resend_email([
         'to' => $order['buyerEmail'] ?? '',
-        'subject' => 'Produk digital ' . ($order['productTitle'] ?? 'IbnuCreative') . ' sudah siap',
+        'subject' => $itemLabel . ' ' . ($order['productTitle'] ?? 'IbnuCreative') . ' sudah siap',
         'text' => $text,
         'html' => $html,
     ]);

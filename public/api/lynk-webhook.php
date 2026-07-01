@@ -1646,17 +1646,24 @@ foreach ($productIds as $productId) {
             'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
             'buyerEmail' => $buyerEmail,
             'productTitle' => $accessResult['product']['title'] ?? 'Produk digital',
+            'productType' => clean_text($accessResult['product']['product_type'] ?? 'digital', 40),
             'downloadUrl' => clean_asset_url(
                 ($accessResult['product']['file_url'] ?? '')
-                    ?: commerce_public_product_access_url($accessResult['access']['order_id'] ?? ($orderId . '-' . $productId)),
-                1000,
+                    ?: commerce_public_product_access_url(
+                        $accessResult['access']['order_id'] ?? ($orderId . '-' . $productId),
+                        clean_text($accessResult['product']['product_type'] ?? 'digital', 40)
+                    ),
+                1000
             ),
             'deliveryNote' => $accessResult['product']['delivery_note'] ?? '',
         ]);
         $accessUrl = clean_asset_url(
             ($accessResult['product']['file_url'] ?? '')
-                ?: commerce_public_product_access_url($accessResult['access']['order_id'] ?? ($orderId . '-' . $productId)),
-            1000,
+                ?: commerce_public_product_access_url(
+                    $accessResult['access']['order_id'] ?? ($orderId . '-' . $productId),
+                    clean_text($accessResult['product']['product_type'] ?? 'digital', 40)
+                ),
+            1000
         );
         $productAccountEmailResults[] = !empty($accountResult['enabled'])
             ? send_product_access_credentials_email([

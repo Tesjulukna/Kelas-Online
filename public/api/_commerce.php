@@ -42,11 +42,12 @@ function commerce_class_effective_price(array $class): int
         : clean_number($class['price'] ?? 0, 0, 1000000000);
 }
 
-function commerce_public_product_access_url(string $orderCode): string
+function commerce_public_product_access_url(string $orderCode, string $productType = ''): string
 {
     $code = clean_text($orderCode, 180);
+    $path = clean_text($productType, 40) === 'prompt' ? '/prompt-akses/' : '/produk-akses/';
 
-    return $code !== '' ? tripay_absolute_url('/produk-akses/' . rawurlencode($code)) : '';
+    return $code !== '' ? tripay_absolute_url($path . rawurlencode($code)) : '';
 }
 
 function commerce_login_url(array $config): string

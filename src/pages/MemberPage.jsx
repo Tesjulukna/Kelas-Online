@@ -577,9 +577,11 @@ function MemberPage({
   const courses = classes.filter((course) => course.status === 'Aktif')
   const allActiveCourses = allClasses.filter((course) => course.status === 'Aktif')
   const memberVisibleCourses = allActiveCourses.filter((course) => course.showOnMember !== false)
-  const activeDigitalProducts = withPublicCodes(digitalProducts.filter(
+  const activeSellableProducts = withPublicCodes(digitalProducts.filter(
     (product) => product.status === 'Aktif' && product.showOnMember !== false,
   ))
+  const activeDigitalProducts = activeSellableProducts.filter((product) => product.productType !== 'prompt')
+  const activePromptProducts = activeSellableProducts.filter((product) => product.productType === 'prompt')
   const accessibleClassIds = Array.isArray(allowedClassIds)
     ? new Set(allowedClassIds)
     : new Set()
@@ -617,7 +619,7 @@ function MemberPage({
   const onTrackProgressRef = useRef(onTrackProgress)
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
-  const selectedDigitalProduct = activeDigitalProducts.find(
+  const selectedDigitalProduct = activeSellableProducts.find(
     (product) => product.id === selectedDigitalProductId,
   )
   const digitalProductAccessByProduct = useMemo(
@@ -2408,11 +2410,12 @@ function MemberPage({
         </div>
       )}
 
-      {activeMenu === 'digital-products' && (
+      {(activeMenu === 'digital-products' || activeMenu === 'prompts') && (
         selectedDigitalProduct ? (
           <section className="digital-product-detail-page">
             {(() => {
               const product = selectedDigitalProduct
+              const isPrompt = product.productType === 'prompt'
               const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
               const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
               const price = salePrice || normalPrice
@@ -2429,8 +2432,8 @@ function MemberPage({
                 : pendingPayment
                   ? 'Selesaikan Pembayaran'
                   : price
-                    ? product.purchaseButtonLabel || 'Beli Produk'
-                    : 'Ambil Gratis'
+                    ? product.purchaseButtonLabel || (isPrompt ? 'Beli Prompt' : 'Beli Produk')
+                    : (isPrompt ? 'Ambil Prompt' : 'Ambil Gratis')
 
               if (isCheckingOut) {
                 buttonLabel = price ? 'Membuat invoice...' : 'Membuka akses...'
@@ -2462,7 +2465,7 @@ function MemberPage({
                       {product.thumbnail ? (
                         <img src={product.thumbnail} alt="" />
                       ) : (
-                        <Icon name="download" />
+                        <Icon name={isPrompt ? 'spark' : 'download'} />
                       )}
                       <span>{product.status}</span>
                     </div>
@@ -2480,13 +2483,13 @@ function MemberPage({
                           <strong>{safeWebsiteSettings.siteTitle || safeWebsiteSettings.siteName}</strong>
                         </span>
                       </div>
-                      <p className="eyebrow">Produk digital</p>
+                      <p className="eyebrow">{isPrompt ? 'Prompt AI' : 'Produk digital'}</p>
                       <h2>{product.title}</h2>
-                      <p>{product.description || 'Akses produk dikirim otomatis setelah pembayaran sukses.'}</p>
+                      <p>{product.description || (isPrompt ? 'Prompt dikirim otomatis setelah pembayaran sukses.' : 'Akses produk dikirim otomatis setelah pembayaran sukses.')}</p>
                       <div className="digital-product-detail-tags" aria-label="Info produk digital">
                         <span>Akses otomatis</span>
                         <span>Delivery email</span>
-                        <span>{product.platformType || 'Digital file'}</span>
+                        <span>{isPrompt ? 'Copy prompt' : (product.platformType || 'Digital file')}</span>
                       </div>
                       <div className="digital-product-detail-price">
                         <small>{price ? 'Harga produk' : 'Produk gratis'}</small>
@@ -2503,12 +2506,12 @@ function MemberPage({
                       <h3>Isi produk</h3>
                       <dl>
                         <div>
-                          <dt>File</dt>
-                          <dd>{product.fileName || 'Link akses produk'}</dd>
+                          <dt>{isPrompt ? 'Format' : 'File'}</dt>
+                          <dd>{isPrompt ? 'Prompt siap copy' : (product.fileName || 'Link akses produk')}</dd>
                         </div>
                         <div>
-                          <dt>Platform</dt>
-                          <dd>{product.platformType || 'Digital delivery'}</dd>
+                          <dt>{isPrompt ? 'Lisensi' : 'Platform'}</dt>
+                          <dd>{isPrompt ? (product.promptLicense || 'Personal & commercial use') : (product.platformType || 'Digital delivery')}</dd>
                         </div>
                         <div>
                           <dt>Akses</dt>
@@ -2518,8 +2521,11 @@ function MemberPage({
                     </article>
 
                     <article className="panel digital-product-detail-panel">
-                      <h3>Catatan</h3>
-                      <p>{product.deliveryNote || product.customMessage || 'Instruksi akses akan dikirim ke email setelah pembayaran berhasil.'}</p>
+                      <h3>{isPrompt ? 'Preview prompt' : 'Catatan'}</h3>
+                      <p>{isPrompt
+                        ? (product.promptPreview || product.promptInstructions || 'Preview prompt akan tampil setelah admin menambahkannya.')
+                        : (product.deliveryNote || product.customMessage || 'Instruksi akses akan dikirim ke email setelah pembayaran berhasil.')}
+                      </p>
                     </article>
                   </div>
 
@@ -2581,12 +2587,13 @@ function MemberPage({
           <section className="panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Produk digital</p>
-                <h2>Produk digital</h2>
+                <p className="eyebrow">{activeMenu === 'prompts' ? 'Prompt' : 'Produk digital'}</p>
+                <h2>{activeMenu === 'prompts' ? 'Prompt' : 'Produk digital'}</h2>
               </div>
             </div>
             <div className="learning-list">
-              {activeDigitalProducts.map((product) => {
+              {(activeMenu === 'prompts' ? activePromptProducts : activeDigitalProducts).map((product) => {
+                const isPrompt = product.productType === 'prompt'
                 const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
                 const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
                 const price = salePrice || normalPrice
@@ -2602,8 +2609,8 @@ function MemberPage({
                   : pendingPayment
                     ? 'Selesaikan Pembayaran'
                     : price
-                      ? product.purchaseButtonLabel || 'Beli Produk'
-                      : 'Ambil Gratis'
+                      ? product.purchaseButtonLabel || (isPrompt ? 'Beli Prompt' : 'Beli Produk')
+                      : (isPrompt ? 'Ambil Prompt' : 'Ambil Gratis')
 
                 if (isCheckingOut) {
                   buttonLabel = price ? 'Membuat invoice...' : 'Membuka akses...'
@@ -2618,14 +2625,14 @@ function MemberPage({
                       {product.thumbnail ? (
                         <img src={product.thumbnail} alt="" />
                       ) : (
-                        <Icon name="download" />
+                        <Icon name={isPrompt ? 'spark' : 'download'} />
                       )}
                     </span>
                     <span className="member-class-body">
                       <h3>{product.title}</h3>
                     </span>
                     <span className="available-class-price">
-                      <small>{price ? 'Harga produk' : 'Produk gratis'}</small>
+                      <small>{price ? (isPrompt ? 'Harga prompt' : 'Harga produk') : (isPrompt ? 'Prompt gratis' : 'Produk gratis')}</small>
                       <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
                       {salePrice > 0 && normalPrice > salePrice && (
                         <small className="struck-price">{formatRupiah(normalPrice)}</small>
@@ -2683,11 +2690,11 @@ function MemberPage({
                   </article>
                 )
               })}
-              {!activeDigitalProducts.length && (
+              {!(activeMenu === 'prompts' ? activePromptProducts : activeDigitalProducts).length && (
                 <article className="empty-state">
-                  <Icon name="download" />
-                  <h3>Belum ada produk digital</h3>
-                  <p>Produk digital akan muncul setelah admin mengaktifkannya.</p>
+                  <Icon name={activeMenu === 'prompts' ? 'spark' : 'download'} />
+                  <h3>{activeMenu === 'prompts' ? 'Belum ada prompt' : 'Belum ada produk digital'}</h3>
+                  <p>{activeMenu === 'prompts' ? 'Prompt akan muncul setelah admin mengaktifkannya.' : 'Produk digital akan muncul setelah admin mengaktifkannya.'}</p>
                 </article>
               )}
             </div>

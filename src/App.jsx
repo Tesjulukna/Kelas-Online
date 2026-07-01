@@ -96,7 +96,7 @@ function getPublicDetailFromPath(pathname) {
   const cleanPath = pathname.replace(/\/+$/, '') || '/'
   const [, type, id, action] = cleanPath.split('/')
 
-  if (type === 'produk-akses' && id) {
+  if ((type === 'produk-akses' || type === 'prompt-akses') && id) {
     return {
       type,
       id: decodeURIComponent(id),
@@ -104,7 +104,7 @@ function getPublicDetailFromPath(pathname) {
     }
   }
 
-  if ((type === 'kelas' || type === 'produk') && id) {
+  if ((type === 'kelas' || type === 'produk' || type === 'prompt') && id) {
     return {
       type,
       id: decodeURIComponent(id),
@@ -166,6 +166,7 @@ function getDashboardMenuFromUrl(role) {
         'overview',
         'manage-classes',
         'digital-products',
+        'prompts',
         'students',
         'payments',
         'submissions',
@@ -179,6 +180,7 @@ function getDashboardMenuFromUrl(role) {
         'my-courses',
         'available-classes',
         'digital-products',
+        'prompts',
         'testimonials',
         'certificates',
         'support',
@@ -784,6 +786,7 @@ function cleanDigitalProducts(value) {
     .filter((item) => item?.id && item?.title)
     .map((item) => ({
       id: cleanText(item.id),
+      productType: cleanText(item.productType || 'digital') === 'prompt' ? 'prompt' : 'digital',
       title: cleanLongText(item.title, 160),
       description: cleanRichHtml(item.description || ''),
       price: Math.max(0, Math.round(Number(item.price) || 0)),
@@ -852,6 +855,11 @@ function cleanDigitalProducts(value) {
       showOnHomepage: item.showOnHomepage !== false,
       showOnMember: item.showOnMember !== false,
       highlighted: item.highlighted === true,
+      promptContent: cleanLongText(item.promptContent || '', 40000),
+      promptPreview: cleanLongText(item.promptPreview || '', 2000),
+      promptInstructions: cleanLongText(item.promptInstructions || '', 4000),
+      promptExamples: cleanLongText(item.promptExamples || '', 8000),
+      promptLicense: cleanLongText(item.promptLicense || 'Personal & commercial use', 120),
       createdAt: cleanText(item.createdAt || ''),
       updatedAt: cleanText(item.updatedAt || ''),
     }))
@@ -3011,7 +3019,7 @@ function App() {
   const publicCertificateId = typeof window === 'undefined'
     ? ''
     : getPublicCertificateIdFromPath(currentPath.split(/[?#]/)[0] || '/')
-  const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|produk-akses)\//.test(currentPath.split(/[?#]/)[0] || '/')
+  const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|prompt|produk-akses|prompt-akses)\//.test(currentPath.split(/[?#]/)[0] || '/')
   const isPublicCertificatePath = Boolean(publicCertificateId)
   const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
 

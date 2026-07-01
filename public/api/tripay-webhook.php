@@ -155,12 +155,16 @@ if ($isDigitalProductOrder) {
     ]);
 
     $accessUrl = !empty($orderPayload['public_checkout'])
-        ? commerce_public_product_access_url($order['merchant_ref'] ?: ($reference ?: ($order['reference'] ?? '')))
+        ? commerce_public_product_access_url(
+            $order['merchant_ref'] ?: ($reference ?: ($order['reference'] ?? '')),
+            clean_text($accessResult['product']['product_type'] ?? ($orderPayload['product_type'] ?? 'digital'), 40)
+        )
         : clean_asset_url($accessResult['product']['file_url'] ?? '', 1000);
     $emailResult = send_digital_product_delivery_email([
         'buyerName' => clean_text($order['buyer_name'] ?? 'Pelanggan', 160),
         'buyerEmail' => clean_email($order['buyer_email'] ?? ''),
         'productTitle' => clean_text($accessResult['product']['title'] ?? $order['class_title'] ?? 'Produk digital', 180),
+        'productType' => clean_text($accessResult['product']['product_type'] ?? ($orderPayload['product_type'] ?? 'digital'), 40),
         'downloadUrl' => $accessUrl,
         'deliveryNote' => clean_text($accessResult['product']['delivery_note'] ?? ($orderPayload['delivery_note'] ?? ''), 1200),
     ]);

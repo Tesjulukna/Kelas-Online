@@ -17075,3 +17075,24 @@ img {
     max-height: none !important;
   }
 }
+.prompt-builder-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.prompt-builder-fields label {
+  min-width: 0;
+}
+
+.prompt-content-editor {
+  min-height: 240px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  line-height: 1.65;
+}
+
+@media (max-width: 720px) {
+  .prompt-content-editor {
+    min-height: 220px;
+  }
+}

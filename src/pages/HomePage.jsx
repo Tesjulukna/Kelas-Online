@@ -31,7 +31,7 @@ function CatalogCardMedia({ item }) {
         />
       ) : (
         <div className="media-placeholder">
-          <Icon name={item.type === 'kelas' ? 'bookOpen' : 'download'} />
+          <Icon name={item.type === 'kelas' ? 'bookOpen' : item.type === 'prompt' ? 'spark' : 'download'} />
         </div>
       )}
       <span className={`card-badge badge-${item.category.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -159,9 +159,9 @@ function getInitialDetailState(initialDetail) {
   return {
     selectedClassId: type === 'kelas' && action !== 'checkout' ? id : '',
     checkoutClassId: type === 'kelas' && action === 'checkout' ? id : '',
-    selectedProductId: type === 'produk' && action !== 'checkout' ? id : '',
-    checkoutProductId: type === 'produk' && action === 'checkout' ? id : '',
-    accessOrderCode: type === 'produk-akses' ? id : '',
+    selectedProductId: (type === 'produk' || type === 'prompt') && action !== 'checkout' ? id : '',
+    checkoutProductId: (type === 'produk' || type === 'prompt') && action === 'checkout' ? id : '',
+    accessOrderCode: (type === 'produk-akses' || type === 'prompt-akses') ? id : '',
   }
 }
 
@@ -635,6 +635,7 @@ function HomePage({
       }
     }),
     ...homepageProducts.map((product) => {
+      const isPrompt = product.productType === 'prompt'
       const fallbackMetrics = getItemMockMetrics(product.id)
       const realSales = Math.max(
         0,
@@ -649,15 +650,15 @@ function HomePage({
         : null
       return {
         id: product.id,
-        type: 'produk',
+        type: isPrompt ? 'prompt' : 'produk',
         publicCode: product.publicCode,
         title: product.title,
         thumbnail: product.thumbnail,
         price,
         originalPrice,
-        category: 'Produk Digital',
-        description: plainTextFromHtml(product.description) || 'Produk digital siap diakses otomatis setelah pembayaran berhasil.',
-        fileName: product.fileName || product.platformType || 'Produk digital',
+        category: isPrompt ? 'Prompt' : 'Produk Digital',
+        description: plainTextFromHtml(product.description) || (isPrompt ? 'Prompt siap digunakan dan bisa dicopy setelah pembayaran berhasil.' : 'Produk digital siap diakses otomatis setelah pembayaran berhasil.'),
+        fileName: isPrompt ? (product.promptLicense || 'Prompt siap copy') : (product.fileName || product.platformType || 'Produk digital'),
         rating: resolveRating(product, fallbackMetrics.rating),
         sales: resolveCount(product.displaySales, realSales),
         highlighted: product.highlighted === true,
@@ -714,7 +715,7 @@ function HomePage({
   const initialDetailId = initialDetail?.id || ''
   const initialDetailAction = initialDetail?.action || ''
   const isClassDetailPath = initialDetailType === 'kelas' && Boolean(initialDetailId)
-  const isProductDetailPath = initialDetailType === 'produk' && Boolean(initialDetailId)
+  const isProductDetailPath = (initialDetailType === 'produk' || initialDetailType === 'prompt') && Boolean(initialDetailId)
   const wishlistCount = wishlistItems.length
   const isMemberCheckout = checkoutCustomer?.isMember === true
   const memberCheckoutPhone = checkoutCustomer?.phone || ''
@@ -733,7 +734,7 @@ function HomePage({
         return
       }
 
-      if (initialDetailType === 'produk-akses') {
+      if (initialDetailType === 'produk-akses' || initialDetailType === 'prompt-akses') {
         setProductAccessState({ isLoading: true, data: null, error: '' })
         setAccessOrderCode(initialDetailId)
         setSelectedClassId('')
@@ -758,7 +759,7 @@ function HomePage({
         setAccessOrderCode('')
       }
 
-      if (initialDetailType === 'produk') {
+      if (initialDetailType === 'produk' || initialDetailType === 'prompt') {
         setCheckoutClassId('')
         if (initialDetailAction === 'checkout') {
           setCheckoutProductId(initialDetailId)
@@ -798,8 +799,8 @@ function HomePage({
       }
     }
 
-    if (selectedProduct?.publicCode && window.location.pathname.startsWith('/produk/')) {
-      const nextPath = `/produk/${encodeURIComponent(selectedProduct.publicCode)}`
+    if (selectedProduct?.publicCode && /^\/(produk|prompt)\//.test(window.location.pathname)) {
+      const nextPath = `/${selectedProduct.productType === 'prompt' ? 'prompt' : 'produk'}/${encodeURIComponent(selectedProduct.publicCode)}`
 
       if (window.location.pathname !== nextPath) {
         window.history.replaceState({}, '', nextPath)
@@ -807,8 +808,8 @@ function HomePage({
       }
     }
 
-    if (checkoutProduct?.publicCode && window.location.pathname.startsWith('/produk/')) {
-      const nextPath = `/produk/${encodeURIComponent(checkoutProduct.publicCode)}/checkout`
+    if (checkoutProduct?.publicCode && /^\/(produk|prompt)\//.test(window.location.pathname)) {
+      const nextPath = `/${checkoutProduct.productType === 'prompt' ? 'prompt' : 'produk'}/${encodeURIComponent(checkoutProduct.publicCode)}/checkout`
 
       if (window.location.pathname !== nextPath) {
         window.history.replaceState({}, '', nextPath)
@@ -887,6 +888,7 @@ function HomePage({
 
   const openProductDetail = (productId) => {
     const product = detailProducts.find((item) => item.id === productId || item.publicCode === productId)
+    const detailPath = product?.productType === 'prompt' ? 'prompt' : 'produk'
 
     setSelectedProductId(productId)
     setSelectedClassId('')
@@ -896,7 +898,7 @@ function HomePage({
     window.history.pushState(
       { publicDetailFromApp: true },
       '',
-      `/produk/${encodeURIComponent(product?.publicCode || productId)}`,
+      `/${detailPath}/${encodeURIComponent(product?.publicCode || productId)}`,
     )
     notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -904,6 +906,7 @@ function HomePage({
 
   const navigateBackFromProductCheckout = (productId) => {
     const product = detailProducts.find((item) => item.id === productId || item.publicCode === productId)
+    const detailPath = product?.productType === 'prompt' ? 'prompt' : 'produk'
 
     if (window.history.state?.checkoutFromProductDetail && window.history.length > 1) {
       window.history.back()
@@ -918,7 +921,7 @@ function HomePage({
     window.history.replaceState(
       { publicDetailFromApp: true },
       '',
-      `/produk/${encodeURIComponent(product?.publicCode || productId)}`,
+      `/${detailPath}/${encodeURIComponent(product?.publicCode || productId)}`,
     )
     notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -973,7 +976,7 @@ function HomePage({
       type,
       title: item.title,
       thumbnail: item.thumbnail || '',
-      label: isClass ? 'Kelas' : 'Produk digital',
+      label: isClass ? 'Kelas' : (item.productType === 'prompt' ? 'Prompt' : 'Produk digital'),
       priceLabel: price ? formatRupiah(price) : 'Gratis',
     }
 
@@ -1044,6 +1047,7 @@ function HomePage({
 
   const openProductCheckout = (productId) => {
     const product = detailProducts.find((item) => item.id === productId || item.publicCode === productId)
+    const detailPath = product?.productType === 'prompt' ? 'prompt' : 'produk'
 
     setCheckoutProductId(productId)
     setCheckoutClassId('')
@@ -1053,7 +1057,7 @@ function HomePage({
     window.history.pushState(
       { publicDetailFromApp: true, checkoutFromProductDetail: true },
       '',
-      `/produk/${encodeURIComponent(product?.publicCode || productId)}/checkout`,
+      `/${detailPath}/${encodeURIComponent(product?.publicCode || productId)}/checkout`,
     )
     notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -1211,7 +1215,7 @@ function HomePage({
           {wishlistItems.map((item) => (
             <article className="public-wishlist-item" key={`${item.type}:${item.id}`}>
               <span className="public-wishlist-image">
-                {item.thumbnail ? <img src={item.thumbnail} alt="" /> : <Icon name={item.type === 'kelas' ? 'bookOpen' : 'download'} />}
+                {item.thumbnail ? <img src={item.thumbnail} alt="" /> : <Icon name={item.type === 'kelas' ? 'bookOpen' : item.type === 'prompt' ? 'spark' : 'download'} />}
               </span>
               <div>
                 <small>{item.label}</small>
@@ -1385,7 +1389,7 @@ function HomePage({
           salesCount={selectedProductSalesCount}
           wishlistCount={wishlistCount}
           onBack={closePublicDetail}
-          onAddToWishlist={() => addWishlistItem(selectedProduct, 'produk')}
+          onAddToWishlist={() => addWishlistItem(selectedProduct, selectedProduct.productType === 'prompt' ? 'prompt' : 'produk')}
           onBuy={openProductCheckout}
           onOpenWishlist={openWishlist}
           onShare={shareItem}
@@ -1429,17 +1433,19 @@ function HomePage({
   }
 
   if (isProductDetailPath) {
+    const detailLabel = initialDetailType === 'prompt' ? 'prompt' : 'produk'
+
     if (!isProductsLoaded) {
       return renderDetailStatus({
         isLoading: true,
-        title: initialDetailAction === 'checkout' ? 'Membuka checkout produk...' : 'Membuka detail produk...',
-        message: 'Sebentar, data produk digital sedang disiapkan.',
+        title: initialDetailAction === 'checkout' ? `Membuka checkout ${detailLabel}...` : `Membuka detail ${detailLabel}...`,
+        message: `Sebentar, data ${detailLabel} sedang disiapkan.`,
       })
     }
 
     return renderDetailStatus({
-      title: 'Produk tidak ditemukan',
-      message: 'Link produk ini tidak tersedia atau produk sudah tidak aktif.',
+      title: initialDetailType === 'prompt' ? 'Prompt tidak ditemukan' : 'Produk tidak ditemukan',
+      message: `Link ${detailLabel} ini tidak tersedia atau sudah tidak aktif.`,
     })
   }
 
@@ -1480,7 +1486,7 @@ function HomePage({
 
         {/* Category Tabs */}
         <div className="category-tabs-track">
-          {['Semua', 'Kelas', 'Produk Digital'].map((cat) => {
+          {['Semua', 'Kelas', 'Produk Digital', 'Prompt'].map((cat) => {
             const count = cat === 'Semua'
               ? catalogItems.length
               : catalogItems.filter(item => item.category === cat).length
@@ -1528,7 +1534,7 @@ function HomePage({
                 <p className="card-desc">{item.description}</p>
                 <div className="card-footer-info">
                   <span className="info-label">
-                    <Icon name={item.type === 'kelas' ? 'user' : 'download'} />
+                    <Icon name={item.type === 'kelas' ? 'user' : item.type === 'prompt' ? 'spark' : 'download'} />
                     {item.type === 'kelas' ? `${item.sales} peserta` : item.fileName}
                   </span>
                 </div>

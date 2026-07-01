@@ -235,6 +235,7 @@ CREATE TABLE IF NOT EXISTS payment_snapshots (
 
 CREATE TABLE IF NOT EXISTS digital_products (
   id VARCHAR(120) PRIMARY KEY,
+  product_type VARCHAR(40) NOT NULL DEFAULT 'digital',
   title VARCHAR(180) NOT NULL,
   description LONGTEXT,
   price INT NOT NULL DEFAULT 0,
@@ -271,6 +272,11 @@ CREATE TABLE IF NOT EXISTS digital_products (
   show_on_homepage TINYINT(1) NOT NULL DEFAULT 1,
   show_on_member TINYINT(1) NOT NULL DEFAULT 1,
   highlighted TINYINT(1) NOT NULL DEFAULT 0,
+  prompt_content LONGTEXT,
+  prompt_preview LONGTEXT,
+  prompt_instructions LONGTEXT,
+  prompt_examples LONGTEXT,
+  prompt_license VARCHAR(120) NOT NULL DEFAULT 'Personal & commercial use',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX digital_product_status_index (status),

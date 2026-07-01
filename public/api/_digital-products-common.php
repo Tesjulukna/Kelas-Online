@@ -44,6 +44,7 @@ function ensure_digital_products_schema(PDO $pdo): void
     );
 
     ensure_digital_product_column($pdo, 'display_sales', 'INT NULL');
+    ensure_digital_product_column($pdo, 'product_type', "VARCHAR(40) NOT NULL DEFAULT 'digital'");
     ensure_digital_product_column($pdo, 'rating', 'DECIMAL(2,1) NULL');
     ensure_digital_product_column($pdo, 'add_video', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'video_url', 'TEXT NULL');
@@ -74,12 +75,21 @@ function ensure_digital_products_schema(PDO $pdo): void
     ensure_digital_product_column($pdo, 'show_on_homepage', 'TINYINT(1) NOT NULL DEFAULT 1');
     ensure_digital_product_column($pdo, 'show_on_member', 'TINYINT(1) NOT NULL DEFAULT 1');
     ensure_digital_product_column($pdo, 'highlighted', 'TINYINT(1) NOT NULL DEFAULT 0');
+    ensure_digital_product_column($pdo, 'prompt_content', 'LONGTEXT NULL');
+    ensure_digital_product_column($pdo, 'prompt_preview', 'LONGTEXT NULL');
+    ensure_digital_product_column($pdo, 'prompt_instructions', 'LONGTEXT NULL');
+    ensure_digital_product_column($pdo, 'prompt_examples', 'LONGTEXT NULL');
+    ensure_digital_product_column($pdo, 'prompt_license', "VARCHAR(120) NOT NULL DEFAULT 'Personal & commercial use'");
 }
 
 function digital_product_public(array $row): array
 {
+    $productType = clean_text($row['product_type'] ?? 'digital', 40);
+    $productType = $productType === 'prompt' ? 'prompt' : 'digital';
+
     return [
         'id' => $row['id'],
+        'productType' => $productType,
         'title' => $row['title'],
         'description' => $row['description'] ?? '',
         'price' => (int) ($row['price'] ?? 0),
@@ -117,6 +127,11 @@ function digital_product_public(array $row): array
         'showOnHomepage' => array_key_exists('show_on_homepage', $row) ? (bool) $row['show_on_homepage'] : true,
         'showOnMember' => array_key_exists('show_on_member', $row) ? (bool) $row['show_on_member'] : true,
         'highlighted' => !empty($row['highlighted']),
+        'promptContent' => $row['prompt_content'] ?? '',
+        'promptPreview' => $row['prompt_preview'] ?? '',
+        'promptInstructions' => $row['prompt_instructions'] ?? '',
+        'promptExamples' => $row['prompt_examples'] ?? '',
+        'promptLicense' => $row['prompt_license'] ?? 'Personal & commercial use',
         'createdAt' => (string) ($row['created_at'] ?? ''),
         'updatedAt' => (string) ($row['updated_at'] ?? ''),
     ];

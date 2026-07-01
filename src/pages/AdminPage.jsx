@@ -452,6 +452,7 @@ function createEmptyMemberForm() {
 function createEmptyDigitalProductForm() {
   return {
     id: '',
+    productType: 'digital',
     title: '',
     description: '',
     price: '0',
@@ -488,6 +489,22 @@ function createEmptyDigitalProductForm() {
     showOnHomepage: true,
     showOnMember: true,
     highlighted: false,
+    promptContent: '',
+    promptPreview: '',
+    promptInstructions: '',
+    promptExamples: '',
+    promptLicense: 'Personal & commercial use',
+  }
+}
+
+function createEmptyPromptProductForm() {
+  return {
+    ...createEmptyDigitalProductForm(),
+    productType: 'prompt',
+    platformType: 'other',
+    fileName: 'Prompt siap copy',
+    purchaseButtonLabel: 'Beli Prompt',
+    promptLicense: 'Personal & commercial use',
   }
 }
 
@@ -946,6 +963,9 @@ function AdminPage({
   const [memberClassFilter, setMemberClassFilter] = useState('all')
   const [memberActivityFilter, setMemberActivityFilter] = useState('all')
   const [isMemberFilterOpen, setIsMemberFilterOpen] = useState(false)
+  const isPromptBuilder = digitalProductForm.productType === 'prompt'
+  const digitalOnlyProducts = digitalProducts.filter((product) => product.productType !== 'prompt')
+  const promptProducts = digitalProducts.filter((product) => product.productType === 'prompt')
   const [submissionPageSize, setSubmissionPageSize] = useState(10)
   const [submissionPage, setSubmissionPage] = useState(1)
   const [submissionSearchTerm, setSubmissionSearchTerm] = useState('')
@@ -1857,7 +1877,8 @@ function AdminPage({
       id:
         editingDigitalProductId ||
         digitalProductForm.id ||
-        `digital-product-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        `${digitalProductForm.productType === 'prompt' ? 'prompt' : 'digital-product'}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      productType: digitalProductForm.productType === 'prompt' ? 'prompt' : 'digital',
       title: digitalProductForm.title.trim(),
       price: Math.max(0, Math.round(Number(digitalProductForm.price) || 0)),
       displaySales:
@@ -1899,7 +1920,12 @@ function AdminPage({
     }
 
     if (!payload.title) {
-      onNotify('Nama produk digital wajib diisi.')
+      onNotify(payload.productType === 'prompt' ? 'Nama prompt wajib diisi.' : 'Nama produk digital wajib diisi.')
+      return
+    }
+
+    if (payload.productType === 'prompt' && !String(payload.promptContent || '').trim()) {
+      onNotify('Isi prompt wajib diisi sebelum prompt dijual.')
       return
     }
 
@@ -1918,7 +1944,9 @@ function AdminPage({
       })
       resetDigitalProductForm()
       setIsDigitalProductBuilderOpen(false)
-      onNotify(editingDigitalProductId ? 'Produk digital diperbarui.' : 'Produk digital ditambahkan.')
+      onNotify(editingDigitalProductId
+        ? (digitalProductForm.productType === 'prompt' ? 'Prompt diperbarui.' : 'Produk digital diperbarui.')
+        : (digitalProductForm.productType === 'prompt' ? 'Prompt ditambahkan.' : 'Produk digital ditambahkan.'))
     } catch (error) {
       onNotify(error.message || 'Produk digital tidak bisa disimpan.')
     }
@@ -1927,6 +1955,7 @@ function AdminPage({
   const handleEditDigitalProduct = (product) => {
     setDigitalProductForm({
       id: product.id,
+      productType: product.productType === 'prompt' ? 'prompt' : 'digital',
       title: product.title,
       description: descriptionHtmlToEditorText(product.description || ''),
       price: product.price || '0',
@@ -1963,16 +1992,30 @@ function AdminPage({
       showOnHomepage: product.showOnHomepage !== false,
       showOnMember: product.showOnMember !== false,
       highlighted: product.highlighted === true,
+      promptContent: product.promptContent || '',
+      promptPreview: product.promptPreview || '',
+      promptInstructions: product.promptInstructions || '',
+      promptExamples: product.promptExamples || '',
+      promptLicense: product.promptLicense || 'Personal & commercial use',
     })
     setEditingDigitalProductId(product.id)
     setIsDigitalProductBuilderOpen(true)
-    onMenuChange('digital-products')
+    onMenuChange(product.productType === 'prompt' ? 'prompts' : 'digital-products')
   }
 
   const openCreateDigitalProduct = () => {
     resetDigitalProductForm()
     setIsDigitalProductBuilderOpen(true)
     onMenuChange('digital-products')
+  }
+
+  const openCreatePromptProduct = () => {
+    setDigitalProductForm(createEmptyPromptProductForm())
+    setEditingDigitalProductId(null)
+    setIsDigitalReviewManagerOpen(false)
+    setDigitalReviewDraft(createEmptyDigitalProductReview())
+    setIsDigitalProductBuilderOpen(true)
+    onMenuChange('prompts')
   }
 
   const closeDigitalProductBuilder = () => {
@@ -1986,7 +2029,7 @@ function AdminPage({
       if (editingDigitalProductId === productId) {
         resetDigitalProductForm()
       }
-      onNotify('Produk digital dihapus.')
+      onNotify('Item dihapus.')
     } catch (error) {
       onNotify(error.message || 'Produk digital tidak bisa dihapus.')
     }
@@ -2016,7 +2059,9 @@ function AdminPage({
       }
 
       await onDigitalProductsChange((current) => [copy, ...current])
-      onNotify('Produk digital berhasil diduplikat sebagai draft.')
+      onNotify(product.productType === 'prompt'
+        ? 'Prompt berhasil diduplikat sebagai draft.'
+        : 'Produk digital berhasil diduplikat sebagai draft.')
     } catch (error) {
       onNotify(error.message || 'Produk digital tidak bisa diduplikat.')
     }
@@ -3690,22 +3735,30 @@ function AdminPage({
         </section>
       )}
 
-      {activeMenu === 'digital-products' && (
+      {(activeMenu === 'digital-products' || activeMenu === 'prompts') && (
         isDigitalProductBuilderOpen ? (
           <form className="digital-product-builder-page" onSubmit={handleSubmitDigitalProduct}>
             <div className="digital-builder-topbar">
               <div>
-                <p className="eyebrow">Produk digital</p>
-                <h2>{editingDigitalProductId ? 'Edit produk digital' : 'Tambah produk digital'}</h2>
-                <small>Atur detail produk, harga, link delivery, checkout, dan pertanyaan pembeli dalam satu halaman.</small>
+                <p className="eyebrow">{isPromptBuilder ? 'Prompt' : 'Produk digital'}</p>
+                <h2>{editingDigitalProductId
+                  ? (isPromptBuilder ? 'Edit prompt' : 'Edit produk digital')
+                  : (isPromptBuilder ? 'Tambah prompt' : 'Tambah produk digital')}</h2>
+                <small>
+                  {isPromptBuilder
+                    ? 'Atur detail prompt, preview, isi prompt, harga, checkout, dan akses setelah pembayaran.'
+                    : 'Atur detail produk, harga, link delivery, checkout, dan pertanyaan pembeli dalam satu halaman.'}
+                </small>
               </div>
               <div className="button-row">
                 <button className="btn btn-secondary" type="button" onClick={closeDigitalProductBuilder}>
                   Cancel
                 </button>
                 <button className="btn btn-primary" type="submit">
-                  <Icon name="download" />
-                  {editingDigitalProductId ? 'Save Digital' : 'Add Digital'}
+                  <Icon name={isPromptBuilder ? 'spark' : 'download'} />
+                  {editingDigitalProductId
+                    ? (isPromptBuilder ? 'Simpan Prompt' : 'Save Digital')
+                    : (isPromptBuilder ? 'Tambah Prompt' : 'Add Digital')}
                 </button>
               </div>
             </div>
@@ -3833,7 +3886,7 @@ function AdminPage({
                       name="description"
                       value={digitalProductForm.description}
                       onChange={handleDigitalProductFormChange}
-                      placeholder="Jelaskan isi produk, manfaat, bonus, dan cara aksesnya."
+                      placeholder={isPromptBuilder ? 'Jelaskan manfaat prompt, contoh penggunaan, target pengguna, dan hasil yang bisa didapat.' : 'Jelaskan isi produk, manfaat, bonus, dan cara aksesnya.'}
                       rows={9}
                     />
                     <DescriptionVideoPreview value={digitalProductForm.description} />
@@ -3846,6 +3899,63 @@ function AdminPage({
                       onChange={handleDigitalDescriptionImageChange}
                     />
                   </label>
+
+                  {isPromptBuilder && (
+                    <div className="prompt-builder-fields">
+                      <label>
+                        Preview prompt
+                        <textarea
+                          name="promptPreview"
+                          value={digitalProductForm.promptPreview}
+                          onChange={handleDigitalProductFormChange}
+                          placeholder="Potongan prompt yang boleh terlihat sebelum pembelian."
+                          rows={4}
+                        />
+                      </label>
+                      <label>
+                        Isi prompt utama
+                        <textarea
+                          className="prompt-content-editor"
+                          name="promptContent"
+                          value={digitalProductForm.promptContent}
+                          onChange={handleDigitalProductFormChange}
+                          placeholder="Tulis prompt lengkap yang akan muncul setelah pembayaran berhasil."
+                          rows={12}
+                          required={isPromptBuilder}
+                        />
+                      </label>
+                      <label>
+                        Cara pakai
+                        <textarea
+                          name="promptInstructions"
+                          value={digitalProductForm.promptInstructions}
+                          onChange={handleDigitalProductFormChange}
+                          placeholder="Contoh: salin prompt, ganti bagian [TOPIK], lalu paste ke ChatGPT/Gemini."
+                          rows={5}
+                        />
+                      </label>
+                      <label>
+                        Contoh hasil / output
+                        <textarea
+                          name="promptExamples"
+                          value={digitalProductForm.promptExamples}
+                          onChange={handleDigitalProductFormChange}
+                          placeholder="Tambahkan contoh output atau studi kasus pemakaian prompt."
+                          rows={5}
+                        />
+                      </label>
+                      <label>
+                        Lisensi penggunaan
+                        <input
+                          name="promptLicense"
+                          type="text"
+                          value={digitalProductForm.promptLicense}
+                          onChange={handleDigitalProductFormChange}
+                          placeholder="Personal & commercial use"
+                        />
+                      </label>
+                    </div>
+                  )}
 
                   <div className="digital-platform-box">
                     <div className="digital-builder-card-heading compact">
@@ -4009,8 +4119,12 @@ function AdminPage({
 
                   <label className="digital-toggle-row">
                     <span>
-                      Tampilkan di Produk Digital member
-                      <small>Produk muncul di menu Produk Digital setelah member login.</small>
+                      {isPromptBuilder ? 'Tampilkan di Prompt member' : 'Tampilkan di Produk Digital member'}
+                      <small>
+                        {isPromptBuilder
+                          ? 'Prompt muncul di menu Prompt setelah member login.'
+                          : 'Produk muncul di menu Produk Digital setelah member login.'}
+                      </small>
                     </span>
                     <input
                       name="showOnMember"
@@ -4464,25 +4578,33 @@ function AdminPage({
           <section className="panel digital-products-admin-panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Produk digital</p>
-                <h2>Kelola produk digital</h2>
-                <small>Jual file, template, preset, ebook, atau link akses otomatis lewat Tripay dan Lynk.id.</small>
+                <p className="eyebrow">{activeMenu === 'prompts' ? 'Prompt' : 'Produk digital'}</p>
+                <h2>{activeMenu === 'prompts' ? 'Kelola prompt' : 'Kelola produk digital'}</h2>
+                <small>
+                  {activeMenu === 'prompts'
+                    ? 'Jual prompt AI, bundle prompt, instruksi, dan contoh output lewat Tripay dan Lynk.id.'
+                    : 'Jual file, template, preset, ebook, atau link akses otomatis lewat Tripay dan Lynk.id.'}
+                </small>
               </div>
-              <button className="btn btn-primary" type="button" onClick={openCreateDigitalProduct}>
-                <Icon name="download" />
-                Tambahkan Produk Digital
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={activeMenu === 'prompts' ? openCreatePromptProduct : openCreateDigitalProduct}
+              >
+                <Icon name={activeMenu === 'prompts' ? 'spark' : 'download'} />
+                {activeMenu === 'prompts' ? 'Tambahkan Prompt' : 'Tambahkan Produk Digital'}
               </button>
             </div>
 
-            <div className="admin-table compact-list-table digital-product-table" role="table" aria-label="Produk digital">
+            <div className="admin-table compact-list-table digital-product-table" role="table" aria-label={activeMenu === 'prompts' ? 'Prompt' : 'Produk digital'}>
               <div className="table-row table-head" role="row">
-                <span role="columnheader">Produk</span>
+                <span role="columnheader">{activeMenu === 'prompts' ? 'Prompt' : 'Produk'}</span>
                 <span role="columnheader">Harga</span>
                 <span role="columnheader">Status</span>
                 <span role="columnheader">Terjual</span>
                 <span role="columnheader">Aksi</span>
               </div>
-              {digitalProducts.map((product) => {
+              {(activeMenu === 'prompts' ? promptProducts : digitalOnlyProducts).map((product) => {
                 const accessCount = Math.max(
                   0,
                   Math.round(
@@ -4493,9 +4615,13 @@ function AdminPage({
 
                 return (
                   <div className="table-row" role="row" key={product.id}>
-                    <span className="payment-identity" data-label="Produk" role="cell">
+                    <span className="payment-identity" data-label={activeMenu === 'prompts' ? 'Prompt' : 'Produk'} role="cell">
                       <strong>{product.title}</strong>
-                      <small>{product.fileName || product.fileUrl || 'Link produk belum diisi'}</small>
+                      <small>
+                        {product.productType === 'prompt'
+                          ? (product.promptPreview || product.promptInstructions || 'Isi prompt siap dikirim setelah pembayaran.')
+                          : (product.fileName || product.fileUrl || 'Link produk belum diisi')}
+                      </small>
                       <span className="admin-inline-badges">
                         <mark className={product.showOnHomepage === false ? 'muted-mark' : ''}>
                           {product.showOnHomepage === false ? 'Hidden home' : 'Show home'}
@@ -4537,8 +4663,8 @@ function AdminPage({
                                 product.id,
                                 { showOnMember: product.showOnMember === false },
                                 product.showOnMember === false
-                                  ? 'Produk ditampilkan di Produk Digital member.'
-                                  : 'Produk disembunyikan dari Produk Digital member.',
+                                  ? (product.productType === 'prompt' ? 'Prompt ditampilkan di menu Prompt member.' : 'Produk ditampilkan di Produk Digital member.')
+                                  : (product.productType === 'prompt' ? 'Prompt disembunyikan dari menu Prompt member.' : 'Produk disembunyikan dari Produk Digital member.'),
                               )
                             }
                           >
@@ -4550,7 +4676,7 @@ function AdminPage({
                               updateDigitalProductQuickAction(
                                 product.id,
                                 { status: 'Aktif' },
-                                'Produk dipublish.',
+                                product.productType === 'prompt' ? 'Prompt dipublish.' : 'Produk dipublish.',
                               )
                             }
                           >
@@ -4563,8 +4689,8 @@ function AdminPage({
                                 product.id,
                                 { highlighted: !product.highlighted },
                                 product.highlighted
-                                  ? 'Highlight produk dimatikan.'
-                                  : 'Produk dijadikan highlight.',
+                                  ? (product.productType === 'prompt' ? 'Highlight prompt dimatikan.' : 'Highlight produk dimatikan.')
+                                  : (product.productType === 'prompt' ? 'Prompt dijadikan highlight.' : 'Produk dijadikan highlight.'),
                               )
                             }
                           >
@@ -4592,13 +4718,21 @@ function AdminPage({
                   </div>
                 )
               })}
-              {!digitalProducts.length && (
+              {!(activeMenu === 'prompts' ? promptProducts : digitalOnlyProducts).length && (
                 <article className="empty-state">
-                  <Icon name="download" />
-                  <h3>Belum ada produk digital</h3>
-                  <p>Tambahkan produk pertama untuk mulai menjual file, template, atau akses digital.</p>
-                  <button className="btn btn-primary" type="button" onClick={openCreateDigitalProduct}>
-                    Tambahkan Produk Digital
+                  <Icon name={activeMenu === 'prompts' ? 'spark' : 'download'} />
+                  <h3>{activeMenu === 'prompts' ? 'Belum ada prompt' : 'Belum ada produk digital'}</h3>
+                  <p>
+                    {activeMenu === 'prompts'
+                      ? 'Tambahkan prompt pertama untuk mulai menjual prompt AI atau bundle prompt.'
+                      : 'Tambahkan produk pertama untuk mulai menjual file, template, atau akses digital.'}
+                  </p>
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    onClick={activeMenu === 'prompts' ? openCreatePromptProduct : openCreateDigitalProduct}
+                  >
+                    {activeMenu === 'prompts' ? 'Tambahkan Prompt' : 'Tambahkan Produk Digital'}
                   </button>
                 </article>
               )}

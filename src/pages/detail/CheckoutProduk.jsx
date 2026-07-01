@@ -75,17 +75,22 @@ function CheckoutProduk({
   }
 
   const isClassCheckout = itemType === 'class'
-  const checkoutTitle = isClassCheckout ? 'Checkout kelas' : 'Checkout produk'
+  const isPromptCheckout = !isClassCheckout && product.productType === 'prompt'
+  const checkoutTitle = isClassCheckout ? 'Checkout kelas' : isPromptCheckout ? 'Checkout prompt' : 'Checkout produk'
   const freeNote = isClassCheckout
     ? 'Kelas ini gratis. Isi data peserta, lalu daftar tanpa memilih metode pembayaran.'
-    : 'Produk ini gratis. Isi data penerima, lalu ambil produk tanpa memilih metode pembayaran.'
-  const priceLabelTitle = isClassCheckout ? 'Harga kelas' : 'Harga produk'
+    : isPromptCheckout
+      ? 'Prompt ini gratis. Isi data penerima, lalu ambil prompt tanpa memilih metode pembayaran.'
+      : 'Produk ini gratis. Isi data penerima, lalu ambil produk tanpa memilih metode pembayaran.'
+  const priceLabelTitle = isClassCheckout ? 'Harga kelas' : isPromptCheckout ? 'Harga prompt' : 'Harga produk'
   const submitLabel = isFree
-    ? (isClassCheckout ? 'Daftar Kelas' : 'Ambil Produk')
+    ? (isClassCheckout ? 'Daftar Kelas' : isPromptCheckout ? 'Ambil Prompt' : 'Ambil Produk')
     : 'Buat Pembayaran'
   const marketingConsentText = isClassCheckout
     ? 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima akses kelas, invoice, atau pesan pembelajaran dan pemasaran.'
-    : 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima produk atau pesan pemasaran.'
+    : isPromptCheckout
+      ? 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima prompt, akses pembelian, atau pesan pemasaran.'
+      : 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima produk atau pesan pemasaran.'
   const selectedMethodLabel =
     paymentMethods.find((method) => method.code === form.paymentMethod)?.label ||
     form.paymentMethod

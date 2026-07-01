@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Icon from '../../components/Icon'
 
 function ProductAccessPage({
@@ -5,9 +6,24 @@ function ProductAccessPage({
   onBack,
   onRetry,
 }) {
+  const [copyStatus, setCopyStatus] = useState('')
   const accessData = accessState.data
   const accessProduct = accessData?.product
   const delivery = accessData?.delivery
+  const isPrompt = accessProduct?.productType === 'prompt'
+  const promptContent = delivery?.promptContent || accessProduct?.promptContent || ''
+  const handleCopyPrompt = async () => {
+    if (!promptContent) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(promptContent)
+      setCopyStatus('Prompt berhasil disalin.')
+    } catch {
+      setCopyStatus('Prompt belum bisa disalin otomatis. Blok teks prompt lalu salin manual.')
+    }
+  }
 
   return (
     <section className="public-detail-page public-product-access-page">
@@ -19,9 +35,9 @@ function ProductAccessPage({
 
       <article className="public-checkout-panel public-access-panel">
         <div className="section-heading">
-          <p className="eyebrow">Akses produk</p>
-          <h2>{accessProduct?.title || 'Produk digital'}</h2>
-          <small>{accessData?.message || 'Memeriksa status pembayaran produk digital.'}</small>
+          <p className="eyebrow">{isPrompt ? 'Akses prompt' : 'Akses produk'}</p>
+          <h2>{accessProduct?.title || (isPrompt ? 'Prompt' : 'Produk digital')}</h2>
+          <small>{accessData?.message || (isPrompt ? 'Memeriksa status pembayaran prompt.' : 'Memeriksa status pembayaran produk digital.')}</small>
         </div>
 
         {accessState.isLoading && (
@@ -62,18 +78,36 @@ function ProductAccessPage({
             <div>
               <p className="eyebrow">Produk siap diakses</p>
               <h3>{accessProduct.title}</h3>
-              <p>Cek emailmu juga. Kami sudah mengirimkan link akses dan detail produk ke email pembeli.</p>
+              <p>Cek emailmu juga. Kami sudah mengirimkan link akses dan detail {isPrompt ? 'prompt' : 'produk'} ke email pembeli.</p>
             </div>
 
-            {delivery?.downloadUrl ? (
+            {isPrompt && promptContent ? (
+              <section className="public-detail-section public-access-note prompt-access-box">
+                <p className="eyebrow">Isi prompt</p>
+                {delivery?.promptInstructions && <p>{delivery.promptInstructions}</p>}
+                <pre>{promptContent}</pre>
+                <button className="btn btn-primary" type="button" onClick={handleCopyPrompt}>
+                  <Icon name="copy" />
+                  Salin Prompt
+                </button>
+                {copyStatus && <small>{copyStatus}</small>}
+              </section>
+            ) : delivery?.downloadUrl ? (
               <a className="btn btn-primary public-access-download" href={delivery.downloadUrl}>
                 Buka Isi Produk
                 <Icon name="arrowRight" />
               </a>
             ) : (
               <p className="public-checkout-status">
-                Link produk belum tersedia. Silakan cek email atau hubungi support.
+                {isPrompt ? 'Isi prompt belum tersedia. Silakan cek email atau hubungi support.' : 'Link produk belum tersedia. Silakan cek email atau hubungi support.'}
               </p>
+            )}
+
+            {isPrompt && delivery?.promptExamples && (
+              <section className="public-detail-section public-access-note">
+                <p className="eyebrow">Contoh hasil</p>
+                <p>{delivery.promptExamples}</p>
+              </section>
             )}
 
             {delivery?.deliveryNote && (
