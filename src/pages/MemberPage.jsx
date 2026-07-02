@@ -2524,14 +2524,7 @@ function MemberPage({
                       </dl>
                     </article>
 
-                    {isPrompt ? (
-                      product.promptInstructions && (
-                        <article className="panel digital-product-detail-panel">
-                          <h3>Cara pakai</h3>
-                          <p>{product.promptInstructions}</p>
-                        </article>
-                      )
-                    ) : (
+                    {!isPrompt && (
                       <article className="panel digital-product-detail-panel">
                         <h3>Catatan</h3>
                         <p>{product.deliveryNote || product.customMessage || 'Instruksi akses akan dikirim ke email setelah pembayaran berhasil.'}</p>

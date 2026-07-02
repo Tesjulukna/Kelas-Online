@@ -356,16 +356,6 @@ function DetailProduk({
         </section>
       )}
 
-      {isPrompt && product.promptInstructions && (
-        <section className="public-detail-section prompt-preview-section">
-          <p className="eyebrow">DETAIL PROMPT</p>
-          <article className="prompt-preview-card">
-            <strong>Cara pakai</strong>
-            <p>{product.promptInstructions}</p>
-          </article>
-        </section>
-      )}
-
       <section className="public-detail-section">
         <p className="eyebrow">ULASAN PEMBELI</p>
         <div className="ig-reviews-container">
