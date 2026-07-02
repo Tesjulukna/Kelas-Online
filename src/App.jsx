@@ -2128,7 +2128,8 @@ function App() {
       return
     }
 
-    const nextPath = `/produk/${encodeURIComponent(productCode)}`
+    const detailPath = product?.productType === 'prompt' ? 'prompt' : 'produk'
+    const nextPath = `/${detailPath}/${encodeURIComponent(productCode)}`
 
     setActiveSection('home')
     setPage('home')

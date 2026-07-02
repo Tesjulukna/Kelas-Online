@@ -1048,7 +1048,7 @@ function MemberPage({
   }, [certificateTestimonialPrompt, handleDashboardMenuChange, setCertificateTestimonialPrompt])
 
   const handleOpenDigitalProductDetail = (product) => {
-    if (product.productType !== 'prompt' && onOpenPublicProductDetail) {
+    if (onOpenPublicProductDetail) {
       onOpenPublicProductDetail(product)
       return
     }
