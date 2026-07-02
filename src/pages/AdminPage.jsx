@@ -1919,6 +1919,11 @@ function AdminPage({
         .filter((question) => question.label),
     }
 
+    if (payload.productType === 'prompt') {
+      payload.promptPreview = ''
+      payload.promptExamples = ''
+    }
+
     if (!payload.title) {
       onNotify(payload.productType === 'prompt' ? 'Nama prompt wajib diisi.' : 'Nama produk digital wajib diisi.')
       return
@@ -3903,16 +3908,6 @@ function AdminPage({
                   {isPromptBuilder && (
                     <div className="prompt-builder-fields">
                       <label>
-                        Preview prompt
-                        <textarea
-                          name="promptPreview"
-                          value={digitalProductForm.promptPreview}
-                          onChange={handleDigitalProductFormChange}
-                          placeholder="Potongan prompt yang boleh terlihat sebelum pembelian."
-                          rows={4}
-                        />
-                      </label>
-                      <label>
                         Isi prompt utama
                         <textarea
                           className="prompt-content-editor"
@@ -3931,16 +3926,6 @@ function AdminPage({
                           value={digitalProductForm.promptInstructions}
                           onChange={handleDigitalProductFormChange}
                           placeholder="Contoh: salin prompt, ganti bagian [TOPIK], lalu paste ke ChatGPT/Gemini."
-                          rows={5}
-                        />
-                      </label>
-                      <label>
-                        Contoh hasil / output
-                        <textarea
-                          name="promptExamples"
-                          value={digitalProductForm.promptExamples}
-                          onChange={handleDigitalProductFormChange}
-                          placeholder="Tambahkan contoh output atau studi kasus pemakaian prompt."
                           rows={5}
                         />
                       </label>
@@ -4619,7 +4604,7 @@ function AdminPage({
                       <strong>{product.title}</strong>
                       <small>
                         {product.productType === 'prompt'
-                          ? (product.promptPreview || product.promptInstructions || 'Isi prompt siap dikirim setelah pembayaran.')
+                          ? (product.promptInstructions || 'Isi prompt siap dikirim setelah pembayaran.')
                           : (product.fileName || product.fileUrl || 'Link produk belum diisi')}
                       </small>
                       <span className="admin-inline-badges">
