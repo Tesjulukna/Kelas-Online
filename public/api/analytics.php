@@ -64,11 +64,13 @@ function analytics_is_unknown_label(string $label): bool
 function analytics_top(array $rows, string $key, int $limit = 8, bool $skipUnknown = false): array
 {
     $counts = [];
+    $unknownCount = 0;
 
     foreach ($rows as $row) {
         $label = $row[$key] ?: 'Tidak diketahui';
 
         if ($skipUnknown && analytics_is_unknown_label((string) $label)) {
+            $unknownCount++;
             continue;
         }
 
@@ -80,6 +82,10 @@ function analytics_top(array $rows, string $key, int $limit = 8, bool $skipUnkno
 
     foreach (array_slice($counts, 0, $limit, true) as $label => $count) {
         $items[] = ['label' => $label, 'count' => $count];
+    }
+
+    if ($skipUnknown && $unknownCount > 0 && count($items) < $limit) {
+        $items[] = ['label' => 'Tidak diketahui', 'count' => $unknownCount];
     }
 
     return $items;
