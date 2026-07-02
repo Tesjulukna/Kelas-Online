@@ -1,8 +1,16 @@
 import { useState } from 'react'
 import Icon from './Icon'
 
-function ProfileMenu({ session, onEditProfile, onLogout }) {
+function ProfileMenu({
+  session,
+  onEditProfile,
+  onLogout,
+  publicTheme = 'light',
+  onTogglePublicTheme = () => {},
+}) {
   const [isOpen, setIsOpen] = useState(false)
+  const isDarkTheme = publicTheme === 'dark'
+  const canToggleTheme = session?.role === 'member'
 
   const closeAndEdit = () => {
     setIsOpen(false)
@@ -12,6 +20,10 @@ function ProfileMenu({ session, onEditProfile, onLogout }) {
   const closeAndLogout = () => {
     setIsOpen(false)
     onLogout()
+  }
+
+  const toggleTheme = () => {
+    onTogglePublicTheme()
   }
 
   return (
@@ -31,6 +43,29 @@ function ProfileMenu({ session, onEditProfile, onLogout }) {
 
       {isOpen && (
         <div className="profile-dropdown" role="menu">
+          {canToggleTheme && (
+            <button
+              className="profile-theme-menu-item"
+              type="button"
+              role="menuitem"
+              aria-pressed={isDarkTheme}
+              onClick={toggleTheme}
+            >
+              <span className={`profile-theme-icon ${isDarkTheme ? 'is-dark' : ''}`}>
+                {isDarkTheme ? (
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20.2 14.9A7.8 7.8 0 0 1 9.1 3.8a8.3 8.3 0 1 0 11.1 11.1Z" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4.2" />
+                    <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" />
+                  </svg>
+                )}
+              </span>
+              {isDarkTheme ? 'Mode terang' : 'Mode malam'}
+            </button>
+          )}
           <button type="button" role="menuitem" onClick={closeAndEdit}>
             <Icon name="userPen" />
             Edit profil

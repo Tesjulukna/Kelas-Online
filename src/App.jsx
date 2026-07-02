@@ -3058,6 +3058,7 @@ function App() {
   const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|prompt|produk-akses|prompt-akses)\//.test(currentPath.split(/[?#]/)[0] || '/')
   const isPublicCertificatePath = Boolean(publicCertificateId)
   const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
+  const appRoleClass = session?.role ? `role-${session.role}` : 'role-public'
   const togglePublicTheme = () => {
     setPublicTheme((current) => {
       const nextTheme = current === 'dark' ? 'light' : 'dark'
@@ -3073,7 +3074,7 @@ function App() {
   }
 
   return (
-    <div className={`app-shell public-theme-${publicTheme}`}>
+    <div className={`app-shell ${appRoleClass} public-theme-${publicTheme}`}>
       {themeAnimation && (
         <div
           className={`theme-transition-scene ${themeAnimation === 'dark' ? 'is-night' : 'is-day'}`}
@@ -3656,6 +3657,8 @@ function Header({
             session={session}
             onEditProfile={onEditProfile}
             onLogout={onLogout}
+            publicTheme={publicTheme}
+            onTogglePublicTheme={onTogglePublicTheme}
           />
         </div>
       ) : (
