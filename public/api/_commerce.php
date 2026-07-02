@@ -123,7 +123,7 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
         $existing = $query->fetch();
     }
 
-    if (!$existing && ($memberId !== '' || $buyerEmail !== '')) {
+    if (!$existing && empty($product['allow_repeat_purchase']) && ($memberId !== '' || $buyerEmail !== '')) {
         $query = $pdo->prepare(
             'SELECT * FROM digital_product_access
             WHERE product_id = ? AND (member_id = ? OR buyer_email = ?)

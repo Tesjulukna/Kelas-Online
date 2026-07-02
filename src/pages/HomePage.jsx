@@ -703,7 +703,7 @@ function HomePage({
     }) || null
   }
   const selectedProductAccess = findActiveProductAccess(selectedProduct)
-  const selectedProductIsOwned = Boolean(selectedProductAccess)
+  const selectedProductIsOwned = Boolean(selectedProductAccess) && selectedProduct?.allowRepeatPurchase !== true
   const selectedProductSalesCount = selectedProduct
     ? resolveCount(
         selectedProduct.displaySales,

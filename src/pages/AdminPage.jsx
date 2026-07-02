@@ -471,6 +471,7 @@ function createEmptyDigitalProductForm() {
     itemQuantityEnabled: false,
     itemQuantity: '0',
     limitQtyPerCheckout: false,
+    allowRepeatPurchase: false,
     purchaseButtonLabel: 'Buy Now',
     releaseTimeEnabled: false,
     releaseTime: '',
@@ -1979,6 +1980,7 @@ function AdminPage({
       itemQuantityEnabled: product.itemQuantityEnabled === true,
       itemQuantity: product.itemQuantity || '0',
       limitQtyPerCheckout: product.limitQtyPerCheckout === true,
+      allowRepeatPurchase: product.allowRepeatPurchase === true,
       purchaseButtonLabel: product.purchaseButtonLabel || 'Buy Now',
       releaseTimeEnabled: product.releaseTimeEnabled === true,
       releaseTime: product.releaseTime || '',
@@ -4062,6 +4064,19 @@ function AdminPage({
                       name="limitQtyPerCheckout"
                       type="checkbox"
                       checked={digitalProductForm.limitQtyPerCheckout}
+                      onChange={handleDigitalProductFormChange}
+                    />
+                  </label>
+
+                  <label className="digital-toggle-row">
+                    <span>
+                      Bisa dibeli ulang
+                      <small>Aktifkan untuk produk seperti invite Canva, lisensi, atau jasa yang bisa dibeli berkali-kali.</small>
+                    </span>
+                    <input
+                      name="allowRepeatPurchase"
+                      type="checkbox"
+                      checked={digitalProductForm.allowRepeatPurchase === true}
                       onChange={handleDigitalProductFormChange}
                     />
                   </label>

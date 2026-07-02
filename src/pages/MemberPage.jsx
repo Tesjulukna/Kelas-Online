@@ -2433,6 +2433,7 @@ function MemberPage({
               const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
               const price = salePrice || normalPrice
               const isOwned = ownedDigitalProductIds.has(product.id)
+              const canRepeatPurchase = product.allowRepeatPurchase === true
               const pendingPayment = activePaymentsByProduct.get(product.id)
               const expiredPayment = expiredPaymentsByProduct.get(product.id)
               const expiredNoticeKey = getExpiredPaymentDismissKey(expiredPayment)
@@ -2441,7 +2442,9 @@ function MemberPage({
               const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
               const isInCart = digitalProductCartIds.includes(product.id)
               let buttonLabel = isOwned
-                ? 'Lihat Akses'
+                ? canRepeatPurchase
+                  ? 'Beli Lagi'
+                  : 'Lihat Akses'
                 : pendingPayment
                   ? 'Selesaikan Pembayaran'
                   : price
@@ -2567,7 +2570,7 @@ function MemberPage({
                       type="button"
                       disabled={isCheckingOut}
                       onClick={() => {
-                        if (isOwned) {
+                        if (isOwned && !canRepeatPurchase) {
                           openDigitalProductAccessPage(product)
                           return
                         }
@@ -2575,7 +2578,7 @@ function MemberPage({
                         openPaymentMethodPopup(product, { itemType: 'digital_product' })
                       }}
                     >
-                      <Icon name={isOwned ? 'download' : 'wallet'} />
+                      <Icon name={isOwned && !canRepeatPurchase ? 'download' : 'wallet'} />
                       {buttonLabel}
                     </button>
                     {pendingPayment && !isOwned && (
@@ -2688,6 +2691,7 @@ function MemberPage({
                 const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
                 const price = salePrice || normalPrice
                 const isOwned = ownedDigitalProductIds.has(product.id)
+                const canRepeatPurchase = product.allowRepeatPurchase === true
                 const pendingPayment = activePaymentsByProduct.get(product.id)
                 const expiredPayment = expiredPaymentsByProduct.get(product.id)
                 const expiredNoticeKey = getExpiredPaymentDismissKey(expiredPayment)
@@ -2695,7 +2699,9 @@ function MemberPage({
                   Boolean(expiredPayment && expiredNoticeKey && !dismissedExpiredPayments.includes(expiredNoticeKey))
                 const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
                 let buttonLabel = isOwned
-                  ? 'Lihat Akses'
+                  ? canRepeatPurchase
+                    ? 'Beli Lagi'
+                    : 'Lihat Akses'
                   : pendingPayment
                     ? 'Selesaikan Pembayaran'
                     : price
@@ -2753,7 +2759,7 @@ function MemberPage({
                         type="button"
                         disabled={isCheckingOut}
                         onClick={() => {
-                          if (isOwned) {
+                          if (isOwned && !canRepeatPurchase) {
                             openDigitalProductAccessPage(product)
                             return
                           }
@@ -2761,7 +2767,7 @@ function MemberPage({
                           openPaymentMethodPopup(product, { itemType: 'digital_product' })
                         }}
                       >
-                        <Icon name={isOwned ? 'download' : 'wallet'} />
+                        <Icon name={isOwned && !canRepeatPurchase ? 'download' : 'wallet'} />
                         {buttonLabel}
                       </button>
                       {pendingPayment && !isOwned && (

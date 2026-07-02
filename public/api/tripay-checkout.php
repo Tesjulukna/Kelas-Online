@@ -48,7 +48,7 @@ if ($checkoutType === 'digital_product') {
     $accessQuery->execute([$productId, $member['id'], clean_email($member['email'] ?? '')]);
     $existingAccess = $accessQuery->fetch();
 
-    if ($existingAccess) {
+    if ($existingAccess && empty($checkoutItem['allow_repeat_purchase'])) {
         $accessOrderId = clean_text($existingAccess['order_id'] ?? '', 180);
 
         send_json(200, [

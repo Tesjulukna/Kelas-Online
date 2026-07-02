@@ -254,6 +254,7 @@ CREATE TABLE IF NOT EXISTS digital_products (
   item_quantity_enabled TINYINT(1) NOT NULL DEFAULT 0,
   item_quantity INT NOT NULL DEFAULT 0,
   limit_qty_per_checkout TINYINT(1) NOT NULL DEFAULT 0,
+  allow_repeat_purchase TINYINT(1) NOT NULL DEFAULT 0,
   purchase_button_label VARCHAR(80) NOT NULL DEFAULT 'Buy Now',
   release_time_enabled TINYINT(1) NOT NULL DEFAULT 0,
   release_time VARCHAR(120) NOT NULL DEFAULT '',

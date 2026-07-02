@@ -57,6 +57,7 @@ function ensure_digital_products_schema(PDO $pdo): void
     ensure_digital_product_column($pdo, 'item_quantity_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'item_quantity', 'INT NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'limit_qty_per_checkout', 'TINYINT(1) NOT NULL DEFAULT 0');
+    ensure_digital_product_column($pdo, 'allow_repeat_purchase', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'purchase_button_label', "VARCHAR(80) NOT NULL DEFAULT 'Buy Now'");
     ensure_digital_product_column($pdo, 'release_time_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'release_time', "VARCHAR(120) NOT NULL DEFAULT ''");
@@ -109,6 +110,7 @@ function digital_product_public(array $row): array
         'itemQuantityEnabled' => !empty($row['item_quantity_enabled']),
         'itemQuantity' => (int) ($row['item_quantity'] ?? 0),
         'limitQtyPerCheckout' => !empty($row['limit_qty_per_checkout']),
+        'allowRepeatPurchase' => !empty($row['allow_repeat_purchase']),
         'purchaseButtonLabel' => $row['purchase_button_label'] ?? 'Buy Now',
         'releaseTimeEnabled' => !empty($row['release_time_enabled']),
         'releaseTime' => $row['release_time'] ?? '',

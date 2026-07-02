@@ -812,6 +812,7 @@ function cleanDigitalProducts(value) {
       itemQuantityEnabled: item.itemQuantityEnabled === true,
       itemQuantity: Math.max(0, Math.round(Number(item.itemQuantity) || 0)),
       limitQtyPerCheckout: item.limitQtyPerCheckout === true,
+      allowRepeatPurchase: item.allowRepeatPurchase === true,
       purchaseButtonLabel: cleanText(item.purchaseButtonLabel || 'Buy Now'),
       releaseTimeEnabled: item.releaseTimeEnabled === true,
       releaseTime: cleanText(item.releaseTime || ''),

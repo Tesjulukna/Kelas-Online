@@ -20,8 +20,8 @@ $products = is_array($payload['digitalProducts'] ?? null) ? $payload['digitalPro
 
 $insert = $pdo->prepare(
     'INSERT INTO digital_products
-    (id, product_type, title, description, price, display_sales, rating, status, thumbnail, add_video, video_url, file_url, file_name, delivery_note, platform_type, pay_what_you_want, sale_price, item_quantity_enabled, item_quantity, limit_qty_per_checkout, purchase_button_label, release_time_enabled, release_time, whatsapp_notification, custom_message_enabled, custom_message, reviews, add_ons, customer_questions, block_layout, require_customer_name, require_customer_phone, auto_create_member, lynk_product_key, tripay_product_key, show_on_homepage, show_on_member, highlighted, prompt_content, prompt_preview, prompt_instructions, prompt_examples, prompt_license)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    (id, product_type, title, description, price, display_sales, rating, status, thumbnail, add_video, video_url, file_url, file_name, delivery_note, platform_type, pay_what_you_want, sale_price, item_quantity_enabled, item_quantity, limit_qty_per_checkout, allow_repeat_purchase, purchase_button_label, release_time_enabled, release_time, whatsapp_notification, custom_message_enabled, custom_message, reviews, add_ons, customer_questions, block_layout, require_customer_name, require_customer_phone, auto_create_member, lynk_product_key, tripay_product_key, show_on_homepage, show_on_member, highlighted, prompt_content, prompt_preview, prompt_instructions, prompt_examples, prompt_license)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 
 try {
@@ -56,6 +56,7 @@ try {
             !empty($product['itemQuantityEnabled']) ? 1 : 0,
             clean_number($product['itemQuantity'] ?? 0, 0, 10000000),
             !empty($product['limitQtyPerCheckout']) ? 1 : 0,
+            !empty($product['allowRepeatPurchase']) ? 1 : 0,
             clean_text($product['purchaseButtonLabel'] ?? 'Buy Now', 80),
             !empty($product['releaseTimeEnabled']) ? 1 : 0,
             clean_text($product['releaseTime'] ?? '', 120),
