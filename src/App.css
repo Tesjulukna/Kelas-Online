@@ -18459,3 +18459,69 @@ img {
   border-color: rgba(148, 163, 184, 0.22) !important;
   background: rgba(15, 25, 43, 0.94) !important;
 }
+
+.app-shell.role-member.public-theme-dark,
+.app-shell.role-member.public-theme-dark main,
+.app-shell.role-member.public-theme-dark .public-detail-page,
+.app-shell.role-member.public-theme-dark .digital-product-detail-page {
+  background-color: #08111f !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-sticky-actions {
+  color: var(--color-text) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 25, 43, 0.96) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32) !important;
+}
+
+.app-shell.role-member.public-theme-dark .modal-heading button,
+.app-shell.role-member.public-theme-dark .profile-editor .modal-actions .btn-secondary,
+.app-shell.role-member.public-theme-dark .profile-editor .modal-actions button:not(.btn-primary) {
+  color: #dbeafe !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: rgba(8, 17, 31, 0.78) !important;
+  box-shadow: none !important;
+}
+
+.app-shell.role-member.public-theme-dark .modal-heading button:hover,
+.app-shell.role-member.public-theme-dark .profile-editor .modal-actions .btn-secondary:hover,
+.app-shell.role-member.public-theme-dark .profile-editor .modal-actions button:not(.btn-primary):hover {
+  color: #ffffff !important;
+  border-color: rgba(96, 165, 250, 0.48) !important;
+  background: rgba(37, 99, 235, 0.24) !important;
+}
+
+.app-shell.role-member.public-theme-dark .app-toast,
+.app-shell.role-member.public-theme-dark .action-feedback {
+  color: var(--color-heading) !important;
+  border-color: rgba(96, 165, 250, 0.28) !important;
+  background: rgba(15, 25, 43, 0.96) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34) !important;
+}
+
+.app-shell.role-member.public-theme-dark .purchase-notification-toast {
+  color: var(--color-text) !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  background: rgba(15, 25, 43, 0.94) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34) !important;
+}
+
+.app-shell.role-member.public-theme-dark .purchase-notification-name,
+.app-shell.role-member.public-theme-dark .purchase-notification-item {
+  color: var(--color-heading) !important;
+}
+
+.app-shell.role-member.public-theme-dark .purchase-notification-desc,
+.app-shell.role-member.public-theme-dark .purchase-notification-time {
+  color: var(--color-muted) !important;
+}
+
+.app-shell.role-member.public-theme-dark .purchase-notification-close {
+  color: #c9d6ea !important;
+  background: transparent !important;
+}
+
+.app-shell.role-member.public-theme-dark .purchase-notification-close:hover {
+  color: #ffffff !important;
+  background: rgba(37, 99, 235, 0.18) !important;
+}
