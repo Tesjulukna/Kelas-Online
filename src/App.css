@@ -662,6 +662,48 @@
     linear-gradient(145deg, rgba(15, 25, 43, 0.98), rgba(8, 17, 31, 0.98));
 }
 
+.app-shell.role-member.public-theme-dark .sidebar-avatar {
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.26);
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.app-shell.role-member.public-theme-dark .dashboard-sidebar .eyebrow {
+  color: #93c5fd;
+}
+
+.app-shell.role-member.public-theme-dark .dashboard-sidebar h1 {
+  color: var(--color-heading);
+}
+
+.app-shell.role-member.public-theme-dark .dashboard-menu button {
+  color: #c9d6ea;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.app-shell.role-member.public-theme-dark .dashboard-menu button .icon {
+  color: #93a4bd;
+}
+
+.app-shell.role-member.public-theme-dark .dashboard-menu button:hover {
+  color: #ffffff;
+  border-color: rgba(96, 165, 250, 0.24);
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.app-shell.role-member.public-theme-dark .dashboard-menu button:hover .icon,
+.app-shell.role-member.public-theme-dark .dashboard-menu button.active .icon {
+  color: #93c5fd;
+}
+
+.app-shell.role-member.public-theme-dark .dashboard-menu button.active {
+  color: #dbeafe;
+  border-color: rgba(96, 165, 250, 0.32);
+  background: rgba(37, 99, 235, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.08);
+}
+
 .app-shell.role-member.public-theme-dark .panel,
 .app-shell.role-member.public-theme-dark .metric-card,
 .app-shell.role-member.public-theme-dark .action-card,
@@ -901,6 +943,9 @@
 .app-shell.role-member.public-theme-dark .member-testimonial-existing,
 .app-shell.role-member.public-theme-dark .member-testimonial-locked,
 .app-shell.role-member.public-theme-dark .ticket-inline-reply,
+.app-shell.role-member.public-theme-dark .ticket-form,
+.app-shell.role-member.public-theme-dark .ticket-card,
+.app-shell.role-member.public-theme-dark .ticket-thread,
 .app-shell.role-member.public-theme-dark .admin-thread,
 .app-shell.role-member.public-theme-dark .digital-product-sticky-actions,
 .app-shell.role-member.public-theme-dark .digital-product-detail-hero,
@@ -969,10 +1014,83 @@
 .app-shell.role-member.public-theme-dark .course-entry,
 .app-shell.role-member.public-theme-dark .public-access-message,
 .app-shell.role-member.public-theme-dark .empty-state,
-.app-shell.role-member.public-theme-dark .certificate-testimonial-required-note {
+.app-shell.role-member.public-theme-dark .certificate-testimonial-required-note,
+.app-shell.role-member.public-theme-dark .ig-reviews-container,
+.app-shell.role-member.public-theme-dark .ig-comment-item,
+.app-shell.role-member.public-theme-dark .review-gate-modal,
+.app-shell.role-member.public-theme-dark .review-modal-card,
+.app-shell.role-member.public-theme-dark .review-modal-header,
+.app-shell.role-member.public-theme-dark .review-modal-footer,
+.app-shell.role-member.public-theme-dark .avatar-upload-preview-container,
+.app-shell.role-member.public-theme-dark .prompt-preview-card,
+.app-shell.role-member.public-theme-dark .prompt-access-box {
   color: var(--color-text);
   border-color: rgba(148, 163, 184, 0.22);
   background: rgba(15, 25, 43, 0.86);
+}
+
+.app-shell.role-member.public-theme-dark .ig-reviews-header,
+.app-shell.role-member.public-theme-dark .ig-review-compose,
+.app-shell.role-member.public-theme-dark .review-modal-header,
+.app-shell.role-member.public-theme-dark .review-modal-footer,
+.app-shell.role-member.public-theme-dark .ticket-thread,
+.app-shell.role-member.public-theme-dark .ticket-inline-reply {
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.app-shell.role-member.public-theme-dark .btn-ig-action,
+.app-shell.role-member.public-theme-dark .ig-meta-action-btn,
+.app-shell.role-member.public-theme-dark .ig-comment-heart-btn,
+.app-shell.role-member.public-theme-dark .review-modal-close-btn {
+  color: #c9d6ea;
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(8, 17, 31, 0.72);
+}
+
+.app-shell.role-member.public-theme-dark .btn-ig-action:hover,
+.app-shell.role-member.public-theme-dark .ig-meta-action-btn:hover,
+.app-shell.role-member.public-theme-dark .review-modal-close-btn:hover {
+  color: #ffffff;
+  background: rgba(37, 99, 235, 0.18);
+}
+
+.app-shell.role-member.public-theme-dark .ig-summary-text,
+.app-shell.role-member.public-theme-dark .ig-comment-username,
+.app-shell.role-member.public-theme-dark .ig-comment-likes-count,
+.app-shell.role-member.public-theme-dark .ig-comment-text,
+.app-shell.role-member.public-theme-dark .review-gate-modal h3,
+.app-shell.role-member.public-theme-dark .review-modal-header h3,
+.app-shell.role-member.public-theme-dark .prompt-preview-card strong,
+.app-shell.role-member.public-theme-dark .prompt-access-box strong,
+.app-shell.role-member.public-theme-dark .ticket-header strong {
+  color: var(--color-heading);
+}
+
+.app-shell.role-member.public-theme-dark .ig-summary-count,
+.app-shell.role-member.public-theme-dark .ig-comment-meta-row,
+.app-shell.role-member.public-theme-dark .review-gate-modal p,
+.app-shell.role-member.public-theme-dark .form-field label,
+.app-shell.role-member.public-theme-dark .ticket-card small {
+  color: var(--color-muted);
+}
+
+.app-shell.role-member.public-theme-dark .ig-review-compose textarea,
+.app-shell.role-member.public-theme-dark .form-field input,
+.app-shell.role-member.public-theme-dark .form-field textarea,
+.app-shell.role-member.public-theme-dark .ticket-form input,
+.app-shell.role-member.public-theme-dark .ticket-form textarea,
+.app-shell.role-member.public-theme-dark .ticket-inline-reply textarea {
+  color: var(--color-heading);
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(8, 17, 31, 0.78);
+}
+
+.app-shell.role-member.public-theme-dark .ig-comments-scroll::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.86);
+}
+
+.app-shell.role-member.public-theme-dark .ig-comments-scroll::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.42);
 }
 
 .app-shell.role-member.public-theme-dark .status-pill {
@@ -1030,6 +1148,73 @@
 .app-shell.role-member.public-theme-dark .ticket-bubble small,
 .app-shell.role-member.public-theme-dark .course-entry-action {
   color: var(--color-muted);
+}
+
+.app-shell.role-member.public-theme-dark .public-detail-page {
+  color: var(--color-text);
+}
+
+.app-shell.role-member.public-theme-dark .public-detail-topbar .icon-action-button {
+  color: #dbeafe !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: rgba(15, 25, 43, 0.94) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22) !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-detail-topbar .icon-action-button:hover {
+  color: #ffffff !important;
+  border-color: rgba(96, 165, 250, 0.48) !important;
+  background: rgba(37, 99, 235, 0.24) !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-detail-image,
+.app-shell.role-member.public-theme-dark .public-detail-copy,
+.app-shell.role-member.public-theme-dark .public-detail-section,
+.app-shell.role-member.public-theme-dark .public-sticky-actions,
+.app-shell.role-member.public-theme-dark .public-addon-item,
+.app-shell.role-member.public-theme-dark .public-review-item,
+.app-shell.role-member.public-theme-dark .public-access-note,
+.app-shell.role-member.public-theme-dark .public-detail-status-card {
+  color: var(--color-text) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 25, 43, 0.92) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24) !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-detail-image img {
+  background-color: rgba(8, 17, 31, 0.86) !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-detail-copy h1,
+.app-shell.role-member.public-theme-dark .public-detail-copy h2,
+.app-shell.role-member.public-theme-dark .public-addon-item strong,
+.app-shell.role-member.public-theme-dark .public-review-item strong {
+  color: var(--color-heading) !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-detail-copy p,
+.app-shell.role-member.public-theme-dark .public-rich-description,
+.app-shell.role-member.public-theme-dark .public-addon-item p,
+.app-shell.role-member.public-theme-dark .public-review-item p {
+  color: var(--color-muted) !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-detail-meta span {
+  color: #c9d6ea !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(8, 17, 31, 0.7) !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-detail-meta span:nth-child(2),
+.app-shell.role-member.public-theme-dark .public-detail-section .eyebrow,
+.app-shell.role-member.public-theme-dark .public-addon-item span {
+  color: #93c5fd !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-sticky-actions .btn-secondary {
+  color: #dbeafe !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: rgba(8, 17, 31, 0.78) !important;
 }
 
 .modal-backdrop {
