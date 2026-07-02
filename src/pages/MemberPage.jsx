@@ -589,6 +589,8 @@ function MemberPage({
   const [selectedCourseId, setSelectedCourseId] = useState(null)
   const [selectedDigitalProductId, setSelectedDigitalProductId] = useState(null)
   const [digitalProductLibraryView, setDigitalProductLibraryView] = useState('available')
+  const [digitalProductSearchQuery, setDigitalProductSearchQuery] = useState('')
+  const [digitalProductPriceFilter, setDigitalProductPriceFilter] = useState('all')
   const [digitalProductCartIds, setDigitalProductCartIds] = useState([])
   const [activeMaterialIndex, setActiveMaterialIndex] = useState(0)
   const [taskDraft, setTaskDraft] = useState('')
@@ -2600,7 +2602,29 @@ function MemberPage({
               const sourceProducts = isPromptMenu ? activePromptProducts : activeDigitalProducts
               const ownedProducts = sourceProducts.filter((product) => ownedDigitalProductIds.has(product.id))
               const availableProducts = sourceProducts.filter((product) => !ownedDigitalProductIds.has(product.id))
-              const visibleProducts = digitalProductLibraryView === 'owned' ? ownedProducts : availableProducts
+              const searchQuery = digitalProductSearchQuery.trim().toLowerCase()
+              const baseProducts = digitalProductLibraryView === 'owned' ? ownedProducts : availableProducts
+              const visibleProducts = baseProducts.filter((product) => {
+                const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
+                const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
+                const price = salePrice || normalPrice
+                const hasPendingPayment = activePaymentsByProduct.has(product.id)
+                const matchesSearch = !searchQuery || [
+                  product.title,
+                  product.description,
+                  product.fileName,
+                  product.platformType,
+                  product.promptLicense,
+                ].some((value) => String(value || '').toLowerCase().includes(searchQuery))
+                const matchesPriceFilter =
+                  digitalProductPriceFilter === 'all' ||
+                  (digitalProductPriceFilter === 'free' && price <= 0) ||
+                  (digitalProductPriceFilter === 'paid' && price > 0) ||
+                  (digitalProductPriceFilter === 'pending' && hasPendingPayment)
+
+                return matchesSearch && matchesPriceFilter
+              })
+              const isFiltered = Boolean(searchQuery || digitalProductPriceFilter !== 'all')
 
               return (
                 <>
@@ -2610,27 +2634,52 @@ function MemberPage({
                       <h2>{isPromptMenu ? 'Prompt' : 'Produk digital'}</h2>
                     </div>
                   </div>
-                  <div className="member-product-library-tabs" role="tablist" aria-label="Status produk member">
-                    <button
-                      className={digitalProductLibraryView === 'available' ? 'active' : ''}
-                      type="button"
-                      role="tab"
-                      aria-selected={digitalProductLibraryView === 'available'}
-                      onClick={() => setDigitalProductLibraryView('available')}
-                    >
-                      Tersedia
-                      <span>{availableProducts.length}</span>
-                    </button>
-                    <button
-                      className={digitalProductLibraryView === 'owned' ? 'active' : ''}
-                      type="button"
-                      role="tab"
-                      aria-selected={digitalProductLibraryView === 'owned'}
-                      onClick={() => setDigitalProductLibraryView('owned')}
-                    >
-                      Terbeli
-                      <span>{ownedProducts.length}</span>
-                    </button>
+                  <div className="member-product-library-toolbar">
+                    <div className="member-product-library-tabs" role="tablist" aria-label="Status produk member">
+                      <button
+                        className={digitalProductLibraryView === 'available' ? 'active' : ''}
+                        type="button"
+                        role="tab"
+                        aria-selected={digitalProductLibraryView === 'available'}
+                        onClick={() => setDigitalProductLibraryView('available')}
+                      >
+                        Tersedia
+                        <span>{availableProducts.length}</span>
+                      </button>
+                      <button
+                        className={digitalProductLibraryView === 'owned' ? 'active' : ''}
+                        type="button"
+                        role="tab"
+                        aria-selected={digitalProductLibraryView === 'owned'}
+                        onClick={() => setDigitalProductLibraryView('owned')}
+                      >
+                        Terbeli
+                        <span>{ownedProducts.length}</span>
+                      </button>
+                    </div>
+
+                    <label className="member-product-library-search">
+                      <span>Cari</span>
+                      <input
+                        type="search"
+                        value={digitalProductSearchQuery}
+                        onChange={(event) => setDigitalProductSearchQuery(event.target.value)}
+                        placeholder={isPromptMenu ? 'Cari prompt...' : 'Cari produk digital...'}
+                      />
+                    </label>
+
+                    <label className="member-product-library-filter">
+                      <span>Filter</span>
+                      <select
+                        value={digitalProductPriceFilter}
+                        onChange={(event) => setDigitalProductPriceFilter(event.target.value)}
+                      >
+                        <option value="all">Semua</option>
+                        <option value="paid">Berbayar</option>
+                        <option value="free">Gratis</option>
+                        <option value="pending">Menunggu bayar</option>
+                      </select>
+                    </label>
                   </div>
             <div className="learning-list">
               {visibleProducts.map((product) => {
@@ -2740,11 +2789,13 @@ function MemberPage({
                       : isPromptMenu ? 'Belum ada prompt tersedia' : 'Belum ada produk tersedia'}
                   </h3>
                   <p>
-                    {digitalProductLibraryView === 'owned'
-                      ? 'Item yang sudah dibeli akan muncul di sini.'
-                      : isPromptMenu
-                        ? 'Prompt akan muncul setelah admin mengaktifkannya.'
-                        : 'Produk digital akan muncul setelah admin mengaktifkannya.'}
+                    {isFiltered
+                      ? 'Coba ubah kata pencarian atau filter yang dipilih.'
+                      : digitalProductLibraryView === 'owned'
+                        ? 'Item yang sudah dibeli akan muncul di sini.'
+                        : isPromptMenu
+                          ? 'Prompt akan muncul setelah admin mengaktifkannya.'
+                          : 'Produk digital akan muncul setelah admin mengaktifkannya.'}
                   </p>
                 </article>
               )}

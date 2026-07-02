@@ -9617,12 +9617,19 @@ img {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  width: min(100%, 420px);
-  margin: -4px 0 18px;
+  min-width: 0;
   padding: 6px;
   border: 1px solid #dbe6f3;
   border-radius: 14px;
   background: #f6f9fd;
+}
+
+.member-product-library-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.95fr) minmax(220px, 1fr) minmax(150px, 0.55fr);
+  gap: 12px;
+  align-items: stretch;
+  margin: -4px 0 18px;
 }
 
 .member-product-library-tabs button {
@@ -9660,6 +9667,44 @@ img {
   background: rgba(37, 99, 235, 0.1);
   font-size: 0.76rem;
   font-weight: 900;
+}
+
+.member-product-library-search,
+.member-product-library-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 0 14px;
+  border: 1px solid #dbe6f3;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.member-product-library-search span,
+.member-product-library-filter span {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.member-product-library-search input,
+.member-product-library-filter select {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #0f172a;
+  background: transparent;
+  font: inherit;
+  font-weight: 750;
+}
+
+.member-product-library-search input::placeholder {
+  color: #94a3b8;
 }
 
 .available-class-price {
@@ -10443,6 +10488,14 @@ img {
 }
 
 @media (max-width: 1080px) {
+  .member-product-library-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .member-product-library-tabs {
+    grid-column: 1 / -1;
+  }
+
   .member-class-card {
     grid-template-columns: 138px minmax(0, 1fr);
   }
@@ -10472,15 +10525,26 @@ img {
 }
 
 @media (max-width: 760px) {
+  .member-product-library-toolbar {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 0;
+  }
+
   .member-product-library-tabs {
     width: 100%;
-    margin-top: 0;
   }
 
   .member-product-library-tabs button {
     min-height: 46px;
     padding: 0 10px;
     font-size: 0.86rem;
+  }
+
+  .member-product-library-search,
+  .member-product-library-filter {
+    min-height: 50px;
+    border-radius: 12px;
   }
 
   .member-summary {
