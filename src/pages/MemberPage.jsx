@@ -588,6 +588,7 @@ function MemberPage({
   const availableCourses = memberVisibleCourses.filter((course) => !accessibleClassIds.has(course.id))
   const [selectedCourseId, setSelectedCourseId] = useState(null)
   const [selectedDigitalProductId, setSelectedDigitalProductId] = useState(null)
+  const [digitalProductLibraryView, setDigitalProductLibraryView] = useState('available')
   const [digitalProductCartIds, setDigitalProductCartIds] = useState([])
   const [activeMaterialIndex, setActiveMaterialIndex] = useState(0)
   const [taskDraft, setTaskDraft] = useState('')
@@ -2594,14 +2595,45 @@ function MemberPage({
           </section>
         ) : (
           <section className="panel">
-            <div className="panel-heading">
-              <div>
-                <p className="eyebrow">{activeMenu === 'prompts' ? 'Prompt' : 'Produk digital'}</p>
-                <h2>{activeMenu === 'prompts' ? 'Prompt' : 'Produk digital'}</h2>
-              </div>
-            </div>
+            {(() => {
+              const isPromptMenu = activeMenu === 'prompts'
+              const sourceProducts = isPromptMenu ? activePromptProducts : activeDigitalProducts
+              const ownedProducts = sourceProducts.filter((product) => ownedDigitalProductIds.has(product.id))
+              const availableProducts = sourceProducts.filter((product) => !ownedDigitalProductIds.has(product.id))
+              const visibleProducts = digitalProductLibraryView === 'owned' ? ownedProducts : availableProducts
+
+              return (
+                <>
+                  <div className="panel-heading member-product-library-heading">
+                    <div>
+                      <p className="eyebrow">{isPromptMenu ? 'Prompt' : 'Produk digital'}</p>
+                      <h2>{isPromptMenu ? 'Prompt' : 'Produk digital'}</h2>
+                    </div>
+                  </div>
+                  <div className="member-product-library-tabs" role="tablist" aria-label="Status produk member">
+                    <button
+                      className={digitalProductLibraryView === 'available' ? 'active' : ''}
+                      type="button"
+                      role="tab"
+                      aria-selected={digitalProductLibraryView === 'available'}
+                      onClick={() => setDigitalProductLibraryView('available')}
+                    >
+                      Tersedia
+                      <span>{availableProducts.length}</span>
+                    </button>
+                    <button
+                      className={digitalProductLibraryView === 'owned' ? 'active' : ''}
+                      type="button"
+                      role="tab"
+                      aria-selected={digitalProductLibraryView === 'owned'}
+                      onClick={() => setDigitalProductLibraryView('owned')}
+                    >
+                      Terbeli
+                      <span>{ownedProducts.length}</span>
+                    </button>
+                  </div>
             <div className="learning-list">
-              {(activeMenu === 'prompts' ? activePromptProducts : activeDigitalProducts).map((product) => {
+              {visibleProducts.map((product) => {
                 const isPrompt = product.productType === 'prompt'
                 const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
                 const salePrice = Math.max(0, Math.round(Number(product.salePrice) || 0))
@@ -2699,14 +2731,27 @@ function MemberPage({
                   </article>
                 )
               })}
-              {!(activeMenu === 'prompts' ? activePromptProducts : activeDigitalProducts).length && (
+              {!visibleProducts.length && (
                 <article className="empty-state">
-                  <Icon name={activeMenu === 'prompts' ? 'spark' : 'download'} />
-                  <h3>{activeMenu === 'prompts' ? 'Belum ada prompt' : 'Belum ada produk digital'}</h3>
-                  <p>{activeMenu === 'prompts' ? 'Prompt akan muncul setelah admin mengaktifkannya.' : 'Produk digital akan muncul setelah admin mengaktifkannya.'}</p>
+                  <Icon name={isPromptMenu ? 'spark' : 'download'} />
+                  <h3>
+                    {digitalProductLibraryView === 'owned'
+                      ? isPromptMenu ? 'Belum ada prompt terbeli' : 'Belum ada produk terbeli'
+                      : isPromptMenu ? 'Belum ada prompt tersedia' : 'Belum ada produk tersedia'}
+                  </h3>
+                  <p>
+                    {digitalProductLibraryView === 'owned'
+                      ? 'Item yang sudah dibeli akan muncul di sini.'
+                      : isPromptMenu
+                        ? 'Prompt akan muncul setelah admin mengaktifkannya.'
+                        : 'Produk digital akan muncul setelah admin mengaktifkannya.'}
+                  </p>
                 </article>
               )}
             </div>
+                </>
+              )
+            })()}
           </section>
         )
       )}
