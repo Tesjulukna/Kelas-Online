@@ -2524,13 +2524,19 @@ function MemberPage({
                       </dl>
                     </article>
 
-                    <article className="panel digital-product-detail-panel">
-                      <h3>{isPrompt ? 'Preview prompt' : 'Catatan'}</h3>
-                      <p>{isPrompt
-                        ? (product.promptPreview || product.promptInstructions || 'Preview prompt akan tampil setelah admin menambahkannya.')
-                        : (product.deliveryNote || product.customMessage || 'Instruksi akses akan dikirim ke email setelah pembayaran berhasil.')}
-                      </p>
-                    </article>
+                    {isPrompt ? (
+                      product.promptInstructions && (
+                        <article className="panel digital-product-detail-panel">
+                          <h3>Cara pakai</h3>
+                          <p>{product.promptInstructions}</p>
+                        </article>
+                      )
+                    ) : (
+                      <article className="panel digital-product-detail-panel">
+                        <h3>Catatan</h3>
+                        <p>{product.deliveryNote || product.customMessage || 'Instruksi akses akan dikirim ke email setelah pembayaran berhasil.'}</p>
+                      </article>
+                    )}
                   </div>
 
                   <div className="digital-product-sticky-actions">

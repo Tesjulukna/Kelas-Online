@@ -356,27 +356,13 @@ function DetailProduk({
         </section>
       )}
 
-      {isPrompt && (product.promptPreview || product.promptInstructions || product.promptExamples) && (
+      {isPrompt && product.promptInstructions && (
         <section className="public-detail-section prompt-preview-section">
           <p className="eyebrow">DETAIL PROMPT</p>
-          {product.promptPreview && (
-            <article className="prompt-preview-card">
-              <strong>Preview prompt</strong>
-              <pre>{product.promptPreview}</pre>
-            </article>
-          )}
-          {product.promptInstructions && (
-            <article className="prompt-preview-card">
-              <strong>Cara pakai</strong>
-              <p>{product.promptInstructions}</p>
-            </article>
-          )}
-          {product.promptExamples && (
-            <article className="prompt-preview-card">
-              <strong>Contoh hasil</strong>
-              <p>{product.promptExamples}</p>
-            </article>
-          )}
+          <article className="prompt-preview-card">
+            <strong>Cara pakai</strong>
+            <p>{product.promptInstructions}</p>
+          </article>
         </section>
       )}
 
