@@ -687,6 +687,23 @@ function HomePage({
   const checkoutProduct = detailProducts.find((product) => product.id === checkoutProductId || product.publicCode === checkoutProductId)
   const activeCheckoutProduct = checkoutProduct || selectedProduct
   const activeCheckoutClass = checkoutClass || selectedClass
+  const checkoutCustomerEmail = String(checkoutCustomer?.email || '').toLowerCase()
+  const findActiveProductAccess = (product) => {
+    if (!product) {
+      return null
+    }
+
+    return digitalProductAccess.find((access) => {
+      const status = String(access.status || 'active').toLowerCase()
+      const buyerEmail = String(access.buyerEmail || '').toLowerCase()
+
+      return access.productId === product.id &&
+        status === 'active' &&
+        (!checkoutCustomerEmail || buyerEmail === checkoutCustomerEmail || access.memberId)
+    }) || null
+  }
+  const selectedProductAccess = findActiveProductAccess(selectedProduct)
+  const selectedProductIsOwned = Boolean(selectedProductAccess)
   const selectedProductSalesCount = selectedProduct
     ? resolveCount(
         selectedProduct.displaySales,
@@ -1063,6 +1080,29 @@ function HomePage({
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const openProductAccess = (product) => {
+    const access = findActiveProductAccess(product)
+    const orderCode = access?.orderId || ''
+
+    if (!orderCode) {
+      return
+    }
+
+    const accessPath = product?.productType === 'prompt' ? 'prompt-akses' : 'produk-akses'
+    const nextPath = `/${accessPath}/${encodeURIComponent(orderCode)}`
+
+    setAccessOrderCode(orderCode)
+    setSelectedProductId('')
+    setCheckoutProductId('')
+    setSelectedClassId('')
+    setCheckoutClassId('')
+    setIsWishlistOpen(false)
+    setIsPaymentPickerOpen(false)
+    window.history.pushState({ publicDetailFromApp: true }, '', nextPath)
+    notifyRouteChange()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const shareItem = async (title, text) => {
     const url = typeof window !== 'undefined' ? window.location.href : ''
 
@@ -1387,9 +1427,11 @@ function HomePage({
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
           salesCount={selectedProductSalesCount}
           wishlistCount={wishlistCount}
+          isOwned={selectedProductIsOwned}
           onBack={closePublicDetail}
           onAddToWishlist={() => addWishlistItem(selectedProduct, selectedProduct.productType === 'prompt' ? 'prompt' : 'produk')}
           onBuy={openProductCheckout}
+          onOpenAccess={openProductAccess}
           onOpenWishlist={openWishlist}
           onShare={shareItem}
           onReviewLike={onDigitalProductReviewLike}

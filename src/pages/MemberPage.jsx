@@ -2641,9 +2641,9 @@ function MemberPage({
                       <h3>{product.title}</h3>
                     </span>
                     <span className="available-class-price">
-                      <small>{price ? (isPrompt ? 'Harga prompt' : 'Harga produk') : (isPrompt ? 'Prompt gratis' : 'Produk gratis')}</small>
-                      <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
-                      {salePrice > 0 && normalPrice > salePrice && (
+                      <small>{isOwned ? 'Status akses' : price ? (isPrompt ? 'Harga prompt' : 'Harga produk') : (isPrompt ? 'Prompt gratis' : 'Produk gratis')}</small>
+                      <strong>{isOwned ? 'Terbeli' : price ? formatRupiah(price) : 'Gratis'}</strong>
+                      {!isOwned && salePrice > 0 && normalPrice > salePrice && (
                         <small className="struck-price">{formatRupiah(normalPrice)}</small>
                       )}
                     </span>

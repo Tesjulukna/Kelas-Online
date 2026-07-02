@@ -160,9 +160,11 @@ function DetailProduk({
   onAddToWishlist,
   onBack,
   onBuy,
+  onOpenAccess,
   onOpenWishlist,
   onReviewLike = async () => {},
   onShare,
+  isOwned = false,
 }) {
   const initialLikedReviewIds = readLikedReviewIds(product?.id)
   const [likedReviewIds, setLikedReviewIds] = useState(initialLikedReviewIds)
@@ -278,10 +280,12 @@ function DetailProduk({
           <Icon name="arrowLeft" />
         </button>
         <div className="public-detail-topbar-actions">
-          <button className="icon-action-button cart-action-button" type="button" onClick={onOpenWishlist} aria-label="Keranjang">
-            <Icon name="cart" />
-            {wishlistCount > 0 && <span>{wishlistCount}</span>}
-          </button>
+          {!isOwned && (
+            <button className="icon-action-button cart-action-button" type="button" onClick={onOpenWishlist} aria-label="Keranjang">
+              <Icon name="cart" />
+              {wishlistCount > 0 && <span>{wishlistCount}</span>}
+            </button>
+          )}
           <button
             className="icon-action-button"
             type="button"
@@ -490,13 +494,26 @@ function DetailProduk({
       )}
 
       <div className="public-sticky-actions">
-        <button className="btn btn-secondary" type="button" onClick={onAddToWishlist}>
-          <Icon name="cart" />
-          Keranjang
-        </button>
-        <button className="btn btn-primary" type="button" onClick={() => onBuy(product.id)}>
-          <Icon name="wallet" />
-          {purchaseButtonLabel}
+        {!isOwned && (
+          <button className="btn btn-secondary" type="button" onClick={onAddToWishlist}>
+            <Icon name="cart" />
+            Keranjang
+          </button>
+        )}
+        <button
+          className="btn btn-primary"
+          type="button"
+          onClick={() => {
+            if (isOwned && onOpenAccess) {
+              onOpenAccess(product)
+              return
+            }
+
+            onBuy(product.id)
+          }}
+        >
+          <Icon name={isOwned ? 'download' : 'wallet'} />
+          {isOwned ? (isPrompt ? 'Akses Prompt' : 'Lihat Akses') : purchaseButtonLabel}
         </button>
       </div>
     </section>
