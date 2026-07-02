@@ -57,6 +57,7 @@ const publicInfoPages = ['about', 'contact', 'privacy', 'terms']
 const notificationSeenKey = 'ibnucreative.notifications.seen.v1'
 const analyticsVisitorKey = 'ibnucreative.analytics.visitor.v1'
 const analyticsSessionKey = 'ibnucreative.analytics.session.v1'
+const publicThemeStorageKey = 'ibnucreative.public-theme.v1'
 
 function getPageFromPath(pathname) {
   const cleanPath = pathname.replace(/\/+$/, '') || '/'
@@ -1334,6 +1335,30 @@ function getStoredAnalyticsId(storage, key, prefix) {
   }
 }
 
+function readPublicTheme() {
+  if (typeof window === 'undefined') {
+    return 'light'
+  }
+
+  try {
+    return window.localStorage.getItem(publicThemeStorageKey) === 'dark' ? 'dark' : 'light'
+  } catch {
+    return 'light'
+  }
+}
+
+function writePublicTheme(theme) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(publicThemeStorageKey, theme === 'dark' ? 'dark' : 'light')
+  } catch {
+    // Theme persistence is optional.
+  }
+}
+
 function getAnalyticsDeviceType() {
   if (typeof navigator === 'undefined') {
     return 'Tidak diketahui'
@@ -1587,6 +1612,8 @@ function App() {
   const [certificateTemplates, setCertificateTemplates] = useState([])
   const [payments, setPayments] = useState([])
   const [publicActivities, setPublicActivities] = useState([])
+  const [publicTheme, setPublicTheme] = useState(() => readPublicTheme())
+  const [themeAnimation, setThemeAnimation] = useState('')
   const [isClassesLoaded, setIsClassesLoaded] = useState(false)
   const [isPublicProductsLoaded, setIsPublicProductsLoaded] = useState(false)
   const [isWebsiteSettingsLoaded, setIsWebsiteSettingsLoaded] = useState(false)
@@ -3031,9 +3058,33 @@ function App() {
   const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|prompt|produk-akses|prompt-akses)\//.test(currentPath.split(/[?#]/)[0] || '/')
   const isPublicCertificatePath = Boolean(publicCertificateId)
   const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
+  const togglePublicTheme = () => {
+    setPublicTheme((current) => {
+      const nextTheme = current === 'dark' ? 'light' : 'dark'
+      writePublicTheme(nextTheme)
+      setThemeAnimation(nextTheme)
+
+      window.setTimeout(() => {
+        setThemeAnimation((active) => (active === nextTheme ? '' : active))
+      }, 1400)
+
+      return nextTheme
+    })
+  }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell public-theme-${publicTheme}`}>
+      {themeAnimation && (
+        <div
+          className={`theme-transition-scene ${themeAnimation === 'dark' ? 'is-night' : 'is-day'}`}
+          aria-hidden="true"
+        >
+          <span className="theme-star theme-star-a" />
+          <span className="theme-star theme-star-b" />
+          <span className="theme-star theme-star-c" />
+          <span className="theme-sunrise-orb" />
+        </div>
+      )}
       <Header
         activePage={page}
         activeSection={activeSection}
@@ -3048,6 +3099,8 @@ function App() {
         notifications={notifications}
         unreadNotificationCount={unreadNotificationCount}
         onOpenNotification={openNotificationTarget}
+        publicTheme={publicTheme}
+        onTogglePublicTheme={togglePublicTheme}
       />
       <main>
         {page === 'home' && publicCertificateId && (
@@ -3544,9 +3597,12 @@ function Header({
   notifications = [],
   unreadNotificationCount = 0,
   onOpenNotification,
+  publicTheme = 'light',
+  onTogglePublicTheme = () => {},
 }) {
   const [isPublicMenuOpen, setIsPublicMenuOpen] = useState(false)
   const safeSettings = cleanWebsiteSettings(settings)
+  const isDarkTheme = publicTheme === 'dark'
 
   const handlePublicNavClick = (sectionId) => {
     setIsPublicMenuOpen(false)
@@ -3604,15 +3660,39 @@ function Header({
         </div>
       ) : (
         <>
-          <button
-            className="public-menu-toggle"
-            type="button"
-            aria-expanded={isPublicMenuOpen}
-            aria-label="Buka menu navigasi"
-            onClick={() => setIsPublicMenuOpen((current) => !current)}
-          >
-            <Icon name={isPublicMenuOpen ? 'x' : 'menu'} />
-          </button>
+          <div className="public-header-actions">
+            <button
+              className={`public-theme-toggle ${isDarkTheme ? 'is-dark' : ''}`}
+              type="button"
+              aria-label={isDarkTheme ? 'Aktifkan mode terang' : 'Aktifkan mode malam'}
+              aria-pressed={isDarkTheme}
+              onClick={onTogglePublicTheme}
+            >
+              <span className="theme-toggle-track">
+                <span className="theme-toggle-thumb">
+                  {isDarkTheme ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20.2 14.9A7.8 7.8 0 0 1 9.1 3.8a8.3 8.3 0 1 0 11.1 11.1Z" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="12" r="4.2" />
+                      <path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" />
+                    </svg>
+                  )}
+                </span>
+              </span>
+            </button>
+            <button
+              className="public-menu-toggle"
+              type="button"
+              aria-expanded={isPublicMenuOpen}
+              aria-label="Buka menu navigasi"
+              onClick={() => setIsPublicMenuOpen((current) => !current)}
+            >
+              <Icon name={isPublicMenuOpen ? 'x' : 'menu'} />
+            </button>
+          </div>
 
           <nav
             className={isPublicMenuOpen ? 'site-nav open' : 'site-nav'}
