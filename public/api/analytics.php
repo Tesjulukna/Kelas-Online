@@ -54,12 +54,24 @@ function analytics_source_label(string $referrer): array
     return ['referral', $host];
 }
 
-function analytics_top(array $rows, string $key, int $limit = 8): array
+function analytics_is_unknown_label(string $label): bool
+{
+    $normalized = strtolower(trim($label));
+
+    return $normalized === '' || in_array($normalized, ['tidak diketahui', 'unknown', 'null', '-'], true);
+}
+
+function analytics_top(array $rows, string $key, int $limit = 8, bool $skipUnknown = false): array
 {
     $counts = [];
 
     foreach ($rows as $row) {
         $label = $row[$key] ?: 'Tidak diketahui';
+
+        if ($skipUnknown && analytics_is_unknown_label((string) $label)) {
+            continue;
+        }
+
         $counts[$label] = ($counts[$label] ?? 0) + 1;
     }
 
@@ -142,15 +154,145 @@ function analytics_build(array $rows, array $range): array
             'sessions' => count($sessionIds),
         ],
         'daily' => $dailyRows,
-        'countries' => analytics_top($rows, 'country'),
-        'regions' => analytics_top($rows, 'region'),
-        'cities' => analytics_top($rows, 'city'),
+        'countries' => analytics_top($rows, 'country', 8, true),
+        'regions' => analytics_top($rows, 'region', 8, true),
+        'cities' => analytics_top($rows, 'city', 8, true),
         'sources' => analytics_top($rows, 'source_label'),
         'pages' => analytics_top($rows, 'page_title'),
         'clickTargets' => analytics_top($rows, 'target_label'),
         'devices' => analytics_top($rows, 'device_type'),
         'updatedAt' => date(DATE_ATOM),
     ];
+}
+
+function analytics_client_ip(): string
+{
+    $candidates = [
+        $_SERVER['HTTP_CF_CONNECTING_IP'] ?? '',
+        $_SERVER['HTTP_X_REAL_IP'] ?? '',
+        $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '',
+        $_SERVER['REMOTE_ADDR'] ?? '',
+    ];
+
+    foreach ($candidates as $candidate) {
+        foreach (explode(',', (string) $candidate) as $ip) {
+            $ip = trim($ip);
+
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                return $ip;
+            }
+        }
+    }
+
+    return '';
+}
+
+function analytics_location_from_headers(): array
+{
+    $country = clean_text(
+        $_SERVER['HTTP_CF_IPCOUNTRY'] ??
+        $_SERVER['HTTP_X_VERCEL_IP_COUNTRY'] ??
+        '',
+        80
+    );
+    $region = clean_text(
+        $_SERVER['HTTP_X_VERCEL_IP_COUNTRY_REGION'] ??
+        $_SERVER['HTTP_X_APPENGINE_REGION'] ??
+        '',
+        120
+    );
+    $city = clean_text(
+        $_SERVER['HTTP_X_VERCEL_IP_CITY'] ??
+        $_SERVER['HTTP_X_APPENGINE_CITY'] ??
+        '',
+        120
+    );
+
+    return [
+        'country' => $country,
+        'region' => $region,
+        'city' => $city,
+    ];
+}
+
+function analytics_country_from_timezone_language(string $timezone, string $language): string
+{
+    $timezone = strtolower(trim($timezone));
+    $language = strtolower(trim($language));
+
+    if (strpos($timezone, 'jakarta') !== false ||
+        strpos($timezone, 'makassar') !== false ||
+        strpos($timezone, 'jayapura') !== false ||
+        strpos($language, 'id') === 0) {
+        return 'Indonesia';
+    }
+
+    return '';
+}
+
+function analytics_lookup_ip_location(string $ip): array
+{
+    $emptyLocation = ['country' => '', 'region' => '', 'city' => ''];
+
+    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        return $emptyLocation;
+    }
+
+    if (!isset($_SESSION['analytics_geo_cache']) || !is_array($_SESSION['analytics_geo_cache'])) {
+        $_SESSION['analytics_geo_cache'] = [];
+    }
+
+    $cached = $_SESSION['analytics_geo_cache'][$ip] ?? null;
+
+    if (is_array($cached) && (($cached['expires_at'] ?? 0) > time())) {
+        return [
+            'country' => clean_text($cached['country'] ?? '', 80),
+            'region' => clean_text($cached['region'] ?? '', 120),
+            'city' => clean_text($cached['city'] ?? '', 120),
+        ];
+    }
+
+    if (!function_exists('curl_init')) {
+        return $emptyLocation;
+    }
+
+    $curl = curl_init('https://ipwho.is/' . rawurlencode($ip));
+
+    if (!$curl) {
+        return $emptyLocation;
+    }
+
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT_MS => 600,
+        CURLOPT_TIMEOUT_MS => 1200,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_USERAGENT => 'IbnuCreative-Analytics/1.0',
+    ]);
+
+    $body = curl_exec($curl);
+    $statusCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+
+    if (!is_string($body) || $body === '' || $statusCode < 200 || $statusCode >= 300) {
+        return $emptyLocation;
+    }
+
+    $data = json_decode($body, true);
+
+    if (!is_array($data) || empty($data['success'])) {
+        return $emptyLocation;
+    }
+
+    $location = [
+        'country' => clean_text($data['country'] ?? '', 80),
+        'region' => clean_text($data['region'] ?? '', 120),
+        'city' => clean_text($data['city'] ?? '', 120),
+    ];
+
+    $_SESSION['analytics_geo_cache'][$ip] = $location + ['expires_at' => time() + 86400];
+
+    return $location;
 }
 
 if ($method === 'POST') {
@@ -166,8 +308,25 @@ if ($method === 'POST') {
         : 'view';
     $referrer = clean_asset_url($payload['referrer'] ?? ($_SERVER['HTTP_REFERER'] ?? ''), 800);
     [$source, $sourceLabel] = analytics_source_label($referrer);
-    $ip = clean_text($_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '', 120);
+    $ip = clean_text(analytics_client_ip(), 120);
     $userAgent = clean_text($_SERVER['HTTP_USER_AGENT'] ?? '', 500);
+    $timezone = clean_text($payload['timezone'] ?? '', 80);
+    $language = clean_text($payload['language'] ?? '', 80);
+    $headerLocation = analytics_location_from_headers();
+    $ipLocation = analytics_lookup_ip_location($ip);
+    $country = clean_text($payload['country'] ?? '', 80)
+        ?: $headerLocation['country']
+        ?: $ipLocation['country']
+        ?: analytics_country_from_timezone_language($timezone, $language)
+        ?: 'Tidak diketahui';
+    $region = clean_text($payload['region'] ?? '', 120)
+        ?: $headerLocation['region']
+        ?: $ipLocation['region']
+        ?: 'Tidak diketahui';
+    $city = clean_text($payload['city'] ?? '', 120)
+        ?: $headerLocation['city']
+        ?: $ipLocation['city']
+        ?: 'Tidak diketahui';
 
     try {
         $insert = $pdo->prepare(
@@ -190,11 +349,11 @@ if ($method === 'POST') {
             $referrer,
             $source,
             $sourceLabel,
-            clean_text($payload['country'] ?? 'Tidak diketahui', 80),
-            clean_text($payload['region'] ?? 'Tidak diketahui', 120),
-            clean_text($payload['city'] ?? 'Tidak diketahui', 120),
-            clean_text($payload['timezone'] ?? '', 80),
-            clean_text($payload['language'] ?? '', 80),
+            $country,
+            $region,
+            $city,
+            $timezone,
+            $language,
             clean_text($payload['deviceType'] ?? '', 60) ?: 'Tidak diketahui',
             '',
             $userAgent,
@@ -218,4 +377,3 @@ $query->execute([$range['startSql'], $range['endSql']]);
 send_json(200, [
     'analytics' => analytics_build($query->fetchAll(), $range),
 ]);
-
