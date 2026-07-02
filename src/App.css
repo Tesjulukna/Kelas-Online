@@ -628,6 +628,23 @@
   box-shadow: var(--shadow-sm);
 }
 
+.app-shell.role-member.public-theme-dark .drawer-close {
+  color: #dbeafe;
+  border-color: rgba(148, 163, 184, 0.26);
+  background: rgba(8, 17, 31, 0.88);
+  box-shadow: none;
+}
+
+.app-shell.role-member.public-theme-dark .drawer-close:hover {
+  color: #ffffff;
+  border-color: rgba(96, 165, 250, 0.48);
+  background: rgba(37, 99, 235, 0.24);
+}
+
+.app-shell.role-member.public-theme-dark .drawer-backdrop {
+  background: rgba(2, 6, 23, 0.7);
+}
+
 .app-shell.role-member.public-theme-dark .profile-dropdown,
 .app-shell.role-member.public-theme-dark .notification-dropdown {
   color: var(--color-text);
@@ -831,6 +848,8 @@
 .app-shell.role-member.public-theme-dark .digital-cart-button,
 .app-shell.role-member.public-theme-dark .change-payment-method-button,
 .app-shell.role-member.public-theme-dark .member-class-button:not(.btn-primary),
+.app-shell.role-member.public-theme-dark .available-payment-action .btn-secondary,
+.app-shell.role-member.public-theme-dark .digital-product-card .member-class-button,
 .app-shell.role-member.public-theme-dark .pagination-controls button,
 .app-shell.role-member.public-theme-dark .profile-theme-menu-item {
   color: #dbeafe;
@@ -845,6 +864,8 @@
 .app-shell.role-member.public-theme-dark .digital-cart-button:hover,
 .app-shell.role-member.public-theme-dark .change-payment-method-button:hover,
 .app-shell.role-member.public-theme-dark .member-class-button:not(.btn-primary):hover,
+.app-shell.role-member.public-theme-dark .available-payment-action .btn-secondary:hover,
+.app-shell.role-member.public-theme-dark .digital-product-card .member-class-button:hover,
 .app-shell.role-member.public-theme-dark .pagination-controls button:hover:not(:disabled) {
   color: #ffffff;
   border-color: rgba(96, 165, 250, 0.48);
@@ -992,8 +1013,14 @@
 .app-shell.role-member.public-theme-dark .payment-breakdown-total strong,
 .app-shell.role-member.public-theme-dark .digital-product-detail-tags span,
 .app-shell.role-member.public-theme-dark .digital-cart-button.active,
+.app-shell.role-member.public-theme-dark .cart-action-button span,
 .app-shell.role-member.public-theme-dark .member-testimonial-existing span {
   color: #93c5fd;
+}
+
+.app-shell.role-member.public-theme-dark .cart-action-button span {
+  border-color: rgba(15, 25, 43, 0.98);
+  background: rgba(37, 99, 235, 0.9);
 }
 
 .app-shell.role-member.public-theme-dark .expired-payment-notice {
@@ -1027,6 +1054,50 @@
   color: var(--color-text);
   border-color: rgba(148, 163, 184, 0.22);
   background: rgba(15, 25, 43, 0.86);
+}
+
+.app-shell.role-member.public-theme-dark .public-wishlist-modal-backdrop {
+  background: rgba(2, 6, 23, 0.72);
+}
+
+.app-shell.role-member.public-theme-dark .public-wishlist-modal,
+.app-shell.role-member.public-theme-dark .public-wishlist-item {
+  color: var(--color-text);
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(15, 25, 43, 0.98);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.38);
+}
+
+.app-shell.role-member.public-theme-dark .public-wishlist-modal .section-heading h2,
+.app-shell.role-member.public-theme-dark .public-wishlist-item strong {
+  color: var(--color-heading);
+}
+
+.app-shell.role-member.public-theme-dark .public-wishlist-modal .section-heading p,
+.app-shell.role-member.public-theme-dark .public-wishlist-item small {
+  color: var(--color-muted);
+}
+
+.app-shell.role-member.public-theme-dark .public-wishlist-item span {
+  color: #93c5fd;
+}
+
+.app-shell.role-member.public-theme-dark .public-wishlist-image {
+  color: #93c5fd;
+  background: rgba(37, 99, 235, 0.14);
+}
+
+.app-shell.role-member.public-theme-dark .profile-editor label,
+.app-shell.role-member.public-theme-dark .profile-preview strong {
+  color: var(--color-heading);
+}
+
+.app-shell.role-member.public-theme-dark .profile-preview,
+.app-shell.role-member.public-theme-dark .profile-security-fields,
+.app-shell.role-member.public-theme-dark .upload-control {
+  color: var(--color-text);
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(8, 17, 31, 0.72);
 }
 
 .app-shell.role-member.public-theme-dark .ig-reviews-header,
@@ -1132,6 +1203,9 @@
 .app-shell.role-member.public-theme-dark .certificate-regenerate-box strong,
 .app-shell.role-member.public-theme-dark .material-description-section h3,
 .app-shell.role-member.public-theme-dark .material-nav.active strong,
+.app-shell.role-member.public-theme-dark .material-list-heading h3,
+.app-shell.role-member.public-theme-dark .material-content h3,
+.app-shell.role-member.public-theme-dark .material-resources strong,
 .app-shell.role-member.public-theme-dark .task-box label,
 .app-shell.role-member.public-theme-dark .testimonial-submit-box h3 {
   color: var(--color-heading);
@@ -1143,11 +1217,39 @@
 .app-shell.role-member.public-theme-dark .certificate-request-status small,
 .app-shell.role-member.public-theme-dark .certificate-regenerate-box span,
 .app-shell.role-member.public-theme-dark .material-description,
+.app-shell.role-member.public-theme-dark .material-nav small,
+.app-shell.role-member.public-theme-dark .material-list-heading .eyebrow,
+.app-shell.role-member.public-theme-dark .material-resources small,
+.app-shell.role-member.public-theme-dark .material-resource-actions,
 .app-shell.role-member.public-theme-dark .testimonial-submit-box p,
 .app-shell.role-member.public-theme-dark .member-testimonial-existing p,
 .app-shell.role-member.public-theme-dark .ticket-bubble small,
 .app-shell.role-member.public-theme-dark .course-entry-action {
   color: var(--color-muted);
+}
+
+.app-shell.role-member.public-theme-dark .material-resources,
+.app-shell.role-member.public-theme-dark .material-resource-editor,
+.app-shell.role-member.public-theme-dark .material-resource-actions,
+.app-shell.role-member.public-theme-dark .pdf-upload-row,
+.app-shell.role-member.public-theme-dark .resource-link-editor,
+.app-shell.role-member.public-theme-dark .task-upload-box,
+.app-shell.role-member.public-theme-dark .task-image-settings,
+.app-shell.role-member.public-theme-dark .member-class-access {
+  color: var(--color-text);
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(8, 17, 31, 0.72);
+}
+
+.app-shell.role-member.public-theme-dark .material-resource-actions .btn,
+.app-shell.role-member.public-theme-dark .resource-link-editor button {
+  color: #dbeafe;
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(15, 25, 43, 0.92);
+}
+
+.app-shell.role-member.public-theme-dark .video-placeholder {
+  color: #c9d6ea;
 }
 
 .app-shell.role-member.public-theme-dark .public-detail-page {
@@ -18322,4 +18424,38 @@ img {
   .prompt-content-editor {
     min-height: 220px;
   }
+}
+
+/* Final member dark-mode guards for late utility overrides. */
+.app-shell.role-member.public-theme-dark .available-payment-action .btn-secondary,
+.app-shell.role-member.public-theme-dark .digital-product-card .member-class-button.btn-secondary,
+.app-shell.role-member.public-theme-dark .member-class-button.btn-secondary,
+.app-shell.role-member.public-theme-dark .public-wishlist-item .btn-secondary,
+.app-shell.role-member.public-theme-dark .public-sticky-actions .btn-secondary {
+  color: #dbeafe !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: rgba(15, 25, 43, 0.92) !important;
+  box-shadow: none !important;
+}
+
+.app-shell.role-member.public-theme-dark .available-payment-action .btn-secondary:hover,
+.app-shell.role-member.public-theme-dark .digital-product-card .member-class-button.btn-secondary:hover,
+.app-shell.role-member.public-theme-dark .member-class-button.btn-secondary:hover,
+.app-shell.role-member.public-theme-dark .public-wishlist-item .btn-secondary:hover,
+.app-shell.role-member.public-theme-dark .public-sticky-actions .btn-secondary:hover {
+  color: #ffffff !important;
+  border-color: rgba(96, 165, 250, 0.48) !important;
+  background: rgba(37, 99, 235, 0.24) !important;
+}
+
+.app-shell.role-member.public-theme-dark .public-wishlist-modal,
+.app-shell.role-member.public-theme-dark .public-wishlist-item,
+.app-shell.role-member.public-theme-dark .profile-editor,
+.app-shell.role-member.public-theme-dark .material-sidebar,
+.app-shell.role-member.public-theme-dark .material-description-section,
+.app-shell.role-member.public-theme-dark .material-resources,
+.app-shell.role-member.public-theme-dark .task-box {
+  color: var(--color-text) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 25, 43, 0.94) !important;
 }
