@@ -348,6 +348,20 @@ function formatRupiah(value) {
   }).format(number)
 }
 
+function getProductStock(product) {
+  return Math.max(0, Math.round(Number(product?.itemQuantity) || 0))
+}
+
+function getProductStockLabel(product) {
+  if (product?.itemQuantityEnabled !== true) {
+    return 'Stok unlimited'
+  }
+
+  const stock = getProductStock(product)
+
+  return stock > 0 ? `Stok ${stock}` : 'Stok habis'
+}
+
 function formatTransactionCode(value) {
   const code = String(value || '').trim()
 
@@ -4630,6 +4644,9 @@ function AdminPage({
                           {product.showOnMember === false ? 'Hidden member' : 'Show member'}
                         </mark>
                         {product.highlighted && <mark>Highlight</mark>}
+                        <mark className={product.itemQuantityEnabled === true && getProductStock(product) <= 0 ? 'danger-mark' : ''}>
+                          {getProductStockLabel(product)}
+                        </mark>
                       </span>
                     </span>
                     <span data-label="Harga" role="cell">{product.price ? formatRupiah(product.price) : 'Gratis'}</span>

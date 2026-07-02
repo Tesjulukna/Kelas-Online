@@ -102,6 +102,46 @@ function commerce_fetch_product(PDO $pdo, string $productId, bool $activeOnly = 
     return $product ?: null;
 }
 
+function commerce_product_stock_managed(array $product): bool
+{
+    return commerce_flag_enabled($product['item_quantity_enabled'] ?? 0);
+}
+
+function commerce_product_stock_count(array $product): int
+{
+    return clean_number($product['item_quantity'] ?? 0, 0, 1000000000);
+}
+
+function commerce_product_sold_out(array $product): bool
+{
+    return commerce_product_stock_managed($product) && commerce_product_stock_count($product) <= 0;
+}
+
+function commerce_assert_product_stock_available(array $product): void
+{
+    if (commerce_product_sold_out($product)) {
+        send_json(409, [
+            'message' => 'Stok produk habis. Silakan hubungi admin atau pilih produk lain.',
+        ]);
+    }
+}
+
+function commerce_decrement_product_stock(PDO $pdo, string $productId): void
+{
+    $id = clean_text($productId, 120);
+
+    if ($id === '') {
+        return;
+    }
+
+    $update = $pdo->prepare(
+        'UPDATE digital_products
+        SET item_quantity = GREATEST(item_quantity - 1, 0), updated_at = NOW()
+        WHERE id = ? AND item_quantity_enabled = 1 AND item_quantity > 0'
+    );
+    $update->execute([$id]);
+}
+
 function commerce_grant_digital_product_access(PDO $pdo, array $args): array
 {
     $productId = clean_text($args['productId'] ?? '', 120);
@@ -176,6 +216,8 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
         'active',
         clean_asset_url($product['file_url'] ?? '', 1000),
     ]);
+
+    commerce_decrement_product_stock($pdo, $product['id']);
 
     $query = $pdo->prepare('SELECT * FROM digital_product_access WHERE id = ? LIMIT 1');
     $query->execute([$accessId]);

@@ -1287,6 +1287,11 @@ mark {
   background: #eef2f7;
 }
 
+.danger-mark {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
 .admin-inline-badges {
   display: flex;
   align-items: center;
@@ -12930,6 +12935,37 @@ img {
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.catalog-stock-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 0 9px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  color: #11615a;
+  background: #d8fbf2;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.catalog-stock-badge.is-sold-out,
+.stock-status.is-sold-out {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.stock-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #11615a;
+  background: #d8fbf2;
 }
 
 .card-title {

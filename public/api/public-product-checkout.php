@@ -35,6 +35,8 @@ if (!$product) {
     send_json(404, ['message' => 'Produk digital aktif tidak ditemukan.']);
 }
 
+commerce_assert_product_stock_available($product);
+
 $config = api_config();
 $amount = commerce_product_effective_price($product);
 

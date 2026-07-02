@@ -73,6 +73,28 @@ function plainTextFromHtml(value) {
     .trim()
 }
 
+function getProductStock(product) {
+  return Math.max(0, Math.round(Number(product?.itemQuantity) || 0))
+}
+
+function isProductStockManaged(product) {
+  return product?.itemQuantityEnabled === true
+}
+
+function isProductSoldOut(product) {
+  return isProductStockManaged(product) && getProductStock(product) <= 0
+}
+
+function getProductStockLabel(product) {
+  if (!isProductStockManaged(product)) {
+    return 'Stok tersedia'
+  }
+
+  const stock = getProductStock(product)
+
+  return stock > 0 ? `Stok ${stock}` : 'Stok habis'
+}
+
 function formatIndonesianDate(value) {
   if (!value) {
     return 'Tanggal belum tersedia'
@@ -661,6 +683,8 @@ function HomePage({
         fileName: isPrompt ? (product.promptLicense || 'Prompt siap copy') : (product.fileName || product.platformType || 'Produk digital'),
         rating: resolveRating(product, fallbackMetrics.rating),
         sales: resolveCount(product.displaySales, realSales),
+        stockLabel: getProductStockLabel(product),
+        isSoldOut: isProductSoldOut(product),
         highlighted: product.highlighted === true,
       }
     })
@@ -704,6 +728,7 @@ function HomePage({
   }
   const selectedProductAccess = findActiveProductAccess(selectedProduct)
   const selectedProductIsOwned = Boolean(selectedProductAccess) && selectedProduct?.allowRepeatPurchase !== true
+  const selectedProductIsSoldOut = isProductSoldOut(selectedProduct)
   const selectedProductSalesCount = selectedProduct
     ? resolveCount(
         selectedProduct.displaySales,
@@ -1183,6 +1208,11 @@ function HomePage({
       return
     }
 
+    if (isProductSoldOut(activeCheckoutProduct)) {
+      setPublicCheckoutStatus('Stok produk habis. Silakan pilih produk lain atau hubungi admin.')
+      return
+    }
+
     setPublicCheckoutStatus(isPublicProductFree ? 'Memproses produk gratis...' : 'Membuat invoice...')
 
     try {
@@ -1428,6 +1458,7 @@ function HomePage({
           salesCount={selectedProductSalesCount}
           wishlistCount={wishlistCount}
           isOwned={selectedProductIsOwned}
+          isSoldOut={selectedProductIsSoldOut}
           onBack={closePublicDetail}
           onAddToWishlist={() => addWishlistItem(selectedProduct, selectedProduct.productType === 'prompt' ? 'prompt' : 'produk')}
           onBuy={openProductCheckout}
@@ -1571,6 +1602,11 @@ function HomePage({
                     {item.sales} {item.type === 'kelas' ? 'peserta' : 'terjual'}
                   </span>
                 </div>
+                {item.type !== 'kelas' && (
+                  <span className={`catalog-stock-badge ${item.isSoldOut ? 'is-sold-out' : ''}`}>
+                    {item.stockLabel}
+                  </span>
+                )}
                 <h3 className="card-title">{item.title}</h3>
                 <p className="card-desc">{item.description}</p>
                 <div className="card-footer-info">

@@ -165,6 +165,7 @@ function DetailProduk({
   onReviewLike = async () => {},
   onShare,
   isOwned = false,
+  isSoldOut = false,
 }) {
   const initialLikedReviewIds = readLikedReviewIds(product?.id)
   const [likedReviewIds, setLikedReviewIds] = useState(initialLikedReviewIds)
@@ -198,6 +199,11 @@ function DetailProduk({
   const normalPrice = Math.max(0, Math.round(Number(product.price) || 0))
   const paidPrice = salePrice || normalPrice
   const purchaseButtonLabel = String(product.purchaseButtonLabel || '').trim() || (paidPrice ? (isPrompt ? 'Beli Prompt' : 'Beli Sekarang') : (isPrompt ? 'Ambil Prompt' : 'Ambil Gratis'))
+  const primaryButtonLabel = isOwned
+    ? (isPrompt ? 'Akses Prompt' : 'Lihat Akses')
+    : isSoldOut
+      ? 'Stok Habis'
+      : purchaseButtonLabel
   const originalPrice = salePrice && normalPrice > salePrice
     ? formatRupiah(normalPrice)
     : null
@@ -323,6 +329,7 @@ function DetailProduk({
               {isPrompt ? 'Prompt siap copy' : (product.fileName || 'Digital Delivery')}
             </span>
             <span>{Math.max(0, Math.round(Number(salesCount) || 0))} terjual</span>
+            <span>{isSoldOut ? 'Stok habis' : 'Stok tersedia'}</span>
             <span>{isPrompt ? (product.promptLicense || 'Lisensi penggunaan') : 'Akses Instant via Email'}</span>
           </div>
 
@@ -501,8 +508,9 @@ function DetailProduk({
           </button>
         )}
         <button
-          className="btn btn-primary"
+          className={`btn ${isSoldOut && !isOwned ? 'btn-secondary' : 'btn-primary'}`}
           type="button"
+          disabled={isSoldOut && !isOwned}
           onClick={() => {
             if (isOwned && onOpenAccess) {
               onOpenAccess(product)
@@ -513,7 +521,7 @@ function DetailProduk({
           }}
         >
           <Icon name={isOwned ? 'download' : 'wallet'} />
-          {isOwned ? (isPrompt ? 'Akses Prompt' : 'Lihat Akses') : purchaseButtonLabel}
+          {primaryButtonLabel}
         </button>
       </div>
     </section>

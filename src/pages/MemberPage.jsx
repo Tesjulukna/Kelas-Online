@@ -244,6 +244,28 @@ function formatRupiah(value) {
   }).format(amount)
 }
 
+function getProductStock(product) {
+  return Math.max(0, Math.round(Number(product?.itemQuantity) || 0))
+}
+
+function isProductStockManaged(product) {
+  return product?.itemQuantityEnabled === true
+}
+
+function isProductSoldOut(product) {
+  return isProductStockManaged(product) && getProductStock(product) <= 0
+}
+
+function getProductStockLabel(product) {
+  if (!isProductStockManaged(product)) {
+    return 'Stok tersedia'
+  }
+
+  const stock = getProductStock(product)
+
+  return stock > 0 ? `Stok ${stock}` : 'Stok habis'
+}
+
 function formatCertificateDate(value) {
   const time = Date.parse(value || '')
 
@@ -1473,6 +1495,11 @@ function MemberPage({
       ? activePaymentsByProduct.get(item.id)
       : activePaymentsByClass.get(item.id)
 
+    if (itemType === 'digital_product' && isProductSoldOut(item)) {
+      onNotify('Stok produk habis. Silakan tunggu admin menambah stok lagi.')
+      return
+    }
+
     if (!price) {
       handleStartCheckout(item, '', { itemType })
       return
@@ -2434,6 +2461,8 @@ function MemberPage({
               const price = salePrice || normalPrice
               const isOwned = ownedDigitalProductIds.has(product.id)
               const canRepeatPurchase = product.allowRepeatPurchase === true
+              const productSoldOut = isProductSoldOut(product)
+              const blockNewPurchase = productSoldOut && !(isOwned && !canRepeatPurchase)
               const pendingPayment = activePaymentsByProduct.get(product.id)
               const expiredPayment = expiredPaymentsByProduct.get(product.id)
               const expiredNoticeKey = getExpiredPaymentDismissKey(expiredPayment)
@@ -2441,7 +2470,9 @@ function MemberPage({
                 Boolean(expiredPayment && expiredNoticeKey && !dismissedExpiredPayments.includes(expiredNoticeKey))
               const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
               const isInCart = digitalProductCartIds.includes(product.id)
-              let buttonLabel = isOwned
+              let buttonLabel = blockNewPurchase
+                ? 'Stok Habis'
+                : isOwned
                 ? canRepeatPurchase
                   ? 'Beli Lagi'
                   : 'Lihat Akses'
@@ -2506,6 +2537,7 @@ function MemberPage({
                         <span>Akses otomatis</span>
                         <span>Delivery email</span>
                         <span>{isPrompt ? 'Copy prompt' : (product.platformType || 'Digital file')}</span>
+                        <span>{getProductStockLabel(product)}</span>
                       </div>
                       <div className="digital-product-detail-price">
                         <small>{price ? 'Harga produk' : 'Produk gratis'}</small>
@@ -2560,16 +2592,21 @@ function MemberPage({
                     <button
                       className={`btn btn-secondary digital-cart-button ${isInCart ? 'active' : ''}`}
                       type="button"
+                      disabled={blockNewPurchase}
                       onClick={() => handleToggleDigitalProductCart(product)}
                     >
                       <Icon name="cart" />
                       {isInCart ? 'Di Keranjang' : 'Keranjang'}
                     </button>
                     <button
-                      className="btn btn-primary digital-buy-button"
+                      className={`btn ${blockNewPurchase ? 'btn-secondary' : 'btn-primary'} digital-buy-button`}
                       type="button"
-                      disabled={isCheckingOut}
+                      disabled={isCheckingOut || blockNewPurchase}
                       onClick={() => {
+                        if (blockNewPurchase) {
+                          return
+                        }
+
                         if (isOwned && !canRepeatPurchase) {
                           openDigitalProductAccessPage(product)
                           return
@@ -2692,13 +2729,17 @@ function MemberPage({
                 const price = salePrice || normalPrice
                 const isOwned = ownedDigitalProductIds.has(product.id)
                 const canRepeatPurchase = product.allowRepeatPurchase === true
+                const productSoldOut = isProductSoldOut(product)
+                const blockNewPurchase = productSoldOut && !(isOwned && !canRepeatPurchase)
                 const pendingPayment = activePaymentsByProduct.get(product.id)
                 const expiredPayment = expiredPaymentsByProduct.get(product.id)
                 const expiredNoticeKey = getExpiredPaymentDismissKey(expiredPayment)
                 const showExpiredNotice =
                   Boolean(expiredPayment && expiredNoticeKey && !dismissedExpiredPayments.includes(expiredNoticeKey))
                 const isCheckingOut = checkoutClassId === `digital_product:${product.id}`
-                let buttonLabel = isOwned
+                let buttonLabel = blockNewPurchase
+                  ? 'Stok Habis'
+                  : isOwned
                   ? canRepeatPurchase
                     ? 'Beli Lagi'
                     : 'Lihat Akses'
@@ -2733,6 +2774,9 @@ function MemberPage({
                       {!isOwned && salePrice > 0 && normalPrice > salePrice && (
                         <small className="struck-price">{formatRupiah(normalPrice)}</small>
                       )}
+                      <small className={productSoldOut ? 'stock-status is-sold-out' : 'stock-status'}>
+                        {getProductStockLabel(product)}
+                      </small>
                     </span>
                     <span className="available-payment-action">
                       {showExpiredNotice && (
@@ -2755,10 +2799,14 @@ function MemberPage({
                         Detail
                       </button>
                       <button
-                        className="btn btn-primary member-class-button"
+                        className={`btn ${blockNewPurchase ? 'btn-secondary' : 'btn-primary'} member-class-button`}
                         type="button"
-                        disabled={isCheckingOut}
+                        disabled={isCheckingOut || blockNewPurchase}
                         onClick={() => {
+                          if (blockNewPurchase) {
+                            return
+                          }
+
                           if (isOwned && !canRepeatPurchase) {
                             openDigitalProductAccessPage(product)
                             return

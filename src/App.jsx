@@ -2980,6 +2980,13 @@ function App() {
       body: JSON.stringify(payload),
     })
 
+    if (data.freeAccessGranted || data.accessUrl) {
+      const productData = await fetchStoredDigitalProducts(session)
+      setDigitalProducts(productData.digitalProducts)
+      setDigitalProductAccess(productData.digitalProductAccess)
+      announcePeopleSync()
+    }
+
     showNotice(data.message || 'Checkout produk digital berhasil dibuat.')
     return data
   }

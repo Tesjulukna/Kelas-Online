@@ -59,6 +59,8 @@ if ($checkoutType === 'digital_product') {
             'message' => 'Akses produk digital sudah aktif.',
         ]);
     }
+
+    commerce_assert_product_stock_available($checkoutItem);
 } else {
     $classQuery = $pdo->prepare('SELECT * FROM classes WHERE id = ? AND status = ? LIMIT 1');
     $classQuery->execute([$classId, 'Aktif']);
