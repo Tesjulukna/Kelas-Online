@@ -783,6 +783,255 @@
   background: transparent;
 }
 
+.app-shell.role-member.public-theme-dark .btn-secondary,
+.app-shell.role-member.public-theme-dark .icon-button,
+.app-shell.role-member.public-theme-dark .icon-action-button,
+.app-shell.role-member.public-theme-dark .digital-cart-button,
+.app-shell.role-member.public-theme-dark .change-payment-method-button,
+.app-shell.role-member.public-theme-dark .member-class-button:not(.btn-primary),
+.app-shell.role-member.public-theme-dark .pagination-controls button,
+.app-shell.role-member.public-theme-dark .profile-theme-menu-item {
+  color: #dbeafe;
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 25, 43, 0.92);
+  box-shadow: none;
+}
+
+.app-shell.role-member.public-theme-dark .btn-secondary:hover,
+.app-shell.role-member.public-theme-dark .icon-button:hover,
+.app-shell.role-member.public-theme-dark .icon-action-button:hover,
+.app-shell.role-member.public-theme-dark .digital-cart-button:hover,
+.app-shell.role-member.public-theme-dark .change-payment-method-button:hover,
+.app-shell.role-member.public-theme-dark .member-class-button:not(.btn-primary):hover,
+.app-shell.role-member.public-theme-dark .pagination-controls button:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: rgba(96, 165, 250, 0.48);
+  background: rgba(37, 99, 235, 0.22);
+}
+
+.app-shell.role-member.public-theme-dark .btn-primary,
+.app-shell.role-member.public-theme-dark .member-class-button.btn-primary,
+.app-shell.role-member.public-theme-dark .digital-buy-button {
+  color: #ffffff;
+  box-shadow: 0 16px 32px rgba(37, 99, 235, 0.26);
+}
+
+.app-shell.role-member.public-theme-dark .btn:disabled,
+.app-shell.role-member.public-theme-dark button:disabled,
+.app-shell.role-member.public-theme-dark .pagination-controls button:disabled {
+  color: #64748b;
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.58);
+  box-shadow: none;
+}
+
+.app-shell.role-member.public-theme-dark .metric-icon,
+.app-shell.role-member.public-theme-dark .card-icon,
+.app-shell.role-member.public-theme-dark .action-card > .icon,
+.app-shell.role-member.public-theme-dark .empty-state .icon,
+.app-shell.role-member.public-theme-dark .member-testimonial-visual,
+.app-shell.role-member.public-theme-dark .member-testimonial-locked .icon,
+.app-shell.role-member.public-theme-dark .certificate-summary-grid .icon,
+.app-shell.role-member.public-theme-dark .certificate-course-media .icon,
+.app-shell.role-member.public-theme-dark .certificate-regenerate-box .icon,
+.app-shell.role-member.public-theme-dark .secure-payment-icon {
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.22);
+  background: rgba(37, 99, 235, 0.14);
+}
+
+.app-shell.role-member.public-theme-dark .modal-backdrop,
+.app-shell.role-member.public-theme-dark .payment-method-modal-backdrop,
+.app-shell.role-member.public-theme-dark .submission-member-backdrop,
+.app-shell.role-member.public-theme-dark .submission-review-backdrop,
+.app-shell.role-member.public-theme-dark .digital-review-modal-backdrop {
+  background: rgba(2, 6, 23, 0.72) !important;
+}
+
+.app-shell.role-member.public-theme-dark .profile-editor,
+.app-shell.role-member.public-theme-dark .confirm-dialog,
+.app-shell.role-member.public-theme-dark .payment-method-modal,
+.app-shell.role-member.public-theme-dark .submission-member-modal,
+.app-shell.role-member.public-theme-dark .submission-review,
+.app-shell.role-member.public-theme-dark .certificate-testimonial-modal,
+.app-shell.role-member.public-theme-dark .digital-review-modal,
+.app-shell.role-member.public-theme-dark .prompt-modal {
+  color: var(--color-text);
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(15, 25, 43, 0.98);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.38);
+}
+
+.app-shell.role-member.public-theme-dark .profile-editor h2,
+.app-shell.role-member.public-theme-dark .confirm-dialog h2,
+.app-shell.role-member.public-theme-dark .payment-method-modal-heading h2,
+.app-shell.role-member.public-theme-dark .submission-member-modal > .modal-heading h2,
+.app-shell.role-member.public-theme-dark .certificate-testimonial-modal h2,
+.app-shell.role-member.public-theme-dark .digital-review-modal h2,
+.app-shell.role-member.public-theme-dark .prompt-modal h2 {
+  color: var(--color-heading);
+}
+
+.app-shell.role-member.public-theme-dark .profile-editor p,
+.app-shell.role-member.public-theme-dark .confirm-dialog p,
+.app-shell.role-member.public-theme-dark .payment-method-modal-heading p,
+.app-shell.role-member.public-theme-dark .certificate-testimonial-modal p,
+.app-shell.role-member.public-theme-dark .digital-review-modal p,
+.app-shell.role-member.public-theme-dark .prompt-modal p {
+  color: var(--color-muted);
+}
+
+.app-shell.role-member.public-theme-dark .payment-method-option,
+.app-shell.role-member.public-theme-dark .payment-method-logo.custom-logo,
+.app-shell.role-member.public-theme-dark .payment-breakdown,
+.app-shell.role-member.public-theme-dark .secure-payment-note,
+.app-shell.role-member.public-theme-dark .payment-method-note,
+.app-shell.role-member.public-theme-dark .payment-terms-check,
+.app-shell.role-member.public-theme-dark .submission-member-modal > .modal-heading,
+.app-shell.role-member.public-theme-dark .submission-member-summary span,
+.app-shell.role-member.public-theme-dark .submission-filter-bar,
+.app-shell.role-member.public-theme-dark .member-pagination-bar,
+.app-shell.role-member.public-theme-dark .payment-pagination-bar,
+.app-shell.role-member.public-theme-dark .material-sidebar,
+.app-shell.role-member.public-theme-dark .material-nav,
+.app-shell.role-member.public-theme-dark .material-description-section,
+.app-shell.role-member.public-theme-dark .material-description,
+.app-shell.role-member.public-theme-dark .task-box,
+.app-shell.role-member.public-theme-dark .testimonial-submit-box,
+.app-shell.role-member.public-theme-dark .member-testimonial-existing,
+.app-shell.role-member.public-theme-dark .member-testimonial-locked,
+.app-shell.role-member.public-theme-dark .ticket-inline-reply,
+.app-shell.role-member.public-theme-dark .admin-thread,
+.app-shell.role-member.public-theme-dark .digital-product-sticky-actions,
+.app-shell.role-member.public-theme-dark .digital-product-detail-hero,
+.app-shell.role-member.public-theme-dark .digital-product-seller,
+.app-shell.role-member.public-theme-dark .digital-product-detail-tags span,
+.app-shell.role-member.public-theme-dark .certificate-summary-grid article,
+.app-shell.role-member.public-theme-dark .certificate-course-card,
+.app-shell.role-member.public-theme-dark .certificate-create-box,
+.app-shell.role-member.public-theme-dark .certificate-change-form,
+.app-shell.role-member.public-theme-dark .certificate-locked-note,
+.app-shell.role-member.public-theme-dark .certificate-request-status,
+.app-shell.role-member.public-theme-dark .certificate-regenerate-box {
+  color: var(--color-text);
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(8, 17, 31, 0.72);
+  box-shadow: none;
+}
+
+.app-shell.role-member.public-theme-dark .payment-method-option:hover,
+.app-shell.role-member.public-theme-dark .payment-method-option:focus-visible,
+.app-shell.role-member.public-theme-dark .payment-method-option.selected,
+.app-shell.role-member.public-theme-dark .material-nav.active,
+.app-shell.role-member.public-theme-dark .certificate-regenerate-box.active {
+  border-color: rgba(96, 165, 250, 0.56);
+  background: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.app-shell.role-member.public-theme-dark .payment-method-logo,
+.app-shell.role-member.public-theme-dark .store-logo,
+.app-shell.role-member.public-theme-dark .bank-logo,
+.app-shell.role-member.public-theme-dark .wallet-logo,
+.app-shell.role-member.public-theme-dark .digital-product-seller-logo,
+.app-shell.role-member.public-theme-dark .material-image-frame,
+.app-shell.role-member.public-theme-dark .material-image-frame img,
+.app-shell.role-member.public-theme-dark .certificate-course-media {
+  background: rgba(15, 25, 43, 0.92);
+}
+
+.app-shell.role-member.public-theme-dark .secure-payment-note strong,
+.app-shell.role-member.public-theme-dark .secure-payment-note p,
+.app-shell.role-member.public-theme-dark .secure-payment-note small,
+.app-shell.role-member.public-theme-dark .payment-method-note,
+.app-shell.role-member.public-theme-dark .payment-breakdown-total strong,
+.app-shell.role-member.public-theme-dark .digital-product-detail-tags span,
+.app-shell.role-member.public-theme-dark .digital-cart-button.active,
+.app-shell.role-member.public-theme-dark .member-testimonial-existing span {
+  color: #93c5fd;
+}
+
+.app-shell.role-member.public-theme-dark .expired-payment-notice {
+  color: #fed7aa;
+  border-color: rgba(251, 146, 60, 0.32);
+  background: rgba(154, 52, 18, 0.18);
+}
+
+.app-shell.role-member.public-theme-dark .ticket-bubble.member {
+  color: var(--color-heading);
+  background: rgba(15, 25, 43, 0.94);
+}
+
+.app-shell.role-member.public-theme-dark .ticket-bubble.mentor {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.app-shell.role-member.public-theme-dark .course-entry,
+.app-shell.role-member.public-theme-dark .public-access-message,
+.app-shell.role-member.public-theme-dark .empty-state,
+.app-shell.role-member.public-theme-dark .certificate-testimonial-required-note {
+  color: var(--color-text);
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(15, 25, 43, 0.86);
+}
+
+.app-shell.role-member.public-theme-dark .status-pill {
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(15, 25, 43, 0.86);
+}
+
+.app-shell.role-member.public-theme-dark .status-pill.success,
+.app-shell.role-member.public-theme-dark .payment-status.success {
+  color: #99f6e4;
+  border-color: rgba(45, 212, 191, 0.24);
+  background: rgba(20, 184, 166, 0.16);
+}
+
+.app-shell.role-member.public-theme-dark .payment-status.pending {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.16);
+}
+
+.app-shell.role-member.public-theme-dark .payment-status.danger {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.16);
+}
+
+.app-shell.role-member.public-theme-dark .certificate-request-status.status-approved {
+  border-color: rgba(16, 185, 129, 0.28);
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.app-shell.role-member.public-theme-dark .certificate-request-status.status-rejected {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.app-shell.role-member.public-theme-dark .certificate-summary-grid strong,
+.app-shell.role-member.public-theme-dark .certificate-course-heading h3,
+.app-shell.role-member.public-theme-dark .certificate-request-status strong,
+.app-shell.role-member.public-theme-dark .certificate-regenerate-box strong,
+.app-shell.role-member.public-theme-dark .material-description-section h3,
+.app-shell.role-member.public-theme-dark .material-nav.active strong,
+.app-shell.role-member.public-theme-dark .task-box label,
+.app-shell.role-member.public-theme-dark .testimonial-submit-box h3 {
+  color: var(--color-heading);
+}
+
+.app-shell.role-member.public-theme-dark .certificate-summary-grid span,
+.app-shell.role-member.public-theme-dark .certificate-change-form p,
+.app-shell.role-member.public-theme-dark .certificate-request-status span,
+.app-shell.role-member.public-theme-dark .certificate-request-status small,
+.app-shell.role-member.public-theme-dark .certificate-regenerate-box span,
+.app-shell.role-member.public-theme-dark .material-description,
+.app-shell.role-member.public-theme-dark .testimonial-submit-box p,
+.app-shell.role-member.public-theme-dark .member-testimonial-existing p,
+.app-shell.role-member.public-theme-dark .ticket-bubble small,
+.app-shell.role-member.public-theme-dark .course-entry-action {
+  color: var(--color-muted);
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
