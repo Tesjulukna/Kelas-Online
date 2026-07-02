@@ -13339,6 +13339,16 @@ img {
   font-size: 0.92rem !important;
 }
 
+.public-sticky-actions.is-owned-access {
+  grid-template-columns: minmax(0, 1fr) !important;
+  max-width: 640px !important;
+}
+
+.public-sticky-actions.is-owned-access .btn {
+  width: 100% !important;
+  justify-content: center !important;
+}
+
 /* Responsive adjustments */
 @media (max-width: 760px) {
   .public-detail-page {
@@ -13380,6 +13390,17 @@ img {
     border-radius: 12px !important;
     padding: 10px !important;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) !important;
+  }
+
+  .public-sticky-actions.is-owned-access {
+    right: 14px !important;
+    left: 14px !important;
+    max-width: none !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .public-sticky-actions.is-owned-access .btn {
+    min-height: 50px !important;
   }
 
 }
