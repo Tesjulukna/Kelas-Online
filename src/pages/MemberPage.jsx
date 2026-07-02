@@ -622,9 +622,15 @@ function MemberPage({
   const selectedDigitalProduct = activeSellableProducts.find(
     (product) => product.id === selectedDigitalProductId,
   )
-  const digitalProductAccessByProduct = useMemo(
-    () => new Map(digitalProductAccess.map((access) => [access.productId, access])),
+  const activeDigitalProductAccess = useMemo(
+    () => digitalProductAccess.filter((access) =>
+      String(access.status || 'active').toLowerCase() === 'active',
+    ),
     [digitalProductAccess],
+  )
+  const digitalProductAccessByProduct = useMemo(
+    () => new Map(activeDigitalProductAccess.map((access) => [access.productId, access])),
+    [activeDigitalProductAccess],
   )
   const paidDigitalProductOrdersByProduct = useMemo(() => {
     const map = new Map()
@@ -658,7 +664,7 @@ function MemberPage({
     return map
   }, [payments])
   const ownedDigitalProductIds = useMemo(() => {
-    const ids = new Set(digitalProductAccess.map((access) => access.productId))
+    const ids = new Set(activeDigitalProductAccess.map((access) => access.productId))
 
     paidDigitalProductOrdersByProduct.forEach((payment, productId) => {
       if (payment?.accessOrderId) {
@@ -667,7 +673,7 @@ function MemberPage({
     })
 
     return ids
-  }, [digitalProductAccess, paidDigitalProductOrdersByProduct])
+  }, [activeDigitalProductAccess, paidDigitalProductOrdersByProduct])
   const certificatesByClass = useMemo(
     () => new Map(certificates.map((certificate) => [certificate.classId, certificate])),
     [certificates],

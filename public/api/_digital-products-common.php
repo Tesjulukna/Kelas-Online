@@ -177,10 +177,15 @@ function fetch_digital_products(PDO $pdo, ?array $user): array
         $accessQuery = $pdo->query('SELECT * FROM digital_product_access ORDER BY created_at DESC LIMIT 1000');
         $access = array_map('digital_access_public', $accessQuery->fetchAll());
     } elseif (($user['role'] ?? '') === 'member') {
+        $memberId = clean_text($user['userId'] ?? '', 120);
+        $memberEmail = clean_email($user['email'] ?? '');
         $accessQuery = $pdo->prepare(
-            'SELECT * FROM digital_product_access WHERE member_id = ? ORDER BY created_at DESC LIMIT 200',
+            'SELECT * FROM digital_product_access
+            WHERE member_id = ? OR buyer_email = ?
+            ORDER BY created_at DESC
+            LIMIT 200',
         );
-        $accessQuery->execute([$user['userId'] ?? '']);
+        $accessQuery->execute([$memberId, $memberEmail]);
         $access = array_map('digital_access_public', $accessQuery->fetchAll());
     }
 
