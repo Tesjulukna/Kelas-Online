@@ -126,7 +126,14 @@ const memberAboutFrameStyle = `<style>
 
 const memberAboutAnchorScript = `<script>
 (() => {
-  document.addEventListener('click', (event) => {
+  const normalizeInternalAnchors = () => {
+    document.querySelectorAll('a[href^="#"]').forEach((link) => {
+      link.removeAttribute('target')
+      link.removeAttribute('rel')
+    })
+  }
+
+  const handleInternalAnchorClick = (event) => {
     const clickedElement = event.target && event.target.nodeType === 1
       ? event.target
       : event.target?.parentElement
@@ -142,6 +149,9 @@ const memberAboutAnchorScript = `<script>
       return
     }
 
+    event.preventDefault()
+    event.stopPropagation()
+
     let targetId = hash.slice(1)
 
     try {
@@ -156,11 +166,9 @@ const memberAboutAnchorScript = `<script>
     const target = document.getElementById(targetId) || namedTargets[0]
 
     if (!target) {
-      event.preventDefault()
       return
     }
 
-    event.preventDefault()
     target.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
     try {
@@ -168,17 +176,35 @@ const memberAboutAnchorScript = `<script>
     } catch {
       // Ignore history updates in sandboxed frames.
     }
-  })
+  }
+
+  normalizeInternalAnchors()
+  document.addEventListener('DOMContentLoaded', normalizeInternalAnchors)
+  document.addEventListener('click', handleInternalAnchorClick, true)
+  document.addEventListener('auxclick', handleInternalAnchorClick, true)
 })()
 </script>`
 
 function stripExecutableMemberAboutHtml(value) {
-  return String(value || '')
+  const cleanHtml = String(value || '')
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<base\b[^>]*>/gi, '')
     .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
     .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
     .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
+
+  if (typeof document === 'undefined') {
+    return cleanHtml
+  }
+
+  const template = document.createElement('template')
+  template.innerHTML = cleanHtml
+  template.content.querySelectorAll('a[href^="#"]').forEach((link) => {
+    link.removeAttribute('target')
+    link.removeAttribute('rel')
+  })
+
+  return template.innerHTML
 }
 
 function enhanceMemberAboutSrcDoc(value) {
@@ -3432,7 +3458,7 @@ function MemberPage({
                 safeWebsiteSettings.memberAbout.html,
                 safeWebsiteSettings.memberAbout.title || 'Tentang',
               )}
-              sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
             />
           </div>
         </section>
