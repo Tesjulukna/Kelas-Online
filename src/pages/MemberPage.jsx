@@ -576,6 +576,7 @@ function MemberPage({
   onCreateSupportTicket = async () => {},
   onReplySupportTicket = async () => {},
   onCreateSubmission = async () => {},
+  onUpdateSubmission = async () => {},
   onTrackProgress = async () => {},
   onCreateTestimonial = async () => {},
   onCreateCertificate = async () => {},
@@ -617,6 +618,7 @@ function MemberPage({
   const [activeMaterialIndex, setActiveMaterialIndex] = useState(0)
   const [taskDraft, setTaskDraft] = useState('')
   const [taskAttachment, setTaskAttachment] = useState(null)
+  const [editingSubmissionId, setEditingSubmissionId] = useState('')
   const [submittedTasks, setSubmittedTasks] = useState(() => readSubmittedTasks(userId))
   const [courseProgress, setCourseProgress] = useState(() => readCourseProgress(userId))
   const [supportMessage, setSupportMessage] = useState('')
@@ -738,8 +740,27 @@ function MemberPage({
     (item) =>
       item.classId === selectedCourse?.id && item.materialId === activeMaterial?.id,
   )
+  const activeSubmissionStatus = activeServerSubmission?.status || ''
+  const isActiveSubmissionRevision = activeSubmissionStatus === 'Perlu Revisi'
+  const hasActiveSubmissionFeedback = Boolean(
+    activeServerSubmission?.feedback || Number(activeServerSubmission?.rating) > 0,
+  )
+  const canEditActiveSubmission = Boolean(
+    activeServerSubmission &&
+      activeSubmissionStatus === 'Menunggu Review' &&
+      !hasActiveSubmissionFeedback,
+  )
+  const canReviseActiveSubmission = Boolean(
+    activeServerSubmission && isActiveSubmissionRevision,
+  )
+  const isEditingActiveSubmission = Boolean(
+    activeServerSubmission && editingSubmissionId === activeServerSubmission.id,
+  )
+  const isTaskFormOpen =
+    !activeServerSubmission || isEditingActiveSubmission || canReviseActiveSubmission
   const isActiveTaskSubmitted =
-    Boolean(submittedTasks[activeTaskKey]) || Boolean(activeServerSubmission)
+    !isActiveSubmissionRevision &&
+    (Boolean(submittedTasks[activeTaskKey]) || Boolean(activeServerSubmission))
   const hasPreviousMaterial = currentMaterialIndex > 0
   const hasNextMaterial = currentMaterialIndex < materials.length - 1
   const canOpenNextMaterial =
@@ -926,7 +947,9 @@ function MemberPage({
 
     const submittedRequiredIds = new Set(
       submissions
-      .filter((submission) => submission.classId === course.id)
+      .filter((submission) =>
+        submission.classId === course.id && submission.status !== 'Perlu Revisi',
+      )
       .map((submission) => submission.materialId)
       .filter((materialId) =>
         requiredMaterials.some((material) => material.id === materialId),
@@ -1139,10 +1162,21 @@ function MemberPage({
         return true
       }
 
+      const serverSubmission = submissions.find(
+        (item) => item.classId === selectedCourse.id && item.materialId === material.id,
+      )
+
+      if (serverSubmission) {
+        return serverSubmission.status !== 'Perlu Revisi'
+      }
+
       return Boolean(
         submittedTasks[getTaskKey(selectedCourse.id, material.id)] ||
           submissions.find(
-            (item) => item.classId === selectedCourse.id && item.materialId === material.id,
+            (item) =>
+              item.classId === selectedCourse.id &&
+              item.materialId === material.id &&
+              item.status !== 'Perlu Revisi',
           ),
       )
     })
@@ -1153,6 +1187,7 @@ function MemberPage({
     setActiveMaterialIndex(0)
     setTaskDraft('')
     setTaskAttachment(null)
+    setEditingSubmissionId('')
     rememberCoursePosition(course.id, 0)
     onNotify(`Membuka materi ${course.title}.`)
   }
@@ -1166,6 +1201,7 @@ function MemberPage({
     setActiveMaterialIndex(index)
     setTaskDraft('')
     setTaskAttachment(null)
+    setEditingSubmissionId('')
     if (selectedCourse) {
       rememberCoursePosition(selectedCourse.id, index)
     }
@@ -1187,7 +1223,8 @@ function MemberPage({
     }
 
     try {
-      await onCreateSubmission({
+      const submissionPayload = {
+        ...(activeServerSubmission ? { id: activeServerSubmission.id } : {}),
         classId: selectedCourse.id,
         classTitle: selectedCourse.title,
         materialId: activeMaterial.id,
@@ -1197,7 +1234,14 @@ function MemberPage({
         answer: taskDraft.trim() || `Upload gambar tugas: ${taskAttachment.name}`,
         attachmentUrl: isTaskImageAllowed ? (taskAttachment?.url ?? '') : '',
         attachmentName: isTaskImageAllowed ? (taskAttachment?.name ?? '') : '',
-      })
+      }
+
+      if (activeServerSubmission && (canEditActiveSubmission || canReviseActiveSubmission)) {
+        await onUpdateSubmission(submissionPayload)
+      } else {
+        await onCreateSubmission(submissionPayload)
+      }
+
       setSubmittedTasks((current) => ({
         ...current,
         [getTaskKey(selectedCourse.id, activeMaterial.id)]: {
@@ -1211,10 +1255,32 @@ function MemberPage({
       )
       setTaskDraft('')
       setTaskAttachment(null)
-      onNotify('Tugas terkirim. Materi berikutnya sudah terbuka.')
+      setEditingSubmissionId('')
+      onNotify(
+        activeServerSubmission
+          ? 'Tugas berhasil diperbarui dan menunggu review ulang.'
+          : 'Tugas terkirim. Materi berikutnya sudah terbuka.',
+      )
     } catch (error) {
       onNotify(error.message || 'Tugas tidak bisa dikirim.')
     }
+  }
+
+  const handleEditActiveSubmission = () => {
+    if (!activeServerSubmission || !canEditActiveSubmission) {
+      return
+    }
+
+    setTaskDraft(activeServerSubmission.answer || '')
+    setEditingSubmissionId(activeServerSubmission.id)
+    setTaskAttachment(
+      activeServerSubmission.attachmentUrl
+        ? {
+            url: activeServerSubmission.attachmentUrl,
+            name: activeServerSubmission.attachmentName || 'Gambar tugas',
+          }
+        : null,
+    )
   }
 
   const handlePreviousMaterial = () => {
@@ -1225,6 +1291,7 @@ function MemberPage({
     setActiveMaterialIndex(currentMaterialIndex - 1)
     setTaskDraft('')
     setTaskAttachment(null)
+    setEditingSubmissionId('')
   }
 
   const handleNextMaterial = () => {
@@ -1239,6 +1306,7 @@ function MemberPage({
     }
     setTaskDraft('')
     setTaskAttachment(null)
+    setEditingSubmissionId('')
   }
 
   const handleTaskImageChange = async (event) => {
@@ -1923,7 +1991,7 @@ function MemberPage({
                     <div className="task-box">
                       <h3>Tugas materi</h3>
                       <p>{activeMaterial.taskPrompt}</p>
-                      {isActiveTaskSubmitted ? (
+                      {activeServerSubmission && !isTaskFormOpen ? (
                         <div className="submitted-task-state">
                           <p className="action-feedback">
                             Tugas sudah terkirim. Materi berikutnya terbuka.
@@ -1964,9 +2032,26 @@ function MemberPage({
                               Feedback mentor akan muncul di sini setelah tugas direview.
                             </small>
                           )}
+                          {canEditActiveSubmission && (
+                            <button
+                              className="btn btn-secondary"
+                              type="button"
+                              onClick={handleEditActiveSubmission}
+                            >
+                              <Icon name="fileText" />
+                              Ubah Tugas
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <>
+                          {canReviseActiveSubmission && activeServerSubmission?.feedback && (
+                            <div className="mentor-answer revision-feedback">
+                              <small>Feedback revisi dari admin</small>
+                              <p>{activeServerSubmission.feedback}</p>
+                              <mark>{activeServerSubmission.status}</mark>
+                            </div>
+                          )}
                           <label>
                           Link atau catatan tugas
                           <textarea
@@ -2022,14 +2107,18 @@ function MemberPage({
                             Materi Sebelumnya
                           </button>
                         )}
-                        {!isActiveTaskSubmitted && (
+                        {isTaskFormOpen && (
                           <button
                             className="btn btn-primary"
                             type="button"
                             onClick={handleSubmitTask}
                           >
                             <Icon name="message" />
-                            Kirim Tugas
+                            {canReviseActiveSubmission
+                              ? 'Kirim Revisi'
+                              : isEditingActiveSubmission
+                                ? 'Simpan Perubahan'
+                                : 'Kirim Tugas'}
                           </button>
                         )}
                         {hasNextMaterial && (

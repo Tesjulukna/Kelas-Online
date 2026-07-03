@@ -7372,6 +7372,18 @@ img {
   color: var(--color-heading);
 }
 
+.mentor-answer.revision-feedback {
+  padding: 12px;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  background: #fff7ed;
+}
+
+.mentor-answer.revision-feedback small,
+.mentor-answer.revision-feedback mark {
+  color: #c2410c;
+}
+
 .submitted-task-state,
 .submission-answer,
 .ticket-thread,
@@ -18458,6 +18470,18 @@ img {
   color: var(--color-text) !important;
   border-color: rgba(148, 163, 184, 0.22) !important;
   background: rgba(15, 25, 43, 0.94) !important;
+}
+
+.app-shell.role-member.public-theme-dark .mentor-answer.revision-feedback {
+  color: #fed7aa !important;
+  border-color: rgba(251, 146, 60, 0.36) !important;
+  background: rgba(154, 52, 18, 0.18) !important;
+}
+
+.app-shell.role-member.public-theme-dark .mentor-answer.revision-feedback p,
+.app-shell.role-member.public-theme-dark .mentor-answer.revision-feedback small,
+.app-shell.role-member.public-theme-dark .mentor-answer.revision-feedback mark {
+  color: #fed7aa !important;
 }
 
 body:has(.app-shell.public-theme-dark.is-public-detail-route:not(.role-admin)) {

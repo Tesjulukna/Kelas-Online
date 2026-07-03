@@ -6470,6 +6470,13 @@ function AdminPage({
                 Tandai Direview
               </button>
               <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => handleReviewSubmission('Perlu Revisi')}
+              >
+                Minta Revisi
+              </button>
+              <button
                 className="btn btn-primary"
                 type="button"
                 onClick={() => handleReviewSubmission('Selesai')}

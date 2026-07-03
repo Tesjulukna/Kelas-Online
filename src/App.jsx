@@ -3183,6 +3183,7 @@ function App() {
               onCreateSupportTicket={handleCreateSupportTicket}
               onReplySupportTicket={handleReplySupportTicket}
               onCreateSubmission={handleCreateSubmission}
+              onUpdateSubmission={handleUpdateSubmission}
               onTrackProgress={handleTrackProgress}
               onCreateTestimonial={handleCreateTestimonial}
               onCreateCertificate={handleCreateCertificate}

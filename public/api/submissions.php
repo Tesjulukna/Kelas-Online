@@ -113,9 +113,8 @@ if ($method === 'POST') {
     ]);
 }
 
-require_user('admin');
-
 if ($method === 'PUT') {
+    $user = require_user();
     $payload = read_json_body();
     $submissionId = clean_text($payload['id'] ?? '', 90);
 
@@ -123,11 +122,70 @@ if ($method === 'PUT') {
         send_json(400, ['message' => 'ID tugas wajib dikirim.']);
     }
 
+    if (($user['role'] ?? '') === 'member') {
+        $answer = clean_text($payload['answer'] ?? '', 1200);
+
+        if ($answer === '') {
+            send_json(400, ['message' => 'Isi tugas wajib dikirim.']);
+        }
+
+        $query = $pdo->prepare('SELECT * FROM submissions WHERE id = ? AND member_id = ? LIMIT 1');
+        $query->execute([$submissionId, $user['userId']]);
+        $submission = $query->fetch();
+
+        if (!$submission) {
+            send_json(404, ['message' => 'Tugas tidak ditemukan.']);
+        }
+
+        $status = (string) ($submission['status'] ?? '');
+        $hasFeedback = trim((string) ($submission['feedback'] ?? '')) !== '' ||
+            (int) ($submission['rating'] ?? 0) > 0;
+        $canEdit = $status === 'Menunggu Review' && !$hasFeedback;
+        $canRevise = $status === 'Perlu Revisi';
+
+        if (!$canEdit && !$canRevise) {
+            send_json(403, ['message' => 'Tugas sudah diberi feedback dan tidak bisa diubah.']);
+        }
+
+        $update = $pdo->prepare(
+            'UPDATE submissions
+            SET answer = ?, attachment_url = ?, attachment_name = ?, status = ?, feedback = ?, rating = ?, submitted_at = ?
+            WHERE id = ? AND member_id = ?',
+        );
+        $update->execute([
+            $answer,
+            clean_image($payload['attachmentUrl'] ?? ''),
+            clean_text($payload['attachmentName'] ?? '', 180),
+            'Menunggu Review',
+            '',
+            0,
+            date(DATE_ATOM),
+            $submissionId,
+            $user['userId'],
+        ]);
+
+        send_json(200, [
+            'submissions' => fetch_submissions($pdo, $user),
+            'updatedAt' => updated_at($pdo),
+        ]);
+    }
+
+    if (($user['role'] ?? '') !== 'admin') {
+        send_json(403, ['message' => 'Akses tidak diizinkan.']);
+    }
+
+    $status = clean_text($payload['status'] ?? 'Direview', 40);
+    $allowedStatuses = ['Menunggu Review', 'Direview', 'Selesai', 'Disetujui', 'Perlu Revisi'];
+
+    if (!in_array($status, $allowedStatuses, true)) {
+        $status = 'Direview';
+    }
+
     $update = $pdo->prepare(
         'UPDATE submissions SET status = ?, feedback = ?, rating = ? WHERE id = ?',
     );
     $update->execute([
-        clean_text($payload['status'] ?? 'Direview', 40),
+        $status,
         clean_text($payload['feedback'] ?? '', 1200),
         clean_number($payload['rating'] ?? 0, 0, 5),
         $submissionId,
@@ -138,6 +196,8 @@ if ($method === 'PUT') {
         'updatedAt' => updated_at($pdo),
     ]);
 }
+
+require_user('admin');
 
 $submissionId = clean_text($_GET['id'] ?? '', 90);
 
