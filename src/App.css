@@ -18484,6 +18484,46 @@ img {
   color: #fed7aa !important;
 }
 
+.app-shell.role-member.public-theme-dark .submitted-task-state,
+.app-shell.role-member.public-theme-dark .submission-answer,
+.app-shell.role-member.public-theme-dark .mentor-answer:not(.revision-feedback),
+.app-shell.role-member.public-theme-dark .submission-image-preview {
+  color: var(--color-text) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(8, 17, 31, 0.72) !important;
+}
+
+.app-shell.role-member.public-theme-dark .submission-answer p,
+.app-shell.role-member.public-theme-dark .mentor-answer:not(.revision-feedback) p {
+  color: #f8fbff !important;
+}
+
+.app-shell.role-member.public-theme-dark .submission-answer small,
+.app-shell.role-member.public-theme-dark .mentor-answer:not(.revision-feedback) small,
+.app-shell.role-member.public-theme-dark .muted-note {
+  color: #9fb0ca !important;
+}
+
+.app-shell.role-member.public-theme-dark .submission-attachment-link {
+  color: #dbeafe !important;
+  border-color: rgba(96, 165, 250, 0.28) !important;
+  background: rgba(37, 99, 235, 0.18) !important;
+}
+
+.app-shell.role-member.public-theme-dark .submission-attachment-link:hover {
+  color: #ffffff !important;
+  border-color: rgba(96, 165, 250, 0.48) !important;
+  background: rgba(37, 99, 235, 0.28) !important;
+}
+
+.app-shell.role-member.public-theme-dark .submission-rating-view {
+  color: #facc15 !important;
+}
+
+.app-shell.role-member.public-theme-dark .submission-image-preview img {
+  background: rgba(8, 17, 31, 0.86) !important;
+}
+
 body:has(.app-shell.public-theme-dark.is-public-detail-route:not(.role-admin)) {
   background: #08111f !important;
 }
