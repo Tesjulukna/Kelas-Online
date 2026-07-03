@@ -124,67 +124,6 @@ const memberAboutFrameStyle = `<style>
   * { box-sizing: border-box; }
 </style>`
 
-const memberAboutAnchorScript = `<script>
-(() => {
-  const normalizeInternalAnchors = () => {
-    document.querySelectorAll('a[href^="#"]').forEach((link) => {
-      link.removeAttribute('target')
-      link.removeAttribute('rel')
-    })
-  }
-
-  const handleInternalAnchorClick = (event) => {
-    const clickedElement = event.target && event.target.nodeType === 1
-      ? event.target
-      : event.target?.parentElement
-    const link = clickedElement?.closest?.('a[href^="#"]')
-
-    if (!link) {
-      return
-    }
-
-    const hash = link.getAttribute('href') || ''
-
-    if (hash.length < 2 || hash === '#') {
-      return
-    }
-
-    event.preventDefault()
-    event.stopPropagation()
-
-    let targetId = hash.slice(1)
-
-    try {
-      targetId = decodeURIComponent(targetId)
-    } catch {
-      targetId = hash.slice(1)
-    }
-
-    const namedTargets = document.getElementsByName
-      ? document.getElementsByName(targetId)
-      : []
-    const target = document.getElementById(targetId) || namedTargets[0]
-
-    if (!target) {
-      return
-    }
-
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-
-    try {
-      history.replaceState(null, '', hash)
-    } catch {
-      // Ignore history updates in sandboxed frames.
-    }
-  }
-
-  normalizeInternalAnchors()
-  document.addEventListener('DOMContentLoaded', normalizeInternalAnchors)
-  document.addEventListener('click', handleInternalAnchorClick, true)
-  document.addEventListener('auxclick', handleInternalAnchorClick, true)
-})()
-</script>`
-
 function stripExecutableMemberAboutHtml(value) {
   const cleanHtml = String(value || '')
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -214,11 +153,7 @@ function enhanceMemberAboutSrcDoc(value) {
     content = content.replace(/<head([^>]*)>/i, `<head$1>${memberAboutFrameStyle}`)
   }
 
-  if (/<\/body>/i.test(content)) {
-    return content.replace(/<\/body>/i, `${memberAboutAnchorScript}</body>`)
-  }
-
-  return `${content}${memberAboutFrameStyle}${memberAboutAnchorScript}`
+  return content
 }
 
 function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
@@ -256,8 +191,71 @@ function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
       img, video, iframe { max-width: 100%; }
     </style>
   </head>
-  <body>${stripExecutableMemberAboutHtml(content)}${memberAboutAnchorScript}</body>
+  <body>${stripExecutableMemberAboutHtml(content)}</body>
 </html>`
+}
+
+function handleMemberAboutFrameLoad(event) {
+  const frame = event.currentTarget
+  const frameDocument = frame?.contentDocument
+
+  if (!frameDocument) {
+    return
+  }
+
+  const normalizeInternalAnchors = () => {
+    frameDocument.querySelectorAll('a[href^="#"]').forEach((link) => {
+      link.removeAttribute('target')
+      link.removeAttribute('rel')
+    })
+  }
+
+  const scrollToHash = (hash) => {
+    if (!hash || hash.length < 2 || hash === '#') {
+      return
+    }
+
+    let targetId = hash.slice(1)
+
+    try {
+      targetId = decodeURIComponent(targetId)
+    } catch {
+      targetId = hash.slice(1)
+    }
+
+    const namedTargets = frameDocument.getElementsByName
+      ? frameDocument.getElementsByName(targetId)
+      : []
+    const target = frameDocument.getElementById(targetId) || namedTargets[0]
+
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  const handleInternalAnchorClick = (clickEvent) => {
+    const clickedElement = clickEvent.target && clickEvent.target.nodeType === 1
+      ? clickEvent.target
+      : clickEvent.target?.parentElement
+    const link = clickedElement?.closest?.('a[href^="#"]')
+
+    if (!link) {
+      return
+    }
+
+    clickEvent.preventDefault()
+    clickEvent.stopPropagation()
+    scrollToHash(link.getAttribute('href') || '')
+  }
+
+  normalizeInternalAnchors()
+  if (frame.__ibnuAboutAnchorHandler) {
+    frameDocument.removeEventListener('click', frame.__ibnuAboutAnchorHandler, true)
+    frameDocument.removeEventListener('auxclick', frame.__ibnuAboutAnchorHandler, true)
+  }
+  frame.__ibnuAboutAnchorHandler = handleInternalAnchorClick
+  frameDocument.addEventListener('click', handleInternalAnchorClick, true)
+  frameDocument.addEventListener('auxclick', handleInternalAnchorClick, true)
 }
 
 function formatRupiah(value) {
@@ -3454,6 +3452,7 @@ function MemberPage({
           <div className="member-about-frame-wrap">
             <iframe
               title={safeWebsiteSettings.memberAbout.title || 'Tentang member'}
+              onLoad={handleMemberAboutFrameLoad}
               srcDoc={buildMemberAboutSrcDoc(
                 safeWebsiteSettings.memberAbout.html,
                 safeWebsiteSettings.memberAbout.title || 'Tentang',
