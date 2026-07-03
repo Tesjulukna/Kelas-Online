@@ -120,6 +120,9 @@ function getProtectedVideoUrl(material, sessionToken = '') {
 
 const memberAboutFrameStyle = `<style>
   html { scroll-behavior: smooth; }
+  html, body { margin: 0; min-height: 100%; width: 100%; }
+  body { visibility: visible !important; opacity: 1 !important; overflow-x: hidden; }
+  body[hidden] { display: block !important; }
   img, video, iframe { max-width: 100%; }
   * { box-sizing: border-box; }
   .ibnu-about-fallback-icon {
@@ -138,6 +141,7 @@ const memberAboutFrameStyle = `<style>
 function stripExecutableMemberAboutHtml(value) {
   const cleanHtml = String(value || '')
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/gi, '')
     .replace(/<base\b[^>]*>/gi, '')
     .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
     .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
@@ -162,6 +166,12 @@ function enhanceMemberAboutSrcDoc(value) {
 
   if (/<head[\s>]/i.test(content)) {
     content = content.replace(/<head([^>]*)>/i, `<head$1>${memberAboutFrameStyle}`)
+  } else if (/<html[\s>]/i.test(content)) {
+    content = content.replace(/<html([^>]*)>/i, `<html$1><head>${memberAboutFrameStyle}</head>`)
+  } else if (/<body[\s>]/i.test(content)) {
+    content = content.replace(/<body([^>]*)>/i, `${memberAboutFrameStyle}<body$1>`)
+  } else {
+    content = `${memberAboutFrameStyle}${content}`
   }
 
   return content
@@ -197,7 +207,8 @@ function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
     <style>
       html { scroll-behavior: smooth; }
       html, body { margin: 0; min-height: 100%; }
-      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
+      body { visibility: visible !important; opacity: 1 !important; overflow-x: hidden; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
+      body[hidden] { display: block !important; }
       * { box-sizing: border-box; }
       img, video, iframe { max-width: 100%; }
       .ibnu-about-fallback-icon {
@@ -276,18 +287,27 @@ function handleMemberAboutFrameLoad(event) {
   }
 
   const resizeAboutFrame = () => {
-    const docEl = frameDocument.documentElement
-    const body = frameDocument.body
-    const minHeight = Math.max(420, window.innerHeight - 128)
-    const nextHeight = Math.max(
-      minHeight,
-      docEl?.scrollHeight || 0,
-      body?.scrollHeight || 0,
-      docEl?.offsetHeight || 0,
-      body?.offsetHeight || 0,
-    )
+    if (frame.__ibnuAboutResizeFrame) {
+      cancelAnimationFrame(frame.__ibnuAboutResizeFrame)
+    }
 
-    frame.style.height = `${nextHeight}px`
+    frame.__ibnuAboutResizeFrame = requestAnimationFrame(() => {
+      const docEl = frameDocument.documentElement
+      const body = frameDocument.body
+      const minHeight = Math.max(420, window.innerHeight - 128)
+      const nextHeight = Math.max(
+        minHeight,
+        docEl?.scrollHeight || 0,
+        body?.scrollHeight || 0,
+        docEl?.offsetHeight || 0,
+        body?.offsetHeight || 0,
+      )
+      const nextHeightValue = `${nextHeight}px`
+
+      if (frame.style.height !== nextHeightValue) {
+        frame.style.height = nextHeightValue
+      }
+    })
   }
 
   const scrollToHash = (hash) => {
