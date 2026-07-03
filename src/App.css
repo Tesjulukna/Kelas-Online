@@ -18626,3 +18626,134 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   border-color: rgba(96, 165, 250, 0.42) !important;
   background: rgba(37, 99, 235, 0.18) !important;
 }
+
+/* Public detail dark mode: applies before login and outside member dashboard. */
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-topbar .icon-action-button,
+.app-shell.public-theme-dark.is-public-detail-route .cart-action-button {
+  color: #dbeafe !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: rgba(15, 25, 43, 0.94) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-topbar .icon-action-button:hover,
+.app-shell.public-theme-dark.is-public-detail-route .cart-action-button:hover {
+  color: #ffffff !important;
+  border-color: rgba(96, 165, 250, 0.48) !important;
+  background: rgba(37, 99, 235, 0.24) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .cart-action-button span {
+  color: #dbeafe !important;
+  border-color: rgba(15, 25, 43, 0.98) !important;
+  background: rgba(37, 99, 235, 0.9) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-hero,
+.app-shell.public-theme-dark.is-public-detail-route .public-course-detail,
+.app-shell.public-theme-dark.is-public-detail-route .public-product-detail,
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-image,
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-copy,
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-section,
+.app-shell.public-theme-dark.is-public-detail-route .public-checkout-panel,
+.app-shell.public-theme-dark.is-public-detail-route .public-addon-item,
+.app-shell.public-theme-dark.is-public-detail-route .public-review-item,
+.app-shell.public-theme-dark.is-public-detail-route .ig-reviews-container,
+.app-shell.public-theme-dark.is-public-detail-route .ig-comment-item,
+.app-shell.public-theme-dark.is-public-detail-route .review-gate-modal,
+.app-shell.public-theme-dark.is-public-detail-route .public-wishlist-modal,
+.app-shell.public-theme-dark.is-public-detail-route .public-wishlist-item,
+.app-shell.public-theme-dark.is-public-detail-route .detail-accordion-item,
+.app-shell.public-theme-dark.is-public-detail-route .details-benefit-card,
+.app-shell.public-theme-dark.is-public-detail-route .details-schedule-step,
+.app-shell.public-theme-dark.is-public-detail-route .public-access-message {
+  color: var(--color-text) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 25, 43, 0.94) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-image img,
+.app-shell.public-theme-dark.is-public-detail-route .public-wishlist-image,
+.app-shell.public-theme-dark.is-public-detail-route .review-gate-icon,
+.app-shell.public-theme-dark.is-public-detail-route .detail-accordion-icon-wrap,
+.app-shell.public-theme-dark.is-public-detail-route .details-benefit-icon-wrapper,
+.app-shell.public-theme-dark.is-public-detail-route .details-schedule-step-icon {
+  background-color: rgba(8, 17, 31, 0.82) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-copy h1,
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-copy h2,
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-section h2,
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-section h3,
+.app-shell.public-theme-dark.is-public-detail-route .public-addon-item strong,
+.app-shell.public-theme-dark.is-public-detail-route .public-review-item strong,
+.app-shell.public-theme-dark.is-public-detail-route .ig-summary-text,
+.app-shell.public-theme-dark.is-public-detail-route .ig-comment-username,
+.app-shell.public-theme-dark.is-public-detail-route .ig-comment-text,
+.app-shell.public-theme-dark.is-public-detail-route .review-gate-modal h3,
+.app-shell.public-theme-dark.is-public-detail-route .public-wishlist-item strong,
+.app-shell.public-theme-dark.is-public-detail-route .detail-accordion-label strong,
+.app-shell.public-theme-dark.is-public-detail-route .details-benefit-content h3,
+.app-shell.public-theme-dark.is-public-detail-route .details-schedule-step-content strong {
+  color: var(--color-heading) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-copy p,
+.app-shell.public-theme-dark.is-public-detail-route .public-rich-description,
+.app-shell.public-theme-dark.is-public-detail-route .public-addon-item p,
+.app-shell.public-theme-dark.is-public-detail-route .public-review-item p,
+.app-shell.public-theme-dark.is-public-detail-route .ig-summary-count,
+.app-shell.public-theme-dark.is-public-detail-route .ig-comment-meta-row,
+.app-shell.public-theme-dark.is-public-detail-route .review-gate-modal p,
+.app-shell.public-theme-dark.is-public-detail-route .public-wishlist-item small,
+.app-shell.public-theme-dark.is-public-detail-route .detail-accordion-label small,
+.app-shell.public-theme-dark.is-public-detail-route .details-benefit-content p,
+.app-shell.public-theme-dark.is-public-detail-route .details-schedule-step-content .step-label {
+  color: var(--color-muted) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-meta span,
+.app-shell.public-theme-dark.is-public-detail-route .public-checkout-grid input,
+.app-shell.public-theme-dark.is-public-detail-route .public-checkout-check,
+.app-shell.public-theme-dark.is-public-detail-route .ig-review-compose textarea,
+.app-shell.public-theme-dark.is-public-detail-route .payment-breakdown,
+.app-shell.public-theme-dark.is-public-detail-route .payment-method-option,
+.app-shell.public-theme-dark.is-public-detail-route .secure-payment-note {
+  color: var(--color-heading) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(8, 17, 31, 0.78) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-sticky-actions {
+  color: var(--color-text) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 25, 43, 0.96) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-sticky-actions .btn-secondary,
+.app-shell.public-theme-dark.is-public-detail-route .public-wishlist-item .btn-secondary,
+.app-shell.public-theme-dark.is-public-detail-route .btn-ig-action,
+.app-shell.public-theme-dark.is-public-detail-route .ig-meta-action-btn,
+.app-shell.public-theme-dark.is-public-detail-route .ig-comment-heart-btn {
+  color: #dbeafe !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: rgba(8, 17, 31, 0.78) !important;
+  box-shadow: none !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-sticky-actions .btn-secondary:hover,
+.app-shell.public-theme-dark.is-public-detail-route .public-wishlist-item .btn-secondary:hover,
+.app-shell.public-theme-dark.is-public-detail-route .btn-ig-action:hover,
+.app-shell.public-theme-dark.is-public-detail-route .ig-meta-action-btn:hover,
+.app-shell.public-theme-dark.is-public-detail-route .ig-comment-heart-btn:hover {
+  color: #ffffff !important;
+  border-color: rgba(96, 165, 250, 0.48) !important;
+  background: rgba(37, 99, 235, 0.24) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .review-gate-backdrop,
+.app-shell.public-theme-dark.is-public-detail-route .public-wishlist-modal-backdrop {
+  background: rgba(2, 6, 23, 0.72) !important;
+}
