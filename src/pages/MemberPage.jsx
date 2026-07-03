@@ -122,6 +122,17 @@ const memberAboutFrameStyle = `<style>
   html { scroll-behavior: smooth; }
   img, video, iframe { max-width: 100%; }
   * { box-sizing: border-box; }
+  .ibnu-about-fallback-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.2em;
+    min-width: 1.2em;
+    height: 1.2em;
+    line-height: 1;
+    font-style: normal;
+    font-weight: 800;
+  }
 </style>`
 
 function stripExecutableMemberAboutHtml(value) {
@@ -189,6 +200,17 @@ function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
       body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
       * { box-sizing: border-box; }
       img, video, iframe { max-width: 100%; }
+      .ibnu-about-fallback-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.2em;
+        min-width: 1.2em;
+        height: 1.2em;
+        line-height: 1;
+        font-style: normal;
+        font-weight: 800;
+      }
     </style>
   </head>
   <body>${stripExecutableMemberAboutHtml(content)}</body>
@@ -208,6 +230,64 @@ function handleMemberAboutFrameLoad(event) {
       link.removeAttribute('target')
       link.removeAttribute('rel')
     })
+  }
+
+  const applyIconFallbacks = () => {
+    const iconMap = [
+      [/check|done|success|circle-check|check-circle/, '\u2713'],
+      [/star|sparkle|award|badge/, '\u2605'],
+      [/user|person|mentor|profile/, '\u25CF'],
+      [/users|people|team|group/, '\u25CF'],
+      [/book|learn|course|graduation|school/, '\u25A3'],
+      [/certificate|medal|ribbon/, '\u25C8'],
+      [/video|play|youtube/, '\u25B6'],
+      [/shield|lock|secure|safety/, '\u25C6'],
+      [/rocket|launch|bolt|zap/, '\u25B2'],
+      [/lightbulb|idea|brain/, '\u25C9'],
+      [/chart|growth|trend|analytics/, '\u25B0'],
+      [/phone|whatsapp|message|chat/, '\u260E'],
+      [/mail|envelope|email/, '\u2709'],
+      [/instagram|camera/, '\u25CE'],
+      [/heart|like|love/, '\u2665'],
+      [/arrow|chevron|right/, '\u2192'],
+    ]
+
+    frameDocument
+      .querySelectorAll('i[class], span[class*="icon"], i[data-lucide], svg[data-lucide]')
+      .forEach((icon) => {
+        const hasVisibleContent = String(icon.textContent || '').trim() !== ''
+        const hasVisualChild = icon.querySelector('svg,img')
+
+        if (hasVisibleContent || hasVisualChild) {
+          return
+        }
+
+        const descriptor = [
+          icon.getAttribute('class') || '',
+          icon.getAttribute('data-lucide') || '',
+          icon.getAttribute('aria-label') || '',
+        ].join(' ').toLowerCase()
+        const match = iconMap.find(([pattern]) => pattern.test(descriptor))
+
+        icon.textContent = match ? match[1] : '\u25A0'
+        icon.classList.add('ibnu-about-fallback-icon')
+        icon.setAttribute('aria-hidden', 'true')
+      })
+  }
+
+  const resizeAboutFrame = () => {
+    const docEl = frameDocument.documentElement
+    const body = frameDocument.body
+    const minHeight = Math.max(420, window.innerHeight - 128)
+    const nextHeight = Math.max(
+      minHeight,
+      docEl?.scrollHeight || 0,
+      body?.scrollHeight || 0,
+      docEl?.offsetHeight || 0,
+      body?.offsetHeight || 0,
+    )
+
+    frame.style.height = `${nextHeight}px`
   }
 
   const scrollToHash = (hash) => {
@@ -249,6 +329,26 @@ function handleMemberAboutFrameLoad(event) {
   }
 
   normalizeInternalAnchors()
+  applyIconFallbacks()
+  resizeAboutFrame()
+
+  if (frame.__ibnuAboutResizeObserver) {
+    frame.__ibnuAboutResizeObserver.disconnect()
+  }
+
+  if (typeof ResizeObserver !== 'undefined' && frameDocument.body) {
+    frame.__ibnuAboutResizeObserver = new ResizeObserver(() => {
+      applyIconFallbacks()
+      resizeAboutFrame()
+    })
+    frame.__ibnuAboutResizeObserver.observe(frameDocument.body)
+  }
+
+  frameDocument.querySelectorAll('img, iframe, video').forEach((media) => {
+    media.addEventListener('load', resizeAboutFrame, { once: false })
+    media.addEventListener('loadedmetadata', resizeAboutFrame, { once: false })
+  })
+
   if (frame.__ibnuAboutAnchorHandler) {
     frameDocument.removeEventListener('click', frame.__ibnuAboutAnchorHandler, true)
     frameDocument.removeEventListener('auxclick', frame.__ibnuAboutAnchorHandler, true)
