@@ -18994,3 +18994,73 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .public-theme-toggle:active .theme-toggle-thumb {
   transform: translate(-50%, -50%) scale(0.86) rotate(18deg) !important;
 }
+
+/* Detail content width guard: keep videos, reviews, accordions, and action bars aligned with the description card. */
+.public-detail-page .public-video-section,
+.public-detail-page .public-detail-section,
+.public-detail-page .detail-accordion-group,
+.public-detail-page .course-testimonials-section {
+  width: 100% !important;
+  max-width: 760px !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
+}
+
+.public-detail-page .public-video-section {
+  aspect-ratio: 16 / 9 !important;
+}
+
+.public-detail-page .ig-reviews-container,
+.public-detail-page .public-addon-list,
+.public-detail-page .public-review-list {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.public-detail-page .public-sticky-actions,
+.app-shell.role-member.public-theme-dark .public-detail-page .public-sticky-actions,
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-page .public-sticky-actions {
+  right: max(16px, calc((100vw - 760px) / 2)) !important;
+  left: max(16px, calc((100vw - 760px) / 2)) !important;
+  max-width: 760px !important;
+}
+
+.public-detail-page .public-sticky-actions.is-owned-access {
+  max-width: 760px !important;
+}
+
+@media (min-width: 921px) {
+  .public-detail-page .public-course-detail,
+  .public-detail-page .public-product-detail,
+  .public-detail-page .public-video-section,
+  .public-detail-page .public-detail-section,
+  .public-detail-page .detail-accordion-group,
+  .public-detail-page .course-testimonials-section {
+    max-width: 720px !important;
+  }
+
+  .public-detail-page .public-sticky-actions,
+  .app-shell.role-member.public-theme-dark .public-detail-page .public-sticky-actions,
+  .app-shell.public-theme-dark.is-public-detail-route .public-detail-page .public-sticky-actions {
+    right: max(18px, calc((100vw - 720px) / 2)) !important;
+    left: max(18px, calc((100vw - 720px) / 2)) !important;
+    max-width: 720px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .public-detail-page .public-video-section,
+  .public-detail-page .public-detail-section,
+  .public-detail-page .detail-accordion-group,
+  .public-detail-page .course-testimonials-section {
+    max-width: 100% !important;
+  }
+
+  .public-detail-page .public-sticky-actions,
+  .app-shell.role-member.public-theme-dark .public-detail-page .public-sticky-actions,
+  .app-shell.public-theme-dark.is-public-detail-route .public-detail-page .public-sticky-actions {
+    right: 12px !important;
+    left: 12px !important;
+    max-width: none !important;
+  }
+}
