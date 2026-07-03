@@ -174,12 +174,24 @@ session_regenerate_id(true);
 $_SESSION['user'] = session_payload_from_account($account, $token);
 
 $sessionJson = json_encode($_SESSION['user'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+$scriptNonce = base64_encode(random_bytes(16));
 
+header(
+    "Content-Security-Policy: default-src 'self'; " .
+    "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; " .
+    "img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; " .
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
+    "font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'nonce-{$scriptNonce}'; " .
+    "connect-src 'self' https:; frame-src https://www.youtube.com https://youtube.com; " .
+    "form-action 'self'; upgrade-insecure-requests",
+    true,
+);
 header('Content-Type: text/html; charset=utf-8');
-echo '<!doctype html><html><head><meta charset="utf-8"><title>Login Google</title></head><body>';
-echo '<script>';
-echo 'try{localStorage.setItem("ibnucreative.session.v1",' . json_encode($sessionJson) . ');}catch(e){sessionStorage.setItem("ibnucreative.session.v1",' . json_encode($sessionJson) . ');}';
-echo 'location.replace("/member");';
+echo '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="3;url=/member"><title>Login Google</title></head><body>';
+echo '<script nonce="' . htmlspecialchars($scriptNonce, ENT_QUOTES, 'UTF-8') . '">';
+echo 'try{localStorage.setItem("ibnucreative.session.v1",' . json_encode($sessionJson) . ');}catch(e){try{sessionStorage.setItem("ibnucreative.session.v1",' . json_encode($sessionJson) . ');}catch(_){}}';
+echo 'window.location.replace("/member");';
 echo '</script>';
 echo '<p>Login berhasil. Mengalihkan ke dashboard member...</p>';
+echo '<p><a href="/member">Klik di sini jika tidak otomatis berpindah.</a></p>';
 echo '</body></html>';
