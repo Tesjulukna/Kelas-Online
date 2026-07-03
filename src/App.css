@@ -18460,11 +18460,48 @@ img {
   background: rgba(15, 25, 43, 0.94) !important;
 }
 
+body:has(.app-shell.public-theme-dark.is-public-detail-route:not(.role-admin)) {
+  background: #08111f !important;
+}
+
 .app-shell.role-member.public-theme-dark,
 .app-shell.role-member.public-theme-dark main,
+.app-shell.public-theme-dark.is-public-detail-route,
+.app-shell.public-theme-dark.is-public-detail-route main,
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-status-page,
 .app-shell.role-member.public-theme-dark .public-detail-page,
 .app-shell.role-member.public-theme-dark .digital-product-detail-page {
   background-color: #08111f !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(79, 140, 255, 0.18), transparent 30%),
+    #08111f !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route main {
+  min-height: calc(100dvh - 76px);
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-status-card {
+  color: var(--color-text) !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 25, 43, 0.94) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-status-card h3 {
+  color: var(--color-heading) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-status-card p {
+  color: var(--color-muted) !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-status-card > .icon {
+  color: #93c5fd !important;
 }
 
 .app-shell.role-member.public-theme-dark .public-sticky-actions {

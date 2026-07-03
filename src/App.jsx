@@ -3059,6 +3059,7 @@ function App() {
   const isPublicCertificatePath = Boolean(publicCertificateId)
   const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
   const appRoleClass = session?.role ? `role-${session.role}` : 'role-public'
+  const appRouteClass = isPublicDetailPath ? 'is-public-detail-route' : ''
   const togglePublicTheme = () => {
     setPublicTheme((current) => {
       const nextTheme = current === 'dark' ? 'light' : 'dark'
@@ -3074,7 +3075,7 @@ function App() {
   }
 
   return (
-    <div className={`app-shell ${appRoleClass} public-theme-${publicTheme}`}>
+    <div className={`app-shell ${appRoleClass} ${appRouteClass} public-theme-${publicTheme}`}>
       {themeAnimation && (
         <div
           className={`theme-transition-scene ${themeAnimation === 'dark' ? 'is-night' : 'is-day'}`}
