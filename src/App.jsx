@@ -3059,7 +3059,10 @@ function App() {
   const isPublicCertificatePath = Boolean(publicCertificateId)
   const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
   const appRoleClass = session?.role ? `role-${session.role}` : 'role-public'
-  const appRouteClass = isPublicDetailPath ? 'is-public-detail-route' : ''
+  const appRouteClass = [
+    isPublicDetailPath ? 'is-public-detail-route' : '',
+    page === 'login' ? 'is-login-route' : '',
+  ].filter(Boolean).join(' ')
   const togglePublicTheme = () => {
     setPublicTheme((current) => {
       const nextTheme = current === 'dark' ? 'light' : 'dark'

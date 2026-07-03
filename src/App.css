@@ -18464,6 +18464,12 @@ body:has(.app-shell.public-theme-dark.is-public-detail-route:not(.role-admin)) {
   background: #08111f !important;
 }
 
+html:has(.app-shell.public-theme-dark:not(.role-admin)),
+body:has(.app-shell.public-theme-dark:not(.role-admin)),
+#root:has(.app-shell.public-theme-dark:not(.role-admin)) {
+  background: #08111f !important;
+}
+
 .app-shell.role-member.public-theme-dark,
 .app-shell.role-member.public-theme-dark main,
 .app-shell.public-theme-dark.is-public-detail-route,
@@ -18483,6 +18489,14 @@ body:has(.app-shell.public-theme-dark.is-public-detail-route:not(.role-admin)) {
 
 .app-shell.public-theme-dark.is-public-detail-route main {
   min-height: calc(100dvh - 76px);
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .public-detail-page {
+  min-height: calc(100dvh - 76px);
+  margin-bottom: 0 !important;
+  background:
+    radial-gradient(circle at 50% 100%, rgba(37, 99, 235, 0.1), transparent 34%),
+    #08111f !important;
 }
 
 .app-shell.public-theme-dark.is-public-detail-route .public-detail-status-card {
@@ -18560,5 +18574,55 @@ body:has(.app-shell.public-theme-dark.is-public-detail-route:not(.role-admin)) {
 
 .app-shell.role-member.public-theme-dark .purchase-notification-close:hover {
   color: #ffffff !important;
+  background: rgba(37, 99, 235, 0.18) !important;
+}
+
+.app-shell.public-theme-dark.is-login-route,
+.app-shell.public-theme-dark.is-login-route main,
+.app-shell.public-theme-dark.is-login-route .modern-auth-container {
+  background:
+    radial-gradient(circle at 15% 5%, rgba(59, 130, 246, 0.22), transparent 28%),
+    radial-gradient(circle at 82% 10%, rgba(20, 184, 166, 0.16), transparent 26%),
+    #060b13 !important;
+  color: var(--color-text) !important;
+}
+
+.app-shell.public-theme-dark.is-login-route .modern-login-card {
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  background: rgba(13, 20, 35, 0.72) !important;
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.app-shell.public-theme-dark.is-login-route .input-group input {
+  color: #f8fbff !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(8, 17, 31, 0.82) !important;
+}
+
+.app-shell.public-theme-dark.is-login-route .floating-label,
+.app-shell.public-theme-dark.is-login-route .input-icon-wrapper,
+.app-shell.public-theme-dark.is-login-route .google-login-block p {
+  color: #91a1bc !important;
+}
+
+.app-shell.public-theme-dark.is-login-route .input-group input:focus ~ .floating-label,
+.app-shell.public-theme-dark.is-login-route .input-group input:not(:placeholder-shown) ~ .floating-label {
+  color: #93c5fd !important;
+  background: #0d1423 !important;
+}
+
+.app-shell.public-theme-dark.is-login-route .google-login-button,
+.app-shell.public-theme-dark.is-login-route .password-toggle-btn {
+  color: #dbeafe !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  background: rgba(15, 25, 43, 0.72) !important;
+}
+
+.app-shell.public-theme-dark.is-login-route .google-login-button:hover:not(:disabled),
+.app-shell.public-theme-dark.is-login-route .password-toggle-btn:hover {
+  color: #ffffff !important;
+  border-color: rgba(96, 165, 250, 0.42) !important;
   background: rgba(37, 99, 235, 0.18) !important;
 }
