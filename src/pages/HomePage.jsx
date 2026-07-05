@@ -970,6 +970,31 @@ function HomePage({
   }
 
   const closePublicDetail = () => {
+    const isProductAccessRoute =
+      initialDetailType === 'produk-akses' ||
+      initialDetailType === 'prompt-akses' ||
+      Boolean(accessOrderCode)
+
+    if (isMemberCheckout && isProductAccessRoute) {
+      const isPromptAccess =
+        initialDetailType === 'prompt-akses' ||
+        productAccessState.data?.product?.productType === 'prompt'
+      const memberMenu = isPromptAccess ? 'prompts' : 'digital-products'
+
+      setSelectedClassId('')
+      setCheckoutClassId('')
+      setSelectedProductId('')
+      setCheckoutProductId('')
+      setAccessOrderCode('')
+      setProductAccessState({ isLoading: false, data: null, error: '' })
+      setIsWishlistOpen(false)
+      setIsPaymentPickerOpen(false)
+      window.history.pushState({}, '', `/member?menu=${memberMenu}`)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
     if (window.history.state?.publicDetailFromApp && window.history.length > 1) {
       window.history.back()
       return

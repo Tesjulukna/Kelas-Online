@@ -13297,7 +13297,7 @@ img {
   min-width: 0;
   min-height: calc(100vh - 160px);
   min-height: calc(100dvh - 160px);
-  overflow: visible;
+  overflow: hidden;
   border-radius: 0;
   background: #ffffff;
 }
@@ -13305,10 +13305,8 @@ img {
 .member-about-frame-wrap iframe {
   display: block;
   width: 100%;
-  height: auto;
   min-height: calc(100vh - 160px);
   min-height: calc(100dvh - 160px);
-  overflow: hidden;
   border: 0;
   border-radius: 0;
   background: #ffffff;

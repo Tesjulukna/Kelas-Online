@@ -120,28 +120,13 @@ function getProtectedVideoUrl(material, sessionToken = '') {
 
 const memberAboutFrameStyle = `<style>
   html { scroll-behavior: smooth; }
-  html, body { margin: 0; min-height: 100%; width: 100%; }
-  body { visibility: visible !important; opacity: 1 !important; overflow-x: hidden; }
-  body[hidden] { display: block !important; }
   img, video, iframe { max-width: 100%; }
   * { box-sizing: border-box; }
-  .ibnu-about-fallback-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.2em;
-    min-width: 1.2em;
-    height: 1.2em;
-    line-height: 1;
-    font-style: normal;
-    font-weight: 800;
-  }
 </style>`
 
 function stripExecutableMemberAboutHtml(value) {
   const cleanHtml = String(value || '')
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/gi, '')
     .replace(/<base\b[^>]*>/gi, '')
     .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
     .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
@@ -166,12 +151,6 @@ function enhanceMemberAboutSrcDoc(value) {
 
   if (/<head[\s>]/i.test(content)) {
     content = content.replace(/<head([^>]*)>/i, `<head$1>${memberAboutFrameStyle}`)
-  } else if (/<html[\s>]/i.test(content)) {
-    content = content.replace(/<html([^>]*)>/i, `<html$1><head>${memberAboutFrameStyle}</head>`)
-  } else if (/<body[\s>]/i.test(content)) {
-    content = content.replace(/<body([^>]*)>/i, `${memberAboutFrameStyle}<body$1>`)
-  } else {
-    content = `${memberAboutFrameStyle}${content}`
   }
 
   return content
@@ -207,21 +186,9 @@ function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
     <style>
       html { scroll-behavior: smooth; }
       html, body { margin: 0; min-height: 100%; }
-      body { visibility: visible !important; opacity: 1 !important; overflow-x: hidden; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
-      body[hidden] { display: block !important; }
+      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
       * { box-sizing: border-box; }
       img, video, iframe { max-width: 100%; }
-      .ibnu-about-fallback-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 1.2em;
-        min-width: 1.2em;
-        height: 1.2em;
-        line-height: 1;
-        font-style: normal;
-        font-weight: 800;
-      }
     </style>
   </head>
   <body>${stripExecutableMemberAboutHtml(content)}</body>
@@ -240,73 +207,6 @@ function handleMemberAboutFrameLoad(event) {
     frameDocument.querySelectorAll('a[href^="#"]').forEach((link) => {
       link.removeAttribute('target')
       link.removeAttribute('rel')
-    })
-  }
-
-  const applyIconFallbacks = () => {
-    const iconMap = [
-      [/check|done|success|circle-check|check-circle/, '\u2713'],
-      [/star|sparkle|award|badge/, '\u2605'],
-      [/user|person|mentor|profile/, '\u25CF'],
-      [/users|people|team|group/, '\u25CF'],
-      [/book|learn|course|graduation|school/, '\u25A3'],
-      [/certificate|medal|ribbon/, '\u25C8'],
-      [/video|play|youtube/, '\u25B6'],
-      [/shield|lock|secure|safety/, '\u25C6'],
-      [/rocket|launch|bolt|zap/, '\u25B2'],
-      [/lightbulb|idea|brain/, '\u25C9'],
-      [/chart|growth|trend|analytics/, '\u25B0'],
-      [/phone|whatsapp|message|chat/, '\u260E'],
-      [/mail|envelope|email/, '\u2709'],
-      [/instagram|camera/, '\u25CE'],
-      [/heart|like|love/, '\u2665'],
-      [/arrow|chevron|right/, '\u2192'],
-    ]
-
-    frameDocument
-      .querySelectorAll('i[class], span[class*="icon"], i[data-lucide], svg[data-lucide]')
-      .forEach((icon) => {
-        const hasVisibleContent = String(icon.textContent || '').trim() !== ''
-        const hasVisualChild = icon.querySelector('svg,img')
-
-        if (hasVisibleContent || hasVisualChild) {
-          return
-        }
-
-        const descriptor = [
-          icon.getAttribute('class') || '',
-          icon.getAttribute('data-lucide') || '',
-          icon.getAttribute('aria-label') || '',
-        ].join(' ').toLowerCase()
-        const match = iconMap.find(([pattern]) => pattern.test(descriptor))
-
-        icon.textContent = match ? match[1] : '\u25A0'
-        icon.classList.add('ibnu-about-fallback-icon')
-        icon.setAttribute('aria-hidden', 'true')
-      })
-  }
-
-  const resizeAboutFrame = () => {
-    if (frame.__ibnuAboutResizeFrame) {
-      cancelAnimationFrame(frame.__ibnuAboutResizeFrame)
-    }
-
-    frame.__ibnuAboutResizeFrame = requestAnimationFrame(() => {
-      const docEl = frameDocument.documentElement
-      const body = frameDocument.body
-      const minHeight = Math.max(420, window.innerHeight - 128)
-      const nextHeight = Math.max(
-        minHeight,
-        docEl?.scrollHeight || 0,
-        body?.scrollHeight || 0,
-        docEl?.offsetHeight || 0,
-        body?.offsetHeight || 0,
-      )
-      const nextHeightValue = `${nextHeight}px`
-
-      if (frame.style.height !== nextHeightValue) {
-        frame.style.height = nextHeightValue
-      }
     })
   }
 
@@ -349,26 +249,6 @@ function handleMemberAboutFrameLoad(event) {
   }
 
   normalizeInternalAnchors()
-  applyIconFallbacks()
-  resizeAboutFrame()
-
-  if (frame.__ibnuAboutResizeObserver) {
-    frame.__ibnuAboutResizeObserver.disconnect()
-  }
-
-  if (typeof ResizeObserver !== 'undefined' && frameDocument.body) {
-    frame.__ibnuAboutResizeObserver = new ResizeObserver(() => {
-      applyIconFallbacks()
-      resizeAboutFrame()
-    })
-    frame.__ibnuAboutResizeObserver.observe(frameDocument.body)
-  }
-
-  frameDocument.querySelectorAll('img, iframe, video').forEach((media) => {
-    media.addEventListener('load', resizeAboutFrame, { once: false })
-    media.addEventListener('loadedmetadata', resizeAboutFrame, { once: false })
-  })
-
   if (frame.__ibnuAboutAnchorHandler) {
     frameDocument.removeEventListener('click', frame.__ibnuAboutAnchorHandler, true)
     frameDocument.removeEventListener('auxclick', frame.__ibnuAboutAnchorHandler, true)
