@@ -27,11 +27,25 @@ function parsePaymentTime(value) {
   }
 
   if (typeof value === 'number') {
-    return value > 1000000000000 ? value : value * 1000
+    if (value > 1000000000000) {
+      return value
+    }
+
+    return value > 1000000000 ? value * 1000 : 0
   }
 
-  const normalized = String(value).trim().replace(' ', 'T')
-  const time = Date.parse(normalized)
+  const rawValue = String(value).trim()
+
+  if (/^\d+$/.test(rawValue)) {
+    return parsePaymentTime(Number(rawValue))
+  }
+
+  const normalized = rawValue.replace(' ', 'T')
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized)
+  const timeValue = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(normalized) && !hasTimezone
+    ? `${normalized}Z`
+    : normalized
+  const time = Date.parse(timeValue)
 
   return Number.isNaN(time) ? 0 : time
 }
@@ -835,7 +849,7 @@ function MemberPage({
         const productId = payment.productId || String(payment.classId || '').replace(/^product:/, '')
         const pendingStatuses = ['pending', 'unpaid', 'waiting', 'callback']
         const isPendingStatus = pendingStatuses.includes(status)
-        const expiresAtTime = parsePaymentTime(payment.expiresAt)
+        const expiresAtTime = parsePaymentTime(payment.expiresAtTimestamp || payment.expiresAt)
         const isExpired =
           payment.isExpired === true ||
           status === 'expired' ||

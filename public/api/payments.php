@@ -1166,6 +1166,7 @@ function payment_public(array $row): array
         'checkoutUrl' => clean_asset_url($row['checkoutUrl'] ?? ($row['checkout_url'] ?? ''), 1000),
         'accessGranted' => !empty($row['accessGranted']) || !empty($row['access_granted']),
         'expiresAt' => clean_text($row['expiresAt'] ?? '', 80),
+        'expiresAtTimestamp' => (int) ($row['expiresAtTimestamp'] ?? ($row['expires_at_timestamp'] ?? 0)),
         'isExpired' => !empty($row['isExpired']),
         'createdAt' => clean_text($row['createdAt'] ?? ($row['created_at'] ?? ''), 80),
         'updatedAt' => clean_text($row['updatedAt'] ?? ($row['updated_at'] ?? ''), 80),
@@ -1494,7 +1495,8 @@ try {
             'productTitle' => $isProduct ? clean_text($payload['product_title'] ?? $row['class_title'], 180) : '',
             'paymentMethod' => clean_text($payload['payment_name'] ?? $payload['payment_method'] ?? 'Tripay', 120),
             'accessGranted' => !empty($row['access_granted']),
-            'expiresAt' => $expiresAt > 0 ? date('Y-m-d H:i:s', $expiresAt) : '',
+            'expiresAt' => $expiresAt > 0 ? date(DATE_ATOM, $expiresAt) : '',
+            'expiresAtTimestamp' => $expiresAt,
             'isExpired' => $isExpired,
         ]));
     }

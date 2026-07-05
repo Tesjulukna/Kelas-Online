@@ -1180,6 +1180,7 @@ function cleanPayments(value) {
       checkoutUrl: cleanLongText(item.checkoutUrl || '', 1000),
       accessGranted: item.accessGranted === true,
       expiresAt: cleanText(item.expiresAt || ''),
+      expiresAtTimestamp: Math.max(0, Math.round(Number(item.expiresAtTimestamp) || 0)),
       isExpired: item.isExpired === true,
       createdAt: cleanText(item.createdAt || ''),
       updatedAt: cleanText(item.updatedAt || ''),
