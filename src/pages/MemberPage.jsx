@@ -13,6 +13,7 @@ import { withPublicCodes } from '../utils/publicCodes'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
+const activeCourseStorageKey = 'ibnucreative.memberActiveCourse.v1'
 const expiredPaymentNoticeKey = 'ibnucreative.expiredPaymentNotices.v1'
 const discussionSeenStorageKey = 'ibnucreative.classDiscussionSeen.v1'
 const uploadFileApiPath = '/api/upload-file'
@@ -79,6 +80,52 @@ function readCourseProgress(userId = '') {
     window.localStorage.removeItem(storageKey)
     return {}
   }
+}
+
+function readActiveCourseSnapshot(userId = '') {
+  if (typeof window === 'undefined') {
+    return { courseId: '', materialIndex: 0 }
+  }
+
+  const storageKey = scopedStorageKey(activeCourseStorageKey, userId)
+
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(storageKey)) ?? {}
+
+    return {
+      courseId: typeof saved.courseId === 'string' ? saved.courseId : '',
+      materialIndex: Math.max(0, Number(saved.materialIndex) || 0),
+    }
+  } catch {
+    window.localStorage.removeItem(storageKey)
+    return { courseId: '', materialIndex: 0 }
+  }
+}
+
+function writeActiveCourseSnapshot(userId = '', courseId = '', materialIndex = 0) {
+  if (typeof window === 'undefined' || !courseId) {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      scopedStorageKey(activeCourseStorageKey, userId),
+      JSON.stringify({
+        courseId,
+        materialIndex: Math.max(0, Number(materialIndex) || 0),
+      }),
+    )
+  } catch {
+    // Refresh recovery is a convenience layer; the class itself remains available.
+  }
+}
+
+function clearActiveCourseSnapshot(userId = '') {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.removeItem(scopedStorageKey(activeCourseStorageKey, userId))
 }
 
 function readDiscussionSeenTimes(userId = '') {
@@ -682,13 +729,17 @@ function MemberPage({
     ? new Set(allowedClassIds)
     : new Set()
   const availableCourses = memberVisibleCourses.filter((course) => !accessibleClassIds.has(course.id))
-  const [selectedCourseId, setSelectedCourseId] = useState(null)
+  const [selectedCourseId, setSelectedCourseId] = useState(() =>
+    activeMenu === 'my-courses' ? readActiveCourseSnapshot(userId).courseId || null : null,
+  )
   const [selectedDigitalProductId, setSelectedDigitalProductId] = useState(null)
   const [digitalProductLibraryView, setDigitalProductLibraryView] = useState('available')
   const [digitalProductSearchQuery, setDigitalProductSearchQuery] = useState('')
   const [digitalProductPriceFilter, setDigitalProductPriceFilter] = useState('all')
   const [digitalProductCartIds, setDigitalProductCartIds] = useState([])
-  const [activeMaterialIndex, setActiveMaterialIndex] = useState(0)
+  const [activeMaterialIndex, setActiveMaterialIndex] = useState(() =>
+    activeMenu === 'my-courses' ? readActiveCourseSnapshot(userId).materialIndex : 0,
+  )
   const [taskDraft, setTaskDraft] = useState('')
   const [taskAttachment, setTaskAttachment] = useState(null)
   const [editingSubmissionId, setEditingSubmissionId] = useState('')
@@ -975,6 +1026,56 @@ function MemberPage({
   }, [onTrackProgress])
 
   useEffect(() => {
+    if (activeMenu !== 'my-courses' || selectedCourseId || !courses.length) {
+      return
+    }
+
+    const snapshot = readActiveCourseSnapshot(userId)
+
+    if (!snapshot.courseId) {
+      return
+    }
+
+    const course = courses.find((item) => item.id === snapshot.courseId)
+
+    if (!course) {
+      clearActiveCourseSnapshot(userId)
+      return
+    }
+
+    const maxIndex = Math.max(0, (course.materials?.length || 1) - 1)
+    setSelectedCourseId(course.id)
+    setActiveMaterialIndex(Math.min(snapshot.materialIndex, maxIndex))
+  }, [activeMenu, courses, selectedCourseId, userId])
+
+  useEffect(() => {
+    if (activeMenu !== 'my-courses' || !selectedCourseId) {
+      return
+    }
+
+    const course = courses.find((item) => item.id === selectedCourseId)
+
+    if (!course) {
+      if (courses.length) {
+        setSelectedCourseId(null)
+        setActiveMaterialIndex(0)
+        clearActiveCourseSnapshot(userId)
+      }
+
+      return
+    }
+
+    const maxIndex = Math.max(0, (course.materials?.length || 1) - 1)
+    const nextIndex = Math.min(activeMaterialIndex, maxIndex)
+
+    if (nextIndex !== activeMaterialIndex) {
+      setActiveMaterialIndex(nextIndex)
+    }
+
+    writeActiveCourseSnapshot(userId, course.id, nextIndex)
+  }, [activeMaterialIndex, activeMenu, courses, selectedCourseId, userId])
+
+  useEffect(() => {
     setIsDiscussionOpen(false)
     setDiscussionDraft('')
     setDiscussionStatus('')
@@ -1029,6 +1130,8 @@ function MemberPage({
     const course = coursesRef.current.find((item) => item.id === courseId)
     const material = course?.materials?.[materialIndex]
 
+    writeActiveCourseSnapshot(userId, courseId, materialIndex)
+
     setCourseProgress((current) => ({
       ...current,
       [courseId]: Math.max(Number(current[courseId]) || 0, materialIndex),
@@ -1046,7 +1149,7 @@ function MemberPage({
         // Local progress remains available even if the network drops.
       })
     }
-  }, [])
+  }, [userId])
 
   useEffect(() => {
     window.sessionStorage.setItem(
@@ -1222,6 +1325,7 @@ function MemberPage({
     if (menuId !== 'my-courses') {
       setSelectedCourseId(null)
       setActiveMaterialIndex(0)
+      clearActiveCourseSnapshot(userId)
     }
 
     if (menuId !== 'digital-products' && menuId !== 'prompts') {
@@ -1229,7 +1333,7 @@ function MemberPage({
     }
 
     onMenuChange(menuId)
-  }, [onMenuChange])
+  }, [onMenuChange, userId])
 
   const handleOpenCertificateTestimonialForm = useCallback(() => {
     const targetCourseId = certificateTestimonialPrompt?.courseId || ''
@@ -1448,7 +1552,11 @@ function MemberPage({
       return
     }
 
-    setActiveMaterialIndex(currentMaterialIndex - 1)
+    const previousIndex = currentMaterialIndex - 1
+    setActiveMaterialIndex(previousIndex)
+    if (selectedCourse) {
+      writeActiveCourseSnapshot(userId, selectedCourse.id, previousIndex)
+    }
     setTaskDraft('')
     setTaskAttachment(null)
     setEditingSubmissionId('')
@@ -2099,6 +2207,7 @@ function MemberPage({
               onClick={() => {
                 setSelectedCourseId(null)
                 setActiveMaterialIndex(0)
+                clearActiveCourseSnapshot(userId)
               }}
             >
               <Icon name="arrowRight" />
