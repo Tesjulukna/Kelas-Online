@@ -19264,14 +19264,112 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 }
 
 .admin-discussion-floating-panel {
-  width: min(780px, calc(100vw - 48px));
-  height: min(820px, calc(100dvh - 48px));
-  max-height: min(820px, calc(100dvh - 48px));
+  width: min(960px, calc(100vw - 48px));
+  height: min(760px, calc(100dvh - 48px));
+  max-height: min(760px, calc(100dvh - 48px));
 }
 
 .admin-discussion-floating-panel.is-list {
-  width: min(500px, calc(100vw - 48px));
-  height: min(680px, calc(100dvh - 48px));
+  width: min(960px, calc(100vw - 48px));
+  height: min(760px, calc(100dvh - 48px));
+}
+
+/* Admin Discussion Desktop Wrapper styling */
+.admin-discussion-desktop-wrapper {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.admin-discussion-sidebar {
+  flex: 0 0 340px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.admin-discussion-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.admin-discussion-no-room {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.admin-discussion-no-room-content {
+  flex: 1 1 auto;
+  display: grid;
+  place-content: center;
+  place-items: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.admin-discussion-no-room-content .icon {
+  width: 48px;
+  height: 48px;
+  color: #2563eb;
+  opacity: 0.62;
+}
+
+.admin-discussion-no-room-content h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 1.15rem;
+}
+
+.admin-discussion-no-room-content p {
+  margin: 0;
+  max-width: 280px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Make current class picker fill height */
+.admin-discussion-sidebar .admin-discussion-class-picker {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px 18px 18px;
+}
+
+.admin-discussion-sidebar .admin-discussion-class-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Active Class highlights */
+.admin-discussion-class-button.is-active {
+  border-color: rgba(37, 99, 235, 0.25);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+/* Desktop overrides for buttons */
+@media (min-width: 769px) {
+  .admin-discussion-sidebar .close-button {
+    display: none !important;
+  }
+  .admin-discussion-main .back-button {
+    display: none !important;
+  }
 }
 
 .class-discussion-header {
@@ -20468,5 +20566,52 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   .discussion-avatar {
     width: 32px;
     height: 32px;
+  }
+}
+
+/* Mobile & Tablet Styles for Admin Split-Pane Chatroom */
+@media (max-width: 768px) {
+  .admin-discussion-floating-panel,
+  .admin-discussion-floating-panel.is-list {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .admin-discussion-desktop-wrapper {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* In list view: show sidebar, hide main chat */
+  .admin-discussion-floating-panel.is-list .admin-discussion-sidebar {
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .admin-discussion-floating-panel.is-list .admin-discussion-main {
+    display: none !important;
+  }
+
+  /* In room view: hide sidebar, show main chat */
+  .admin-discussion-floating-panel.is-room .admin-discussion-sidebar {
+    display: none !important;
+  }
+  .admin-discussion-floating-panel.is-room .admin-discussion-main {
+    display: flex !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Explicitly show buttons on mobile */
+  .admin-discussion-sidebar .close-button {
+    display: inline-flex !important;
+  }
+  .admin-discussion-main .back-button {
+    display: inline-flex !important;
   }
 }
