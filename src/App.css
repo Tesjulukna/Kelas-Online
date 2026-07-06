@@ -19264,9 +19264,9 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 }
 
 .admin-discussion-floating-panel {
-  width: min(620px, calc(100vw - 48px));
-  height: min(780px, calc(100dvh - 48px));
-  max-height: min(780px, calc(100dvh - 48px));
+  width: min(780px, calc(100vw - 48px));
+  height: min(820px, calc(100dvh - 48px));
+  max-height: min(820px, calc(100dvh - 48px));
 }
 
 .admin-discussion-floating-panel.is-list {
@@ -19285,6 +19285,11 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
 .admin-discussion-header {
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  flex: 0 0 auto;
+  background: var(--color-surface);
 }
 
 .admin-discussion-header > div {
@@ -19771,12 +19776,22 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
 .discussion-pinned-list {
   display: grid;
+  flex: 0 0 auto;
   gap: 8px;
   padding: 12px 18px;
   border-bottom: 1px solid var(--color-border);
   background:
     linear-gradient(180deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04)),
     #fffaf0;
+  position: relative;
+  z-index: 3;
+}
+
+.admin-discussion-floating-panel .discussion-pinned-list {
+  max-height: 136px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .discussion-pinned-list > span {
@@ -20056,13 +20071,19 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 }
 
 .discussion-admin-message {
-  grid-template-columns: 36px minmax(0, min(76%, 1fr));
+  grid-template-columns: 36px minmax(0, 1fr);
   max-width: 100%;
 }
 
 .discussion-admin-message.is-own {
-  grid-template-columns: minmax(0, min(76%, 1fr)) 36px;
+  grid-template-columns: minmax(0, 1fr) 36px;
   justify-content: end;
+}
+
+.discussion-admin-message .discussion-bubble {
+  width: fit-content;
+  max-width: min(78%, 620px);
+  justify-self: start;
 }
 
 .discussion-admin-message.is-own .discussion-avatar {
@@ -20105,6 +20126,22 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   color: #ffffff;
 }
 
+.discussion-admin-message.is-own .discussion-message-actions button {
+  color: #1d4ed8;
+  border-color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+.discussion-admin-message.is-own .discussion-message-actions button:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.discussion-admin-message.is-own .discussion-message-actions .icon {
+  color: #1d4ed8;
+}
+
 .discussion-admin-reply {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -20123,9 +20160,29 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
 .admin-discussion-floating-reply {
   flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
   padding: 14px 18px 18px;
   border-top: 1px solid var(--color-border);
   background: #ffffff;
+}
+
+.admin-discussion-floating-reply textarea {
+  min-height: 50px;
+  max-height: 118px;
+  resize: none;
+  border-radius: 22px;
+  overflow-y: auto;
+}
+
+.admin-discussion-floating-reply .btn {
+  width: auto;
+  min-width: 54px;
+  min-height: 50px;
+  padding: 0 18px;
+  border-radius: 999px;
 }
 
 .app-shell.public-theme-dark.role-member .class-discussion-panel,
@@ -20220,6 +20277,14 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
   .discussion-admin-reply .btn {
     width: 100%;
+  }
+
+  .admin-discussion-floating-reply {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admin-discussion-floating-reply .btn {
+    width: auto;
   }
 }
 
@@ -20316,12 +20381,39 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
     padding: 10px 14px;
   }
 
+  .admin-discussion-floating-panel .discussion-pinned-list {
+    max-height: 112px;
+  }
+
   .class-discussion-form {
     padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
   }
 
   .admin-discussion-floating-reply {
-    padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
+    grid-template-columns: minmax(0, 1fr) 50px;
+    gap: 10px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .admin-discussion-floating-reply textarea {
+    min-height: 50px;
+    max-height: 96px;
+    padding: 12px 14px;
+    border-radius: 20px;
+  }
+
+  .admin-discussion-floating-reply .btn {
+    width: 50px;
+    min-width: 50px;
+    min-height: 50px;
+    padding: 0;
+    font-size: 0;
+    border-radius: 50%;
+  }
+
+  .admin-discussion-floating-reply .btn .icon {
+    width: 19px;
+    height: 19px;
   }
 
   .class-discussion-form-actions {
@@ -20353,6 +20445,10 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
   .discussion-admin-message.is-own {
     grid-template-columns: minmax(0, 1fr) 32px;
+  }
+
+  .discussion-admin-message .discussion-bubble {
+    max-width: calc(100% - 6px);
   }
 
   .discussion-message-actions {
