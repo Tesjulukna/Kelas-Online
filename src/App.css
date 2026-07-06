@@ -20571,6 +20571,12 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
 /* Mobile & Tablet Styles for Admin Split-Pane Chatroom */
 @media (max-width: 768px) {
+  .admin-discussion-backdrop {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
+  }
+
   .admin-discussion-floating-panel,
   .admin-discussion-floating-panel.is-list {
     width: 100vw !important;
@@ -20613,5 +20619,86 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   }
   .admin-discussion-main .back-button {
     display: inline-flex !important;
+  }
+
+  /* Slim Header on Mobile */
+  .admin-discussion-header {
+    padding: 8px 12px !important;
+    padding-top: max(8px, env(safe-area-inset-top)) !important;
+  }
+
+  .admin-discussion-header h3 {
+    font-size: 0.95rem !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+  }
+
+  .admin-discussion-header .eyebrow {
+    font-size: 0.65rem !important;
+    margin-bottom: 2px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .admin-discussion-header small {
+    font-size: 0.72rem !important;
+  }
+
+  .admin-discussion-header .icon-action-button {
+    width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+
+  /* Compact Input & Reply Form at the Bottom */
+  .admin-discussion-floating-panel .discussion-admin-reply.admin-discussion-floating-reply {
+    grid-template-columns: minmax(0, 1fr) 40px !important;
+    gap: 8px !important;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom)) !important;
+    align-items: center !important;
+  }
+
+  .admin-discussion-floating-reply textarea {
+    min-height: 36px !important;
+    max-height: 72px !important;
+    height: 36px !important;
+    padding: 8px 12px !important;
+    font-size: 0.88rem !important;
+    line-height: 1.4 !important;
+    border-radius: 18px !important;
+    resize: none !important;
+  }
+
+  .admin-discussion-floating-reply .btn {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    font-size: 0 !important;
+    border-radius: 50% !important;
+    display: grid !important;
+    place-items: center !important;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  }
+
+  .admin-discussion-floating-reply .btn .icon {
+    width: 16px !important;
+    height: 16px !important;
+    margin: 0 !important;
+    color: #ffffff !important;
+  }
+
+  /* Compact message actions inside thread */
+  .discussion-message-actions button {
+    min-height: 26px !important;
+    padding: 0 8px !important;
+    font-size: 0.7rem !important;
+    gap: 4px !important;
+  }
+
+  .discussion-message-actions .icon {
+    width: 12px !important;
+    height: 12px !important;
   }
 }

@@ -3354,6 +3354,7 @@ function App() {
               onDeleteSupportTicket={handleDeleteSupportTicket}
               onCreateClassDiscussionMessage={handleCreateClassDiscussionMessage}
               onUpdateClassDiscussionMessage={handleUpdateClassDiscussionMessage}
+              onPinClassDiscussionMessage={handlePinClassDiscussionMessage}
               onDeleteClassDiscussionMessage={handleDeleteClassDiscussionMessage}
               onUpdateSubmission={handleUpdateSubmission}
               onCreateTestimonial={handleCreateTestimonial}
