@@ -19277,8 +19277,10 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 /* Admin Discussion Desktop Wrapper styling */
 .admin-discussion-desktop-wrapper {
   display: flex;
+  flex: 1 1 auto;
   width: 100%;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -20622,15 +20624,20 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   }
 
   .admin-discussion-desktop-wrapper {
-    display: block !important;
+    display: flex !important;
+    flex-direction: row !important;
     width: 100% !important;
     height: 100% !important;
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
   }
 
   /* In list view: show sidebar, hide main chat */
   .admin-discussion-floating-panel.is-list .admin-discussion-sidebar {
     display: flex !important;
     width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
     height: 100% !important;
   }
   .admin-discussion-floating-panel.is-list .admin-discussion-main {
@@ -20644,6 +20651,8 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   .admin-discussion-floating-panel.is-room .admin-discussion-main {
     display: flex !important;
     width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
     height: 100% !important;
   }
 
