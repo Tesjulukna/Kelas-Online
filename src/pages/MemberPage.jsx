@@ -738,6 +738,10 @@ function MemberPage({
       : [],
     [classDiscussions, selectedCourse],
   )
+  const selectedCoursePinnedDiscussions = useMemo(
+    () => selectedCourseDiscussions.filter((message) => message.isPinned && !message.isDeleted),
+    [selectedCourseDiscussions],
+  )
   const selectedCourseUnreadDiscussions = useMemo(() => {
     if (!selectedCourse) {
       return 0
@@ -2573,6 +2577,25 @@ function MemberPage({
                   </button>
                 </header>
 
+                {selectedCoursePinnedDiscussions.length > 0 && (
+                  <div className="discussion-pinned-list">
+                    <span>
+                      <Icon name="pin" />
+                      Pesan disematkan
+                    </span>
+                    {selectedCoursePinnedDiscussions.map((message) => (
+                      <button
+                        type="button"
+                        key={`member-pinned-${message.id}`}
+                        onClick={() => handleJumpToDiscussionMessage(message.id)}
+                      >
+                        <strong>{message.senderName}</strong>
+                        <small>{message.message}</small>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="class-discussion-thread" ref={discussionListRef}>
                   {selectedCourseDiscussions.map((message) => {
                     const isOwnMessage = message.senderRole === 'member' && message.senderId === userId
@@ -2585,6 +2608,7 @@ function MemberPage({
                           isOwnMessage ? 'is-own' : '',
                           isAdminMessage ? 'is-admin' : '',
                           message.isDeleted ? 'is-deleted' : '',
+                          message.isPinned ? 'is-pinned' : '',
                           highlightedDiscussionId === message.id ? 'is-highlighted' : '',
                         ].filter(Boolean).join(' ')}
                         key={message.id}
@@ -2608,6 +2632,12 @@ function MemberPage({
                                 aria-label="Admin terverifikasi"
                               >
                                 <Icon name="checkCircle" />
+                              </span>
+                            )}
+                            {message.isPinned && !message.isDeleted && (
+                              <span className="discussion-pin-badge">
+                                <Icon name="pin" />
+                                Disematkan
                               </span>
                             )}
                             <small>

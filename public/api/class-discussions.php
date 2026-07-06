@@ -23,8 +23,10 @@ function discussion_ensure_schema(PDO $pdo): void
             reply_to_sender_name VARCHAR(160) NOT NULL DEFAULT '',
             reply_to_message VARCHAR(260) NOT NULL DEFAULT '',
             is_deleted TINYINT(1) NOT NULL DEFAULT 0,
+            is_pinned TINYINT(1) NOT NULL DEFAULT 0,
             edited_at VARCHAR(60) NOT NULL DEFAULT '',
             deleted_at VARCHAR(60) NOT NULL DEFAULT '',
+            pinned_at VARCHAR(60) NOT NULL DEFAULT '',
             created_at VARCHAR(60) NOT NULL DEFAULT '',
             INDEX class_discussion_class_index (class_id),
             INDEX class_discussion_sender_index (sender_id),
@@ -36,8 +38,10 @@ function discussion_ensure_schema(PDO $pdo): void
     discussion_ensure_column($pdo, 'reply_to_sender_name', "VARCHAR(160) NOT NULL DEFAULT '' AFTER reply_to_id");
     discussion_ensure_column($pdo, 'reply_to_message', "VARCHAR(260) NOT NULL DEFAULT '' AFTER reply_to_sender_name");
     discussion_ensure_column($pdo, 'is_deleted', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER reply_to_message');
-    discussion_ensure_column($pdo, 'edited_at', "VARCHAR(60) NOT NULL DEFAULT '' AFTER is_deleted");
+    discussion_ensure_column($pdo, 'is_pinned', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER is_deleted');
+    discussion_ensure_column($pdo, 'edited_at', "VARCHAR(60) NOT NULL DEFAULT '' AFTER is_pinned");
     discussion_ensure_column($pdo, 'deleted_at', "VARCHAR(60) NOT NULL DEFAULT '' AFTER edited_at");
+    discussion_ensure_column($pdo, 'pinned_at', "VARCHAR(60) NOT NULL DEFAULT '' AFTER deleted_at");
 }
 
 function discussion_ensure_column(PDO $pdo, string $column, string $definition): void
@@ -81,8 +85,10 @@ function discussion_public(array $row): array
         'replyToSenderName' => clean_text($row['reply_to_sender_name'] ?? '', 160),
         'replyToMessage' => clean_text($row['reply_to_message'] ?? '', 260),
         'isDeleted' => $isDeleted,
+        'isPinned' => !empty($row['is_pinned']),
         'editedAt' => clean_text($row['edited_at'] ?? '', 60),
         'deletedAt' => clean_text($row['deleted_at'] ?? '', 60),
+        'pinnedAt' => clean_text($row['pinned_at'] ?? '', 60),
         'createdAt' => clean_text($row['created_at'] ?? '', 60),
     ];
 }
@@ -249,6 +255,27 @@ if (!discussion_can_manage($user, $messageRow)) {
 }
 
 if ($method === 'PATCH') {
+    $action = clean_text($payload['action'] ?? '', 40);
+
+    if ($action === 'pin') {
+        if (($user['role'] ?? '') !== 'admin') {
+            send_json(403, ['message' => 'Hanya admin yang bisa menyematkan pesan diskusi.']);
+        }
+
+        if (!empty($messageRow['is_deleted'])) {
+            send_json(400, ['message' => 'Pesan yang sudah dihapus tidak bisa disematkan.']);
+        }
+
+        $isPinned = !empty($payload['isPinned']);
+        $update = $pdo->prepare('UPDATE class_discussions SET is_pinned = ?, pinned_at = ? WHERE id = ?');
+        $update->execute([$isPinned ? 1 : 0, $isPinned ? date(DATE_ATOM) : '', $messageId]);
+
+        send_json(200, [
+            'classDiscussions' => discussion_fetch_messages($pdo, $user),
+            'updatedAt' => updated_at($pdo),
+        ]);
+    }
+
     $message = discussion_clean_message($payload['message'] ?? '');
 
     if ($message === '') {
@@ -270,7 +297,7 @@ if ($method === 'PATCH') {
 
 $delete = $pdo->prepare(
     "UPDATE class_discussions
-    SET message = '', is_deleted = 1, deleted_at = ?, edited_at = ''
+    SET message = '', is_deleted = 1, is_pinned = 0, deleted_at = ?, edited_at = '', pinned_at = ''
     WHERE id = ?",
 );
 $delete->execute([date(DATE_ATOM), $messageId]);

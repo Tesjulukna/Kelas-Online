@@ -172,7 +172,6 @@ function getDashboardMenuFromUrl(role) {
         'students',
         'payments',
         'submissions',
-        'class-discussions',
         'testimonials',
         'certificates',
         'support',
@@ -1020,8 +1019,10 @@ function cleanClassDiscussions(value) {
       replyToSenderName: cleanText(item.replyToSenderName || ''),
       replyToMessage: cleanLongText(item.replyToMessage || '', 260),
       isDeleted: item.isDeleted === true,
+      isPinned: item.isPinned === true,
       editedAt: cleanText(item.editedAt || ''),
       deletedAt: cleanText(item.deletedAt || ''),
+      pinnedAt: cleanText(item.pinnedAt || ''),
       createdAt: cleanText(item.createdAt || ''),
     }))
 }
@@ -2867,6 +2868,19 @@ function App() {
     return applyClassDiscussionsResponse(data)
   }
 
+  const handlePinClassDiscussionMessage = async ({ id, isPinned }) => {
+    if (!session) {
+      throw new Error('Silakan login ulang untuk menyematkan pesan diskusi.')
+    }
+
+    const data = await requestJson(`${classDiscussionsApiPath}?id=${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action: 'pin', isPinned }),
+    })
+
+    return applyClassDiscussionsResponse(data)
+  }
+
   const handleDeleteClassDiscussionMessage = async (messageId) => {
     if (!session) {
       throw new Error('Silakan login ulang untuk menghapus pesan diskusi.')
@@ -3284,6 +3298,7 @@ function App() {
               onReplySupportTicket={handleReplySupportTicket}
               onCreateClassDiscussionMessage={handleCreateClassDiscussionMessage}
               onUpdateClassDiscussionMessage={handleUpdateClassDiscussionMessage}
+              onPinClassDiscussionMessage={handlePinClassDiscussionMessage}
               onDeleteClassDiscussionMessage={handleDeleteClassDiscussionMessage}
               onCreateSubmission={handleCreateSubmission}
               onUpdateSubmission={handleUpdateSubmission}

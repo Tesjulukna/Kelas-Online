@@ -13,6 +13,33 @@ import {
 } from '../lib/storageUpload'
 
 const analyticsApiPath = '/api/analytics'
+const adminDiscussionSeenStorageKey = 'ibnucreative.adminClassDiscussionSeen.v1'
+
+function readAdminDiscussionSeenTimes(loginName = '') {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+
+  try {
+    const key = `${adminDiscussionSeenStorageKey}.${loginName || 'admin'}`
+    return JSON.parse(window.localStorage.getItem(key) || '{}') || {}
+  } catch {
+    return {}
+  }
+}
+
+function saveAdminDiscussionSeenTimes(loginName = '', value = {}) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    const key = `${adminDiscussionSeenStorageKey}.${loginName || 'admin'}`
+    window.localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Unread badges are a convenience layer; discussions remain available without storage.
+  }
+}
 
 function createEmptyMaterial() {
   return {
@@ -919,6 +946,7 @@ function AdminPage({
   onDeleteSupportTicket = async () => { },
   onCreateClassDiscussionMessage = async () => { },
   onUpdateClassDiscussionMessage = async () => { },
+  onPinClassDiscussionMessage = async () => { },
   onDeleteClassDiscussionMessage = async () => { },
   onUpdateSubmission = async () => { },
   onCreateTestimonial = async () => { },
@@ -1019,6 +1047,10 @@ function AdminPage({
   const [discussionReplyTargets, setDiscussionReplyTargets] = useState({})
   const [discussionEditingId, setDiscussionEditingId] = useState('')
   const [discussionEditingDraft, setDiscussionEditingDraft] = useState('')
+  const [isAdminDiscussionOpen, setIsAdminDiscussionOpen] = useState(false)
+  const [adminDiscussionSeenTimes, setAdminDiscussionSeenTimes] = useState(() =>
+    readAdminDiscussionSeenTimes(loginName),
+  )
   const [highlightedAdminDiscussionId, setHighlightedAdminDiscussionId] = useState('')
   const [viewingSubmission, setViewingSubmission] = useState(null)
   const [submissionFeedback, setSubmissionFeedback] = useState('')
@@ -1044,24 +1076,7 @@ function AdminPage({
   const waitingSupportCount = supportTickets.filter(
     (item) => item.status === 'Menunggu',
   ).length
-  const discussionClassOptions = classes
-    .map((course) => ({
-      id: course.id,
-      title: course.title,
-      count: classDiscussions.filter((message) => message.classId === course.id).length,
-    }))
-  const visibleClassDiscussions = classDiscussions.filter((message) => {
-    const matchesClass = discussionClassFilter === 'all' || message.classId === discussionClassFilter
-    const keyword = discussionSearchTerm.trim().toLowerCase()
-    const matchesSearch = !keyword || [
-      message.classTitle,
-      message.senderName,
-      message.message,
-    ].join(' ').toLowerCase().includes(keyword)
-
-    return matchesClass && matchesSearch
-  })
-  const discussionsByClass = visibleClassDiscussions.reduce((map, message) => {
+  const discussionsByClass = classDiscussions.reduce((map, message) => {
     const group = map.get(message.classId) ?? {
       classId: message.classId,
       classTitle: message.classTitle,
@@ -1072,6 +1087,52 @@ function AdminPage({
     map.set(message.classId, group)
     return map
   }, new Map())
+  const discussionClassOptions = classes
+    .map((course) => {
+      const group = discussionsByClass.get(course.id)
+      const messages = group?.messages || []
+      const lastMessage = messages.at(-1) || null
+      const seenAt = Date.parse(adminDiscussionSeenTimes[course.id] || '') || 0
+      const unreadCount = messages.filter((message) =>
+        message.senderRole !== 'admin' &&
+        !message.isDeleted &&
+        (Date.parse(message.createdAt || '') || 0) > seenAt,
+      ).length
+
+      return {
+        id: course.id,
+        title: course.title,
+        thumbnail: course.thumbnail || '',
+        count: messages.length,
+        unreadCount,
+        pinnedCount: messages.filter((message) => message.isPinned && !message.isDeleted).length,
+        lastMessage,
+        lastAt: lastMessage?.createdAt || '',
+      }
+    })
+    .sort((first, second) => {
+      const dateDiff = (Date.parse(second.lastAt || '') || 0) - (Date.parse(first.lastAt || '') || 0)
+
+      return dateDiff || first.title.localeCompare(second.title)
+    })
+  const discussionClassKeyword = discussionSearchTerm.trim().toLowerCase()
+  const filteredDiscussionClassOptions = discussionClassOptions.filter((course) => {
+    if (!discussionClassKeyword) {
+      return true
+    }
+
+    const lastMessage = course.lastMessage
+
+    return [
+      course.title,
+      lastMessage?.senderName,
+      lastMessage?.message,
+    ].join(' ').toLowerCase().includes(discussionClassKeyword)
+  })
+  const totalAdminDiscussionUnread = discussionClassOptions.reduce(
+    (total, course) => total + course.unreadCount,
+    0,
+  )
   const discussionGroups = Array.from(discussionsByClass.values()).sort((first, second) => {
     const firstLast = first.messages.at(-1)?.createdAt || ''
     const secondLast = second.messages.at(-1)?.createdAt || ''
@@ -1079,19 +1140,16 @@ function AdminPage({
     return Date.parse(secondLast || 0) - Date.parse(firstLast || 0)
   })
   const selectedDiscussionClass = classes.find((course) => course.id === discussionClassFilter)
-  const displayedDiscussionGroups =
-    discussionClassFilter !== 'all' &&
-    selectedDiscussionClass &&
-    !discussionGroups.some((group) => group.classId === selectedDiscussionClass.id)
-      ? [
-          {
-            classId: selectedDiscussionClass.id,
-            classTitle: selectedDiscussionClass.title,
-            messages: [],
-          },
-          ...discussionGroups,
-        ]
-      : discussionGroups
+  const activeDiscussionGroup = discussionClassFilter !== 'all'
+    ? {
+        classId: selectedDiscussionClass?.id || discussionClassFilter,
+        classTitle:
+          selectedDiscussionClass?.title ||
+          discussionsByClass.get(discussionClassFilter)?.classTitle ||
+          'Kelas',
+        messages: discussionsByClass.get(discussionClassFilter)?.messages || [],
+      }
+    : null
   const pendingSubmissions = submissions.filter(
     (item) => item.status === 'Menunggu Review',
   ).length
@@ -1609,6 +1667,33 @@ function AdminPage({
 
     return () => controller.abort()
   }, [activeMenu, analyticsEndDate, analyticsStartDate, sessionToken])
+
+  useEffect(() => {
+    if (activeMenu === 'overview') {
+      return
+    }
+
+    setIsAdminDiscussionOpen(false)
+    setDiscussionClassFilter('all')
+  }, [activeMenu])
+
+  useEffect(() => {
+    if (!isAdminDiscussionOpen || discussionClassFilter === 'all') {
+      return
+    }
+
+    const now = new Date().toISOString()
+
+    setAdminDiscussionSeenTimes((current) => {
+      const next = {
+        ...current,
+        [discussionClassFilter]: now,
+      }
+
+      saveAdminDiscussionSeenTimes(loginName, next)
+      return next
+    })
+  }, [classDiscussions.length, discussionClassFilter, isAdminDiscussionOpen, loginName])
 
   useEffect(() => () => {
     if (discussionAdminHighlightTimerRef.current) {
@@ -3320,6 +3405,27 @@ function AdminPage({
     setDiscussionEditingDraft('')
   }
 
+  const handleOpenAdminDiscussionLauncher = () => {
+    setDiscussionClassFilter('all')
+    setDiscussionSearchTerm('')
+    setIsAdminDiscussionOpen(true)
+  }
+
+  const handleOpenAdminDiscussionClass = (classId) => {
+    setDiscussionClassFilter(classId)
+    setDiscussionEditingId('')
+    setDiscussionEditingDraft('')
+    setHighlightedAdminDiscussionId('')
+    setIsAdminDiscussionOpen(true)
+  }
+
+  const handleBackToAdminDiscussionList = () => {
+    setDiscussionClassFilter('all')
+    setDiscussionEditingId('')
+    setDiscussionEditingDraft('')
+    setHighlightedAdminDiscussionId('')
+  }
+
   const handleSubmitAdminDiscussionEdit = async (event, message) => {
     event.preventDefault()
 
@@ -3369,6 +3475,19 @@ function AdminPage({
       onNotify('Balasan diskusi dikirim.')
     } catch (error) {
       onNotify(error.message || 'Balasan diskusi belum bisa dikirim.')
+    }
+  }
+
+  const handleToggleDiscussionPin = async (message) => {
+    try {
+      await onPinClassDiscussionMessage({
+        id: message.id,
+        isPinned: !message.isPinned,
+      })
+      setActionStatus(message.isPinned ? 'Sematan pesan diskusi dilepas.' : 'Pesan diskusi berhasil disematkan.')
+      onNotify(message.isPinned ? 'Sematan pesan dilepas.' : 'Pesan diskusi disematkan.')
+    } catch (error) {
+      onNotify(error.message || 'Status sematan pesan belum bisa diubah.')
     }
   }
 
@@ -6102,221 +6221,342 @@ function AdminPage({
         </section>
       )}
 
-      {activeMenu === 'class-discussions' && (
-        <section className="panel class-discussion-admin-panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Diskusi kelas</p>
-              <h2>Kelola ruang diskusi peserta</h2>
-              <p>Balas pertanyaan peserta sesuai kelas agar diskusi tetap rapi dan mudah dicari.</p>
-            </div>
-          </div>
+      {activeMenu === 'overview' && (
+        <>
+          <button
+            className="admin-discussion-floating-button"
+            type="button"
+            onClick={handleOpenAdminDiscussionLauncher}
+            aria-label="Buka diskusi kelas"
+          >
+            <Icon name="message" />
+            {totalAdminDiscussionUnread > 0 && (
+              <strong>{totalAdminDiscussionUnread > 99 ? '99+' : totalAdminDiscussionUnread}</strong>
+            )}
+          </button>
 
-          <div className="discussion-admin-toolbar">
-            <label>
-              Kelas
-              <select
-                value={discussionClassFilter}
-                onChange={(event) => setDiscussionClassFilter(event.target.value)}
+          {isAdminDiscussionOpen && (
+            <div className="class-discussion-backdrop admin-discussion-backdrop" role="presentation">
+              <section
+                className={[
+                  'class-discussion-panel',
+                  'admin-discussion-floating-panel',
+                  activeDiscussionGroup ? 'is-room' : 'is-list',
+                ].filter(Boolean).join(' ')}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="admin-discussion-title"
               >
-                <option value="all">Semua kelas</option>
-                {discussionClassOptions.map((course) => (
-                  <option value={course.id} key={course.id}>
-                    {course.title} {course.count ? `(${course.count})` : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Cari diskusi
-              <input
-                type="search"
-                value={discussionSearchTerm}
-                onChange={(event) => setDiscussionSearchTerm(event.target.value)}
-                placeholder="Cari nama, kelas, atau isi pesan..."
-              />
-            </label>
-          </div>
-
-          <div className="discussion-admin-list">
-            {displayedDiscussionGroups.map((group) => (
-              <article className="discussion-admin-card" key={group.classId}>
-                <header>
-                  <div>
-                    <p className="eyebrow">Kelas</p>
-                    <h3>{group.classTitle}</h3>
-                  </div>
-                  <span>{group.messages.length} pesan</span>
+                <header className="class-discussion-header admin-discussion-header">
+                  {activeDiscussionGroup ? (
+                    <>
+                      <button
+                        className="icon-action-button"
+                        type="button"
+                        onClick={handleBackToAdminDiscussionList}
+                        aria-label="Kembali ke daftar kelas"
+                      >
+                        <Icon name="arrowLeft" />
+                      </button>
+                      <div>
+                        <p className="eyebrow">Ruang diskusi</p>
+                        <h3 id="admin-discussion-title">{activeDiscussionGroup.classTitle}</h3>
+                        <small>{activeDiscussionGroup.messages.length} pesan</small>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <p className="eyebrow">Diskusi kelas</p>
+                      <h3 id="admin-discussion-title">Pilih ruang diskusi</h3>
+                      <small>{totalAdminDiscussionUnread} pesan baru dari peserta</small>
+                    </div>
+                  )}
+                  <button
+                    className="icon-action-button"
+                    type="button"
+                    onClick={() => setIsAdminDiscussionOpen(false)}
+                    aria-label="Tutup diskusi kelas"
+                  >
+                    <Icon name="x" />
+                  </button>
                 </header>
 
-                <div className="discussion-admin-thread">
-                  {group.messages.map((message) => (
-                    <div
-                      className={[
-                        'discussion-admin-message',
-                        message.senderRole === 'admin' ? 'is-admin' : '',
-                        message.isDeleted ? 'is-deleted' : '',
-                        highlightedAdminDiscussionId === message.id ? 'is-highlighted' : '',
-                      ].filter(Boolean).join(' ')}
-                      key={message.id}
-                      ref={(node) => setAdminDiscussionMessageNode(message.id, node)}
-                    >
-                      <span className="discussion-avatar" aria-hidden="true">
-                        {message.senderAvatar ? (
-                          <img src={message.senderAvatar} alt="" />
-                        ) : (
-                          <Icon name={message.senderRole === 'admin' ? 'shield' : 'user'} />
-                        )}
-                      </span>
-                      <div>
-                        <div className="discussion-meta">
-                          <strong>{message.senderName}</strong>
-                          {message.senderRole === 'admin' && (
-                            <span
-                              className="discussion-admin-check"
-                              title="Admin terverifikasi"
-                              aria-label="Admin terverifikasi"
-                            >
-                              <Icon name="checkCircle" />
-                            </span>
-                          )}
-                          <small>
-                            {message.createdAt
-                              ? new Date(message.createdAt).toLocaleString('id-ID', {
-                                  dateStyle: 'medium',
-                                  timeStyle: 'short',
-                                })
-                              : '-'}
-                          </small>
+                {!activeDiscussionGroup && (
+                  <div className="admin-discussion-class-picker">
+                    <label className="admin-discussion-search">
+                      <Icon name="filter" />
+                      <input
+                        type="search"
+                        value={discussionSearchTerm}
+                        onChange={(event) => setDiscussionSearchTerm(event.target.value)}
+                        placeholder="Cari kelas atau pesan terakhir..."
+                      />
+                    </label>
+
+                    <div className="admin-discussion-class-list">
+                      {filteredDiscussionClassOptions.map((course) => (
+                        <button
+                          className="admin-discussion-class-button"
+                          type="button"
+                          key={course.id}
+                          onClick={() => handleOpenAdminDiscussionClass(course.id)}
+                        >
+                          <span className="admin-discussion-class-avatar" aria-hidden="true">
+                            {course.thumbnail ? (
+                              <img src={course.thumbnail} alt="" />
+                            ) : (
+                              <Icon name="bookOpen" />
+                            )}
+                          </span>
+                          <span className="admin-discussion-class-copy">
+                            <strong>{course.title}</strong>
+                            <small>
+                              {course.lastMessage
+                                ? `${course.lastMessage.senderName}: ${course.lastMessage.message}`
+                                : 'Belum ada pesan. Klik untuk mulai diskusi.'}
+                            </small>
+                          </span>
+                          <span className="admin-discussion-class-meta">
+                            {course.lastAt && (
+                              <small>
+                                {new Date(course.lastAt).toLocaleDateString('id-ID', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                })}
+                              </small>
+                            )}
+                            {(course.unreadCount > 0 || course.count > 0) && (
+                              <strong className={course.unreadCount > 0 ? 'is-unread' : ''}>
+                                {course.unreadCount > 0
+                                  ? course.unreadCount > 99 ? '99+' : course.unreadCount
+                                  : course.count}
+                              </strong>
+                            )}
+                            {course.pinnedCount > 0 && (
+                              <span title={`${course.pinnedCount} pesan disematkan`}>
+                                <Icon name="pin" />
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      ))}
+
+                      {!filteredDiscussionClassOptions.length && (
+                        <div className="class-discussion-empty">
+                          <Icon name="message" />
+                          <h3>Kelas tidak ditemukan</h3>
+                          <p>Coba kata kunci lain atau tambahkan kelas terlebih dahulu.</p>
                         </div>
-                        {message.replyToId && (
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeDiscussionGroup && (
+                  <>
+                    {(() => {
+                      const pinnedMessages = activeDiscussionGroup.messages.filter(
+                        (message) => message.isPinned && !message.isDeleted,
+                      )
+
+                      return pinnedMessages.length > 0 ? (
+                        <div className="discussion-pinned-list">
+                          <span>
+                            <Icon name="pin" />
+                            Pesan disematkan
+                          </span>
+                          {pinnedMessages.map((message) => (
+                            <button
+                              type="button"
+                              key={`pinned-${message.id}`}
+                              onClick={() => handleJumpToAdminDiscussionMessage(message.id)}
+                            >
+                              <strong>{message.senderName}</strong>
+                              <small>{message.message}</small>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null
+                    })()}
+
+                    <div className="discussion-admin-thread admin-discussion-room-thread">
+                      {activeDiscussionGroup.messages.map((message) => (
+                        <div
+                          className={[
+                            'discussion-admin-message',
+                            message.senderRole === 'admin' ? 'is-admin' : '',
+                            message.isDeleted ? 'is-deleted' : '',
+                            message.isPinned ? 'is-pinned' : '',
+                            highlightedAdminDiscussionId === message.id ? 'is-highlighted' : '',
+                          ].filter(Boolean).join(' ')}
+                          key={message.id}
+                          ref={(node) => setAdminDiscussionMessageNode(message.id, node)}
+                        >
+                          <span className="discussion-avatar" aria-hidden="true">
+                            {message.senderAvatar ? (
+                              <img src={message.senderAvatar} alt="" />
+                            ) : (
+                              <Icon name={message.senderRole === 'admin' ? 'shield' : 'user'} />
+                            )}
+                          </span>
+                          <div>
+                            <div className="discussion-meta">
+                              <strong>{message.senderName}</strong>
+                              {message.senderRole === 'admin' && (
+                                <span
+                                  className="discussion-admin-check"
+                                  title="Admin terverifikasi"
+                                  aria-label="Admin terverifikasi"
+                                >
+                                  <Icon name="checkCircle" />
+                                </span>
+                              )}
+                              {message.isPinned && !message.isDeleted && (
+                                <span className="discussion-pin-badge">
+                                  <Icon name="pin" />
+                                  Disematkan
+                                </span>
+                              )}
+                              <small>
+                                {message.createdAt
+                                  ? new Date(message.createdAt).toLocaleString('id-ID', {
+                                      dateStyle: 'medium',
+                                      timeStyle: 'short',
+                                    })
+                                  : '-'}
+                              </small>
+                            </div>
+                            {message.replyToId && (
+                              <button
+                                className="discussion-reply-preview"
+                                type="button"
+                                onClick={() => handleJumpToAdminDiscussionMessage(message.replyToId)}
+                              >
+                                <strong>{message.replyToSenderName || 'Pesan dibalas'}</strong>
+                                <span>{message.replyToMessage || 'Pesan ini tidak tersedia.'}</span>
+                              </button>
+                            )}
+                            {discussionEditingId === message.id ? (
+                              <form
+                                className="discussion-inline-edit"
+                                onSubmit={(event) => handleSubmitAdminDiscussionEdit(event, message)}
+                              >
+                                <textarea
+                                  value={discussionEditingDraft}
+                                  onChange={(event) => setDiscussionEditingDraft(event.target.value)}
+                                  rows="3"
+                                  maxLength={1200}
+                                />
+                                <div>
+                                  <button type="button" onClick={handleCancelAdminDiscussionEdit}>
+                                    Batal
+                                  </button>
+                                  <button type="submit">
+                                    Simpan
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <>
+                                <p className={message.isDeleted ? 'discussion-deleted-text' : ''}>
+                                  {message.message}
+                                </p>
+                                <div className="discussion-message-actions">
+                                  {!message.isDeleted && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartAdminDiscussionReply(message)}
+                                    >
+                                      <Icon name="reply" />
+                                      Balas
+                                    </button>
+                                  )}
+                                  {!message.isDeleted && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartAdminDiscussionEdit(message)}
+                                    >
+                                      <Icon name="edit" />
+                                      Edit
+                                    </button>
+                                  )}
+                                  {!message.isDeleted && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleDiscussionPin(message)}
+                                    >
+                                      <Icon name="pin" />
+                                      {message.isPinned ? 'Lepas semat' : 'Sematkan'}
+                                    </button>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
                           <button
-                            className="discussion-reply-preview"
                             type="button"
-                            onClick={() => handleJumpToAdminDiscussionMessage(message.replyToId)}
+                            aria-label="Hapus pesan diskusi"
+                            onClick={() => handleDeleteDiscussionMessage(message.id)}
+                            disabled={message.isDeleted}
                           >
-                            <strong>{message.replyToSenderName || 'Pesan dibalas'}</strong>
-                            <span>{message.replyToMessage || 'Pesan ini tidak tersedia.'}</span>
+                            <Icon name="trash" />
                           </button>
-                        )}
-                        {discussionEditingId === message.id ? (
-                          <form
-                            className="discussion-inline-edit"
-                            onSubmit={(event) => handleSubmitAdminDiscussionEdit(event, message)}
+                        </div>
+                      ))}
+
+                      {!activeDiscussionGroup.messages.length && (
+                        <div className="class-discussion-empty">
+                          <Icon name="message" />
+                          <h3>Belum ada diskusi</h3>
+                          <p>Admin bisa memulai informasi atau arahan untuk kelas ini.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <form
+                      className="discussion-admin-reply admin-discussion-floating-reply"
+                      onSubmit={(event) => handleSubmitDiscussionReply(event, activeDiscussionGroup)}
+                    >
+                      {discussionReplyTargets[activeDiscussionGroup.classId] && (
+                        <div className="discussion-compose-reply">
+                          <button
+                            type="button"
+                            onClick={() => handleJumpToAdminDiscussionMessage(
+                              discussionReplyTargets[activeDiscussionGroup.classId].id,
+                            )}
                           >
-                            <textarea
-                              value={discussionEditingDraft}
-                              onChange={(event) => setDiscussionEditingDraft(event.target.value)}
-                              rows="3"
-                              maxLength={1200}
-                            />
-                            <div>
-                              <button type="button" onClick={handleCancelAdminDiscussionEdit}>
-                                Batal
-                              </button>
-                              <button type="submit">
-                                Simpan
-                              </button>
-                            </div>
-                          </form>
-                        ) : (
-                          <>
-                            <p className={message.isDeleted ? 'discussion-deleted-text' : ''}>
-                              {message.message}
-                            </p>
-                            <div className="discussion-message-actions">
-                              {!message.isDeleted && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartAdminDiscussionReply(message)}
-                                >
-                                  <Icon name="reply" />
-                                  Balas
-                                </button>
-                              )}
-                              {!message.isDeleted && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartAdminDiscussionEdit(message)}
-                                >
-                                  <Icon name="edit" />
-                                  Edit
-                                </button>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        aria-label="Hapus pesan diskusi"
-                        onClick={() => handleDeleteDiscussionMessage(message.id)}
-                        disabled={message.isDeleted}
-                      >
-                        <Icon name="trash" />
+                            <strong>
+                              Membalas {discussionReplyTargets[activeDiscussionGroup.classId].senderName}
+                            </strong>
+                            <span>{discussionReplyTargets[activeDiscussionGroup.classId].message}</span>
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Batalkan balasan"
+                            onClick={() => handleCancelAdminDiscussionReply(activeDiscussionGroup.classId)}
+                          >
+                            <Icon name="x" />
+                          </button>
+                        </div>
+                      )}
+                      <textarea
+                        value={discussionReplyDrafts[activeDiscussionGroup.classId] || ''}
+                        onChange={(event) => handleDiscussionDraftChange(activeDiscussionGroup.classId, event.target.value)}
+                        placeholder="Tulis balasan sebagai admin..."
+                        rows="2"
+                        maxLength={1200}
+                      />
+                      <button className="btn btn-primary" type="submit">
+                        <Icon name="send" />
+                        Kirim
                       </button>
-                    </div>
-                  ))}
-
-                  {!group.messages.length && (
-                    <div className="class-discussion-empty">
-                      <Icon name="message" />
-                      <h3>Belum ada diskusi</h3>
-                      <p>Admin bisa memulai informasi atau arahan untuk kelas ini.</p>
-                    </div>
-                  )}
-                </div>
-
-                <form
-                  className="discussion-admin-reply"
-                  onSubmit={(event) => handleSubmitDiscussionReply(event, group)}
-                >
-                  {discussionReplyTargets[group.classId] && (
-                    <div className="discussion-compose-reply">
-                      <button
-                        type="button"
-                        onClick={() => handleJumpToAdminDiscussionMessage(
-                          discussionReplyTargets[group.classId].id,
-                        )}
-                      >
-                        <strong>
-                          Membalas {discussionReplyTargets[group.classId].senderName}
-                        </strong>
-                        <span>{discussionReplyTargets[group.classId].message}</span>
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Batalkan balasan"
-                        onClick={() => handleCancelAdminDiscussionReply(group.classId)}
-                      >
-                        <Icon name="x" />
-                      </button>
-                    </div>
-                  )}
-                  <textarea
-                    value={discussionReplyDrafts[group.classId] || ''}
-                    onChange={(event) => handleDiscussionDraftChange(group.classId, event.target.value)}
-                    placeholder="Tulis balasan sebagai admin..."
-                    rows="3"
-                    maxLength={1200}
-                  />
-                  <button className="btn btn-primary" type="submit">
-                    <Icon name="send" />
-                    Kirim Balasan
-                  </button>
-                </form>
-              </article>
-            ))}
-
-            {!displayedDiscussionGroups.length && (
-              <article className="empty-state">
-                <Icon name="message" />
-                <h3>Belum ada diskusi kelas</h3>
-                <p>Pilih kelas tertentu untuk memulai pesan atau tunggu peserta mengirim diskusi.</p>
-              </article>
-            )}
-          </div>
-        </section>
+                    </form>
+                  </>
+                )}
+              </section>
+            </div>
+          )}
+        </>
       )}
 
       {activeMenu === 'support' && (
