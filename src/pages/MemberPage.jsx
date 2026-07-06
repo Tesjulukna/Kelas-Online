@@ -14,6 +14,7 @@ import { withPublicCodes } from '../utils/publicCodes'
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
 const expiredPaymentNoticeKey = 'ibnucreative.expiredPaymentNotices.v1'
+const discussionSeenStorageKey = 'ibnucreative.classDiscussionSeen.v1'
 const uploadFileApiPath = '/api/upload-file'
 const testimonialMaxLength = 280
 
@@ -77,6 +78,36 @@ function readCourseProgress(userId = '') {
   } catch {
     window.localStorage.removeItem(storageKey)
     return {}
+  }
+}
+
+function readDiscussionSeenTimes(userId = '') {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+
+  const storageKey = scopedStorageKey(discussionSeenStorageKey, userId)
+
+  try {
+    return JSON.parse(window.localStorage.getItem(storageKey)) ?? {}
+  } catch {
+    window.localStorage.removeItem(storageKey)
+    return {}
+  }
+}
+
+function saveDiscussionSeenTimes(userId = '', value = {}) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      scopedStorageKey(discussionSeenStorageKey, userId),
+      JSON.stringify(value),
+    )
+  } catch {
+    // Badge unread is a convenience layer; discussion data remains on the server.
   }
 }
 
@@ -615,6 +646,8 @@ function MemberPage({
   onCreateSupportTicket = async () => {},
   onReplySupportTicket = async () => {},
   onCreateClassDiscussionMessage = async () => {},
+  onUpdateClassDiscussionMessage = async () => {},
+  onDeleteClassDiscussionMessage = async () => {},
   onCreateSubmission = async () => {},
   onUpdateSubmission = async () => {},
   onTrackProgress = async () => {},
@@ -668,6 +701,13 @@ function MemberPage({
   const [isDiscussionOpen, setIsDiscussionOpen] = useState(false)
   const [discussionDraft, setDiscussionDraft] = useState('')
   const [discussionStatus, setDiscussionStatus] = useState('')
+  const [discussionReplyTarget, setDiscussionReplyTarget] = useState(null)
+  const [editingDiscussionId, setEditingDiscussionId] = useState('')
+  const [editingDiscussionDraft, setEditingDiscussionDraft] = useState('')
+  const [highlightedDiscussionId, setHighlightedDiscussionId] = useState('')
+  const [discussionSeenTimes, setDiscussionSeenTimes] = useState(() =>
+    readDiscussionSeenTimes(userId),
+  )
   const [testimonialDrafts, setTestimonialDrafts] = useState({})
   const [previewImage, setPreviewImage] = useState(null)
   const [activePromptInstruction, setActivePromptInstruction] = useState(null)
@@ -686,6 +726,8 @@ function MemberPage({
   const [paymentExpiryTick, setPaymentExpiryTick] = useState(() => Date.now())
   const handledCheckoutRequestRef = useRef('')
   const discussionListRef = useRef(null)
+  const discussionMessageRefs = useRef(new Map())
+  const discussionHighlightTimerRef = useRef(null)
   const coursesRef = useRef(courses)
   const onTrackProgressRef = useRef(onTrackProgress)
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
@@ -696,6 +738,19 @@ function MemberPage({
       : [],
     [classDiscussions, selectedCourse],
   )
+  const selectedCourseUnreadDiscussions = useMemo(() => {
+    if (!selectedCourse) {
+      return 0
+    }
+
+    const seenAt = Date.parse(discussionSeenTimes[selectedCourse.id] || '') || 0
+
+    return selectedCourseDiscussions.filter((message) => {
+      const createdAt = Date.parse(message.createdAt || '') || 0
+
+      return createdAt > seenAt && message.senderId !== userId
+    }).length
+  }, [discussionSeenTimes, selectedCourse, selectedCourseDiscussions, userId])
   const selectedDigitalProduct = activeSellableProducts.find(
     (product) => product.id === selectedDigitalProductId,
   )
@@ -919,6 +974,9 @@ function MemberPage({
     setIsDiscussionOpen(false)
     setDiscussionDraft('')
     setDiscussionStatus('')
+    setDiscussionReplyTarget(null)
+    setEditingDiscussionId('')
+    setEditingDiscussionDraft('')
   }, [selectedCourseId])
 
   useEffect(() => {
@@ -932,6 +990,36 @@ function MemberPage({
       }
     }, 0)
   }, [isDiscussionOpen, selectedCourseDiscussions.length])
+
+  const markSelectedDiscussionSeen = useCallback(() => {
+    if (!selectedCourse) {
+      return
+    }
+
+    const seenAt = new Date().toISOString()
+
+    setDiscussionSeenTimes((current) => {
+      const next = {
+        ...current,
+        [selectedCourse.id]: seenAt,
+      }
+
+      saveDiscussionSeenTimes(userId, next)
+      return next
+    })
+  }, [selectedCourse, userId])
+
+  useEffect(() => {
+    if (isDiscussionOpen) {
+      markSelectedDiscussionSeen()
+    }
+  }, [isDiscussionOpen, markSelectedDiscussionSeen, selectedCourseDiscussions.length])
+
+  useEffect(() => () => {
+    if (discussionHighlightTimerRef.current) {
+      window.clearTimeout(discussionHighlightTimerRef.current)
+    }
+  }, [])
 
   const rememberCoursePosition = useCallback((courseId, materialIndex) => {
     const course = coursesRef.current.find((item) => item.id === courseId)
@@ -1758,6 +1846,106 @@ function MemberPage({
     }
   }
 
+  const setDiscussionMessageNode = useCallback((messageId, node) => {
+    if (!messageId) {
+      return
+    }
+
+    if (node) {
+      discussionMessageRefs.current.set(messageId, node)
+    } else {
+      discussionMessageRefs.current.delete(messageId)
+    }
+  }, [])
+
+  const handleJumpToDiscussionMessage = useCallback((messageId) => {
+    const node = discussionMessageRefs.current.get(messageId)
+
+    if (!node) {
+      setDiscussionStatus('Pesan yang dibalas tidak ditemukan di diskusi ini.')
+      return
+    }
+
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightedDiscussionId(messageId)
+
+    if (discussionHighlightTimerRef.current) {
+      window.clearTimeout(discussionHighlightTimerRef.current)
+    }
+
+    discussionHighlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedDiscussionId('')
+    }, 1800)
+  }, [])
+
+  const handleOpenDiscussionPanel = () => {
+    setIsDiscussionOpen(true)
+    markSelectedDiscussionSeen()
+  }
+
+  const handleStartDiscussionReply = (message) => {
+    setDiscussionReplyTarget(message)
+    setEditingDiscussionId('')
+    setEditingDiscussionDraft('')
+    setDiscussionStatus('')
+  }
+
+  const handleStartDiscussionEdit = (message) => {
+    setEditingDiscussionId(message.id)
+    setEditingDiscussionDraft(message.message || '')
+    setDiscussionReplyTarget(null)
+    setDiscussionStatus('')
+  }
+
+  const handleCancelDiscussionEdit = () => {
+    setEditingDiscussionId('')
+    setEditingDiscussionDraft('')
+  }
+
+  const handleSubmitDiscussionEdit = async (event, message) => {
+    event.preventDefault()
+
+    const nextMessage = editingDiscussionDraft.trim()
+
+    if (!nextMessage) {
+      setDiscussionStatus('Isi pesan diskusi wajib diisi.')
+      return
+    }
+
+    try {
+      await onUpdateClassDiscussionMessage({
+        id: message.id,
+        message: nextMessage,
+      })
+      setEditingDiscussionId('')
+      setEditingDiscussionDraft('')
+      setDiscussionStatus('')
+      onNotify('Pesan diskusi berhasil diedit.')
+    } catch (error) {
+      setDiscussionStatus(error.message || 'Pesan diskusi belum bisa diedit.')
+    }
+  }
+
+  const handleDeleteDiscussionMessage = async (message) => {
+    if (!window.confirm('Hapus pesan diskusi ini? Pesan akan berubah menjadi pemberitahuan terhapus.')) {
+      return
+    }
+
+    try {
+      await onDeleteClassDiscussionMessage(message.id)
+      if (editingDiscussionId === message.id) {
+        handleCancelDiscussionEdit()
+      }
+      if (discussionReplyTarget?.id === message.id) {
+        setDiscussionReplyTarget(null)
+      }
+      setDiscussionStatus('')
+      onNotify('Pesan diskusi dihapus.')
+    } catch (error) {
+      setDiscussionStatus(error.message || 'Pesan diskusi belum bisa dihapus.')
+    }
+  }
+
   const handleSendDiscussionMessage = async (event) => {
     event.preventDefault()
 
@@ -1779,8 +1967,10 @@ function MemberPage({
         classId: selectedCourse.id,
         classTitle: selectedCourse.title,
         message,
+        replyToId: discussionReplyTarget?.id || '',
       })
       setDiscussionDraft('')
+      setDiscussionReplyTarget(null)
       setDiscussionStatus('')
     } catch (error) {
       setDiscussionStatus(error.message || 'Pesan diskusi belum bisa dikirim.')
@@ -2349,13 +2539,13 @@ function MemberPage({
           <button
             className="class-discussion-floating-button"
             type="button"
-            onClick={() => setIsDiscussionOpen(true)}
+            onClick={handleOpenDiscussionPanel}
             aria-label="Buka diskusi kelas"
           >
             <Icon name="message" />
             <span>Diskusi</span>
-            {selectedCourseDiscussions.length > 0 && (
-              <strong>{selectedCourseDiscussions.length > 99 ? '99+' : selectedCourseDiscussions.length}</strong>
+            {selectedCourseUnreadDiscussions > 0 && (
+              <strong>{selectedCourseUnreadDiscussions > 99 ? '99+' : selectedCourseUnreadDiscussions}</strong>
             )}
           </button>
 
@@ -2394,8 +2584,12 @@ function MemberPage({
                           'class-discussion-message',
                           isOwnMessage ? 'is-own' : '',
                           isAdminMessage ? 'is-admin' : '',
+                          message.isDeleted ? 'is-deleted' : '',
+                          highlightedDiscussionId === message.id ? 'is-highlighted' : '',
                         ].filter(Boolean).join(' ')}
                         key={message.id}
+                        ref={(node) => setDiscussionMessageNode(message.id, node)}
+                        data-discussion-message-id={message.id}
                       >
                         <span className="discussion-avatar" aria-hidden="true">
                           {message.senderAvatar ? (
@@ -2415,8 +2609,74 @@ function MemberPage({
                                   })
                                 : ''}
                             </small>
+                            {message.editedAt && !message.isDeleted && <small>Diedit</small>}
                           </div>
-                          <p>{message.message}</p>
+                          {message.replyToId && (
+                            <button
+                              className="discussion-reply-preview"
+                              type="button"
+                              onClick={() => handleJumpToDiscussionMessage(message.replyToId)}
+                            >
+                              <strong>{message.replyToSenderName || 'Pesan dibalas'}</strong>
+                              <span>{message.replyToMessage || 'Pesan ini tidak tersedia.'}</span>
+                            </button>
+                          )}
+                          {editingDiscussionId === message.id ? (
+                            <form
+                              className="discussion-inline-edit"
+                              onSubmit={(event) => handleSubmitDiscussionEdit(event, message)}
+                            >
+                              <textarea
+                                value={editingDiscussionDraft}
+                                onChange={(event) => setEditingDiscussionDraft(event.target.value)}
+                                rows="3"
+                                maxLength={1200}
+                              />
+                              <div>
+                                <button type="button" onClick={handleCancelDiscussionEdit}>
+                                  Batal
+                                </button>
+                                <button type="submit">
+                                  Simpan
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <>
+                              <p className={message.isDeleted ? 'discussion-deleted-text' : ''}>
+                                {message.message}
+                              </p>
+                              <div className="discussion-message-actions">
+                                {!message.isDeleted && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartDiscussionReply(message)}
+                                  >
+                                    <Icon name="reply" />
+                                    Balas
+                                  </button>
+                                )}
+                                {isOwnMessage && !message.isDeleted && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartDiscussionEdit(message)}
+                                    >
+                                      <Icon name="edit" />
+                                      Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteDiscussionMessage(message)}
+                                    >
+                                      <Icon name="trash" />
+                                      Hapus
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </article>
                     )
@@ -2432,6 +2692,24 @@ function MemberPage({
                 </div>
 
                 <form className="class-discussion-form" onSubmit={handleSendDiscussionMessage}>
+                  {discussionReplyTarget && (
+                    <div className="discussion-compose-reply">
+                      <button
+                        type="button"
+                        onClick={() => handleJumpToDiscussionMessage(discussionReplyTarget.id)}
+                      >
+                        <strong>Membalas {discussionReplyTarget.senderName}</strong>
+                        <span>{discussionReplyTarget.message}</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Batalkan balasan"
+                        onClick={() => setDiscussionReplyTarget(null)}
+                      >
+                        <Icon name="x" />
+                      </button>
+                    </div>
+                  )}
                   <label>
                     <span>Tulis diskusi</span>
                     <textarea

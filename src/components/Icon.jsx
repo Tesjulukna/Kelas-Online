@@ -283,6 +283,13 @@ const paths = {
       <path d="M8 12.5h5" />
     </>
   ),
+  edit: (
+    <>
+      <path d="M4.5 19.5h4l10-10-4-4-10 10z" />
+      <path d="m13.5 6.5 4 4" />
+      <path d="M13 19.5h7" />
+    </>
+  ),
   moreVertical: (
     <>
       <circle cx="12" cy="5" r="1" />
@@ -321,6 +328,12 @@ const paths = {
     <>
       <path d="M20 7v6h-6" />
       <path d="M20 13a7 7 0 1 1-2-5" />
+    </>
+  ),
+  reply: (
+    <>
+      <path d="M9 7 4 12l5 5" />
+      <path d="M4 12h9a7 7 0 0 1 7 7v1" />
     </>
   ),
   send: (

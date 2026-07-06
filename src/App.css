@@ -19266,6 +19266,14 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   color: #ffffff;
 }
 
+.class-discussion-message.is-highlighted .discussion-bubble,
+.discussion-admin-message.is-highlighted > div {
+  border-color: rgba(37, 99, 235, 0.62);
+  box-shadow:
+    0 0 0 4px rgba(37, 99, 235, 0.14),
+    0 16px 34px rgba(37, 99, 235, 0.18);
+}
+
 .discussion-avatar {
   display: grid;
   place-items: center;
@@ -19326,6 +19334,156 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.discussion-reply-preview,
+.discussion-compose-reply {
+  min-width: 0;
+  border-radius: 14px;
+}
+
+.discussion-reply-preview {
+  display: grid;
+  width: 100%;
+  margin: 4px 0 10px;
+  padding: 9px 11px;
+  text-align: left;
+  border: 0;
+  border-left: 3px solid #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+  cursor: pointer;
+}
+
+.discussion-reply-preview strong,
+.discussion-compose-reply strong {
+  color: var(--color-heading);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.discussion-reply-preview span,
+.discussion-compose-reply span {
+  display: -webkit-box;
+  color: var(--color-muted);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.class-discussion-message.is-own .discussion-reply-preview {
+  border-left-color: #bfdbfe;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.class-discussion-message.is-own .discussion-reply-preview strong,
+.class-discussion-message.is-own .discussion-reply-preview span {
+  color: #ffffff;
+}
+
+.discussion-deleted-text {
+  color: var(--color-muted) !important;
+  font-style: italic;
+}
+
+.discussion-message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.discussion-message-actions button,
+.discussion-inline-edit button,
+.discussion-compose-reply > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.discussion-message-actions .icon,
+.discussion-inline-edit .icon,
+.discussion-compose-reply .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.class-discussion-message.is-own .discussion-message-actions button {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.discussion-inline-edit {
+  display: grid;
+  gap: 10px;
+}
+
+.discussion-inline-edit textarea {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  padding: 10px 12px;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.discussion-inline-edit > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.discussion-inline-edit button[type='submit'] {
+  color: #ffffff;
+  border-color: transparent;
+  background: #2563eb;
+}
+
+.discussion-compose-reply {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.discussion-compose-reply > button:first-child {
+  display: grid;
+  justify-items: start;
+  min-height: auto;
+  padding: 6px 8px;
+  text-align: left;
+  border: 0;
+  border-left: 3px solid #2563eb;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.discussion-compose-reply > button:last-child {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 50%;
 }
 
 .class-discussion-empty {
@@ -19506,6 +19664,10 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   align-items: end;
 }
 
+.discussion-admin-reply .discussion-compose-reply {
+  grid-column: 1 / -1;
+}
+
 .discussion-admin-reply .btn {
   min-height: 48px;
   white-space: nowrap;
@@ -19526,10 +19688,29 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   background: rgba(8, 17, 31, 0.78);
 }
 
+.app-shell.public-theme-dark.role-member .discussion-reply-preview,
+.app-shell.public-theme-dark.role-member .discussion-compose-reply {
+  border-color: rgba(96, 165, 250, 0.24);
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.app-shell.public-theme-dark.role-member .discussion-compose-reply > button:first-child {
+  background: rgba(8, 17, 31, 0.78);
+}
+
+.app-shell.public-theme-dark.role-member .discussion-message-actions button,
+.app-shell.public-theme-dark.role-member .discussion-inline-edit button,
+.app-shell.public-theme-dark.role-member .discussion-compose-reply > button {
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.24);
+  background: rgba(37, 99, 235, 0.14);
+}
+
 .app-shell.public-theme-dark.role-member .class-discussion-form textarea,
 .app-shell.public-theme-dark.role-member .discussion-admin-reply textarea,
 .app-shell.public-theme-dark.role-member .discussion-admin-toolbar input,
-.app-shell.public-theme-dark.role-member .discussion-admin-toolbar select {
+.app-shell.public-theme-dark.role-member .discussion-admin-toolbar select,
+.app-shell.public-theme-dark.role-member .discussion-inline-edit textarea {
   border-color: rgba(148, 163, 184, 0.24);
   background: rgba(8, 17, 31, 0.82);
 }
@@ -19634,6 +19815,20 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
     justify-self: end;
     width: 34px;
     height: 34px;
+  }
+
+  .discussion-message-actions {
+    gap: 5px;
+  }
+
+  .discussion-message-actions button {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 0.74rem;
+  }
+
+  .discussion-compose-reply {
+    grid-template-columns: minmax(0, 1fr) 34px;
   }
 
   .discussion-avatar {

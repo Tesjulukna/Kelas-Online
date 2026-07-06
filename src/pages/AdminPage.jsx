@@ -918,6 +918,7 @@ function AdminPage({
   onUpdateSupportTicket = async () => { },
   onDeleteSupportTicket = async () => { },
   onCreateClassDiscussionMessage = async () => { },
+  onUpdateClassDiscussionMessage = async () => { },
   onDeleteClassDiscussionMessage = async () => { },
   onUpdateSubmission = async () => { },
   onCreateTestimonial = async () => { },
@@ -1015,6 +1016,10 @@ function AdminPage({
   const [discussionClassFilter, setDiscussionClassFilter] = useState('all')
   const [discussionSearchTerm, setDiscussionSearchTerm] = useState('')
   const [discussionReplyDrafts, setDiscussionReplyDrafts] = useState({})
+  const [discussionReplyTargets, setDiscussionReplyTargets] = useState({})
+  const [discussionEditingId, setDiscussionEditingId] = useState('')
+  const [discussionEditingDraft, setDiscussionEditingDraft] = useState('')
+  const [highlightedAdminDiscussionId, setHighlightedAdminDiscussionId] = useState('')
   const [viewingSubmission, setViewingSubmission] = useState(null)
   const [submissionFeedback, setSubmissionFeedback] = useState('')
   const [submissionRating, setSubmissionRating] = useState(0)
@@ -1032,6 +1037,8 @@ function AdminPage({
   const classDescriptionImageInputRef = useRef(null)
   const digitalDescriptionImageInputRef = useRef(null)
   const lastMaterialDragTargetRef = useRef('')
+  const discussionAdminMessageRefs = useRef(new Map())
+  const discussionAdminHighlightTimerRef = useRef(null)
 
   const onlineMembers = members.filter((item) => item.isOnline)
   const waitingSupportCount = supportTickets.filter(
@@ -1602,6 +1609,12 @@ function AdminPage({
 
     return () => controller.abort()
   }, [activeMenu, analyticsEndDate, analyticsStartDate, sessionToken])
+
+  useEffect(() => () => {
+    if (discussionAdminHighlightTimerRef.current) {
+      window.clearTimeout(discussionAdminHighlightTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     const editor = materialDescriptionRef.current
@@ -3248,6 +3261,88 @@ function AdminPage({
     }))
   }
 
+  const setAdminDiscussionMessageNode = (messageId, node) => {
+    if (!messageId) {
+      return
+    }
+
+    if (node) {
+      discussionAdminMessageRefs.current.set(messageId, node)
+    } else {
+      discussionAdminMessageRefs.current.delete(messageId)
+    }
+  }
+
+  const handleJumpToAdminDiscussionMessage = (messageId) => {
+    const node = discussionAdminMessageRefs.current.get(messageId)
+
+    if (!node) {
+      onNotify('Pesan yang dibalas tidak ditemukan di daftar ini.')
+      return
+    }
+
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightedAdminDiscussionId(messageId)
+
+    if (discussionAdminHighlightTimerRef.current) {
+      window.clearTimeout(discussionAdminHighlightTimerRef.current)
+    }
+
+    discussionAdminHighlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedAdminDiscussionId('')
+    }, 1800)
+  }
+
+  const handleStartAdminDiscussionReply = (message) => {
+    setDiscussionReplyTargets((current) => ({
+      ...current,
+      [message.classId]: message,
+    }))
+    setDiscussionEditingId('')
+    setDiscussionEditingDraft('')
+  }
+
+  const handleCancelAdminDiscussionReply = (classId) => {
+    setDiscussionReplyTargets((current) => {
+      const next = { ...current }
+      delete next[classId]
+      return next
+    })
+  }
+
+  const handleStartAdminDiscussionEdit = (message) => {
+    setDiscussionEditingId(message.id)
+    setDiscussionEditingDraft(message.message || '')
+  }
+
+  const handleCancelAdminDiscussionEdit = () => {
+    setDiscussionEditingId('')
+    setDiscussionEditingDraft('')
+  }
+
+  const handleSubmitAdminDiscussionEdit = async (event, message) => {
+    event.preventDefault()
+
+    const nextMessage = discussionEditingDraft.trim()
+
+    if (!nextMessage) {
+      onNotify('Isi pesan diskusi wajib diisi.')
+      return
+    }
+
+    try {
+      await onUpdateClassDiscussionMessage({
+        id: message.id,
+        message: nextMessage,
+      })
+      handleCancelAdminDiscussionEdit()
+      setActionStatus('Pesan diskusi berhasil diedit.')
+      onNotify('Pesan diskusi diedit.')
+    } catch (error) {
+      onNotify(error.message || 'Pesan diskusi belum bisa diedit.')
+    }
+  }
+
   const handleSubmitDiscussionReply = async (event, discussionGroup) => {
     event.preventDefault()
 
@@ -3263,11 +3358,13 @@ function AdminPage({
         classId: discussionGroup.classId,
         classTitle: discussionGroup.classTitle,
         message,
+        replyToId: discussionReplyTargets[discussionGroup.classId]?.id || '',
       })
       setDiscussionReplyDrafts((current) => ({
         ...current,
         [discussionGroup.classId]: '',
       }))
+      handleCancelAdminDiscussionReply(discussionGroup.classId)
       setActionStatus('Balasan diskusi kelas berhasil dikirim.')
       onNotify('Balasan diskusi dikirim.')
     } catch (error) {
@@ -3282,6 +3379,12 @@ function AdminPage({
 
     try {
       await onDeleteClassDiscussionMessage(messageId)
+      if (discussionEditingId === messageId) {
+        handleCancelAdminDiscussionEdit()
+      }
+      setDiscussionReplyTargets((current) => Object.fromEntries(
+        Object.entries(current).filter(([, target]) => target?.id !== messageId),
+      ))
       setActionStatus('Pesan diskusi berhasil dihapus.')
       onNotify('Pesan diskusi dihapus.')
     } catch (error) {
@@ -6049,10 +6152,14 @@ function AdminPage({
                 <div className="discussion-admin-thread">
                   {group.messages.map((message) => (
                     <div
-                      className={message.senderRole === 'admin'
-                        ? 'discussion-admin-message is-admin'
-                        : 'discussion-admin-message'}
+                      className={[
+                        'discussion-admin-message',
+                        message.senderRole === 'admin' ? 'is-admin' : '',
+                        message.isDeleted ? 'is-deleted' : '',
+                        highlightedAdminDiscussionId === message.id ? 'is-highlighted' : '',
+                      ].filter(Boolean).join(' ')}
                       key={message.id}
+                      ref={(node) => setAdminDiscussionMessageNode(message.id, node)}
                     >
                       <span className="discussion-avatar" aria-hidden="true">
                         {message.senderAvatar ? (
@@ -6073,12 +6180,69 @@ function AdminPage({
                               : '-'}
                           </small>
                         </div>
-                        <p>{message.message}</p>
+                        {message.replyToId && (
+                          <button
+                            className="discussion-reply-preview"
+                            type="button"
+                            onClick={() => handleJumpToAdminDiscussionMessage(message.replyToId)}
+                          >
+                            <strong>{message.replyToSenderName || 'Pesan dibalas'}</strong>
+                            <span>{message.replyToMessage || 'Pesan ini tidak tersedia.'}</span>
+                          </button>
+                        )}
+                        {discussionEditingId === message.id ? (
+                          <form
+                            className="discussion-inline-edit"
+                            onSubmit={(event) => handleSubmitAdminDiscussionEdit(event, message)}
+                          >
+                            <textarea
+                              value={discussionEditingDraft}
+                              onChange={(event) => setDiscussionEditingDraft(event.target.value)}
+                              rows="3"
+                              maxLength={1200}
+                            />
+                            <div>
+                              <button type="button" onClick={handleCancelAdminDiscussionEdit}>
+                                Batal
+                              </button>
+                              <button type="submit">
+                                Simpan
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <>
+                            <p className={message.isDeleted ? 'discussion-deleted-text' : ''}>
+                              {message.message}
+                            </p>
+                            <div className="discussion-message-actions">
+                              {!message.isDeleted && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartAdminDiscussionReply(message)}
+                                >
+                                  <Icon name="reply" />
+                                  Balas
+                                </button>
+                              )}
+                              {!message.isDeleted && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartAdminDiscussionEdit(message)}
+                                >
+                                  <Icon name="edit" />
+                                  Edit
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
                       <button
                         type="button"
                         aria-label="Hapus pesan diskusi"
                         onClick={() => handleDeleteDiscussionMessage(message.id)}
+                        disabled={message.isDeleted}
                       >
                         <Icon name="trash" />
                       </button>
@@ -6098,6 +6262,28 @@ function AdminPage({
                   className="discussion-admin-reply"
                   onSubmit={(event) => handleSubmitDiscussionReply(event, group)}
                 >
+                  {discussionReplyTargets[group.classId] && (
+                    <div className="discussion-compose-reply">
+                      <button
+                        type="button"
+                        onClick={() => handleJumpToAdminDiscussionMessage(
+                          discussionReplyTargets[group.classId].id,
+                        )}
+                      >
+                        <strong>
+                          Membalas {discussionReplyTargets[group.classId].senderName}
+                        </strong>
+                        <span>{discussionReplyTargets[group.classId].message}</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Batalkan balasan"
+                        onClick={() => handleCancelAdminDiscussionReply(group.classId)}
+                      >
+                        <Icon name="x" />
+                      </button>
+                    </div>
+                  )}
                   <textarea
                     value={discussionReplyDrafts[group.classId] || ''}
                     onChange={(event) => handleDiscussionDraftChange(group.classId, event.target.value)}

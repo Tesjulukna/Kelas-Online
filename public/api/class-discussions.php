@@ -2,7 +2,7 @@
 
 require __DIR__ . '/_bootstrap.php';
 
-ensure_method(['GET', 'POST', 'DELETE']);
+ensure_method(['GET', 'POST', 'PATCH', 'DELETE']);
 
 $pdo = db();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -19,12 +19,35 @@ function discussion_ensure_schema(PDO $pdo): void
             sender_name VARCHAR(160) NOT NULL DEFAULT '',
             sender_avatar MEDIUMTEXT NULL,
             message MEDIUMTEXT NOT NULL,
+            reply_to_id VARCHAR(120) NOT NULL DEFAULT '',
+            reply_to_sender_name VARCHAR(160) NOT NULL DEFAULT '',
+            reply_to_message VARCHAR(260) NOT NULL DEFAULT '',
+            is_deleted TINYINT(1) NOT NULL DEFAULT 0,
+            edited_at VARCHAR(60) NOT NULL DEFAULT '',
+            deleted_at VARCHAR(60) NOT NULL DEFAULT '',
             created_at VARCHAR(60) NOT NULL DEFAULT '',
             INDEX class_discussion_class_index (class_id),
             INDEX class_discussion_sender_index (sender_id),
             INDEX class_discussion_created_index (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
     );
+
+    discussion_ensure_column($pdo, 'reply_to_id', "VARCHAR(120) NOT NULL DEFAULT '' AFTER message");
+    discussion_ensure_column($pdo, 'reply_to_sender_name', "VARCHAR(160) NOT NULL DEFAULT '' AFTER reply_to_id");
+    discussion_ensure_column($pdo, 'reply_to_message', "VARCHAR(260) NOT NULL DEFAULT '' AFTER reply_to_sender_name");
+    discussion_ensure_column($pdo, 'is_deleted', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER reply_to_message');
+    discussion_ensure_column($pdo, 'edited_at', "VARCHAR(60) NOT NULL DEFAULT '' AFTER is_deleted");
+    discussion_ensure_column($pdo, 'deleted_at', "VARCHAR(60) NOT NULL DEFAULT '' AFTER edited_at");
+}
+
+function discussion_ensure_column(PDO $pdo, string $column, string $definition): void
+{
+    $query = $pdo->prepare("SHOW COLUMNS FROM class_discussions LIKE ?");
+    $query->execute([$column]);
+
+    if (!$query->fetch()) {
+        $pdo->exec("ALTER TABLE class_discussions ADD `$column` $definition");
+    }
 }
 
 function discussion_clean_message($value): string
@@ -32,8 +55,19 @@ function discussion_clean_message($value): string
     return clean_text($value, 1200);
 }
 
+function discussion_reply_preview(array $row): string
+{
+    if (!empty($row['is_deleted'])) {
+        return 'Pesan ini dihapus.';
+    }
+
+    return clean_text($row['message'] ?? '', 260);
+}
+
 function discussion_public(array $row): array
 {
+    $isDeleted = !empty($row['is_deleted']);
+
     return [
         'id' => clean_text($row['id'] ?? '', 120),
         'classId' => clean_text($row['class_id'] ?? '', 120),
@@ -42,9 +76,38 @@ function discussion_public(array $row): array
         'senderRole' => clean_text($row['sender_role'] ?? 'member', 40),
         'senderName' => clean_text($row['sender_name'] ?? 'Member', 160),
         'senderAvatar' => clean_asset_url($row['sender_avatar'] ?? '', 1000),
-        'message' => discussion_clean_message($row['message'] ?? ''),
+        'message' => $isDeleted ? 'Pesan ini dihapus.' : discussion_clean_message($row['message'] ?? ''),
+        'replyToId' => clean_text($row['reply_to_id'] ?? '', 120),
+        'replyToSenderName' => clean_text($row['reply_to_sender_name'] ?? '', 160),
+        'replyToMessage' => clean_text($row['reply_to_message'] ?? '', 260),
+        'isDeleted' => $isDeleted,
+        'editedAt' => clean_text($row['edited_at'] ?? '', 60),
+        'deletedAt' => clean_text($row['deleted_at'] ?? '', 60),
         'createdAt' => clean_text($row['created_at'] ?? '', 60),
     ];
+}
+
+function discussion_find_message(PDO $pdo, string $messageId): ?array
+{
+    if ($messageId === '') {
+        return null;
+    }
+
+    $query = $pdo->prepare('SELECT * FROM class_discussions WHERE id = ? LIMIT 1');
+    $query->execute([$messageId]);
+    $row = $query->fetch();
+
+    return $row ?: null;
+}
+
+function discussion_can_manage(array $user, array $message): bool
+{
+    if (($user['role'] ?? '') === 'admin') {
+        return true;
+    }
+
+    return ($user['role'] ?? '') === 'member' &&
+        clean_text($message['sender_id'] ?? '', 120) === clean_text($user['userId'] ?? '', 120);
 }
 
 function discussion_member_class_ids(PDO $pdo, array $user): array
@@ -107,6 +170,9 @@ if ($method === 'POST') {
     $classId = clean_text($payload['classId'] ?? '', 120);
     $classTitle = clean_text($payload['classTitle'] ?? 'Kelas', 180);
     $message = discussion_clean_message($payload['message'] ?? '');
+    $replyToId = clean_text($payload['replyToId'] ?? '', 120);
+    $replyToSenderName = '';
+    $replyToMessage = '';
 
     if ($classId === '' || $message === '') {
         send_json(400, ['message' => 'Kelas dan pesan diskusi wajib diisi.']);
@@ -128,10 +194,20 @@ if ($method === 'POST') {
         $classTitle = clean_text($class['title'] ?? $classTitle, 180);
     }
 
+    if ($replyToId !== '') {
+        $replyMessage = discussion_find_message($pdo, $replyToId);
+
+        if ($replyMessage && clean_text($replyMessage['class_id'] ?? '', 120) === $classId) {
+            $replyToSenderName = clean_text($replyMessage['sender_name'] ?? '', 160);
+            $replyToMessage = discussion_reply_preview($replyMessage);
+        }
+    }
+
     $insert = $pdo->prepare(
         'INSERT INTO class_discussions
-        (id, class_id, class_title, sender_id, sender_role, sender_name, sender_avatar, message, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (id, class_id, class_title, sender_id, sender_role, sender_name, sender_avatar, message,
+            reply_to_id, reply_to_sender_name, reply_to_message, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     );
     $insert->execute([
         make_id('discussion'),
@@ -142,6 +218,9 @@ if ($method === 'POST') {
         clean_text($user['name'] ?? (($user['role'] ?? '') === 'admin' ? 'Admin' : 'Member'), 160),
         clean_asset_url($user['avatar'] ?? '', 1000),
         $message,
+        $replyToMessage === '' ? '' : $replyToId,
+        $replyToSenderName,
+        $replyToMessage,
         date(DATE_ATOM),
     ]);
 
@@ -151,7 +230,7 @@ if ($method === 'POST') {
     ]);
 }
 
-$admin = require_user('admin');
+$user = require_user();
 
 $messageId = clean_text($_GET['id'] ?? '', 120);
 
@@ -159,10 +238,44 @@ if ($messageId === '') {
     send_json(400, ['message' => 'ID pesan diskusi wajib dikirim.']);
 }
 
-$delete = $pdo->prepare('DELETE FROM class_discussions WHERE id = ?');
-$delete->execute([$messageId]);
+$messageRow = discussion_find_message($pdo, $messageId);
+
+if (!$messageRow) {
+    send_json(404, ['message' => 'Pesan diskusi tidak ditemukan.']);
+}
+
+if (!discussion_can_manage($user, $messageRow)) {
+    send_json(403, ['message' => 'Kamu hanya bisa mengubah pesan milik sendiri.']);
+}
+
+if ($method === 'PATCH') {
+    $message = discussion_clean_message($payload['message'] ?? '');
+
+    if ($message === '') {
+        send_json(400, ['message' => 'Isi pesan diskusi wajib diisi.']);
+    }
+
+    if (!empty($messageRow['is_deleted'])) {
+        send_json(400, ['message' => 'Pesan yang sudah dihapus tidak bisa diedit.']);
+    }
+
+    $update = $pdo->prepare('UPDATE class_discussions SET message = ?, edited_at = ? WHERE id = ?');
+    $update->execute([$message, date(DATE_ATOM), $messageId]);
+
+    send_json(200, [
+        'classDiscussions' => discussion_fetch_messages($pdo, $user),
+        'updatedAt' => updated_at($pdo),
+    ]);
+}
+
+$delete = $pdo->prepare(
+    "UPDATE class_discussions
+    SET message = '', is_deleted = 1, deleted_at = ?, edited_at = ''
+    WHERE id = ?",
+);
+$delete->execute([date(DATE_ATOM), $messageId]);
 
 send_json(200, [
-    'classDiscussions' => discussion_fetch_messages($pdo, $admin),
+    'classDiscussions' => discussion_fetch_messages($pdo, $user),
     'updatedAt' => updated_at($pdo),
 ]);

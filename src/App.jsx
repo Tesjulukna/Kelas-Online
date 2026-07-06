@@ -1006,7 +1006,7 @@ function cleanClassDiscussions(value) {
   }
 
   return value
-    .filter((item) => item?.id && item?.classId && item?.message)
+    .filter((item) => item?.id && item?.classId)
     .map((item) => ({
       id: cleanText(item.id),
       classId: cleanText(item.classId),
@@ -1015,7 +1015,13 @@ function cleanClassDiscussions(value) {
       senderRole: item.senderRole === 'admin' ? 'admin' : 'member',
       senderName: cleanText(item.senderName || (item.senderRole === 'admin' ? 'Admin' : 'Member')),
       senderAvatar: cleanAvatar(item.senderAvatar || ''),
-      message: cleanLongText(item.message || '', 1200),
+      message: cleanLongText(item.message || (item.isDeleted ? 'Pesan ini dihapus.' : ''), 1200),
+      replyToId: cleanText(item.replyToId || ''),
+      replyToSenderName: cleanText(item.replyToSenderName || ''),
+      replyToMessage: cleanLongText(item.replyToMessage || '', 260),
+      isDeleted: item.isDeleted === true,
+      editedAt: cleanText(item.editedAt || ''),
+      deletedAt: cleanText(item.deletedAt || ''),
       createdAt: cleanText(item.createdAt || ''),
     }))
 }
@@ -2830,7 +2836,7 @@ function App() {
     return applySupportResponse(data)
   }
 
-  const handleCreateClassDiscussionMessage = async ({ classId, classTitle, message }) => {
+  const handleCreateClassDiscussionMessage = async ({ classId, classTitle, message, replyToId = '' }) => {
     if (!session) {
       throw new Error('Silakan login ulang untuk mengirim diskusi.')
     }
@@ -2841,15 +2847,29 @@ function App() {
         classId,
         classTitle,
         message,
+        replyToId,
       }),
     })
 
     return applyClassDiscussionsResponse(data)
   }
 
+  const handleUpdateClassDiscussionMessage = async ({ id, message }) => {
+    if (!session) {
+      throw new Error('Silakan login ulang untuk mengedit pesan diskusi.')
+    }
+
+    const data = await requestJson(`${classDiscussionsApiPath}?id=${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ message }),
+    })
+
+    return applyClassDiscussionsResponse(data)
+  }
+
   const handleDeleteClassDiscussionMessage = async (messageId) => {
-    if (session?.role !== 'admin') {
-      throw new Error('Silakan login admin ulang untuk menghapus pesan diskusi.')
+    if (!session) {
+      throw new Error('Silakan login ulang untuk menghapus pesan diskusi.')
     }
 
     const data = await requestJson(
@@ -3263,6 +3283,8 @@ function App() {
               onCreateSupportTicket={handleCreateSupportTicket}
               onReplySupportTicket={handleReplySupportTicket}
               onCreateClassDiscussionMessage={handleCreateClassDiscussionMessage}
+              onUpdateClassDiscussionMessage={handleUpdateClassDiscussionMessage}
+              onDeleteClassDiscussionMessage={handleDeleteClassDiscussionMessage}
               onCreateSubmission={handleCreateSubmission}
               onUpdateSubmission={handleUpdateSubmission}
               onTrackProgress={handleTrackProgress}
@@ -3316,6 +3338,7 @@ function App() {
               onUpdateSupportTicket={handleUpdateSupportTicket}
               onDeleteSupportTicket={handleDeleteSupportTicket}
               onCreateClassDiscussionMessage={handleCreateClassDiscussionMessage}
+              onUpdateClassDiscussionMessage={handleUpdateClassDiscussionMessage}
               onDeleteClassDiscussionMessage={handleDeleteClassDiscussionMessage}
               onUpdateSubmission={handleUpdateSubmission}
               onCreateTestimonial={handleCreateTestimonial}
