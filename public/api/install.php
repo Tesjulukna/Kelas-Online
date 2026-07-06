@@ -113,6 +113,20 @@ $statements = [
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX support_member_index (member_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    "CREATE TABLE IF NOT EXISTS class_discussions (
+        id VARCHAR(120) PRIMARY KEY,
+        class_id VARCHAR(120) NOT NULL,
+        class_title VARCHAR(180) NOT NULL DEFAULT '',
+        sender_id VARCHAR(120) NOT NULL DEFAULT '',
+        sender_role VARCHAR(40) NOT NULL DEFAULT 'member',
+        sender_name VARCHAR(160) NOT NULL DEFAULT '',
+        sender_avatar MEDIUMTEXT NULL,
+        message MEDIUMTEXT NOT NULL,
+        created_at VARCHAR(60) NOT NULL DEFAULT '',
+        INDEX class_discussion_class_index (class_id),
+        INDEX class_discussion_sender_index (sender_id),
+        INDEX class_discussion_created_index (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
     "CREATE TABLE IF NOT EXISTS material_assets (
         id VARCHAR(120) PRIMARY KEY,
         material_id VARCHAR(120) NOT NULL,

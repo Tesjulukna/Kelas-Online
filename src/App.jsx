@@ -23,6 +23,7 @@ const classesApiPath = '/api/classes'
 const digitalProductsApiPath = '/api/digital-products'
 const membersApiPath = '/api/members'
 const supportApiPath = '/api/support'
+const classDiscussionsApiPath = '/api/class-discussions'
 const submissionsApiPath = '/api/submissions'
 const testimonialsApiPath = '/api/testimonials'
 const certificatesApiPath = '/api/certificates'
@@ -171,6 +172,7 @@ function getDashboardMenuFromUrl(role) {
         'students',
         'payments',
         'submissions',
+        'class-discussions',
         'testimonials',
         'certificates',
         'support',
@@ -998,6 +1000,26 @@ function cleanSupportReplies(value, ticket = {}) {
   return fallbackReplies
 }
 
+function cleanClassDiscussions(value) {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((item) => item?.id && item?.classId && item?.message)
+    .map((item) => ({
+      id: cleanText(item.id),
+      classId: cleanText(item.classId),
+      classTitle: cleanLongText(item.classTitle || 'Kelas', 180),
+      senderId: cleanText(item.senderId || ''),
+      senderRole: item.senderRole === 'admin' ? 'admin' : 'member',
+      senderName: cleanText(item.senderName || (item.senderRole === 'admin' ? 'Admin' : 'Member')),
+      senderAvatar: cleanAvatar(item.senderAvatar || ''),
+      message: cleanLongText(item.message || '', 1200),
+      createdAt: cleanText(item.createdAt || ''),
+    }))
+}
+
 function cleanSubmissions(value) {
   if (!Array.isArray(value)) {
     return []
@@ -1512,6 +1534,16 @@ async function fetchStoredSupportTickets(currentSession) {
   return cleanSupportTickets(data.supportTickets)
 }
 
+async function fetchStoredClassDiscussions(currentSession) {
+  if (!currentSession || !['admin', 'member'].includes(currentSession.role)) {
+    return []
+  }
+
+  const data = await requestJson(classDiscussionsApiPath)
+
+  return cleanClassDiscussions(data.classDiscussions)
+}
+
 async function fetchStoredSubmissions(currentSession) {
   if (!currentSession) {
     return []
@@ -1606,6 +1638,7 @@ function App() {
   const [digitalProducts, setDigitalProducts] = useState([])
   const [digitalProductAccess, setDigitalProductAccess] = useState([])
   const [supportTickets, setSupportTickets] = useState([])
+  const [classDiscussions, setClassDiscussions] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [testimonials, setTestimonials] = useState([])
   const [certificates, setCertificates] = useState([])
@@ -2000,6 +2033,7 @@ function App() {
         fetchStoredMembers(),
         fetchStoredDigitalProducts(session),
         fetchStoredSupportTickets(session),
+        fetchStoredClassDiscussions(session),
         fetchStoredSubmissions(session),
         fetchStoredTestimonials(session),
         fetchStoredCertificates(session),
@@ -2011,6 +2045,7 @@ function App() {
           nextMembers,
           productData,
           nextSupportTickets,
+          nextClassDiscussions,
           nextSubmissions,
           nextTestimonials,
           certificateData,
@@ -2033,6 +2068,7 @@ function App() {
             }
           }
           setSupportTickets(nextSupportTickets)
+          setClassDiscussions(nextClassDiscussions)
           setSubmissions(nextSubmissions)
           setTestimonials(nextTestimonials)
           setCertificates(certificateData.certificates)
@@ -2046,6 +2082,7 @@ function App() {
             setDigitalProducts((current) => current)
             setDigitalProductAccess((current) => current)
             setSupportTickets((current) => current)
+            setClassDiscussions((current) => current)
             setSubmissions((current) => current)
             setTestimonials((current) => current)
             setCertificates((current) => current)
@@ -2504,6 +2541,14 @@ function App() {
     return nextSupportTickets
   }
 
+  const applyClassDiscussionsResponse = (data) => {
+    const nextClassDiscussions = cleanClassDiscussions(data.classDiscussions)
+
+    setClassDiscussions(nextClassDiscussions)
+    announcePeopleSync()
+    return nextClassDiscussions
+  }
+
   const applySubmissionsResponse = (data) => {
     const nextSubmissions = cleanSubmissions(data.submissions)
 
@@ -2634,6 +2679,7 @@ function App() {
       nextMembers,
       productData,
       nextSupportTickets,
+      nextClassDiscussions,
       nextSubmissions,
       nextTestimonials,
       nextPayments,
@@ -2643,6 +2689,7 @@ function App() {
       fetchStoredMembers(),
       fetchStoredDigitalProducts(session),
       fetchStoredSupportTickets(session),
+      fetchStoredClassDiscussions(session),
       fetchStoredSubmissions(session),
       fetchStoredTestimonials(session),
       fetchStoredPayments(session),
@@ -2654,6 +2701,7 @@ function App() {
     setDigitalProducts(productData.digitalProducts)
     setDigitalProductAccess(productData.digitalProductAccess)
     setSupportTickets(nextSupportTickets)
+    setClassDiscussions(nextClassDiscussions)
     setSubmissions(nextSubmissions)
     setTestimonials(nextTestimonials)
     setPayments(nextPayments)
@@ -2780,6 +2828,36 @@ function App() {
     })
 
     return applySupportResponse(data)
+  }
+
+  const handleCreateClassDiscussionMessage = async ({ classId, classTitle, message }) => {
+    if (!session) {
+      throw new Error('Silakan login ulang untuk mengirim diskusi.')
+    }
+
+    const data = await requestJson(classDiscussionsApiPath, {
+      method: 'POST',
+      body: JSON.stringify({
+        classId,
+        classTitle,
+        message,
+      }),
+    })
+
+    return applyClassDiscussionsResponse(data)
+  }
+
+  const handleDeleteClassDiscussionMessage = async (messageId) => {
+    if (session?.role !== 'admin') {
+      throw new Error('Silakan login admin ulang untuk menghapus pesan diskusi.')
+    }
+
+    const data = await requestJson(
+      `${classDiscussionsApiPath}?id=${encodeURIComponent(messageId)}`,
+      { method: 'DELETE' },
+    )
+
+    return applyClassDiscussionsResponse(data)
   }
 
   const handleCreateSubmission = async (submissionData) => {
@@ -3167,6 +3245,7 @@ function App() {
               digitalProductAccess={digitalProductAccess}
               allowedClassIds={currentMemberAccess}
               supportTickets={supportTickets}
+              classDiscussions={classDiscussions}
               submissions={submissions}
               testimonials={testimonials}
               certificates={certificates}
@@ -3183,6 +3262,7 @@ function App() {
               onNotify={showNotice}
               onCreateSupportTicket={handleCreateSupportTicket}
               onReplySupportTicket={handleReplySupportTicket}
+              onCreateClassDiscussionMessage={handleCreateClassDiscussionMessage}
               onCreateSubmission={handleCreateSubmission}
               onUpdateSubmission={handleUpdateSubmission}
               onTrackProgress={handleTrackProgress}
@@ -3215,6 +3295,7 @@ function App() {
               digitalProductAccess={digitalProductAccess}
               members={members}
               supportTickets={supportTickets}
+              classDiscussions={classDiscussions}
               submissions={submissions}
               testimonials={testimonials}
               certificates={certificates}
@@ -3234,6 +3315,8 @@ function App() {
               onDeleteMember={handleDeleteMember}
               onUpdateSupportTicket={handleUpdateSupportTicket}
               onDeleteSupportTicket={handleDeleteSupportTicket}
+              onCreateClassDiscussionMessage={handleCreateClassDiscussionMessage}
+              onDeleteClassDiscussionMessage={handleDeleteClassDiscussionMessage}
               onUpdateSubmission={handleUpdateSubmission}
               onCreateTestimonial={handleCreateTestimonial}
               onUpdateTestimonial={handleUpdateTestimonial}

@@ -102,6 +102,7 @@ export const adminMenuItems = [
   { id: 'students', label: 'Peserta', icon: 'users' },
   { id: 'payments', label: 'Pembayaran', icon: 'wallet' },
   { id: 'submissions', label: 'Tugas Member', icon: 'message' },
+  { id: 'class-discussions', label: 'Diskusi Kelas', icon: 'message' },
   { id: 'testimonials', label: 'Testimoni Peserta', icon: 'user' },
   { id: 'certificates', label: 'Sertifikat', icon: 'certificate' },
   { id: 'support', label: 'Bantuan Mentor', icon: 'message' },

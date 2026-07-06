@@ -599,6 +599,7 @@ function MemberPage({
   digitalProductAccess = [],
   allowedClassIds = null,
   supportTickets = [],
+  classDiscussions = [],
   submissions = [],
   testimonials = [],
   certificates = [],
@@ -613,6 +614,7 @@ function MemberPage({
   onNotify = () => {},
   onCreateSupportTicket = async () => {},
   onReplySupportTicket = async () => {},
+  onCreateClassDiscussionMessage = async () => {},
   onCreateSubmission = async () => {},
   onUpdateSubmission = async () => {},
   onTrackProgress = async () => {},
@@ -663,6 +665,9 @@ function MemberPage({
   const [supportSubject, setSupportSubject] = useState('')
   const [supportDraft, setSupportDraft] = useState('')
   const [supportReplyDrafts, setSupportReplyDrafts] = useState({})
+  const [isDiscussionOpen, setIsDiscussionOpen] = useState(false)
+  const [discussionDraft, setDiscussionDraft] = useState('')
+  const [discussionStatus, setDiscussionStatus] = useState('')
   const [testimonialDrafts, setTestimonialDrafts] = useState({})
   const [previewImage, setPreviewImage] = useState(null)
   const [activePromptInstruction, setActivePromptInstruction] = useState(null)
@@ -680,10 +685,17 @@ function MemberPage({
   )
   const [paymentExpiryTick, setPaymentExpiryTick] = useState(() => Date.now())
   const handledCheckoutRequestRef = useRef('')
+  const discussionListRef = useRef(null)
   const coursesRef = useRef(courses)
   const onTrackProgressRef = useRef(onTrackProgress)
   const completedCourses = courses.filter((course) => getCourseProgress(course) >= 100)
   const selectedCourse = courses.find((course) => course.id === selectedCourseId)
+  const selectedCourseDiscussions = useMemo(
+    () => selectedCourse
+      ? classDiscussions.filter((message) => message.classId === selectedCourse.id)
+      : [],
+    [classDiscussions, selectedCourse],
+  )
   const selectedDigitalProduct = activeSellableProducts.find(
     (product) => product.id === selectedDigitalProductId,
   )
@@ -902,6 +914,24 @@ function MemberPage({
   useEffect(() => {
     onTrackProgressRef.current = onTrackProgress
   }, [onTrackProgress])
+
+  useEffect(() => {
+    setIsDiscussionOpen(false)
+    setDiscussionDraft('')
+    setDiscussionStatus('')
+  }, [selectedCourseId])
+
+  useEffect(() => {
+    if (!isDiscussionOpen) {
+      return
+    }
+
+    window.setTimeout(() => {
+      if (discussionListRef.current) {
+        discussionListRef.current.scrollTop = discussionListRef.current.scrollHeight
+      }
+    }, 0)
+  }, [isDiscussionOpen, selectedCourseDiscussions.length])
 
   const rememberCoursePosition = useCallback((courseId, materialIndex) => {
     const course = coursesRef.current.find((item) => item.id === courseId)
@@ -1728,6 +1758,35 @@ function MemberPage({
     }
   }
 
+  const handleSendDiscussionMessage = async (event) => {
+    event.preventDefault()
+
+    if (!selectedCourse) {
+      return
+    }
+
+    const message = discussionDraft.trim()
+
+    if (!message) {
+      setDiscussionStatus('Tulis pesan diskusi terlebih dahulu.')
+      return
+    }
+
+    setDiscussionStatus('Mengirim pesan...')
+
+    try {
+      await onCreateClassDiscussionMessage({
+        classId: selectedCourse.id,
+        classTitle: selectedCourse.title,
+        message,
+      })
+      setDiscussionDraft('')
+      setDiscussionStatus('')
+    } catch (error) {
+      setDiscussionStatus(error.message || 'Pesan diskusi belum bisa dikirim.')
+    }
+  }
+
   const handleCopyPrompt = async (prompt) => {
     try {
       await navigator.clipboard.writeText(prompt)
@@ -2285,6 +2344,114 @@ function MemberPage({
               <h3>Materi belum tersedia</h3>
               <p>Admin bisa menambahkan link YouTube dari menu kelola kelas.</p>
             </article>
+          )}
+
+          <button
+            className="class-discussion-floating-button"
+            type="button"
+            onClick={() => setIsDiscussionOpen(true)}
+            aria-label="Buka diskusi kelas"
+          >
+            <Icon name="message" />
+            <span>Diskusi</span>
+            {selectedCourseDiscussions.length > 0 && (
+              <strong>{selectedCourseDiscussions.length > 99 ? '99+' : selectedCourseDiscussions.length}</strong>
+            )}
+          </button>
+
+          {isDiscussionOpen && (
+            <div className="class-discussion-backdrop" role="presentation">
+              <section
+                className="class-discussion-panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="class-discussion-title"
+              >
+                <header className="class-discussion-header">
+                  <div>
+                    <p className="eyebrow">Diskusi kelas</p>
+                    <h3 id="class-discussion-title">{selectedCourse.title}</h3>
+                    <small>{selectedCourseDiscussions.length} pesan diskusi</small>
+                  </div>
+                  <button
+                    className="icon-action-button"
+                    type="button"
+                    onClick={() => setIsDiscussionOpen(false)}
+                    aria-label="Tutup diskusi kelas"
+                  >
+                    <Icon name="x" />
+                  </button>
+                </header>
+
+                <div className="class-discussion-thread" ref={discussionListRef}>
+                  {selectedCourseDiscussions.map((message) => {
+                    const isOwnMessage = message.senderRole === 'member' && message.senderId === userId
+                    const isAdminMessage = message.senderRole === 'admin'
+
+                    return (
+                      <article
+                        className={[
+                          'class-discussion-message',
+                          isOwnMessage ? 'is-own' : '',
+                          isAdminMessage ? 'is-admin' : '',
+                        ].filter(Boolean).join(' ')}
+                        key={message.id}
+                      >
+                        <span className="discussion-avatar" aria-hidden="true">
+                          {message.senderAvatar ? (
+                            <img src={message.senderAvatar} alt="" />
+                          ) : (
+                            <Icon name={isAdminMessage ? 'shield' : 'user'} />
+                          )}
+                        </span>
+                        <div className="discussion-bubble">
+                          <div className="discussion-meta">
+                            <strong>{message.senderName}</strong>
+                            <small>
+                              {message.createdAt
+                                ? new Date(message.createdAt).toLocaleString('id-ID', {
+                                    dateStyle: 'medium',
+                                    timeStyle: 'short',
+                                  })
+                                : ''}
+                            </small>
+                          </div>
+                          <p>{message.message}</p>
+                        </div>
+                      </article>
+                    )
+                  })}
+
+                  {!selectedCourseDiscussions.length && (
+                    <div className="class-discussion-empty">
+                      <Icon name="message" />
+                      <h3>Belum ada diskusi</h3>
+                      <p>Mulai tanya jawab pertama untuk kelas ini.</p>
+                    </div>
+                  )}
+                </div>
+
+                <form className="class-discussion-form" onSubmit={handleSendDiscussionMessage}>
+                  <label>
+                    <span>Tulis diskusi</span>
+                    <textarea
+                      value={discussionDraft}
+                      onChange={(event) => setDiscussionDraft(event.target.value)}
+                      placeholder="Tulis pertanyaan, kendala, atau insight belajar..."
+                      rows="3"
+                      maxLength={1200}
+                    />
+                  </label>
+                  <div className="class-discussion-form-actions">
+                    {discussionStatus && <small>{discussionStatus}</small>}
+                    <button className="btn btn-primary" type="submit">
+                      <Icon name="send" />
+                      Kirim
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
           )}
         </section>
       )}

@@ -897,6 +897,7 @@ function AdminPage({
   digitalProductAccess = [],
   members = [],
   supportTickets = [],
+  classDiscussions = [],
   submissions = [],
   testimonials = [],
   certificates = [],
@@ -916,6 +917,8 @@ function AdminPage({
   onDeleteMember = async () => { },
   onUpdateSupportTicket = async () => { },
   onDeleteSupportTicket = async () => { },
+  onCreateClassDiscussionMessage = async () => { },
+  onDeleteClassDiscussionMessage = async () => { },
   onUpdateSubmission = async () => { },
   onCreateTestimonial = async () => { },
   onUpdateTestimonial = async () => { },
@@ -1009,6 +1012,9 @@ function AdminPage({
   const [supportForm, setSupportForm] = useState(() => createEmptySupportForm())
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false)
   const [pendingDeleteSupport, setPendingDeleteSupport] = useState(null)
+  const [discussionClassFilter, setDiscussionClassFilter] = useState('all')
+  const [discussionSearchTerm, setDiscussionSearchTerm] = useState('')
+  const [discussionReplyDrafts, setDiscussionReplyDrafts] = useState({})
   const [viewingSubmission, setViewingSubmission] = useState(null)
   const [submissionFeedback, setSubmissionFeedback] = useState('')
   const [submissionRating, setSubmissionRating] = useState(0)
@@ -1031,6 +1037,54 @@ function AdminPage({
   const waitingSupportCount = supportTickets.filter(
     (item) => item.status === 'Menunggu',
   ).length
+  const discussionClassOptions = classes
+    .map((course) => ({
+      id: course.id,
+      title: course.title,
+      count: classDiscussions.filter((message) => message.classId === course.id).length,
+    }))
+  const visibleClassDiscussions = classDiscussions.filter((message) => {
+    const matchesClass = discussionClassFilter === 'all' || message.classId === discussionClassFilter
+    const keyword = discussionSearchTerm.trim().toLowerCase()
+    const matchesSearch = !keyword || [
+      message.classTitle,
+      message.senderName,
+      message.message,
+    ].join(' ').toLowerCase().includes(keyword)
+
+    return matchesClass && matchesSearch
+  })
+  const discussionsByClass = visibleClassDiscussions.reduce((map, message) => {
+    const group = map.get(message.classId) ?? {
+      classId: message.classId,
+      classTitle: message.classTitle,
+      messages: [],
+    }
+
+    group.messages.push(message)
+    map.set(message.classId, group)
+    return map
+  }, new Map())
+  const discussionGroups = Array.from(discussionsByClass.values()).sort((first, second) => {
+    const firstLast = first.messages.at(-1)?.createdAt || ''
+    const secondLast = second.messages.at(-1)?.createdAt || ''
+
+    return Date.parse(secondLast || 0) - Date.parse(firstLast || 0)
+  })
+  const selectedDiscussionClass = classes.find((course) => course.id === discussionClassFilter)
+  const displayedDiscussionGroups =
+    discussionClassFilter !== 'all' &&
+    selectedDiscussionClass &&
+    !discussionGroups.some((group) => group.classId === selectedDiscussionClass.id)
+      ? [
+          {
+            classId: selectedDiscussionClass.id,
+            classTitle: selectedDiscussionClass.title,
+            messages: [],
+          },
+          ...discussionGroups,
+        ]
+      : discussionGroups
   const pendingSubmissions = submissions.filter(
     (item) => item.status === 'Menunggu Review',
   ).length
@@ -3184,6 +3238,54 @@ function AdminPage({
       onNotify('Tiket bantuan dihapus.')
     } catch (error) {
       onNotify(error.message || 'Tiket bantuan tidak bisa dihapus.')
+    }
+  }
+
+  const handleDiscussionDraftChange = (classId, value) => {
+    setDiscussionReplyDrafts((current) => ({
+      ...current,
+      [classId]: value,
+    }))
+  }
+
+  const handleSubmitDiscussionReply = async (event, discussionGroup) => {
+    event.preventDefault()
+
+    const message = (discussionReplyDrafts[discussionGroup.classId] || '').trim()
+
+    if (!message) {
+      onNotify('Tulis balasan diskusi terlebih dahulu.')
+      return
+    }
+
+    try {
+      await onCreateClassDiscussionMessage({
+        classId: discussionGroup.classId,
+        classTitle: discussionGroup.classTitle,
+        message,
+      })
+      setDiscussionReplyDrafts((current) => ({
+        ...current,
+        [discussionGroup.classId]: '',
+      }))
+      setActionStatus('Balasan diskusi kelas berhasil dikirim.')
+      onNotify('Balasan diskusi dikirim.')
+    } catch (error) {
+      onNotify(error.message || 'Balasan diskusi belum bisa dikirim.')
+    }
+  }
+
+  const handleDeleteDiscussionMessage = async (messageId) => {
+    if (!window.confirm('Hapus pesan diskusi ini?')) {
+      return
+    }
+
+    try {
+      await onDeleteClassDiscussionMessage(messageId)
+      setActionStatus('Pesan diskusi berhasil dihapus.')
+      onNotify('Pesan diskusi dihapus.')
+    } catch (error) {
+      onNotify(error.message || 'Pesan diskusi belum bisa dihapus.')
     }
   }
 
@@ -5893,6 +5995,131 @@ function AdminPage({
                 )}
               </div>
             </section>
+          </div>
+        </section>
+      )}
+
+      {activeMenu === 'class-discussions' && (
+        <section className="panel class-discussion-admin-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Diskusi kelas</p>
+              <h2>Kelola ruang diskusi peserta</h2>
+              <p>Balas pertanyaan peserta sesuai kelas agar diskusi tetap rapi dan mudah dicari.</p>
+            </div>
+          </div>
+
+          <div className="discussion-admin-toolbar">
+            <label>
+              Kelas
+              <select
+                value={discussionClassFilter}
+                onChange={(event) => setDiscussionClassFilter(event.target.value)}
+              >
+                <option value="all">Semua kelas</option>
+                {discussionClassOptions.map((course) => (
+                  <option value={course.id} key={course.id}>
+                    {course.title} {course.count ? `(${course.count})` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Cari diskusi
+              <input
+                type="search"
+                value={discussionSearchTerm}
+                onChange={(event) => setDiscussionSearchTerm(event.target.value)}
+                placeholder="Cari nama, kelas, atau isi pesan..."
+              />
+            </label>
+          </div>
+
+          <div className="discussion-admin-list">
+            {displayedDiscussionGroups.map((group) => (
+              <article className="discussion-admin-card" key={group.classId}>
+                <header>
+                  <div>
+                    <p className="eyebrow">Kelas</p>
+                    <h3>{group.classTitle}</h3>
+                  </div>
+                  <span>{group.messages.length} pesan</span>
+                </header>
+
+                <div className="discussion-admin-thread">
+                  {group.messages.map((message) => (
+                    <div
+                      className={message.senderRole === 'admin'
+                        ? 'discussion-admin-message is-admin'
+                        : 'discussion-admin-message'}
+                      key={message.id}
+                    >
+                      <span className="discussion-avatar" aria-hidden="true">
+                        {message.senderAvatar ? (
+                          <img src={message.senderAvatar} alt="" />
+                        ) : (
+                          <Icon name={message.senderRole === 'admin' ? 'shield' : 'user'} />
+                        )}
+                      </span>
+                      <div>
+                        <div className="discussion-meta">
+                          <strong>{message.senderName}</strong>
+                          <small>
+                            {message.createdAt
+                              ? new Date(message.createdAt).toLocaleString('id-ID', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short',
+                                })
+                              : '-'}
+                          </small>
+                        </div>
+                        <p>{message.message}</p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Hapus pesan diskusi"
+                        onClick={() => handleDeleteDiscussionMessage(message.id)}
+                      >
+                        <Icon name="trash" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {!group.messages.length && (
+                    <div className="class-discussion-empty">
+                      <Icon name="message" />
+                      <h3>Belum ada diskusi</h3>
+                      <p>Admin bisa memulai informasi atau arahan untuk kelas ini.</p>
+                    </div>
+                  )}
+                </div>
+
+                <form
+                  className="discussion-admin-reply"
+                  onSubmit={(event) => handleSubmitDiscussionReply(event, group)}
+                >
+                  <textarea
+                    value={discussionReplyDrafts[group.classId] || ''}
+                    onChange={(event) => handleDiscussionDraftChange(group.classId, event.target.value)}
+                    placeholder="Tulis balasan sebagai admin..."
+                    rows="3"
+                    maxLength={1200}
+                  />
+                  <button className="btn btn-primary" type="submit">
+                    <Icon name="send" />
+                    Kirim Balasan
+                  </button>
+                </form>
+              </article>
+            ))}
+
+            {!displayedDiscussionGroups.length && (
+              <article className="empty-state">
+                <Icon name="message" />
+                <h3>Belum ada diskusi kelas</h3>
+                <p>Pilih kelas tertentu untuk memulai pesan atau tunggu peserta mengirim diskusi.</p>
+              </article>
+            )}
           </div>
         </section>
       )}
