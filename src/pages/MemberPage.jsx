@@ -128,6 +128,53 @@ function clearActiveCourseSnapshot(userId = '') {
   window.localStorage.removeItem(scopedStorageKey(activeCourseStorageKey, userId))
 }
 
+function getMemberCourseListPath() {
+  if (typeof window === 'undefined') {
+    return '/member?menu=my-courses'
+  }
+
+  const url = new URL(window.location.href)
+  url.pathname = '/member'
+  url.search = ''
+  url.searchParams.set('menu', 'my-courses')
+  url.hash = ''
+
+  return `${url.pathname}${url.search}${url.hash}`
+}
+
+function pushMemberCourseRoomHistory() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const listPath = getMemberCourseListPath()
+  const nextPath = `${listPath}#materi`
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+
+  if (currentPath === nextPath) {
+    return
+  }
+
+  window.history.pushState({ memberCourseRoom: true }, '', nextPath)
+  window.dispatchEvent(new CustomEvent('ibnucreative-route-change'))
+}
+
+function replaceMemberCourseListHistory() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const listPath = getMemberCourseListPath()
+  const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+
+  if (currentPath === listPath) {
+    return
+  }
+
+  window.history.replaceState({}, '', listPath)
+  window.dispatchEvent(new CustomEvent('ibnucreative-route-change'))
+}
+
 function readDiscussionSeenTimes(userId = '') {
   if (typeof window === 'undefined') {
     return {}
@@ -1046,6 +1093,7 @@ function MemberPage({
     const maxIndex = Math.max(0, (course.materials?.length || 1) - 1)
     setSelectedCourseId(course.id)
     setActiveMaterialIndex(Math.min(snapshot.materialIndex, maxIndex))
+    pushMemberCourseRoomHistory()
   }, [activeMenu, courses, selectedCourseId, userId])
 
   useEffect(() => {
@@ -1074,6 +1122,34 @@ function MemberPage({
 
     writeActiveCourseSnapshot(userId, course.id, nextIndex)
   }, [activeMaterialIndex, activeMenu, courses, selectedCourseId, userId])
+
+  useEffect(() => {
+    if (activeMenu !== 'my-courses' || !selectedCourseId) {
+      return undefined
+    }
+
+    if (window.location.hash !== '#materi') {
+      pushMemberCourseRoomHistory()
+    }
+
+    const handleCourseRoomBack = () => {
+      const isCourseRoomUrl = window.location.hash === '#materi'
+
+      if (isCourseRoomUrl) {
+        return
+      }
+
+      setSelectedCourseId(null)
+      setActiveMaterialIndex(0)
+      clearActiveCourseSnapshot(userId)
+    }
+
+    window.addEventListener('popstate', handleCourseRoomBack)
+
+    return () => {
+      window.removeEventListener('popstate', handleCourseRoomBack)
+    }
+  }, [activeMenu, selectedCourseId, userId])
 
   useEffect(() => {
     setIsDiscussionOpen(false)
@@ -1453,6 +1529,7 @@ function MemberPage({
     setTaskAttachment(null)
     setEditingSubmissionId('')
     rememberCoursePosition(course.id, 0)
+    pushMemberCourseRoomHistory()
     onNotify(`Membuka materi ${course.title}.`)
   }
 
@@ -2208,6 +2285,7 @@ function MemberPage({
                 setSelectedCourseId(null)
                 setActiveMaterialIndex(0)
                 clearActiveCourseSnapshot(userId)
+                replaceMemberCourseListHistory()
               }}
             >
               <Icon name="arrowRight" />
