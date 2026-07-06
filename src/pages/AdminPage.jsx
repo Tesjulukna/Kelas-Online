@@ -3497,12 +3497,27 @@ function AdminPage({
 
   const handleToggleDiscussionPin = async (message) => {
     try {
+      const willPin = !message.isPinned
+
+      if (willPin) {
+        const currentlyPinned = activeDiscussionGroup?.messages.find(
+          (msg) => msg.isPinned && !msg.isDeleted && msg.id !== message.id,
+        )
+
+        if (currentlyPinned) {
+          await onPinClassDiscussionMessage({
+            id: currentlyPinned.id,
+            isPinned: false,
+          })
+        }
+      }
+
       await onPinClassDiscussionMessage({
         id: message.id,
-        isPinned: !message.isPinned,
+        isPinned: willPin,
       })
-      setActionStatus(message.isPinned ? 'Sematan pesan diskusi dilepas.' : 'Pesan diskusi berhasil disematkan.')
-      onNotify(message.isPinned ? 'Sematan pesan dilepas.' : 'Pesan diskusi disematkan.')
+      setActionStatus(willPin ? 'Pesan diskusi berhasil disematkan.' : 'Sematan pesan diskusi dilepas.')
+      onNotify(willPin ? 'Pesan diskusi disematkan.' : 'Sematan pesan dilepas.')
     } catch (error) {
       onNotify(error.message || 'Status sematan pesan belum bisa diubah.')
     }
@@ -6396,14 +6411,25 @@ function AdminPage({
                                 Pesan disematkan
                               </span>
                               {pinnedMessages.map((message) => (
-                                <button
-                                  type="button"
-                                  key={`pinned-${message.id}`}
-                                  onClick={() => handleJumpToAdminDiscussionMessage(message.id)}
-                                >
-                                  <strong>{message.senderName}</strong>
-                                  <small>{message.message}</small>
-                                </button>
+                                <div key={`pinned-${message.id}`} className="discussion-pinned-item">
+                                  <button
+                                    className="discussion-pinned-jump-button"
+                                    type="button"
+                                    onClick={() => handleJumpToAdminDiscussionMessage(message.id)}
+                                  >
+                                    <strong>{message.senderName}</strong>
+                                    <small>{message.message}</small>
+                                  </button>
+                                  <button
+                                    className="discussion-pinned-unpin-button"
+                                    type="button"
+                                    onClick={() => handleToggleDiscussionPin(message)}
+                                    aria-label="Lepas sematan"
+                                    title="Lepas sematan"
+                                  >
+                                    <Icon name="x" />
+                                  </button>
+                                </div>
                               ))}
                             </div>
                           ) : null

@@ -19908,7 +19908,14 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   height: 15px;
 }
 
-.discussion-pinned-list button {
+.discussion-pinned-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.discussion-pinned-list button.discussion-pinned-jump-button {
   display: grid;
   gap: 2px;
   width: 100%;
@@ -19920,10 +19927,37 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   font: inherit;
   text-align: left;
   cursor: pointer;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
-.discussion-pinned-list button:hover {
+.discussion-pinned-list button.discussion-pinned-jump-button:hover {
   background: #ffffff;
+}
+
+.discussion-pinned-unpin-button {
+  flex: 0 0 34px !important;
+  width: 34px !important;
+  height: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+  color: #64748b !important;
+  border: 1px solid rgba(245, 158, 11, 0.18) !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+}
+
+.discussion-pinned-unpin-button:hover {
+  color: #ef4444 !important;
+  background: #ffffff !important;
+  border-color: rgba(239, 68, 68, 0.24) !important;
+}
+
+.discussion-pinned-unpin-button .icon {
+  width: 14px !important;
+  height: 14px !important;
 }
 
 .discussion-pinned-list strong,
@@ -20652,16 +20686,20 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
   /* Compact Input & Reply Form at the Bottom */
   .admin-discussion-floating-panel .discussion-admin-reply.admin-discussion-floating-reply {
-    grid-template-columns: minmax(0, 1fr) 40px !important;
+    grid-template-columns: minmax(0, 1fr) 36px !important;
     gap: 8px !important;
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom)) !important;
+    padding: 6px 12px !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom)) !important;
     align-items: center !important;
+  }
+
+  .admin-discussion-floating-panel .discussion-admin-reply.admin-discussion-floating-reply:focus-within {
+    padding-bottom: 6px !important;
   }
 
   .admin-discussion-floating-reply textarea {
     min-height: 36px !important;
     max-height: 72px !important;
-    height: 36px !important;
     padding: 8px 12px !important;
     font-size: 0.88rem !important;
     line-height: 1.4 !important;
