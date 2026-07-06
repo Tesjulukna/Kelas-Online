@@ -2601,6 +2601,15 @@ function MemberPage({
                         <div className="discussion-bubble">
                           <div className="discussion-meta">
                             <strong>{message.senderName}</strong>
+                            {isAdminMessage && (
+                              <span
+                                className="discussion-admin-check"
+                                title="Admin terverifikasi"
+                                aria-label="Admin terverifikasi"
+                              >
+                                <Icon name="checkCircle" />
+                              </span>
+                            )}
                             <small>
                               {message.createdAt
                                 ? new Date(message.createdAt).toLocaleString('id-ID', {
@@ -2710,21 +2719,24 @@ function MemberPage({
                       </button>
                     </div>
                   )}
-                  <label>
-                    <span>Tulis diskusi</span>
+                  {discussionStatus && <small className="class-discussion-status">{discussionStatus}</small>}
+                  <div className="class-discussion-input-row">
+                    <label>
+                    <span className="sr-only">Tulis diskusi</span>
                     <textarea
                       value={discussionDraft}
                       onChange={(event) => setDiscussionDraft(event.target.value)}
                       placeholder="Tulis pertanyaan, kendala, atau insight belajar..."
-                      rows="3"
+                      rows="1"
                       maxLength={1200}
                     />
-                  </label>
-                  <div className="class-discussion-form-actions">
-                    {discussionStatus && <small>{discussionStatus}</small>}
-                    <button className="btn btn-primary" type="submit">
+                    </label>
+                    <button
+                      className="class-discussion-send-button"
+                      type="submit"
+                      aria-label="Kirim pesan diskusi"
+                    >
                       <Icon name="send" />
-                      Kirim
                     </button>
                   </div>
                 </form>

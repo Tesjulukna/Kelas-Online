@@ -1,6 +1,60 @@
 import { useState } from 'react'
 import Icon from '../../components/Icon'
 
+const ACCESS_TEXT_LINK_PATTERN = /(https?:\/\/[^\s<]+|www\.[^\s<]+|wa\.me\/[^\s<]+|chat\.whatsapp\.com\/[^\s<]+)/gi
+const TRAILING_URL_PUNCTUATION_PATTERN = /[.,!?;:)\]}]+$/
+
+function getAccessHref(value) {
+  if (/^https?:\/\//i.test(value)) {
+    return value
+  }
+
+  return `https://${value}`
+}
+
+function LinkifiedAccessText({ text }) {
+  if (!text) {
+    return null
+  }
+
+  const parts = []
+  let lastIndex = 0
+
+  String(text).replace(ACCESS_TEXT_LINK_PATTERN, (match, _url, offset) => {
+    if (offset > lastIndex) {
+      parts.push(String(text).slice(lastIndex, offset))
+    }
+
+    const trailingMatch = match.match(TRAILING_URL_PUNCTUATION_PATTERN)
+    const trailingText = trailingMatch?.[0] || ''
+    const cleanUrl = trailingText ? match.slice(0, -trailingText.length) : match
+
+    parts.push(
+      <a
+        href={getAccessHref(cleanUrl)}
+        target="_blank"
+        rel="noreferrer"
+        key={`access-link-${offset}`}
+      >
+        {cleanUrl}
+      </a>,
+    )
+
+    if (trailingText) {
+      parts.push(trailingText)
+    }
+
+    lastIndex = offset + match.length
+    return match
+  })
+
+  if (lastIndex < String(text).length) {
+    parts.push(String(text).slice(lastIndex))
+  }
+
+  return <>{parts}</>
+}
+
 function ProductAccessPage({
   accessState,
   onBack,
@@ -109,21 +163,27 @@ function ProductAccessPage({
             {isPrompt && promptInstructions && (
               <section className="public-detail-section public-access-note prompt-access-guide">
                 <p className="eyebrow">Cara penggunaan</p>
-                <p>{promptInstructions}</p>
+                <p className="public-access-linkified-text">
+                  <LinkifiedAccessText text={promptInstructions} />
+                </p>
               </section>
             )}
 
             {isPrompt && promptExamples && (
               <section className="public-detail-section public-access-note">
                 <p className="eyebrow">Contoh hasil</p>
-                <p>{promptExamples}</p>
+                <p className="public-access-linkified-text">
+                  <LinkifiedAccessText text={promptExamples} />
+                </p>
               </section>
             )}
 
             {delivery?.deliveryNote && (
               <section className="public-detail-section public-access-note">
                 <p className="eyebrow">Catatan akses</p>
-                <p>{delivery.deliveryNote}</p>
+                <p className="public-access-linkified-text">
+                  <LinkifiedAccessText text={delivery.deliveryNote} />
+                </p>
               </section>
             )}
           </div>

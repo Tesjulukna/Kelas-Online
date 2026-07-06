@@ -6171,6 +6171,15 @@ function AdminPage({
                       <div>
                         <div className="discussion-meta">
                           <strong>{message.senderName}</strong>
+                          {message.senderRole === 'admin' && (
+                            <span
+                              className="discussion-admin-check"
+                              title="Admin terverifikasi"
+                              aria-label="Admin terverifikasi"
+                            >
+                              <Icon name="checkCircle" />
+                            </span>
+                          )}
                           <small>
                             {message.createdAt
                               ? new Date(message.createdAt).toLocaleString('id-ID', {
