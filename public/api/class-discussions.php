@@ -172,6 +172,37 @@ if ($method === 'GET') {
 $payload = read_json_body();
 
 if ($method === 'POST') {
+    $postAction = clean_text($payload['action'] ?? '', 40);
+    $postMessageId = clean_text($_GET['id'] ?? ($payload['id'] ?? ''), 120);
+
+    if ($postAction === 'pin' && $postMessageId !== '') {
+        $user = require_user();
+        $messageRow = discussion_find_message($pdo, $postMessageId);
+
+        if (!$messageRow) {
+            send_json(404, ['message' => 'Pesan diskusi tidak ditemukan.']);
+        }
+
+        if (($user['role'] ?? '') !== 'admin') {
+            send_json(403, ['message' => 'Hanya admin yang bisa menyematkan pesan diskusi.']);
+        }
+
+        if (!empty($messageRow['is_deleted'])) {
+            send_json(400, ['message' => 'Pesan yang sudah dihapus tidak bisa disematkan.']);
+        }
+
+        $isPinned = !empty($payload['isPinned']);
+        $update = $pdo->prepare('UPDATE class_discussions SET is_pinned = ?, pinned_at = ? WHERE id = ?');
+        $update->execute([$isPinned ? 1 : 0, $isPinned ? date(DATE_ATOM) : '', $postMessageId]);
+
+        send_json(200, [
+            'classDiscussions' => discussion_fetch_messages($pdo, $user),
+            'updatedAt' => updated_at($pdo),
+        ]);
+    }
+}
+
+if ($method === 'POST') {
     $user = require_user();
     $classId = clean_text($payload['classId'] ?? '', 120);
     $classTitle = clean_text($payload['classTitle'] ?? 'Kelas', 180);

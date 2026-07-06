@@ -1678,6 +1678,23 @@ function AdminPage({
   }, [activeMenu])
 
   useEffect(() => {
+    if (!isAdminDiscussionOpen) {
+      return undefined
+    }
+
+    const previousBodyOverflow = document.body.style.overflow
+    const previousHtmlOverflow = document.documentElement.style.overflow
+
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.overflow = previousHtmlOverflow
+    }
+  }, [isAdminDiscussionOpen])
+
+  useEffect(() => {
     if (!isAdminDiscussionOpen || discussionClassFilter === 'all') {
       return
     }
@@ -6384,6 +6401,7 @@ function AdminPage({
                         <div
                           className={[
                             'discussion-admin-message',
+                            message.senderRole === 'admin' ? 'is-own' : '',
                             message.senderRole === 'admin' ? 'is-admin' : '',
                             message.isDeleted ? 'is-deleted' : '',
                             message.isPinned ? 'is-pinned' : '',
@@ -6399,7 +6417,7 @@ function AdminPage({
                               <Icon name={message.senderRole === 'admin' ? 'shield' : 'user'} />
                             )}
                           </span>
-                          <div>
+                          <div className="discussion-bubble">
                             <div className="discussion-meta">
                               <strong>{message.senderName}</strong>
                               {message.senderRole === 'admin' && (
@@ -6489,18 +6507,18 @@ function AdminPage({
                                       {message.isPinned ? 'Lepas semat' : 'Sematkan'}
                                     </button>
                                   )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteDiscussionMessage(message.id)}
+                                    disabled={message.isDeleted}
+                                  >
+                                    <Icon name="trash" />
+                                    Hapus
+                                  </button>
                                 </div>
                               </>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            aria-label="Hapus pesan diskusi"
-                            onClick={() => handleDeleteDiscussionMessage(message.id)}
-                            disabled={message.isDeleted}
-                          >
-                            <Icon name="trash" />
-                          </button>
                         </div>
                       ))}
 

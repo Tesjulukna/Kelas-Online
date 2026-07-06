@@ -2874,7 +2874,7 @@ function App() {
     }
 
     const data = await requestJson(`${classDiscussionsApiPath}?id=${encodeURIComponent(id)}`, {
-      method: 'PATCH',
+      method: 'POST',
       body: JSON.stringify({ action: 'pin', isPinned }),
     })
 
