@@ -3168,7 +3168,9 @@ function App() {
   const publicCertificateId = typeof window === 'undefined'
     ? ''
     : getPublicCertificateIdFromPath(currentPath.split(/[?#]/)[0] || '/')
-  const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|prompt|produk-akses|prompt-akses)\//.test(currentPath.split(/[?#]/)[0] || '/')
+  const currentRoutePath = currentPath.split(/[?#]/)[0] || '/'
+  const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|prompt|produk-akses|prompt-akses)\//.test(currentRoutePath)
+  const isCheckoutRoute = typeof window !== 'undefined' && /^\/(kelas|produk|prompt)\/[^/]+\/checkout\/?$/.test(currentRoutePath)
   const isPublicCertificatePath = Boolean(publicCertificateId)
   const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
   const appRoleClass = session?.role ? `role-${session.role}` : 'role-public'
@@ -3389,7 +3391,7 @@ function App() {
           settings={websiteSettings}
         />
       )}
-      {notice && (
+      {notice && !isCheckoutRoute && (
         <div className="app-toast" role="status" aria-live="polite">
           {notice}
         </div>

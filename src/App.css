@@ -354,13 +354,25 @@
   right: 18px;
   bottom: 18px;
   z-index: 50;
-  width: min(360px, calc(100% - 36px));
-  padding: 14px 16px;
+  width: min(300px, calc(100% - 36px));
+  padding: 10px 12px;
   border: 1px solid rgba(14, 165, 164, 0.24);
   border-radius: 8px;
   color: var(--color-heading);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: var(--shadow-md);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .app-toast {
+    right: 12px;
+    bottom: 12px;
+    width: min(280px, calc(100% - 24px));
+    padding: 9px 11px;
+    font-size: 0.78rem;
+  }
 }
 
 .profile-menu {
@@ -918,7 +930,9 @@
 .app-shell.role-member.public-theme-dark .submission-review,
 .app-shell.role-member.public-theme-dark .certificate-testimonial-modal,
 .app-shell.role-member.public-theme-dark .digital-review-modal,
-.app-shell.role-member.public-theme-dark .prompt-modal {
+.app-shell.role-member.public-theme-dark .prompt-modal,
+.app-shell.role-member.public-theme-dark .image-preview-modal,
+.app-shell.role-member.public-theme-dark .prompt-instruction-modal {
   color: var(--color-text);
   border-color: rgba(148, 163, 184, 0.24);
   background: rgba(15, 25, 43, 0.98);
@@ -931,7 +945,8 @@
 .app-shell.role-member.public-theme-dark .submission-member-modal > .modal-heading h2,
 .app-shell.role-member.public-theme-dark .certificate-testimonial-modal h2,
 .app-shell.role-member.public-theme-dark .digital-review-modal h2,
-.app-shell.role-member.public-theme-dark .prompt-modal h2 {
+.app-shell.role-member.public-theme-dark .prompt-modal h2,
+.app-shell.role-member.public-theme-dark .prompt-instruction-modal h2 {
   color: var(--color-heading);
 }
 
@@ -959,6 +974,9 @@
 .app-shell.role-member.public-theme-dark .material-nav,
 .app-shell.role-member.public-theme-dark .material-description-section,
 .app-shell.role-member.public-theme-dark .material-description,
+.app-shell.role-member.public-theme-dark .prompt-gallery,
+.app-shell.role-member.public-theme-dark .prompt-card,
+.app-shell.role-member.public-theme-dark .prompt-instruction-content,
 .app-shell.role-member.public-theme-dark .task-box,
 .app-shell.role-member.public-theme-dark .testimonial-submit-box,
 .app-shell.role-member.public-theme-dark .member-testimonial-existing,
@@ -1002,6 +1020,8 @@
 .app-shell.role-member.public-theme-dark .digital-product-seller-logo,
 .app-shell.role-member.public-theme-dark .material-image-frame,
 .app-shell.role-member.public-theme-dark .material-image-frame img,
+.app-shell.role-member.public-theme-dark .prompt-card-image,
+.app-shell.role-member.public-theme-dark .image-preview-modal img,
 .app-shell.role-member.public-theme-dark .certificate-course-media {
   background: rgba(15, 25, 43, 0.92);
 }
@@ -1010,6 +1030,7 @@
 .app-shell.role-member.public-theme-dark .secure-payment-note p,
 .app-shell.role-member.public-theme-dark .secure-payment-note small,
 .app-shell.role-member.public-theme-dark .payment-method-note,
+.app-shell.role-member.public-theme-dark .payment-method-name,
 .app-shell.role-member.public-theme-dark .payment-breakdown-total strong,
 .app-shell.role-member.public-theme-dark .digital-product-detail-tags span,
 .app-shell.role-member.public-theme-dark .digital-cart-button.active,
@@ -1210,6 +1231,8 @@
 .app-shell.role-member.public-theme-dark .certificate-request-status strong,
 .app-shell.role-member.public-theme-dark .certificate-regenerate-box strong,
 .app-shell.role-member.public-theme-dark .material-description-section h3,
+.app-shell.role-member.public-theme-dark .prompt-gallery-heading h3,
+.app-shell.role-member.public-theme-dark .prompt-card-body h3,
 .app-shell.role-member.public-theme-dark .material-nav.active strong,
 .app-shell.role-member.public-theme-dark .material-list-heading h3,
 .app-shell.role-member.public-theme-dark .material-content h3,
@@ -1225,6 +1248,10 @@
 .app-shell.role-member.public-theme-dark .certificate-request-status small,
 .app-shell.role-member.public-theme-dark .certificate-regenerate-box span,
 .app-shell.role-member.public-theme-dark .material-description,
+.app-shell.role-member.public-theme-dark .prompt-card-text,
+.app-shell.role-member.public-theme-dark .prompt-card-body p,
+.app-shell.role-member.public-theme-dark .prompt-instruction-content p,
+.app-shell.role-member.public-theme-dark .scroll-hint,
 .app-shell.role-member.public-theme-dark .material-nav small,
 .app-shell.role-member.public-theme-dark .material-list-heading .eyebrow,
 .app-shell.role-member.public-theme-dark .material-resources small,
@@ -1250,10 +1277,17 @@
 }
 
 .app-shell.role-member.public-theme-dark .material-resource-actions .btn,
-.app-shell.role-member.public-theme-dark .resource-link-editor button {
+.app-shell.role-member.public-theme-dark .resource-link-editor button,
+.app-shell.role-member.public-theme-dark .prompt-actions .btn {
   color: #dbeafe;
   border-color: rgba(148, 163, 184, 0.24);
   background: rgba(15, 25, 43, 0.92);
+}
+
+.app-shell.role-member.public-theme-dark .prompt-actions .btn:hover {
+  color: #ffffff;
+  border-color: rgba(96, 165, 250, 0.48);
+  background: rgba(37, 99, 235, 0.24);
 }
 
 .app-shell.role-member.public-theme-dark .video-placeholder {
@@ -3869,8 +3903,9 @@ textarea:focus-visible {
 
 .app-toast,
 .action-feedback {
-  padding: 10px 12px;
-  font-size: 0.86rem;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .home-hero,
@@ -11355,8 +11390,11 @@ img {
 
 .payment-method-option {
   display: grid;
+  gap: 7px;
   place-items: center;
-  min-height: 74px;
+  align-content: center;
+  min-height: 96px;
+  padding: 9px 8px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #ffffff;
@@ -11403,6 +11441,17 @@ img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+
+.payment-method-name {
+  display: block;
+  width: 100%;
+  color: var(--color-heading);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.22;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .payment-method-note {
@@ -15299,21 +15348,21 @@ img {
 /* Purchase Notification Toast Styles */
 .purchase-notification-toast {
   position: fixed;
-  bottom: 24px;
-  left: 24px;
+  bottom: 20px;
+  left: 20px;
   z-index: 1500;
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 350px;
+  gap: 9px;
+  width: 292px;
   max-width: calc(100vw - 32px);
-  padding: 12px 16px;
+  padding: 9px 12px;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px -8px rgba(15, 23, 42, 0.18), 0 6px 10px -8px rgba(15, 23, 42, 0.14);
   transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
   transform: translateY(120px);
   opacity: 0;
@@ -15327,9 +15376,9 @@ img {
 }
 
 .purchase-notification-toast--detail {
-  top: 96px;
+  top: 86px;
   bottom: auto;
-  left: 24px;
+  left: 20px;
   right: auto;
   transform: translateY(-28px);
 }
@@ -15340,9 +15389,9 @@ img {
 
 .purchase-notification-avatar {
   position: relative;
-  flex: 0 0 46px;
-  width: 46px;
-  height: 46px;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
   border-radius: 999px;
   overflow: hidden;
   border: 2px solid #3b82f6;
@@ -15362,7 +15411,7 @@ img {
   width: 100%;
   height: 100%;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.86rem;
   color: #1e3a8a;
   background: linear-gradient(135deg, #dbeafe, #93c5fd);
 }
@@ -15390,8 +15439,8 @@ img {
 }
 
 .purchase-notification-badge .icon {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   color: #ffffff;
 }
 
@@ -15402,7 +15451,7 @@ img {
 
 .purchase-notification-name {
   display: block;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: #0f172a;
   white-space: nowrap;
@@ -15412,9 +15461,9 @@ img {
 
 .purchase-notification-desc {
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   color: #475569;
-  line-height: 1.3;
+  line-height: 1.25;
   margin-top: 1px;
 }
 
@@ -15425,9 +15474,9 @@ img {
 
 .purchase-notification-time {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   color: #94a3b8;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .purchase-notification-close {
@@ -15436,7 +15485,7 @@ img {
   background: transparent;
   color: #94a3b8;
   cursor: pointer;
-  padding: 4px;
+  padding: 3px;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -15452,20 +15501,21 @@ img {
 /* Responsive adjustment for Mobile screens */
 @media (max-width: 640px) {
   .purchase-notification-toast {
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
-    width: auto;
-    max-width: none;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    bottom: 14px;
+    left: 12px;
+    right: auto;
+    width: min(286px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    padding: 8px 10px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
   }
 
   .purchase-notification-toast--detail {
-    top: 82px;
+    top: 76px;
     bottom: auto;
     left: 12px;
-    right: 12px;
-    width: auto;
+    right: auto;
+    width: min(286px, calc(100vw - 24px));
     transform: translateY(-22px);
   }
 }
@@ -18810,6 +18860,10 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   background: rgba(8, 17, 31, 0.78) !important;
 }
 
+.app-shell.public-theme-dark.is-public-detail-route .payment-method-name {
+  color: #93c5fd !important;
+}
+
 .app-shell.public-theme-dark.is-public-detail-route .public-sticky-actions {
   color: var(--color-text) !important;
   border-color: rgba(148, 163, 184, 0.22) !important;
@@ -19431,8 +19485,8 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 }
 
 .admin-discussion-search .icon {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   color: #64748b;
 }
 

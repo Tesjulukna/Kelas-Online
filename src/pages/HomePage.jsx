@@ -1337,10 +1337,11 @@ function HomePage({
     </div>
   ) : null
 
+  const isCheckoutView = Boolean(checkoutClass || checkoutProduct)
   const isDetailNotificationPosition = Boolean(
     selectedClass || checkoutClass || selectedProduct || checkoutProduct,
   )
-  const activityToast = activeNotification && !accessOrderCode ? (
+  const activityToast = activeNotification && !accessOrderCode && !isCheckoutView ? (
     <div
       className={`purchase-notification-toast ${isDetailNotificationPosition ? 'purchase-notification-toast--detail' : ''} ${showNotification ? 'show' : ''}`}
       role="status"

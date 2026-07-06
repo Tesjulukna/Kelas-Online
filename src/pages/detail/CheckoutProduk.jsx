@@ -194,6 +194,7 @@ function CheckoutProduk({
                     onClick={() => onPaymentMethodSelect(method.code)}
                   >
                     <PaymentMethodLogo method={method} />
+                    <span className="payment-method-name">{method.label || method.code}</span>
                   </button>
                 ))}
               </div>
