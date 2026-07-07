@@ -4985,33 +4985,24 @@ function AdminPage({
 
                 return (
                   <div className="table-row" role="row" key={product.id}>
-                    <span className="payment-identity class-cell" data-label={activeMenu === 'prompts' ? 'Prompt' : 'Produk'} role="cell">
-                      <span className="class-thumb" aria-hidden="true">
-                        {product.thumbnail ? (
-                          <img src={product.thumbnail} alt="" />
-                        ) : (
-                          <Icon name={activeMenu === 'prompts' ? 'spark' : 'download'} />
-                        )}
-                      </span>
-                      <span>
-                        <strong>{product.title}</strong>
-                        <small>
-                          {product.productType === 'prompt'
-                            ? (product.promptInstructions || 'Isi prompt siap dikirim setelah pembayaran.')
-                            : (product.fileName || product.fileUrl || 'Link produk belum diisi')}
-                        </small>
-                        <span className="admin-inline-badges">
-                          <mark className={product.showOnHomepage === false ? 'muted-mark' : ''}>
-                            {product.showOnHomepage === false ? 'Hidden home' : 'Show home'}
-                          </mark>
-                          <mark className={product.showOnMember === false ? 'muted-mark' : ''}>
-                            {product.showOnMember === false ? 'Hidden member' : 'Show member'}
-                          </mark>
-                          {product.highlighted && <mark>Highlight</mark>}
-                          <mark className={product.itemQuantityEnabled === true && getProductStock(product) <= 0 ? 'danger-mark' : ''}>
-                            {getProductStockLabel(product)}
-                          </mark>
-                        </span>
+                    <span className="payment-identity" data-label={activeMenu === 'prompts' ? 'Prompt' : 'Produk'} role="cell">
+                      <strong>{product.title}</strong>
+                      <small>
+                        {product.productType === 'prompt'
+                          ? (product.promptInstructions || 'Isi prompt siap dikirim setelah pembayaran.')
+                          : (product.fileName || product.fileUrl || 'Link produk belum diisi')}
+                      </small>
+                      <span className="admin-inline-badges">
+                        <mark className={product.showOnHomepage === false ? 'muted-mark' : ''}>
+                          {product.showOnHomepage === false ? 'Hidden home' : 'Show home'}
+                        </mark>
+                        <mark className={product.showOnMember === false ? 'muted-mark' : ''}>
+                          {product.showOnMember === false ? 'Hidden member' : 'Show member'}
+                        </mark>
+                        {product.highlighted && <mark>Highlight</mark>}
+                        <mark className={product.itemQuantityEnabled === true && getProductStock(product) <= 0 ? 'danger-mark' : ''}>
+                          {getProductStockLabel(product)}
+                        </mark>
                       </span>
                     </span>
                     <span data-label="Harga" role="cell">{product.price ? formatRupiah(product.price) : 'Gratis'}</span>

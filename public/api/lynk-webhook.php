@@ -999,6 +999,10 @@ function lynk_fetch_class_purchase_messages(PDO $pdo, array $classIds): array
     foreach ($query->fetchAll() as $class) {
         $message = clean_text($class['purchase_message'] ?? '', 2000);
 
+        if ($message === '') {
+            continue;
+        }
+
         $messages[] = [
             'classId' => clean_text($class['id'] ?? '', 120),
             'title' => clean_text($class['title'] ?? 'Kelas IbnuCreative', 180),
@@ -1244,11 +1248,14 @@ function lynk_send_credentials_email(string $email, string $name, array $account
         return ['sent' => false, 'message' => 'Pengiriman email kredensial Lynk.id dinonaktifkan.'];
     }
 
+    $passwordText = $account['password'] ?: 'Gunakan password akun yang sudah pernah dibuat.';
     $loginUrl = clean_asset_url($account['loginUrl'] ?? lynk_login_url($config), 1000);
     $username = clean_text($account['username'] ?? '', 120);
     $purchaseMessages = is_array($account['purchaseMessages'] ?? null) ? $account['purchaseMessages'] : [];
+    $purchaseMessageText = '';
+    $purchaseMessagePanels = '';
     $classTitles = [];
-    $purchaseMessageParts = [];
+    $messageNumber = 4;
 
     foreach ($purchaseMessages as $messageItem) {
         if (!is_array($messageItem)) {
@@ -1257,29 +1264,87 @@ function lynk_send_credentials_email(string $email, string $name, array $account
 
         $messageTitle = clean_text($messageItem['title'] ?? 'Kelas IbnuCreative', 180);
         $messageBody = clean_text($messageItem['message'] ?? '', 2000);
-        $classTitles[] = $messageTitle;
 
         if ($messageBody === '') {
             continue;
         }
 
-        $purchaseMessageParts[] = count($purchaseMessages) > 1
-            ? $messageTitle . "\n" . $messageBody
-            : $messageBody;
+        $classTitles[] = $messageTitle;
+        $cleanMessageText = email_admin_message_text($messageBody);
+        $links = email_extract_links($messageBody);
+        $purchaseMessageText .= "Pesan dari admin untuk {$messageTitle}:\n";
+
+        if ($cleanMessageText !== '') {
+            $purchaseMessageText .= $cleanMessageText . "\n";
+        }
+
+        foreach ($links as $link) {
+            $purchaseMessageText .= email_admin_link_label($link) . ": {$link}\n";
+        }
+
+        $purchaseMessageText .= "\n";
+        $purchaseMessagePanels .= email_admin_message_html($messageBody, $messageNumber . '. Pesan admin - ' . $messageTitle);
+        $messageNumber++;
     }
 
     $classTitles = array_values(array_unique(array_filter($classTitles)));
     $classTitleText = $classTitles ? implode(', ', $classTitles) : 'Kelas IbnuCreative';
-
-    return send_class_access_credentials_email([
-        'buyerName' => $name ?: 'Pembeli Lynk.id',
-        'buyerEmail' => $email,
-        'username' => $username,
-        'password' => $account['password'] ?? '',
-        'classTitle' => $classTitleText,
-        'purchaseMessage' => implode("\n\n", $purchaseMessageParts),
-        'loginUrl' => $loginUrl,
+    $message = "Halo {$name},\n\n"
+        . "Pembayaran kelas Anda melalui Lynk.id sudah berhasil dan akses belajar sudah aktif.\n\n"
+        . "Kelas: {$classTitleText}\n"
+        . "Email: {$email}\n"
+        . "Username: {$username}\n"
+        . "Password: {$passwordText}\n"
+        . ($loginUrl ? "Login: {$loginUrl}\n" : '')
+        . "\n"
+        . $purchaseMessageText
+        . "Silakan login dan buka menu Kelas Saya.\n\n"
+        . "IbnuCreative Academy";
+    $loginButton = $loginUrl ? email_button($loginUrl, 'Masuk ke Kelas Saya', '#2563eb') : '';
+    $classPanel = email_panel(
+        '1. Detail kelas',
+        '<p style="margin:0;color:#374151;font-size:14px;line-height:1.6"><strong style="color:#111827">' . email_escape($classTitleText) . '</strong></p>'
+    );
+    $accountPanel = email_panel(
+        '2. Data login akun',
+        email_data_rows([
+            ['label' => 'Email', 'value' => $email],
+            ['label' => 'Username', 'value' => $username],
+            ['label' => 'Password', 'value' => $passwordText],
+        ])
+    );
+    $actionPanel = $loginButton
+        ? email_panel(
+            '3. Buka kelas',
+            '<p style="margin:0 0 10px;color:#374151;font-size:14px;line-height:1.6">Gunakan tombol ini untuk masuk ke dashboard belajar.</p>'
+            . '<div>' . $loginButton . '</div>'
+        )
+        : '';
+    $html = '<div style="box-sizing:border-box;width:100%;margin:0;padding:16px 8px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.6;overflow-wrap:break-word">'
+        . '<div style="box-sizing:border-box;width:100%;max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="box-sizing:border-box;width:100%;padding:20px 16px 16px;background:#0f172a;color:#ffffff">'
+        . '<p style="margin:0 0 8px;color:#bfdbfe;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Pembayaran Lynk.id berhasil</p>'
+        . '<h2 style="margin:0;font-size:24px;line-height:1.25;color:#ffffff">Akses kelas Anda sudah aktif</h2>'
+        . '</div>'
+        . '<div style="box-sizing:border-box;width:100%;padding:18px 14px">'
+        . '<p style="margin:0 0 14px;color:#374151;font-size:15px;line-height:1.7">Halo <strong style="color:#111827">' . email_escape($name) . '</strong>, pembayaran Anda sudah berhasil. Berikut detail akun dan langkah berikutnya.</p>'
+        . $classPanel
+        . $accountPanel
+        . $actionPanel
+        . $purchaseMessagePanels
+        . ($loginUrl ? '<p style="margin:18px 0 0;color:#6b7280;font-size:13px;line-height:1.6;overflow-wrap:anywhere;word-break:break-word">Jika tombol tidak bisa dibuka, salin link login ini:<br><a href="' . email_escape($loginUrl) . '" style="color:#2563eb;overflow-wrap:anywhere;word-break:break-word">' . email_escape($loginUrl) . '</a></p>' : '')
+        . '<p style="margin:22px 0 0;color:#374151;font-size:14px">IbnuCreative Academy</p>'
+        . '</div>'
+        . '</div>'
+        . '</div>';
+    $result = send_resend_email([
+        'to' => $email,
+        'subject' => 'Akses kelas IbnuCreative Anda sudah aktif',
+        'text' => $message,
+        'html' => $html,
     ]);
+
+    return $result;
 }
 
 function lynk_ensure_column(PDO $pdo, string $table, string $column, string $definition): void

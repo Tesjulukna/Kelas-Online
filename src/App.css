@@ -4797,11 +4797,8 @@ img {
   }
 
   .table-row .row-actions {
-    display: grid !important;
-    grid-template-columns: 76px repeat(2, minmax(0, 1fr)) !important;
-    align-items: center !important;
-    gap: 8px !important;
-    justify-content: stretch !important;
+    grid-template-columns: 76px repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
   }
 
   .row-actions button {
@@ -4874,9 +4871,7 @@ img {
   }
 
   .table-row .row-actions {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
+    grid-template-columns: 1fr 1fr;
   }
 
   .table-row .row-actions::before {
