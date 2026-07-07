@@ -3984,7 +3984,7 @@ function AdminPage({
               </button>
             </div>
           </div>
-          <div className="admin-table" role="table" aria-label="Data kelas">
+          <div className="admin-table admin-catalog-table class-admin-table" role="table" aria-label="Data kelas">
             <div className="table-row table-head" role="row">
               <span role="columnheader">Kelas</span>
               <span role="columnheader">Peserta</span>
@@ -3993,16 +3993,62 @@ function AdminPage({
               <span role="columnheader">Aksi</span>
             </div>
             {classes.map((item) => (
-              <div className="table-row" role="row" key={item.id}>
-                <span className="class-cell" data-label="Kelas" role="cell">
-                  <span className="class-thumb" aria-hidden="true">
+              <div className="table-row admin-catalog-row" role="row" key={item.id}>
+                <span className="class-cell admin-catalog-main" data-label="Kelas" role="cell">
+                  <span className="class-thumb admin-catalog-thumb">
                     {item.thumbnail ? (
                       <img src={item.thumbnail} alt="" />
                     ) : (
                       <Icon name="image" />
                     )}
+                    <span className="admin-catalog-visibility-actions">
+                      <button
+                        type="button"
+                        className={item.showOnHomepage === false ? 'is-hidden' : ''}
+                        aria-label={
+                          item.showOnHomepage === false
+                            ? `Tampilkan ${item.title} di homepage`
+                            : `Sembunyikan ${item.title} dari homepage`
+                        }
+                        title={item.showOnHomepage === false ? 'Tampilkan di homepage' : 'Sembunyikan dari homepage'}
+                        onClick={() =>
+                          updateClassQuickAction(
+                            item.id,
+                            { showOnHomepage: item.showOnHomepage === false },
+                            item.showOnHomepage === false
+                              ? 'Kelas ditampilkan di homepage.'
+                              : 'Kelas disembunyikan dari homepage.',
+                          )
+                        }
+                      >
+                        <Icon name={item.showOnHomepage === false ? 'eyeOff' : 'eye'} />
+                        <span>Home</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={item.showOnMember === false ? 'is-hidden' : ''}
+                        aria-label={
+                          item.showOnMember === false
+                            ? `Tampilkan ${item.title} di member`
+                            : `Sembunyikan ${item.title} dari member`
+                        }
+                        title={item.showOnMember === false ? 'Tampilkan di member' : 'Sembunyikan dari member'}
+                        onClick={() =>
+                          updateClassQuickAction(
+                            item.id,
+                            { showOnMember: item.showOnMember === false },
+                            item.showOnMember === false
+                              ? 'Kelas ditampilkan di Kelas Tersedia member.'
+                              : 'Kelas disembunyikan dari Kelas Tersedia member.',
+                          )
+                        }
+                      >
+                        <Icon name={item.showOnMember === false ? 'eyeOff' : 'eye'} />
+                        <span>Member</span>
+                      </button>
+                    </span>
                   </span>
-                  <span>
+                  <span className="admin-catalog-copy">
                     <strong>{item.title}</strong>
                     <small>
                       {item.materials?.length ?? 0} materi / {item.lessons}
@@ -4966,7 +5012,7 @@ function AdminPage({
               </button>
             </div>
 
-            <div className="admin-table compact-list-table digital-product-table" role="table" aria-label={activeMenu === 'prompts' ? 'Prompt' : 'Produk digital'}>
+            <div className="admin-table compact-list-table digital-product-table admin-catalog-table" role="table" aria-label={activeMenu === 'prompts' ? 'Prompt' : 'Produk digital'}>
               <div className="table-row table-head" role="row">
                 <span role="columnheader">{activeMenu === 'prompts' ? 'Prompt' : 'Produk'}</span>
                 <span role="columnheader">Harga</span>
@@ -4984,25 +5030,80 @@ function AdminPage({
                 )
 
                 return (
-                  <div className="table-row" role="row" key={product.id}>
-                    <span className="payment-identity" data-label={activeMenu === 'prompts' ? 'Prompt' : 'Produk'} role="cell">
-                      <strong>{product.title}</strong>
-                      <small>
-                        {product.productType === 'prompt'
-                          ? (product.promptInstructions || 'Isi prompt siap dikirim setelah pembayaran.')
-                          : (product.fileName || product.fileUrl || 'Link produk belum diisi')}
-                      </small>
-                      <span className="admin-inline-badges">
-                        <mark className={product.showOnHomepage === false ? 'muted-mark' : ''}>
-                          {product.showOnHomepage === false ? 'Hidden home' : 'Show home'}
-                        </mark>
-                        <mark className={product.showOnMember === false ? 'muted-mark' : ''}>
-                          {product.showOnMember === false ? 'Hidden member' : 'Show member'}
-                        </mark>
-                        {product.highlighted && <mark>Highlight</mark>}
-                        <mark className={product.itemQuantityEnabled === true && getProductStock(product) <= 0 ? 'danger-mark' : ''}>
-                          {getProductStockLabel(product)}
-                        </mark>
+                  <div className="table-row admin-catalog-row" role="row" key={product.id}>
+                    <span className="payment-identity admin-catalog-main" data-label={activeMenu === 'prompts' ? 'Prompt' : 'Produk'} role="cell">
+                      <span className="class-thumb admin-catalog-thumb">
+                        {product.thumbnail ? (
+                          <img src={product.thumbnail} alt="" />
+                        ) : (
+                          <Icon name={product.productType === 'prompt' ? 'spark' : 'download'} />
+                        )}
+                        <span className="admin-catalog-visibility-actions">
+                          <button
+                            type="button"
+                            className={product.showOnHomepage === false ? 'is-hidden' : ''}
+                            aria-label={
+                              product.showOnHomepage === false
+                                ? `Tampilkan ${product.title} di homepage`
+                                : `Sembunyikan ${product.title} dari homepage`
+                            }
+                            title={product.showOnHomepage === false ? 'Tampilkan di homepage' : 'Sembunyikan dari homepage'}
+                            onClick={() =>
+                              updateDigitalProductQuickAction(
+                                product.id,
+                                { showOnHomepage: product.showOnHomepage === false },
+                                product.showOnHomepage === false
+                                  ? 'Produk ditampilkan di homepage.'
+                                  : 'Produk disembunyikan dari homepage.',
+                              )
+                            }
+                          >
+                            <Icon name={product.showOnHomepage === false ? 'eyeOff' : 'eye'} />
+                            <span>Home</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={product.showOnMember === false ? 'is-hidden' : ''}
+                            aria-label={
+                              product.showOnMember === false
+                                ? `Tampilkan ${product.title} di member`
+                                : `Sembunyikan ${product.title} dari member`
+                            }
+                            title={product.showOnMember === false ? 'Tampilkan di member' : 'Sembunyikan dari member'}
+                            onClick={() =>
+                              updateDigitalProductQuickAction(
+                                product.id,
+                                { showOnMember: product.showOnMember === false },
+                                product.showOnMember === false
+                                  ? (product.productType === 'prompt' ? 'Prompt ditampilkan di menu Prompt member.' : 'Produk ditampilkan di Produk Digital member.')
+                                  : (product.productType === 'prompt' ? 'Prompt disembunyikan dari menu Prompt member.' : 'Produk disembunyikan dari Produk Digital member.'),
+                              )
+                            }
+                          >
+                            <Icon name={product.showOnMember === false ? 'eyeOff' : 'eye'} />
+                            <span>Member</span>
+                          </button>
+                        </span>
+                      </span>
+                      <span className="admin-catalog-copy">
+                        <strong>{product.title}</strong>
+                        <small>
+                          {product.productType === 'prompt'
+                            ? (product.promptInstructions || 'Isi prompt siap dikirim setelah pembayaran.')
+                            : (product.fileName || product.fileUrl || 'Link produk belum diisi')}
+                        </small>
+                        <span className="admin-inline-badges">
+                          <mark className={product.showOnHomepage === false ? 'muted-mark' : ''}>
+                            {product.showOnHomepage === false ? 'Hidden home' : 'Show home'}
+                          </mark>
+                          <mark className={product.showOnMember === false ? 'muted-mark' : ''}>
+                            {product.showOnMember === false ? 'Hidden member' : 'Show member'}
+                          </mark>
+                          {product.highlighted && <mark>Highlight</mark>}
+                          <mark className={product.itemQuantityEnabled === true && getProductStock(product) <= 0 ? 'danger-mark' : ''}>
+                            {getProductStockLabel(product)}
+                          </mark>
+                        </span>
                       </span>
                     </span>
                     <span data-label="Harga" role="cell">{product.price ? formatRupiah(product.price) : 'Gratis'}</span>

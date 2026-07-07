@@ -20813,3 +20813,302 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
     height: 12px !important;
   }
 }
+
+/* Admin catalog cards for classes, digital products, and prompts */
+.admin-catalog-table {
+  overflow: visible;
+}
+
+.admin-catalog-table .admin-catalog-row {
+  overflow: visible;
+}
+
+.admin-catalog-main {
+  align-items: center;
+}
+
+.admin-catalog-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.admin-catalog-thumb {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 164, 0.1)),
+    #f0f6ff;
+}
+
+.admin-catalog-thumb img {
+  display: block;
+}
+
+.admin-catalog-visibility-actions {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+  display: inline-flex;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+.admin-catalog-visibility-actions button {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.admin-catalog-visibility-actions button:hover {
+  color: #1d4ed8;
+  background: #ffffff;
+}
+
+.admin-catalog-visibility-actions button.is-hidden {
+  color: #64748b;
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.admin-catalog-visibility-actions button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-catalog-visibility-actions button span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media (min-width: 921px) {
+  .admin-catalog-table .admin-catalog-thumb {
+    width: 78px;
+    height: 52px;
+    border-radius: 8px;
+  }
+
+  .admin-catalog-table .class-cell {
+    gap: 12px;
+  }
+
+  .admin-catalog-table .payment-identity {
+    align-items: center;
+  }
+}
+
+@media (max-width: 920px) {
+  .admin-catalog-table,
+  .compact-list-table.admin-catalog-table {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  .admin-catalog-table .table-head,
+  .compact-list-table.admin-catalog-table .table-head {
+    display: none !important;
+  }
+
+  .admin-catalog-table .admin-catalog-row,
+  .compact-list-table.admin-catalog-table .admin-catalog-row {
+    position: relative;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-content: start;
+    gap: 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 1px solid rgba(213, 219, 229, 0.92) !important;
+    border-radius: 16px !important;
+    background: #ffffff !important;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  .admin-catalog-table .admin-catalog-main,
+  .compact-list-table.admin-catalog-table .admin-catalog-main {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+
+  .admin-catalog-table .admin-catalog-main::before,
+  .compact-list-table.admin-catalog-table .admin-catalog-main::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  .admin-catalog-table .admin-catalog-thumb,
+  .compact-list-table.admin-catalog-table .admin-catalog-thumb {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16 / 9;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.92) !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+
+  .admin-catalog-table .admin-catalog-thumb > .icon {
+    width: 34px;
+    height: 34px;
+    color: #2563eb;
+  }
+
+  .admin-catalog-table .admin-catalog-visibility-actions {
+    top: 8px;
+    right: 8px;
+  }
+
+  .admin-catalog-table .admin-catalog-visibility-actions button {
+    width: 30px;
+    height: 30px;
+  }
+
+  .admin-catalog-table .admin-catalog-copy,
+  .compact-list-table.admin-catalog-table .admin-catalog-copy {
+    padding: 12px 14px 8px;
+  }
+
+  .admin-catalog-table .admin-catalog-copy strong,
+  .compact-list-table.admin-catalog-table .admin-catalog-copy strong {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    color: var(--color-heading);
+    font-size: 1rem;
+    line-height: 1.28;
+    white-space: normal !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .admin-catalog-table .admin-catalog-copy small,
+  .compact-list-table.admin-catalog-table .admin-catalog-copy small {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    color: var(--color-muted);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .admin-catalog-table .admin-inline-badges {
+    margin-top: 8px;
+  }
+
+  .admin-catalog-table .admin-inline-badges mark {
+    min-height: 22px;
+    padding: 0 8px;
+    font-size: 0.68rem;
+  }
+
+  .admin-catalog-table .admin-catalog-row > [role='cell']:not(.admin-catalog-main):not(.row-actions),
+  .compact-list-table.admin-catalog-table .admin-catalog-row > [role='cell']:not(.admin-catalog-main):not(.row-actions) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 7px 14px !important;
+    color: var(--color-heading) !important;
+    border-top: 1px solid rgba(241, 245, 249, 0.95);
+    font-size: 0.84rem;
+    font-weight: 800;
+  }
+
+  .admin-catalog-table .admin-catalog-row > [role='cell']:not(.admin-catalog-main):not(.row-actions)::before,
+  .compact-list-table.admin-catalog-table .admin-catalog-row > [role='cell']:not(.admin-catalog-main):not(.row-actions)::before {
+    display: block !important;
+    content: attr(data-label) !important;
+    color: var(--color-muted) !important;
+    font-size: 0.68rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .admin-catalog-table .admin-catalog-row > .row-actions,
+  .compact-list-table.admin-catalog-table .admin-catalog-row > .row-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 42px !important;
+    gap: 8px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 12px 14px 14px !important;
+    border-top: 1px solid rgba(241, 245, 249, 0.95);
+  }
+
+  .admin-catalog-table .admin-catalog-row > .row-actions::before,
+  .compact-list-table.admin-catalog-table .admin-catalog-row > .row-actions::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  .admin-catalog-table .row-actions > button,
+  .compact-list-table.admin-catalog-table .row-actions > button {
+    width: 100% !important;
+    min-height: 42px !important;
+    border-radius: 10px !important;
+  }
+
+  .admin-catalog-table .row-action-menu,
+  .compact-list-table.admin-catalog-table .row-action-menu {
+    justify-self: end;
+  }
+
+  .admin-catalog-table .row-action-menu summary,
+  .compact-list-table.admin-catalog-table .row-action-menu summary {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 10px !important;
+  }
+
+  .admin-catalog-table .row-action-menu-panel,
+  .compact-list-table.admin-catalog-table .row-action-menu-panel {
+    right: 0;
+    min-width: 196px;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-catalog-table,
+  .compact-list-table.admin-catalog-table {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px !important;
+  }
+
+  .admin-catalog-table .admin-catalog-row,
+  .compact-list-table.admin-catalog-table .admin-catalog-row {
+    border-radius: 14px !important;
+  }
+
+  .admin-catalog-table .admin-catalog-thumb,
+  .compact-list-table.admin-catalog-table .admin-catalog-thumb {
+    border-radius: 14px 14px 0 0 !important;
+  }
+}
