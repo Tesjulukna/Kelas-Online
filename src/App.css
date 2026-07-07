@@ -20844,6 +20844,8 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
 .admin-catalog-thumb img {
   display: block;
+  object-fit: contain;
+  background: #f8fafc;
 }
 
 .admin-catalog-visibility-actions {
@@ -20966,7 +20968,7 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   .compact-list-table.admin-catalog-table .admin-catalog-thumb {
     width: 100% !important;
     height: auto !important;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 1 / 1;
     border: 0 !important;
     border-bottom: 1px solid rgba(226, 232, 240, 0.92) !important;
     border-radius: 16px 16px 0 0 !important;
@@ -21166,7 +21168,7 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   .compact-list-table.admin-catalog-table .admin-catalog-thumb {
     width: 100% !important;
     height: auto !important;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 1 / 1;
     border: 0 !important;
     border-bottom: 1px solid rgba(226, 232, 240, 0.92) !important;
     border-radius: 16px 16px 0 0 !important;
