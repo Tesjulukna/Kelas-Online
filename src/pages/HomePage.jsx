@@ -622,10 +622,11 @@ function HomePage({
 
   const resolveCount = (value, fallbackCount) => {
     const count = Number(value)
+    const fallbackNum = Number(fallbackCount) || 0
 
     return value === '' || value === null || value === undefined || Number.isNaN(count)
       ? fallbackCount
-      : Math.max(0, Math.round(count))
+      : Math.max(0, Math.round(count) + fallbackNum)
   }
 
   const getProductAccessCount = (productId) =>
