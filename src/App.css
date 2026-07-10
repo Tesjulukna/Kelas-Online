@@ -20814,6 +20814,192 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   }
 }
 
+@media (max-width: 920px) {
+  .member-table.compact-list-table,
+  .payment-table.compact-list-table,
+  .submission-table.compact-list-table:not(.member-submission-table) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  .member-table.compact-list-table > .table-head,
+  .payment-table.compact-list-table > .table-head,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-head {
+    display: none !important;
+  }
+
+  .member-table.compact-list-table > .table-row:not(.table-head),
+  .payment-table.compact-list-table > .table-row:not(.table-head),
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row:not(.table-head) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    padding: 14px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(213, 219, 229, 0.92) !important;
+    border-radius: 14px !important;
+    background: #ffffff !important;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.07) !important;
+  }
+
+  .member-table.compact-list-table > .table-row > [role='cell'],
+  .payment-table.compact-list-table > .table-row > [role='cell'],
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > [role='cell'] {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    color: var(--color-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .member-table.compact-list-table > .table-row > [role='cell']::before,
+  .payment-table.compact-list-table > .table-row > [role='cell']::before,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > [role='cell']::before {
+    content: attr(data-label) !important;
+    display: block !important;
+    flex: 0 0 74px;
+    color: var(--color-muted) !important;
+    font-size: 0.68rem !important;
+    font-weight: 900 !important;
+    line-height: 1.35 !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .member-table.compact-list-table > .table-row > .member-identity,
+  .payment-table.compact-list-table > .table-row > .payment-identity,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > .member-identity {
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  }
+
+  .member-table.compact-list-table > .table-row > .member-identity::before,
+  .payment-table.compact-list-table > .table-row > .payment-identity::before,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > .member-identity::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .member-table.compact-list-table > .table-row > .member-identity,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > .member-identity {
+    display: flex !important;
+    gap: 10px !important;
+  }
+
+  .member-table.compact-list-table > .table-row > .member-identity .sidebar-avatar,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > .member-identity .sidebar-avatar {
+    width: 42px !important;
+    height: 42px !important;
+    flex: 0 0 42px !important;
+  }
+
+  .payment-table.compact-list-table > .table-row > .payment-identity {
+    display: grid !important;
+    gap: 3px !important;
+  }
+
+  .member-table.compact-list-table [data-label='Username'],
+  .member-table.compact-list-table [data-label='Status'],
+  .submission-table.compact-list-table:not(.member-submission-table) [data-label='Tugas'],
+  .submission-table.compact-list-table:not(.member-submission-table) [data-label='Menunggu'],
+  .submission-table.compact-list-table:not(.member-submission-table) [data-label='Terakhir kirim'] {
+    display: none !important;
+  }
+
+  .payment-table.compact-list-table > .table-row > [data-label='Item'],
+  .payment-table.compact-list-table > .table-row > [data-label='Nominal'],
+  .payment-table.compact-list-table > .table-row > [data-label='Status'],
+  .payment-table.compact-list-table > .table-row > [data-label='Waktu'],
+  .member-table.compact-list-table > .table-row > [data-label='Progress'],
+  .member-table.compact-list-table > .table-row > [data-label='Aktivitas'] {
+    padding: 0;
+  }
+
+  .member-table.compact-list-table .member-progress-content,
+  .member-table.compact-list-table .member-activity-content,
+  .payment-table.compact-list-table .payment-member-cell {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .payment-table.compact-list-table .payment-status {
+    margin-left: auto;
+  }
+
+  .member-table.compact-list-table > .table-row > .row-actions,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > .row-actions {
+    display: flex !important;
+    flex-wrap: wrap;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    padding-top: 4px;
+  }
+
+  .member-table.compact-list-table > .table-row > .row-actions::before,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > .row-actions::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  .member-table.compact-list-table > .table-row > .row-actions button,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > .row-actions button {
+    width: auto !important;
+    min-height: 34px !important;
+    padding: 0 12px !important;
+    border-radius: 9px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .member-table.compact-list-table,
+  .payment-table.compact-list-table,
+  .submission-table.compact-list-table:not(.member-submission-table) {
+    gap: 10px !important;
+  }
+
+  .member-table.compact-list-table > .table-row:not(.table-head),
+  .payment-table.compact-list-table > .table-row:not(.table-head),
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row:not(.table-head) {
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .member-table.compact-list-table > .table-row > [role='cell'],
+  .payment-table.compact-list-table > .table-row > [role='cell'],
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > [role='cell'] {
+    gap: 10px !important;
+  }
+
+  .member-table.compact-list-table > .table-row > [role='cell']::before,
+  .payment-table.compact-list-table > .table-row > [role='cell']::before,
+  .submission-table.compact-list-table:not(.member-submission-table) > .table-row > [role='cell']::before {
+    flex-basis: 66px;
+    font-size: 0.64rem !important;
+  }
+
+  .payment-table.compact-list-table > .table-row > [data-label='Item'] {
+    display: grid !important;
+    gap: 4px !important;
+  }
+
+  .payment-table.compact-list-table > .table-row > [data-label='Item']::before {
+    flex-basis: auto;
+  }
+}
+
 /* Admin catalog cards for classes, digital products, and prompts */
 .admin-catalog-table {
   overflow: visible;
