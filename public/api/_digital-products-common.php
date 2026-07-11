@@ -13,6 +13,40 @@ function digital_json($value): array
     return is_array($decoded) ? $decoded : [];
 }
 
+function digital_prompt_items_public($value, string $legacyPrompt = ''): array
+{
+    $items = digital_json($value);
+    $prompts = [];
+
+    foreach (array_slice($items, 0, 200) as $index => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $prompt = clean_text($item['prompt'] ?? '', 40000);
+
+        if ($prompt === '') {
+            continue;
+        }
+
+        $prompts[] = [
+            'id' => clean_text($item['id'] ?? 'product-prompt-' . ($index + 1), 160),
+            'title' => clean_text($item['title'] ?? 'Prompt ' . ($index + 1), 160),
+            'prompt' => $prompt,
+        ];
+    }
+
+    if ($prompts || trim($legacyPrompt) === '') {
+        return $prompts;
+    }
+
+    return [[
+        'id' => 'product-prompt-legacy',
+        'title' => 'Prompt utama',
+        'prompt' => clean_text($legacyPrompt, 40000),
+    ]];
+}
+
 function ensure_digital_product_column(PDO $pdo, string $column, string $definition): void
 {
     $query = $pdo->prepare(
@@ -77,6 +111,7 @@ function ensure_digital_products_schema(PDO $pdo): void
     ensure_digital_product_column($pdo, 'show_on_member', 'TINYINT(1) NOT NULL DEFAULT 1');
     ensure_digital_product_column($pdo, 'highlighted', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'prompt_content', 'LONGTEXT NULL');
+    ensure_digital_product_column($pdo, 'prompt_items', 'LONGTEXT NULL');
     ensure_digital_product_column($pdo, 'prompt_preview', 'LONGTEXT NULL');
     ensure_digital_product_column($pdo, 'prompt_instructions', 'LONGTEXT NULL');
     ensure_digital_product_column($pdo, 'prompt_examples', 'LONGTEXT NULL');
@@ -130,6 +165,7 @@ function digital_product_public(array $row): array
         'showOnMember' => array_key_exists('show_on_member', $row) ? (bool) $row['show_on_member'] : true,
         'highlighted' => !empty($row['highlighted']),
         'promptContent' => $row['prompt_content'] ?? '',
+        'promptItems' => digital_prompt_items_public($row['prompt_items'] ?? '[]', $row['prompt_content'] ?? ''),
         'promptPreview' => $row['prompt_preview'] ?? '',
         'promptInstructions' => $row['prompt_instructions'] ?? '',
         'promptExamples' => $row['prompt_examples'] ?? '',

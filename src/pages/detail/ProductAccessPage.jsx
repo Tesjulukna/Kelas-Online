@@ -66,16 +66,38 @@ function ProductAccessPage({
   const delivery = accessData?.delivery
   const isPrompt = accessProduct?.productType === 'prompt'
   const promptContent = delivery?.promptContent || accessProduct?.promptContent || ''
+  const rawPromptItems = Array.isArray(delivery?.promptItems)
+    ? delivery.promptItems
+    : Array.isArray(accessProduct?.promptItems)
+      ? accessProduct.promptItems
+      : []
+  const promptItems = rawPromptItems
+    .map((item, index) => ({
+      id: item.id || `prompt-access-${index + 1}`,
+      title: item.title || `Prompt ${index + 1}`,
+      prompt: item.prompt || '',
+    }))
+    .filter((item) => item.prompt)
+  const visiblePromptItems = promptItems.length || !promptContent
+    ? promptItems
+    : [{
+        id: 'prompt-access-legacy',
+        title: 'Prompt utama',
+        prompt: promptContent,
+      }]
+  const allPromptText = visiblePromptItems
+    .map((item) => `${item.title}\n${item.prompt}`)
+    .join('\n\n')
   const promptInstructions = delivery?.promptInstructions || accessProduct?.promptInstructions || ''
   const promptExamples = delivery?.promptExamples || accessProduct?.promptExamples || ''
-  const handleCopyPrompt = async () => {
-    if (!promptContent) {
+  const handleCopyPrompt = async (text = allPromptText, label = 'Prompt') => {
+    if (!text) {
       return
     }
 
     try {
-      await navigator.clipboard.writeText(promptContent)
-      setCopyStatus('Prompt berhasil disalin.')
+      await navigator.clipboard.writeText(text)
+      setCopyStatus(`${label} berhasil disalin.`)
     } catch {
       setCopyStatus('Prompt belum bisa disalin otomatis. Blok teks prompt lalu salin manual.')
     }
@@ -132,20 +154,37 @@ function ProductAccessPage({
         {accessData?.paid && accessProduct && (
           <div className="public-access-content">
             <div>
-              <p className="eyebrow">Produk siap diakses</p>
+              <p className="eyebrow">{isPrompt ? 'Prompt siap diakses' : 'Produk siap diakses'}</p>
               <h3>{accessProduct.title}</h3>
               <p>Cek emailmu juga. Kami sudah mengirimkan link akses dan detail {isPrompt ? 'prompt' : 'produk'} ke email pembeli.</p>
             </div>
 
-            {isPrompt && promptContent ? (
+            {isPrompt && visiblePromptItems.length ? (
               <section className="public-detail-section public-access-note prompt-access-box">
                 <p className="eyebrow">Isi prompt</p>
-                <div className="prompt-access-scroll">
-                  <pre>{promptContent}</pre>
+                <div className="prompt-access-list">
+                  {visiblePromptItems.map((promptItem, promptIndex) => (
+                    <article className="prompt-access-item" key={promptItem.id || `prompt-access-item-${promptIndex}`}>
+                      <div className="prompt-access-item-heading">
+                        <h3>{promptItem.title || `Prompt ${promptIndex + 1}`}</h3>
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          onClick={() => handleCopyPrompt(promptItem.prompt, promptItem.title || `Prompt ${promptIndex + 1}`)}
+                        >
+                          <Icon name="copy" />
+                          Salin
+                        </button>
+                      </div>
+                      <div className="prompt-access-scroll">
+                        <pre>{promptItem.prompt}</pre>
+                      </div>
+                    </article>
+                  ))}
                 </div>
-                <button className="btn btn-primary" type="button" onClick={handleCopyPrompt}>
+                <button className="btn btn-primary" type="button" onClick={() => handleCopyPrompt()}>
                   <Icon name="copy" />
-                  Salin Prompt
+                  Salin Semua Prompt
                 </button>
                 {copyStatus && <small>{copyStatus}</small>}
               </section>

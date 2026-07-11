@@ -630,6 +630,28 @@ function cleanPromptItems(value, materialId = 'material') {
     }))
 }
 
+function cleanProductPromptItems(value, promptContent = '') {
+  const source = Array.isArray(value) ? value : []
+  const items = source
+    .filter((item) => item?.title || item?.prompt)
+    .map((item, index) => ({
+      id: cleanText(item.id || `product-prompt-${index + 1}`),
+      title: cleanLongText(item.title || `Prompt ${index + 1}`, 160),
+      prompt: cleanPromptText(item.prompt || ''),
+    }))
+    .filter((item) => item.prompt)
+
+  if (items.length || !String(promptContent || '').trim()) {
+    return items
+  }
+
+  return [{
+    id: 'product-prompt-legacy',
+    title: 'Prompt utama',
+    prompt: cleanPromptText(promptContent),
+  }]
+}
+
 function readSession() {
   if (typeof window === 'undefined') {
     return null
@@ -859,6 +881,7 @@ function cleanDigitalProducts(value) {
       showOnMember: item.showOnMember !== false,
       highlighted: item.highlighted === true,
       promptContent: cleanLongText(item.promptContent || '', 40000),
+      promptItems: cleanProductPromptItems(item.promptItems, item.promptContent || ''),
       promptPreview: cleanLongText(item.promptPreview || '', 2000),
       promptInstructions: cleanLongText(item.promptInstructions || '', 4000),
       promptExamples: cleanLongText(item.promptExamples || '', 8000),

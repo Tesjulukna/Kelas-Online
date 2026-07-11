@@ -440,6 +440,14 @@ function createEmptyPromptItem() {
   }
 }
 
+function createEmptyProductPromptItem() {
+  return {
+    id: `product-prompt-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: '',
+    prompt: '',
+  }
+}
+
 function createEmptyResourceLink() {
   return {
     id: `resource-link-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -532,6 +540,7 @@ function createEmptyDigitalProductForm() {
     showOnMember: true,
     highlighted: false,
     promptContent: '',
+    promptItems: [],
     promptPreview: '',
     promptInstructions: '',
     promptExamples: '',
@@ -546,6 +555,7 @@ function createEmptyPromptProductForm() {
     platformType: 'other',
     fileName: 'Prompt siap copy',
     purchaseButtonLabel: 'Beli Prompt',
+    promptItems: [createEmptyProductPromptItem()],
     promptLicense: 'Personal & commercial use',
   }
 }
@@ -1770,6 +1780,63 @@ function AdminPage({
     }))
   }
 
+  const normalizeProductPromptItems = (items, legacyContent = '') => {
+    const normalized = (Array.isArray(items) ? items : [])
+      .map((item, index) => ({
+        id: item.id || `product-prompt-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`,
+        title: String(item.title || '').trim() || `Prompt ${index + 1}`,
+        prompt: String(item.prompt || '').trim(),
+      }))
+      .filter((item) => item.prompt)
+
+    if (normalized.length || !String(legacyContent || '').trim()) {
+      return normalized
+    }
+
+    return [{
+      id: 'product-prompt-legacy',
+      title: 'Prompt utama',
+      prompt: String(legacyContent || '').trim(),
+    }]
+  }
+
+  const handleProductPromptItemChange = (index, field, value) => {
+    setDigitalProductForm((current) => {
+      const promptItems = Array.isArray(current.promptItems) && current.promptItems.length
+        ? current.promptItems
+        : [createEmptyProductPromptItem()]
+
+      return {
+        ...current,
+        promptItems: promptItems.map((item, itemIndex) => (
+          itemIndex === index ? { ...item, [field]: value } : item
+        )),
+      }
+    })
+  }
+
+  const addProductPromptItem = () => {
+    setDigitalProductForm((current) => ({
+      ...current,
+      promptItems: [
+        ...(Array.isArray(current.promptItems) ? current.promptItems : []),
+        createEmptyProductPromptItem(),
+      ],
+    }))
+  }
+
+  const removeProductPromptItem = (index) => {
+    setDigitalProductForm((current) => {
+      const promptItems = (Array.isArray(current.promptItems) ? current.promptItems : [])
+        .filter((_, itemIndex) => itemIndex !== index)
+
+      return {
+        ...current,
+        promptItems: promptItems.length ? promptItems : [createEmptyProductPromptItem()],
+      }
+    })
+  }
+
   const insertClassDescriptionHtml = (html) => {
     const textarea = document.querySelector('[data-class-description-editor="true"]')
     const description = classForm.description || ''
@@ -2104,6 +2171,11 @@ function AdminPage({
     }
 
     if (payload.productType === 'prompt') {
+      const promptItems = normalizeProductPromptItems(digitalProductForm.promptItems, digitalProductForm.promptContent)
+      payload.promptItems = promptItems
+      payload.promptContent = promptItems
+        .map((item) => `${item.title}\n${item.prompt}`)
+        .join('\n\n')
       payload.promptPreview = ''
       payload.promptExamples = ''
     }
@@ -2113,8 +2185,8 @@ function AdminPage({
       return
     }
 
-    if (payload.productType === 'prompt' && !String(payload.promptContent || '').trim()) {
-      onNotify('Isi prompt wajib diisi sebelum prompt dijual.')
+    if (payload.productType === 'prompt' && !payload.promptItems.length) {
+      onNotify('Minimal satu isi prompt wajib diisi sebelum prompt dijual.')
       return
     }
 
@@ -2183,6 +2255,7 @@ function AdminPage({
       showOnMember: product.showOnMember !== false,
       highlighted: product.highlighted === true,
       promptContent: product.promptContent || '',
+      promptItems: normalizeProductPromptItems(product.promptItems, product.promptContent),
       promptPreview: product.promptPreview || '',
       promptInstructions: product.promptInstructions || '',
       promptExamples: product.promptExamples || '',
@@ -4325,18 +4398,54 @@ function AdminPage({
 
                   {isPromptBuilder && (
                     <div className="prompt-builder-fields">
-                      <label>
-                        Isi prompt utama
-                        <textarea
-                          className="prompt-content-editor"
-                          name="promptContent"
-                          value={digitalProductForm.promptContent}
-                          onChange={handleDigitalProductFormChange}
-                          placeholder="Tulis prompt lengkap yang akan muncul setelah pembayaran berhasil."
-                          rows={12}
-                          required={isPromptBuilder}
-                        />
-                      </label>
+                      <div className="prompt-items-editor">
+                        <div className="digital-builder-card-heading compact">
+                          <h3>Isi prompt</h3>
+                          <small>Tambahkan beberapa prompt dalam satu postingan. Pembeli akan melihat semuanya di halaman akses.</small>
+                        </div>
+                        {(Array.isArray(digitalProductForm.promptItems) && digitalProductForm.promptItems.length
+                          ? digitalProductForm.promptItems
+                          : [createEmptyProductPromptItem()]
+                        ).map((promptItem, promptIndex) => (
+                          <article className="prompt-item-editor" key={promptItem.id || `prompt-item-${promptIndex}`}>
+                            <div className="prompt-item-editor-heading">
+                              <strong>Prompt {promptIndex + 1}</strong>
+                              <button
+                                className="icon-button danger"
+                                type="button"
+                                onClick={() => removeProductPromptItem(promptIndex)}
+                                aria-label={`Hapus prompt ${promptIndex + 1}`}
+                                title="Hapus prompt"
+                              >
+                                <Icon name="trash" />
+                              </button>
+                            </div>
+                            <label>
+                              Judul prompt
+                              <input
+                                type="text"
+                                value={promptItem.title || ''}
+                                onChange={(event) => handleProductPromptItemChange(promptIndex, 'title', event.target.value)}
+                                placeholder={`Contoh: Prompt caption Instagram ${promptIndex + 1}`}
+                              />
+                            </label>
+                            <label>
+                              Isi prompt
+                              <textarea
+                                className="prompt-content-editor"
+                                value={promptItem.prompt || ''}
+                                onChange={(event) => handleProductPromptItemChange(promptIndex, 'prompt', event.target.value)}
+                                placeholder="Tulis isi prompt lengkap yang akan muncul setelah pembayaran berhasil."
+                                rows={8}
+                              />
+                            </label>
+                          </article>
+                        ))}
+                        <button className="btn btn-secondary prompt-add-button" type="button" onClick={addProductPromptItem}>
+                          <Icon name="plus" />
+                          Tambah prompt lagi
+                        </button>
+                      </div>
                       <label>
                         Cara pakai
                         <textarea

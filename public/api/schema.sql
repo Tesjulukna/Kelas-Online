@@ -297,6 +297,7 @@ CREATE TABLE IF NOT EXISTS digital_products (
   show_on_member TINYINT(1) NOT NULL DEFAULT 1,
   highlighted TINYINT(1) NOT NULL DEFAULT 0,
   prompt_content LONGTEXT,
+  prompt_items LONGTEXT,
   prompt_preview LONGTEXT,
   prompt_instructions LONGTEXT,
   prompt_examples LONGTEXT,

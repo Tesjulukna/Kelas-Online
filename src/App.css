@@ -1071,7 +1071,8 @@
 .app-shell.role-member.public-theme-dark .review-modal-footer,
 .app-shell.role-member.public-theme-dark .avatar-upload-preview-container,
 .app-shell.role-member.public-theme-dark .prompt-preview-card,
-.app-shell.role-member.public-theme-dark .prompt-access-box {
+.app-shell.role-member.public-theme-dark .prompt-access-box,
+.app-shell.role-member.public-theme-dark .prompt-access-item {
   color: var(--color-text);
   border-color: rgba(148, 163, 184, 0.22);
   background: rgba(15, 25, 43, 0.86);
@@ -1162,6 +1163,7 @@
 .app-shell.role-member.public-theme-dark .review-modal-header h3,
 .app-shell.role-member.public-theme-dark .prompt-preview-card strong,
 .app-shell.role-member.public-theme-dark .prompt-access-box strong,
+.app-shell.role-member.public-theme-dark .prompt-access-item h3,
 .app-shell.role-member.public-theme-dark .ticket-header strong {
   color: var(--color-heading);
 }
@@ -18496,6 +18498,55 @@ img {
   min-width: 0;
 }
 
+.prompt-items-editor,
+.prompt-access-list {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.prompt-item-editor,
+.prompt-access-item {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fbfcfd;
+}
+
+.prompt-item-editor-heading,
+.prompt-access-item-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.prompt-item-editor-heading strong,
+.prompt-access-item-heading h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.prompt-item-editor-heading .icon-button {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+}
+
+.prompt-item-editor-heading .icon-button.danger {
+  color: #dc2626;
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.prompt-add-button {
+  justify-self: start;
+}
+
 .prompt-content-editor {
   min-height: 240px;
   resize: vertical;
@@ -18503,9 +18554,32 @@ img {
   line-height: 1.65;
 }
 
+.prompt-access-item .prompt-access-scroll {
+  max-height: 280px;
+}
+
+.prompt-access-item .btn {
+  flex: 0 0 auto;
+}
+
 @media (max-width: 720px) {
   .prompt-content-editor {
     min-height: 220px;
+  }
+
+  .prompt-item-editor,
+  .prompt-access-item {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  .prompt-access-item-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .prompt-access-item-heading .btn {
+    width: 100%;
   }
 }
 
