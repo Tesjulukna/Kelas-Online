@@ -188,6 +188,27 @@ function getInitialDetailState(initialDetail) {
   }
 }
 
+function getCompactSlideIndicators(total, activeIndex, maxVisible = 7) {
+  if (total <= 0) {
+    return []
+  }
+
+  if (total <= maxVisible) {
+    return Array.from({ length: total }, (_, index) => index)
+  }
+
+  const sideItems = Math.floor(maxVisible / 2)
+  let start = Math.max(0, activeIndex - sideItems)
+  let end = start + maxVisible
+
+  if (end > total) {
+    end = total
+    start = Math.max(0, end - maxVisible)
+  }
+
+  return Array.from({ length: end - start }, (_, index) => start + index)
+}
+
 function HomePage({
   onPublicClassCheckout = async () => {},
   onPublicProductCheckout = async () => {},
@@ -706,8 +727,14 @@ function HomePage({
   const selectedClass = detailClasses.find((course) => course.id === selectedClassId || course.publicCode === selectedClassId)
   const checkoutClass = detailClasses.find((course) => course.id === checkoutClassId || course.publicCode === checkoutClassId)
   const approvedTestimonials = testimonials.filter((testimonial) => testimonial.status === 'approved')
+  const activeTestimonialIndex = approvedTestimonials.length
+    ? testimonialIndex % approvedTestimonials.length
+    : 0
+  const testimonialIndicatorIndexes = getCompactSlideIndicators(approvedTestimonials.length, activeTestimonialIndex)
+  const firstTestimonialIndicatorIndex = testimonialIndicatorIndexes[0] ?? 0
+  const lastTestimonialIndicatorIndex = testimonialIndicatorIndexes[testimonialIndicatorIndexes.length - 1] ?? 0
   const activeTestimonial = approvedTestimonials.length
-    ? approvedTestimonials[testimonialIndex % approvedTestimonials.length]
+    ? approvedTestimonials[activeTestimonialIndex]
     : null
   const selectedProduct = detailProducts.find((product) => product.id === selectedProductId || product.publicCode === selectedProductId)
   const checkoutProduct = detailProducts.find((product) => product.id === checkoutProductId || product.publicCode === checkoutProductId)
@@ -1720,16 +1747,32 @@ function HomePage({
                 <small>{activeTestimonial.classTitle}</small>
               </div>
               <p>{activeTestimonial.message}</p>
-              <div className="testimonial-dots" aria-label="Navigasi testimoni">
-                {approvedTestimonials.map((testimonial, index) => (
-                  <button
-                    className={testimonial.id === activeTestimonial.id ? 'active' : ''}
-                    type="button"
-                    key={testimonial.id}
-                    aria-label={`Lihat testimoni ${index + 1}`}
-                    onClick={() => setTestimonialIndex(index)}
-                  />
-                ))}
+              <div className="testimonial-slider-controls">
+                <span className="testimonial-slide-count">
+                  {activeTestimonialIndex + 1} / {approvedTestimonials.length}
+                </span>
+                <div className="testimonial-dots" aria-label="Navigasi testimoni">
+                  {firstTestimonialIndicatorIndex > 0 && (
+                    <span className="testimonial-dot-ellipsis" aria-hidden="true">...</span>
+                  )}
+                  {testimonialIndicatorIndexes.map((index) => {
+                    const testimonial = approvedTestimonials[index]
+
+                    return (
+                      <button
+                        className={index === activeTestimonialIndex ? 'active' : ''}
+                        type="button"
+                        key={testimonial?.id || index}
+                        aria-current={index === activeTestimonialIndex ? 'true' : undefined}
+                        aria-label={`Lihat testimoni ${index + 1}`}
+                        onClick={() => setTestimonialIndex(index)}
+                      />
+                    )
+                  })}
+                  {lastTestimonialIndicatorIndex < approvedTestimonials.length - 1 && (
+                    <span className="testimonial-dot-ellipsis" aria-hidden="true">...</span>
+                  )}
+                </div>
               </div>
             </div>
           </article>
