@@ -8790,7 +8790,14 @@ img {
   box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
   animation: testimonialFade 0.55s ease both;
   box-sizing: border-box;
+  cursor: grab;
   overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.testimonial-comment-card:active {
+  cursor: grabbing;
 }
 
 .testimonial-avatar {
@@ -8846,6 +8853,7 @@ img {
   line-height: 1.7;
   overflow: auto;
   overflow-wrap: anywhere;
+  user-select: text;
 }
 
 .testimonial-slider-controls {
@@ -8890,6 +8898,7 @@ img {
   border: 0;
   border-radius: 999px;
   background: #cbd5e1;
+  cursor: pointer;
 }
 
 .testimonial-dots button.active {

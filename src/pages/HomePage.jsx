@@ -8,6 +8,10 @@ import DetailProduk from './detail/DetailProduk'
 import ProductAccessPage from './detail/ProductAccessPage'
 import { getCheckoutEmailWarning } from '../utils/emailValidation'
 
+const TESTIMONIAL_AUTO_DELAY_MS = 5200
+const TESTIMONIAL_MANUAL_PAUSE_MS = 20000
+const TESTIMONIAL_SWIPE_THRESHOLD_PX = 45
+
 function CatalogCardMedia({ item }) {
   const [isSquare, setIsSquare] = useState(false)
 
@@ -261,6 +265,13 @@ function HomePage({
   const [showNotification, setShowNotification] = useState(false)
   const notificationSettingsSignature = JSON.stringify(websiteSettings.homepageNotifications || {})
 
+  const testimonialAutoPauseUntilRef = useRef(0)
+  const testimonialPointerRef = useRef({
+    isDragging: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+  })
   const classesRef = useRef(classes)
   const productsRef = useRef(digitalProducts)
   const membersRef = useRef(members)
@@ -736,6 +747,77 @@ function HomePage({
   const activeTestimonial = approvedTestimonials.length
     ? approvedTestimonials[activeTestimonialIndex]
     : null
+  const pauseTestimonialAutoplay = () => {
+    testimonialAutoPauseUntilRef.current = Date.now() + TESTIMONIAL_MANUAL_PAUSE_MS
+  }
+  const moveTestimonial = (direction) => {
+    if (approvedTestimonials.length <= 1) {
+      return
+    }
+
+    pauseTestimonialAutoplay()
+    setTestimonialIndex((current) => {
+      const total = approvedTestimonials.length
+
+      return (current + direction + total) % total
+    })
+  }
+  const handleTestimonialPointerDown = (event) => {
+    if (approvedTestimonials.length <= 1 || (event.pointerType === 'mouse' && event.button !== 0)) {
+      return
+    }
+
+    testimonialPointerRef.current = {
+      isDragging: true,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    }
+
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+  const handleTestimonialPointerEnd = (event) => {
+    const dragState = testimonialPointerRef.current
+
+    if (!dragState.isDragging || dragState.pointerId !== event.pointerId) {
+      return
+    }
+
+    const deltaX = event.clientX - dragState.startX
+    const deltaY = event.clientY - dragState.startY
+    const isHorizontalSwipe =
+      Math.abs(deltaX) >= TESTIMONIAL_SWIPE_THRESHOLD_PX &&
+      Math.abs(deltaX) > Math.abs(deltaY) * 1.15
+
+    testimonialPointerRef.current = {
+      isDragging: false,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+    }
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+
+    if (isHorizontalSwipe) {
+      moveTestimonial(deltaX < 0 ? 1 : -1)
+    }
+  }
+  const handleTestimonialPointerCancel = (event) => {
+    const dragState = testimonialPointerRef.current
+
+    if (dragState.pointerId === event.pointerId) {
+      testimonialPointerRef.current = {
+        isDragging: false,
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+      }
+    }
+  }
+  const handleTestimonialIndicatorClick = (index) => {
+    pauseTestimonialAutoplay()
+    setTestimonialIndex(index)
+  }
   const selectedProduct = detailProducts.find((product) => product.id === selectedProductId || product.publicCode === selectedProductId)
   const checkoutProduct = detailProducts.find((product) => product.id === checkoutProductId || product.publicCode === checkoutProductId)
   const activeCheckoutProduct = checkoutProduct || selectedProduct
@@ -902,8 +984,12 @@ function HomePage({
     }
 
     const timer = window.setInterval(() => {
+      if (Date.now() < testimonialAutoPauseUntilRef.current) {
+        return
+      }
+
       setTestimonialIndex((current) => (current + 1) % approvedTestimonials.length)
-    }, 5200)
+    }, TESTIMONIAL_AUTO_DELAY_MS)
 
     return () => window.clearInterval(timer)
   }, [approvedTestimonials.length])
@@ -1733,7 +1819,13 @@ function HomePage({
             <p className="eyebrow">Testimoni peserta</p>
             <h2>Cerita setelah menyelesaikan kelas</h2>
           </div>
-          <article className="testimonial-comment-card" key={activeTestimonial.id}>
+          <article
+            className="testimonial-comment-card"
+            key={activeTestimonial.id}
+            onPointerCancel={handleTestimonialPointerCancel}
+            onPointerDown={handleTestimonialPointerDown}
+            onPointerUp={handleTestimonialPointerEnd}
+          >
             <span className="testimonial-avatar" aria-hidden="true">
               {activeTestimonial.memberAvatar ? (
                 <img src={activeTestimonial.memberAvatar} alt="" />
@@ -1765,7 +1857,7 @@ function HomePage({
                         key={testimonial?.id || index}
                         aria-current={index === activeTestimonialIndex ? 'true' : undefined}
                         aria-label={`Lihat testimoni ${index + 1}`}
-                        onClick={() => setTestimonialIndex(index)}
+                        onClick={() => handleTestimonialIndicatorClick(index)}
                       />
                     )
                   })}
