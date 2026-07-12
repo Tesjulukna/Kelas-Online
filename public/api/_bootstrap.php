@@ -456,6 +456,21 @@ function clean_asset_url($value, int $maxLength = 2000): string
     return in_array($scheme, ['http', 'https'], true) ? $url : '';
 }
 
+function clean_website_link_url($value, int $maxLength = 1200): string
+{
+    $url = clean_text($value, $maxLength);
+
+    if ($url === '') {
+        return '';
+    }
+
+    if (strpos($url, '#') === 0) {
+        return $url;
+    }
+
+    return clean_asset_url($url, $maxLength);
+}
+
 function default_website_settings(): array
 {
     return [
@@ -504,7 +519,30 @@ function default_website_settings(): array
         ],
         'memberAbout' => [
             'menuLabel' => 'Tentang',
-            'title' => 'Tentang IbnuCreative',
+            'eyebrow' => 'Profil Ibnu Creative',
+            'title' => 'PT Ibnu Creative membangun ekosistem belajar digital yang praktis dan relevan.',
+            'description' => 'Kami menggabungkan kelas online, produk digital, prompt siap pakai, dan pendampingan mentor agar peserta bisa belajar lebih terarah, praktik lebih cepat, dan membangun aset digital yang bernilai.',
+            'heroImage' => '',
+            'companyName' => 'PT Ibnu Creative',
+            'companySubtitle' => 'Perusahaan kreatif digital dan edukasi online.',
+            'companyDescription' => 'PT Ibnu Creative berfokus pada pengembangan pembelajaran digital, strategi konten, desain, automasi kreatif, dan produk edukasi yang mudah diterapkan oleh pelajar, kreator, UMKM, dan profesional.',
+            'companyLegal' => 'Berbasis profesional, berorientasi praktik, dan dikembangkan untuk kebutuhan industri kreatif digital.',
+            'websiteName' => 'IbnuCreative Academy',
+            'websiteDescription' => 'Website ini menjadi pusat belajar member untuk mengakses kelas, materi, tugas, sertifikat, produk digital, prompt, dan diskusi kelas dalam satu dashboard yang rapi.',
+            'websiteHighlights' => [
+                'Kelas online berbasis praktik',
+                'Materi, tugas, diskusi, dan sertifikat',
+                'Produk digital dan prompt siap digunakan',
+            ],
+            'mentorName' => 'Ramdialta Ibnu Sajara',
+            'mentorRole' => 'Mentor konten kreatif dan pembelajaran digital',
+            'mentorCertification' => 'Mentor bersertifikasi BNSP',
+            'mentorDescription' => 'Mentor mendampingi peserta dengan pendekatan praktik, contoh nyata, dan arahan bertahap agar pembelajaran terasa jelas, terukur, dan mudah diterapkan.',
+            'mentorImage' => '',
+            'ctaTitle' => 'Siap belajar lebih terarah?',
+            'ctaDescription' => 'Buka kelas yang sudah kamu ikuti, lanjutkan progres belajar, atau gunakan produk digital yang sudah tersedia di akun member.',
+            'ctaButtonLabel' => 'Lihat Kelas Saya',
+            'ctaUrl' => '#my-courses',
             'html' => '',
         ],
         'paymentMethods' => [
@@ -765,6 +803,23 @@ function clean_website_settings($value): array
         ];
     }
 
+    $memberAboutHighlights = [];
+    $sourceMemberAboutHighlights = is_array($memberAbout['websiteHighlights'] ?? null)
+        ? $memberAbout['websiteHighlights']
+        : $defaults['memberAbout']['websiteHighlights'];
+
+    foreach (array_slice($sourceMemberAboutHighlights, 0, 6) as $highlight) {
+        $cleanHighlight = clean_text($highlight, 120);
+
+        if ($cleanHighlight !== '') {
+            $memberAboutHighlights[] = $cleanHighlight;
+        }
+    }
+
+    if (!$memberAboutHighlights) {
+        $memberAboutHighlights = $defaults['memberAbout']['websiteHighlights'];
+    }
+
     $socialLinks = [];
     $sourceSocialLinks = is_array($footer['socialLinks'] ?? null)
         ? $footer['socialLinks']
@@ -836,7 +891,26 @@ function clean_website_settings($value): array
         'homepageNotifications' => clean_homepage_notifications($source['homepageNotifications'] ?? []),
         'memberAbout' => [
             'menuLabel' => clean_text($memberAbout['menuLabel'] ?? $defaults['memberAbout']['menuLabel'], 40),
-            'title' => clean_text($memberAbout['title'] ?? $defaults['memberAbout']['title'], 100),
+            'eyebrow' => clean_text($memberAbout['eyebrow'] ?? $defaults['memberAbout']['eyebrow'], 80),
+            'title' => clean_text($memberAbout['title'] ?? $defaults['memberAbout']['title'], 180),
+            'description' => clean_text($memberAbout['description'] ?? $defaults['memberAbout']['description'], 520),
+            'heroImage' => clean_asset_url($memberAbout['heroImage'] ?? ''),
+            'companyName' => clean_text($memberAbout['companyName'] ?? $defaults['memberAbout']['companyName'], 100),
+            'companySubtitle' => clean_text($memberAbout['companySubtitle'] ?? $defaults['memberAbout']['companySubtitle'], 160),
+            'companyDescription' => clean_text($memberAbout['companyDescription'] ?? $defaults['memberAbout']['companyDescription'], 900),
+            'companyLegal' => clean_text($memberAbout['companyLegal'] ?? $defaults['memberAbout']['companyLegal'], 320),
+            'websiteName' => clean_text($memberAbout['websiteName'] ?? $defaults['memberAbout']['websiteName'], 100),
+            'websiteDescription' => clean_text($memberAbout['websiteDescription'] ?? $defaults['memberAbout']['websiteDescription'], 900),
+            'websiteHighlights' => $memberAboutHighlights,
+            'mentorName' => clean_text($memberAbout['mentorName'] ?? $defaults['memberAbout']['mentorName'], 100),
+            'mentorRole' => clean_text($memberAbout['mentorRole'] ?? $defaults['memberAbout']['mentorRole'], 140),
+            'mentorCertification' => clean_text($memberAbout['mentorCertification'] ?? $defaults['memberAbout']['mentorCertification'], 140),
+            'mentorDescription' => clean_text($memberAbout['mentorDescription'] ?? $defaults['memberAbout']['mentorDescription'], 900),
+            'mentorImage' => clean_asset_url($memberAbout['mentorImage'] ?? ''),
+            'ctaTitle' => clean_text($memberAbout['ctaTitle'] ?? $defaults['memberAbout']['ctaTitle'], 140),
+            'ctaDescription' => clean_text($memberAbout['ctaDescription'] ?? $defaults['memberAbout']['ctaDescription'], 360),
+            'ctaButtonLabel' => clean_text($memberAbout['ctaButtonLabel'] ?? $defaults['memberAbout']['ctaButtonLabel'], 60),
+            'ctaUrl' => clean_website_link_url($memberAbout['ctaUrl'] ?? $defaults['memberAbout']['ctaUrl']),
             'html' => clean_website_html_setting($memberAbout['html'] ?? $defaults['memberAbout']['html']),
         ],
         'paymentMethods' => clean_payment_methods($source['paymentMethods'] ?? [], $defaults['paymentMethods']),

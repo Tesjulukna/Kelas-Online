@@ -257,144 +257,112 @@ function getProtectedVideoUrl(material, sessionToken = '') {
   return `/api/video?${params.toString()}`
 }
 
-const memberAboutFrameStyle = `<style>
-  html { scroll-behavior: smooth; }
-  img, video, iframe { max-width: 100%; }
-  * { box-sizing: border-box; }
-</style>`
+function MemberAboutLandingPage({ about, brandName, brandLogo, brandIcon, onCtaClick }) {
+  const highlights = Array.isArray(about.websiteHighlights)
+    ? about.websiteHighlights.filter(Boolean)
+    : []
 
-function stripExecutableMemberAboutHtml(value) {
-  const cleanHtml = String(value || '')
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<base\b[^>]*>/gi, '')
-    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
-    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
-    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
-
-  if (typeof document === 'undefined') {
-    return cleanHtml
-  }
-
-  const template = document.createElement('template')
-  template.innerHTML = cleanHtml
-  template.content.querySelectorAll('a[href^="#"]').forEach((link) => {
-    link.removeAttribute('target')
-    link.removeAttribute('rel')
-  })
-
-  return template.innerHTML
-}
-
-function enhanceMemberAboutSrcDoc(value) {
-  let content = stripExecutableMemberAboutHtml(value)
-
-  if (/<head[\s>]/i.test(content)) {
-    content = content.replace(/<head([^>]*)>/i, `<head$1>${memberAboutFrameStyle}`)
-  }
-
-  return content
-}
-
-function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
-  const trimmedHtml = String(html || '').trim()
-  const safeTitle = String(title || 'Tentang')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-  const content = trimmedHtml || `
-    <section style="min-height:100vh;display:grid;place-items:center;padding:48px 20px;background:#f8fafc;color:#0f172a;font-family:Inter,Arial,sans-serif;text-align:center">
-      <div style="max-width:680px">
-        <p style="margin:0 0 10px;color:#2563eb;font-weight:800;letter-spacing:.08em;text-transform:uppercase">Tentang</p>
-        <h1 style="margin:0 0 14px;font-size:clamp(32px,7vw,64px);line-height:1.05">${safeTitle}</h1>
-        <p style="margin:0;color:#64748b;font-size:18px;line-height:1.7">Halaman ini belum diatur admin. Konten HTML bisa ditambahkan dari menu Pengaturan Website.</p>
+  return (
+    <section className="member-about-page">
+      <div className="member-about-hero">
+        <div className="member-about-hero-copy">
+          <span className="member-about-kicker">{about.eyebrow || 'Profil Ibnu Creative'}</span>
+          <h1>{about.title}</h1>
+          <p>{about.description}</p>
+          <div className="member-about-hero-actions">
+            <button className="btn btn-primary" type="button" onClick={onCtaClick}>
+              {about.ctaButtonLabel || 'Lihat Kelas Saya'}
+              <Icon name="arrowRight" />
+            </button>
+            <span>
+              <Icon name="shield" />
+              Pembelajaran digital profesional
+            </span>
+          </div>
+        </div>
+        <div className="member-about-hero-card" aria-label="Profil brand">
+          <div className="member-about-brand-mark">
+            {about.heroImage ? (
+              <img src={about.heroImage} alt={about.companyName || brandName} />
+            ) : brandLogo ? (
+              <img src={brandLogo} alt={brandName} />
+            ) : (
+              <Icon name={brandIcon || 'spark'} />
+            )}
+          </div>
+          <div>
+            <small>Company Profile</small>
+            <strong>{about.companyName}</strong>
+            <p>{about.companySubtitle}</p>
+          </div>
+        </div>
       </div>
+
+      <div className="member-about-grid">
+        <article className="member-about-profile-card is-company">
+          <span className="member-about-card-icon">
+            <Icon name="shield" />
+          </span>
+          <p className="eyebrow">Profil PT</p>
+          <h2>{about.companyName}</h2>
+          <h3>{about.companySubtitle}</h3>
+          <p>{about.companyDescription}</p>
+          {about.companyLegal && <small>{about.companyLegal}</small>}
+        </article>
+
+        <article className="member-about-profile-card">
+          <span className="member-about-card-icon">
+            <Icon name="layoutDashboard" />
+          </span>
+          <p className="eyebrow">Profil Website</p>
+          <h2>{about.websiteName}</h2>
+          <p>{about.websiteDescription}</p>
+          {highlights.length > 0 && (
+            <ul className="member-about-highlight-list">
+              {highlights.map((item) => (
+                <li key={item}>
+                  <Icon name="checkCircle" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+      </div>
+
+      <article className="member-about-mentor">
+        <div className="member-about-mentor-photo">
+          {about.mentorImage ? (
+            <img src={about.mentorImage} alt={about.mentorName} />
+          ) : (
+            <Icon name="certificate" />
+          )}
+        </div>
+        <div>
+          <p className="eyebrow">Profil Mentor</p>
+          <h2>{about.mentorName}</h2>
+          <h3>{about.mentorRole}</h3>
+          <span className="member-about-bnsp-badge">
+            <Icon name="certificate" />
+            {about.mentorCertification || 'Mentor bersertifikasi BNSP'}
+          </span>
+          <p>{about.mentorDescription}</p>
+        </div>
+      </article>
+
+      <section className="member-about-cta">
+        <div>
+          <p className="eyebrow">Mulai dari dashboard member</p>
+          <h2>{about.ctaTitle}</h2>
+          <p>{about.ctaDescription}</p>
+        </div>
+        <button className="btn btn-primary" type="button" onClick={onCtaClick}>
+          {about.ctaButtonLabel || 'Lihat Kelas Saya'}
+          <Icon name="arrowRight" />
+        </button>
+      </section>
     </section>
-  `
-
-  if (/<html[\s>]/i.test(content) || /<!doctype/i.test(content)) {
-    return enhanceMemberAboutSrcDoc(content)
-  }
-
-  return `<!doctype html>
-<html lang="id">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${safeTitle}</title>
-    <style>
-      html { scroll-behavior: smooth; }
-      html, body { margin: 0; min-height: 100%; }
-      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
-      * { box-sizing: border-box; }
-      img, video, iframe { max-width: 100%; }
-    </style>
-  </head>
-  <body>${stripExecutableMemberAboutHtml(content)}</body>
-</html>`
-}
-
-function handleMemberAboutFrameLoad(event) {
-  const frame = event.currentTarget
-  const frameDocument = frame?.contentDocument
-
-  if (!frameDocument) {
-    return
-  }
-
-  const normalizeInternalAnchors = () => {
-    frameDocument.querySelectorAll('a[href^="#"]').forEach((link) => {
-      link.removeAttribute('target')
-      link.removeAttribute('rel')
-    })
-  }
-
-  const scrollToHash = (hash) => {
-    if (!hash || hash.length < 2 || hash === '#') {
-      return
-    }
-
-    let targetId = hash.slice(1)
-
-    try {
-      targetId = decodeURIComponent(targetId)
-    } catch {
-      targetId = hash.slice(1)
-    }
-
-    const namedTargets = frameDocument.getElementsByName
-      ? frameDocument.getElementsByName(targetId)
-      : []
-    const target = frameDocument.getElementById(targetId) || namedTargets[0]
-
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
-
-  const handleInternalAnchorClick = (clickEvent) => {
-    const clickedElement = clickEvent.target && clickEvent.target.nodeType === 1
-      ? clickEvent.target
-      : clickEvent.target?.parentElement
-    const link = clickedElement?.closest?.('a[href^="#"]')
-
-    if (!link) {
-      return
-    }
-
-    clickEvent.preventDefault()
-    clickEvent.stopPropagation()
-    scrollToHash(link.getAttribute('href') || '')
-  }
-
-  normalizeInternalAnchors()
-  if (frame.__ibnuAboutAnchorHandler) {
-    frameDocument.removeEventListener('click', frame.__ibnuAboutAnchorHandler, true)
-    frameDocument.removeEventListener('auxclick', frame.__ibnuAboutAnchorHandler, true)
-  }
-  frame.__ibnuAboutAnchorHandler = handleInternalAnchorClick
-  frameDocument.addEventListener('click', handleInternalAnchorClick, true)
-  frameDocument.addEventListener('auxclick', handleInternalAnchorClick, true)
+  )
 }
 
 function formatRupiah(value) {
@@ -1410,6 +1378,40 @@ function MemberPage({
 
     onMenuChange(menuId)
   }, [onMenuChange, userId])
+
+  const handleMemberAboutCtaClick = useCallback(() => {
+    const targetUrl = safeWebsiteSettings.memberAbout.ctaUrl || '#my-courses'
+    const menuMap = {
+      '#my-courses': 'my-courses',
+      '#available-courses': 'available-courses',
+      '#digital-products': 'digital-products',
+      '#prompts': 'prompts',
+      '#certificates': 'certificates',
+      '#support': 'support',
+      '#testimonials': 'testimonials',
+    }
+
+    if (menuMap[targetUrl]) {
+      handleDashboardMenuChange(menuMap[targetUrl])
+      window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0)
+      return
+    }
+
+    try {
+      const url = new URL(targetUrl, window.location.origin)
+      const targetMenu = url.searchParams.get('menu')
+
+      if (targetMenu) {
+        handleDashboardMenuChange(targetMenu)
+        window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0)
+        return
+      }
+    } catch {
+      // Fall through to direct navigation.
+    }
+
+    window.location.href = targetUrl
+  }, [handleDashboardMenuChange, safeWebsiteSettings.memberAbout.ctaUrl])
 
   const handleOpenCertificateTestimonialForm = useCallback(() => {
     const targetCourseId = certificateTestimonialPrompt?.courseId || ''
@@ -4137,19 +4139,13 @@ function MemberPage({
       )}
 
       {activeMenu === 'about' && (
-        <section className="member-about-page">
-          <div className="member-about-frame-wrap">
-            <iframe
-              title={safeWebsiteSettings.memberAbout.title || 'Tentang member'}
-              onLoad={handleMemberAboutFrameLoad}
-              srcDoc={buildMemberAboutSrcDoc(
-                safeWebsiteSettings.memberAbout.html,
-                safeWebsiteSettings.memberAbout.title || 'Tentang',
-              )}
-              sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-            />
-          </div>
-        </section>
+        <MemberAboutLandingPage
+          about={safeWebsiteSettings.memberAbout}
+          brandName={safeWebsiteSettings.siteName}
+          brandLogo={safeWebsiteSettings.brandLogo}
+          brandIcon={safeWebsiteSettings.brandIcon}
+          onCtaClick={handleMemberAboutCtaClick}
+        />
       )}
 
       {certificateTestimonialPrompt && (

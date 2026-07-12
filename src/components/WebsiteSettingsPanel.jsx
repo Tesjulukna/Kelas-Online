@@ -180,122 +180,6 @@ function createCustomActivityForm(itemValue = '') {
   }
 }
 
-const memberAboutFrameStyle = `<style>
-  html { scroll-behavior: smooth; }
-  img, video, iframe { max-width: 100%; }
-  * { box-sizing: border-box; }
-</style>`
-
-const memberAboutAnchorScript = `<script>
-(() => {
-  document.addEventListener('click', (event) => {
-    const clickedElement = event.target && event.target.nodeType === 1
-      ? event.target
-      : event.target?.parentElement
-    const link = clickedElement?.closest?.('a[href^="#"]')
-
-    if (!link) {
-      return
-    }
-
-    const hash = link.getAttribute('href') || ''
-
-    if (hash.length < 2 || hash === '#') {
-      return
-    }
-
-    let targetId = hash.slice(1)
-
-    try {
-      targetId = decodeURIComponent(targetId)
-    } catch {
-      targetId = hash.slice(1)
-    }
-
-    const namedTargets = document.getElementsByName
-      ? document.getElementsByName(targetId)
-      : []
-    const target = document.getElementById(targetId) || namedTargets[0]
-
-    if (!target) {
-      event.preventDefault()
-      return
-    }
-
-    event.preventDefault()
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-
-    try {
-      history.replaceState(null, '', hash)
-    } catch {
-      // Ignore history updates in sandboxed frames.
-    }
-  })
-})()
-</script>`
-
-function stripExecutableMemberAboutHtml(value) {
-  return String(value || '')
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/<base\b[^>]*>/gi, '')
-    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
-    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
-    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '')
-}
-
-function enhanceMemberAboutSrcDoc(value) {
-  let content = stripExecutableMemberAboutHtml(value)
-
-  if (/<head[\s>]/i.test(content)) {
-    content = content.replace(/<head([^>]*)>/i, `<head$1>${memberAboutFrameStyle}`)
-  }
-
-  if (/<\/body>/i.test(content)) {
-    return content.replace(/<\/body>/i, `${memberAboutAnchorScript}</body>`)
-  }
-
-  return `${content}${memberAboutFrameStyle}${memberAboutAnchorScript}`
-}
-
-function buildMemberAboutSrcDoc(html = '', title = 'Tentang') {
-  const trimmedHtml = String(html || '').trim()
-  const safeTitle = String(title || 'Tentang')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-  const content = trimmedHtml || `
-    <section style="min-height:100vh;display:grid;place-items:center;padding:48px 20px;background:#f8fafc;color:#0f172a;font-family:Inter,Arial,sans-serif;text-align:center">
-      <div style="max-width:680px">
-        <p style="margin:0 0 10px;color:#2563eb;font-weight:800;letter-spacing:.08em;text-transform:uppercase">Tentang</p>
-        <h1 style="margin:0 0 14px;font-size:clamp(32px,7vw,64px);line-height:1.05">${safeTitle}</h1>
-        <p style="margin:0;color:#64748b;font-size:18px;line-height:1.7">Paste HTML landing page dari Gemini di pengaturan ini, lalu tampilannya akan muncul untuk member.</p>
-      </div>
-    </section>
-  `
-
-  if (/<html[\s>]/i.test(content) || /<!doctype/i.test(content)) {
-    return enhanceMemberAboutSrcDoc(content)
-  }
-
-  return `<!doctype html>
-<html lang="id">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${safeTitle}</title>
-    <style>
-      html { scroll-behavior: smooth; }
-      html, body { margin: 0; min-height: 100%; }
-      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #ffffff; color: #0f172a; }
-      * { box-sizing: border-box; }
-      img, video, iframe { max-width: 100%; }
-    </style>
-  </head>
-  <body>${stripExecutableMemberAboutHtml(content)}${memberAboutAnchorScript}</body>
-</html>`
-}
-
 function WebsiteSettingsPanel({
   settings,
   onSave,
@@ -355,10 +239,12 @@ function WebsiteSettingsPanel({
       const next = cloneSettings(current)
       const items = readNestedValue(next, path)
 
-      items[index] = {
-        ...items[index],
-        [key]: value,
-      }
+      items[index] = key === null
+        ? value
+        : {
+            ...items[index],
+            [key]: value,
+          }
 
       return next
     })
@@ -590,9 +476,9 @@ function WebsiteSettingsPanel({
     {
       id: 'member-about',
       eyebrow: 'Tentang Member',
-      title: 'HTML halaman Tentang',
+      title: 'Profil PT, website, mentor',
       icon: 'fileText',
-      description: 'Paste kode HTML/CSS dari Gemini untuk halaman Tentang di dashboard member.',
+      description: 'Edit landingpage Tentang member tanpa paste HTML atau coding manual.',
     },
     {
       id: 'schedule',
@@ -1069,7 +955,7 @@ function WebsiteSettingsPanel({
         </div>
 
         <div className={`settings-section ${activeSectionId === 'member-about' ? 'is-active' : ''}`}>
-          <SectionHeader eyebrow="Tentang Member" title="HTML halaman Tentang" icon="fileText" />
+          <SectionHeader eyebrow="Tentang Member" title="Profil PT, website, dan mentor" icon="fileText" />
           <div className="settings-grid">
             <TextField
               label="Label menu member"
@@ -1078,39 +964,188 @@ function WebsiteSettingsPanel({
               placeholder="Tentang"
             />
             <TextField
-              label="Judul fallback"
+              label="Eyebrow halaman"
+              value={draft.memberAbout.eyebrow}
+              onChange={(value) => updateValue(['memberAbout', 'eyebrow'], value)}
+              placeholder="Profil Ibnu Creative"
+            />
+            <TextField
+              label="Judul utama"
               value={draft.memberAbout.title}
               onChange={(value) => updateValue(['memberAbout', 'title'], value)}
-              placeholder="Tentang IbnuCreative"
+              placeholder="PT Ibnu Creative membangun ekosistem belajar digital..."
+              multiline
+            />
+            <TextField
+              label="Deskripsi hero"
+              value={draft.memberAbout.description}
+              onChange={(value) => updateValue(['memberAbout', 'description'], value)}
+              multiline
+            />
+            <ImageField
+              label="Gambar hero halaman Tentang"
+              value={draft.memberAbout.heroImage}
+              onChange={(value) => updateValue(['memberAbout', 'heroImage'], value)}
+              onUploadImage={onUploadImage}
+              onNotify={onNotify}
             />
           </div>
-          <label className="settings-field settings-code-field">
-            <span>HTML / kode landing page</span>
-            <textarea
-              value={draft.memberAbout.html}
-              onChange={(event) => updateValue(['memberAbout', 'html'], event.target.value)}
-              placeholder="Paste kode HTML dari Gemini di sini. HTML dan CSS akan tampil di halaman Tentang member."
-              rows={18}
-              spellCheck="false"
-            />
-          </label>
-          <div className="settings-about-preview">
-            <div className="settings-section-toolbar">
-              <p>Preview halaman Tentang member</p>
+
+          <div className="settings-subsection">
+            <div className="subsection-heading">
+              <div>
+                <p className="eyebrow">Profil PT</p>
+                <h3>Informasi PT Ibnu Creative</h3>
+              </div>
+            </div>
+            <div className="settings-grid">
+              <TextField
+                label="Nama perusahaan"
+                value={draft.memberAbout.companyName}
+                onChange={(value) => updateValue(['memberAbout', 'companyName'], value)}
+              />
+              <TextField
+                label="Subjudul perusahaan"
+                value={draft.memberAbout.companySubtitle}
+                onChange={(value) => updateValue(['memberAbout', 'companySubtitle'], value)}
+              />
+              <TextField
+                label="Deskripsi perusahaan"
+                value={draft.memberAbout.companyDescription}
+                onChange={(value) => updateValue(['memberAbout', 'companyDescription'], value)}
+                multiline
+              />
+              <TextField
+                label="Keterangan legal/profesional"
+                value={draft.memberAbout.companyLegal}
+                onChange={(value) => updateValue(['memberAbout', 'companyLegal'], value)}
+                multiline
+              />
+            </div>
+          </div>
+
+          <div className="settings-subsection">
+            <div className="subsection-heading">
+              <div>
+                <p className="eyebrow">Profil Website</p>
+                <h3>Informasi platform member</h3>
+              </div>
+            </div>
+            <div className="settings-grid">
+              <TextField
+                label="Nama website/platform"
+                value={draft.memberAbout.websiteName}
+                onChange={(value) => updateValue(['memberAbout', 'websiteName'], value)}
+              />
+              <TextField
+                label="Deskripsi website"
+                value={draft.memberAbout.websiteDescription}
+                onChange={(value) => updateValue(['memberAbout', 'websiteDescription'], value)}
+                multiline
+              />
+            </div>
+            <div className="settings-list">
+              {(draft.memberAbout.websiteHighlights || []).map((item, index) => (
+                <article className="settings-row settings-row-compact" key={`about-highlight-${index}`}>
+                  <TextField
+                    label={`Highlight ${index + 1}`}
+                    value={item}
+                    onChange={(value) =>
+                      updateArrayItem(['memberAbout', 'websiteHighlights'], index, null, value)
+                    }
+                  />
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={() => removeArrayItem(['memberAbout', 'websiteHighlights'], index)}
+                  >
+                    <Icon name="trash" />
+                    Hapus
+                  </button>
+                </article>
+              ))}
               <button
                 className="btn btn-secondary"
                 type="button"
-                onClick={() => updateValue(['memberAbout', 'html'], '')}
+                onClick={() => addArrayItem(['memberAbout', 'websiteHighlights'], 'Highlight baru')}
               >
-                <Icon name="x" />
-                Kosongkan
+                <Icon name="plus" />
+                Tambah highlight
               </button>
             </div>
-            <iframe
-              title="Preview halaman Tentang member"
-              srcDoc={buildMemberAboutSrcDoc(draft.memberAbout.html, draft.memberAbout.title)}
-              sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-            />
+          </div>
+
+          <div className="settings-subsection">
+            <div className="subsection-heading">
+              <div>
+                <p className="eyebrow">Profil Mentor</p>
+                <h3>Mentor bersertifikasi BNSP</h3>
+              </div>
+            </div>
+            <div className="settings-grid">
+              <TextField
+                label="Nama mentor"
+                value={draft.memberAbout.mentorName}
+                onChange={(value) => updateValue(['memberAbout', 'mentorName'], value)}
+              />
+              <TextField
+                label="Peran mentor"
+                value={draft.memberAbout.mentorRole}
+                onChange={(value) => updateValue(['memberAbout', 'mentorRole'], value)}
+              />
+              <TextField
+                label="Sertifikasi mentor"
+                value={draft.memberAbout.mentorCertification}
+                onChange={(value) => updateValue(['memberAbout', 'mentorCertification'], value)}
+                placeholder="Mentor bersertifikasi BNSP"
+              />
+              <ImageField
+                label="Foto mentor"
+                value={draft.memberAbout.mentorImage}
+                onChange={(value) => updateValue(['memberAbout', 'mentorImage'], value)}
+                onUploadImage={onUploadImage}
+                onNotify={onNotify}
+              />
+              <TextField
+                label="Deskripsi mentor"
+                value={draft.memberAbout.mentorDescription}
+                onChange={(value) => updateValue(['memberAbout', 'mentorDescription'], value)}
+                multiline
+              />
+            </div>
+          </div>
+
+          <div className="settings-subsection">
+            <div className="subsection-heading">
+              <div>
+                <p className="eyebrow">CTA</p>
+                <h3>Ajakan di akhir halaman</h3>
+              </div>
+            </div>
+            <div className="settings-grid">
+              <TextField
+                label="Judul CTA"
+                value={draft.memberAbout.ctaTitle}
+                onChange={(value) => updateValue(['memberAbout', 'ctaTitle'], value)}
+              />
+              <TextField
+                label="Deskripsi CTA"
+                value={draft.memberAbout.ctaDescription}
+                onChange={(value) => updateValue(['memberAbout', 'ctaDescription'], value)}
+                multiline
+              />
+              <TextField
+                label="Label tombol CTA"
+                value={draft.memberAbout.ctaButtonLabel}
+                onChange={(value) => updateValue(['memberAbout', 'ctaButtonLabel'], value)}
+              />
+              <TextField
+                label="URL tombol CTA"
+                value={draft.memberAbout.ctaUrl}
+                onChange={(value) => updateValue(['memberAbout', 'ctaUrl'], value)}
+                placeholder="#my-courses, /member?menu=my-courses, atau https://..."
+              />
+            </div>
           </div>
         </div>
 

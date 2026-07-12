@@ -66,7 +66,35 @@ export const defaultWebsiteSettings = {
   },
   memberAbout: {
     menuLabel: 'Tentang',
-    title: 'Tentang IbnuCreative',
+    eyebrow: 'Profil Ibnu Creative',
+    title: 'PT Ibnu Creative membangun ekosistem belajar digital yang praktis dan relevan.',
+    description:
+      'Kami menggabungkan kelas online, produk digital, prompt siap pakai, dan pendampingan mentor agar peserta bisa belajar lebih terarah, praktik lebih cepat, dan membangun aset digital yang bernilai.',
+    heroImage: '',
+    companyName: 'PT Ibnu Creative',
+    companySubtitle: 'Perusahaan kreatif digital dan edukasi online.',
+    companyDescription:
+      'PT Ibnu Creative berfokus pada pengembangan pembelajaran digital, strategi konten, desain, automasi kreatif, dan produk edukasi yang mudah diterapkan oleh pelajar, kreator, UMKM, dan profesional.',
+    companyLegal: 'Berbasis profesional, berorientasi praktik, dan dikembangkan untuk kebutuhan industri kreatif digital.',
+    websiteName: 'IbnuCreative Academy',
+    websiteDescription:
+      'Website ini menjadi pusat belajar member untuk mengakses kelas, materi, tugas, sertifikat, produk digital, prompt, dan diskusi kelas dalam satu dashboard yang rapi.',
+    websiteHighlights: [
+      'Kelas online berbasis praktik',
+      'Materi, tugas, diskusi, dan sertifikat',
+      'Produk digital dan prompt siap digunakan',
+    ],
+    mentorName: 'Ramdialta Ibnu Sajara',
+    mentorRole: 'Mentor konten kreatif dan pembelajaran digital',
+    mentorCertification: 'Mentor bersertifikasi BNSP',
+    mentorDescription:
+      'Mentor mendampingi peserta dengan pendekatan praktik, contoh nyata, dan arahan bertahap agar pembelajaran terasa jelas, terukur, dan mudah diterapkan.',
+    mentorImage: '',
+    ctaTitle: 'Siap belajar lebih terarah?',
+    ctaDescription:
+      'Buka kelas yang sudah kamu ikuti, lanjutkan progres belajar, atau gunakan produk digital yang sudah tersedia di akun member.',
+    ctaButtonLabel: 'Lihat Kelas Saya',
+    ctaUrl: '#my-courses',
     html: '',
   },
   paymentMethods: [
@@ -170,6 +198,20 @@ function cleanUrl(value, maxLength = 2000) {
   }
 
   return ''
+}
+
+function cleanLinkUrl(value, maxLength = 1200) {
+  const url = cleanText(value, maxLength)
+
+  if (!url) {
+    return ''
+  }
+
+  if (url.startsWith('#')) {
+    return url
+  }
+
+  return cleanUrl(url, maxLength)
 }
 
 function cleanIcon(value, fallback = 'spark') {
@@ -365,6 +407,42 @@ function cleanHomepageNotifications(value = {}) {
   }
 }
 
+function cleanMemberAbout(value = {}) {
+  const defaults = defaultWebsiteSettings.memberAbout
+  const source = value && typeof value === 'object' ? value : {}
+  const highlights = Array.isArray(source.websiteHighlights) && source.websiteHighlights.length
+    ? source.websiteHighlights
+    : defaults.websiteHighlights
+
+  return {
+    menuLabel: cleanText(source.menuLabel || defaults.menuLabel, 40),
+    eyebrow: cleanText(source.eyebrow || defaults.eyebrow, 80),
+    title: cleanText(source.title || defaults.title, 180),
+    description: cleanText(source.description || defaults.description, 520),
+    heroImage: cleanUrl(source.heroImage || '', 2000),
+    companyName: cleanText(source.companyName || defaults.companyName, 100),
+    companySubtitle: cleanText(source.companySubtitle || defaults.companySubtitle, 160),
+    companyDescription: cleanText(source.companyDescription || defaults.companyDescription, 900),
+    companyLegal: cleanText(source.companyLegal || defaults.companyLegal, 320),
+    websiteName: cleanText(source.websiteName || defaults.websiteName, 100),
+    websiteDescription: cleanText(source.websiteDescription || defaults.websiteDescription, 900),
+    websiteHighlights: highlights
+      .map((item) => cleanText(item, 120))
+      .filter(Boolean)
+      .slice(0, 6),
+    mentorName: cleanText(source.mentorName || defaults.mentorName, 100),
+    mentorRole: cleanText(source.mentorRole || defaults.mentorRole, 140),
+    mentorCertification: cleanText(source.mentorCertification || defaults.mentorCertification, 140),
+    mentorDescription: cleanText(source.mentorDescription || defaults.mentorDescription, 900),
+    mentorImage: cleanUrl(source.mentorImage || '', 2000),
+    ctaTitle: cleanText(source.ctaTitle || defaults.ctaTitle, 140),
+    ctaDescription: cleanText(source.ctaDescription || defaults.ctaDescription, 360),
+    ctaButtonLabel: cleanText(source.ctaButtonLabel || defaults.ctaButtonLabel, 60),
+    ctaUrl: cleanLinkUrl(source.ctaUrl || defaults.ctaUrl, 1200),
+    html: cleanHtmlSnippet(source.html || defaults.html),
+  }
+}
+
 export function cleanWebsiteSettings(value = {}) {
   const source = value && typeof value === 'object' ? value : {}
 
@@ -431,17 +509,7 @@ export function cleanWebsiteSettings(value = {}) {
       ),
     },
     homepageNotifications: cleanHomepageNotifications(source.homepageNotifications),
-    memberAbout: {
-      menuLabel: cleanText(
-        source.memberAbout?.menuLabel || defaultWebsiteSettings.memberAbout.menuLabel,
-        40,
-      ),
-      title: cleanText(
-        source.memberAbout?.title || defaultWebsiteSettings.memberAbout.title,
-        100,
-      ),
-      html: cleanHtmlSnippet(source.memberAbout?.html || defaultWebsiteSettings.memberAbout.html),
-    },
+    memberAbout: cleanMemberAbout(source.memberAbout),
     paymentMethods: cleanPaymentMethods(source.paymentMethods),
     benefits: {
       eyebrow: cleanText(
