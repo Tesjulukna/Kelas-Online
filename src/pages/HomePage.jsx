@@ -1819,55 +1819,77 @@ function HomePage({
             <p className="eyebrow">Testimoni peserta</p>
             <h2>Cerita setelah menyelesaikan kelas</h2>
           </div>
-          <article
-            className="testimonial-comment-card"
-            key={activeTestimonial.id}
-            onPointerCancel={handleTestimonialPointerCancel}
-            onPointerDown={handleTestimonialPointerDown}
-            onPointerUp={handleTestimonialPointerEnd}
-          >
-            <span className="testimonial-avatar" aria-hidden="true">
-              {activeTestimonial.memberAvatar ? (
-                <img src={activeTestimonial.memberAvatar} alt="" />
-              ) : (
-                <Icon name="user" />
-              )}
-            </span>
-            <div className="testimonial-comment-body">
-              <div className="testimonial-comment-heading">
-                <strong>{activeTestimonial.memberName}</strong>
-                <small>{activeTestimonial.classTitle}</small>
-              </div>
-              <p>{activeTestimonial.message}</p>
-              <div className="testimonial-slider-controls">
-                <span className="testimonial-slide-count">
-                  {activeTestimonialIndex + 1} / {approvedTestimonials.length}
-                </span>
-                <div className="testimonial-dots" aria-label="Navigasi testimoni">
-                  {firstTestimonialIndicatorIndex > 0 && (
-                    <span className="testimonial-dot-ellipsis" aria-hidden="true">...</span>
-                  )}
-                  {testimonialIndicatorIndexes.map((index) => {
-                    const testimonial = approvedTestimonials[index]
+          <div className={`testimonial-carousel-shell ${approvedTestimonials.length > 1 ? 'has-controls' : ''}`}>
+            {approvedTestimonials.length > 1 && (
+              <button
+                className="testimonial-nav-button testimonial-nav-button-prev"
+                type="button"
+                aria-label="Testimoni sebelumnya"
+                onClick={() => moveTestimonial(-1)}
+              >
+                <Icon name="arrowLeft" />
+              </button>
+            )}
+            <article
+              className="testimonial-comment-card"
+              key={activeTestimonial.id}
+              onPointerCancel={handleTestimonialPointerCancel}
+              onPointerDown={handleTestimonialPointerDown}
+              onPointerUp={handleTestimonialPointerEnd}
+            >
+              <span className="testimonial-avatar" aria-hidden="true">
+                {activeTestimonial.memberAvatar ? (
+                  <img src={activeTestimonial.memberAvatar} alt="" />
+                ) : (
+                  <Icon name="user" />
+                )}
+              </span>
+              <div className="testimonial-comment-body">
+                <div className="testimonial-comment-heading">
+                  <strong>{activeTestimonial.memberName}</strong>
+                  <small>{activeTestimonial.classTitle}</small>
+                </div>
+                <p>{activeTestimonial.message}</p>
+                <div className="testimonial-slider-controls">
+                  <span className="testimonial-slide-count">
+                    {activeTestimonialIndex + 1} / {approvedTestimonials.length}
+                  </span>
+                  <div className="testimonial-dots" aria-label="Navigasi testimoni">
+                    {firstTestimonialIndicatorIndex > 0 && (
+                      <span className="testimonial-dot-ellipsis" aria-hidden="true">...</span>
+                    )}
+                    {testimonialIndicatorIndexes.map((index) => {
+                      const testimonial = approvedTestimonials[index]
 
-                    return (
-                      <button
-                        className={index === activeTestimonialIndex ? 'active' : ''}
-                        type="button"
-                        key={testimonial?.id || index}
-                        aria-current={index === activeTestimonialIndex ? 'true' : undefined}
-                        aria-label={`Lihat testimoni ${index + 1}`}
-                        onClick={() => handleTestimonialIndicatorClick(index)}
-                      />
-                    )
-                  })}
-                  {lastTestimonialIndicatorIndex < approvedTestimonials.length - 1 && (
-                    <span className="testimonial-dot-ellipsis" aria-hidden="true">...</span>
-                  )}
+                      return (
+                        <button
+                          className={index === activeTestimonialIndex ? 'active' : ''}
+                          type="button"
+                          key={testimonial?.id || index}
+                          aria-current={index === activeTestimonialIndex ? 'true' : undefined}
+                          aria-label={`Lihat testimoni ${index + 1}`}
+                          onClick={() => handleTestimonialIndicatorClick(index)}
+                        />
+                      )
+                    })}
+                    {lastTestimonialIndicatorIndex < approvedTestimonials.length - 1 && (
+                      <span className="testimonial-dot-ellipsis" aria-hidden="true">...</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </article>
+            </article>
+            {approvedTestimonials.length > 1 && (
+              <button
+                className="testimonial-nav-button testimonial-nav-button-next"
+                type="button"
+                aria-label="Testimoni berikutnya"
+                onClick={() => moveTestimonial(1)}
+              >
+                <Icon name="arrowRight" />
+              </button>
+            )}
+          </div>
         </section>
       )}
       {activityToast}
