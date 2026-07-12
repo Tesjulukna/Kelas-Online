@@ -13,6 +13,7 @@ $pdo = db();
 $payload = read_json_body();
 $classId = clean_text($payload['classId'] ?? '', 120);
 $buyerName = clean_text($payload['buyerName'] ?? '', 120);
+$buyerEmailWarning = checkout_email_validation_message($payload['buyerEmail'] ?? '');
 $buyerEmail = clean_email($payload['buyerEmail'] ?? '');
 $buyerPhone = clean_phone($payload['buyerPhone'] ?? '');
 $paymentMethod = strtoupper(clean_text($payload['paymentMethod'] ?? '', 40));
@@ -21,6 +22,10 @@ $acceptedMarketing = ($payload['acceptedMarketing'] ?? false) === true;
 
 if ($classId === '') {
     send_json(400, ['message' => 'ID kelas wajib dikirim.']);
+}
+
+if ($buyerEmailWarning !== '') {
+    send_json(422, ['message' => $buyerEmailWarning]);
 }
 
 if ($buyerName === '' || $buyerEmail === '' || $buyerPhone === '') {

@@ -288,6 +288,60 @@ function clean_email($value): string
     return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
 }
 
+function checkout_email_validation_message($value): string
+{
+    $email = strtolower(trim(clean_text($value, 120)));
+
+    if ($email === '') {
+        return '';
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return 'Format alamat email belum benar. Pastikan contoh penulisannya seperti nama@gmail.com.';
+    }
+
+    $parts = explode('@', $email, 2);
+    $localPart = $parts[0] ?? '';
+    $domain = $parts[1] ?? '';
+    $suggestions = [
+        'gamil.com' => 'gmail.com',
+        'gmail.cim' => 'gmail.com',
+        'gmail.co' => 'gmail.com',
+        'gmail.comm' => 'gmail.com',
+        'gmail.con' => 'gmail.com',
+        'gmail.coom' => 'gmail.com',
+        'gmail.om' => 'gmail.com',
+        'gmai.com' => 'gmail.com',
+        'gmial.com' => 'gmail.com',
+        'gmil.com' => 'gmail.com',
+        'gnail.com' => 'gmail.com',
+        'hotmai.com' => 'hotmail.com',
+        'hotmail.cim' => 'hotmail.com',
+        'hotmail.con' => 'hotmail.com',
+        'icloud.cim' => 'icloud.com',
+        'icloud.con' => 'icloud.com',
+        'outlook.cim' => 'outlook.com',
+        'outlook.con' => 'outlook.com',
+        'yahho.com' => 'yahoo.com',
+        'yaho.com' => 'yahoo.com',
+        'yahoo.cim' => 'yahoo.com',
+        'yahoo.con' => 'yahoo.com',
+    ];
+
+    if (isset($suggestions[$domain])) {
+        return 'Alamat email terlihat salah. Apakah maksudnya ' . $localPart . '@' . $suggestions[$domain] . '? Periksa kembali agar invoice dan akun terkirim.';
+    }
+
+    $domainParts = explode('.', $domain);
+    $tld = end($domainParts);
+
+    if (in_array($tld, ['cim', 'comm', 'con', 'cpm', 'vom', 'xom'], true)) {
+        return 'Alamat email terlihat memakai ".' . $tld . '". Pastikan domain email benar, misalnya .com, agar invoice dan akun terkirim.';
+    }
+
+    return '';
+}
+
 function clean_phone($value): string
 {
     return substr(preg_replace('/[^0-9+()\-\s.]/', '', clean_text($value, 40)) ?? '', 0, 40);

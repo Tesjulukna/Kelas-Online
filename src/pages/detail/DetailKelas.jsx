@@ -120,9 +120,6 @@ function DetailKelas({
         </div>
 
         <div className="public-detail-copy">
-          <span className="card-badge badge-kelas" style={{ position: 'static', display: 'inline-block', marginBottom: '8px' }}>
-            Kelas Premium
-          </span>
           <h1>{course.title}</h1>
           {hasRichDescription ? (
             <StableRichDescription html={course.description} />

@@ -1,4 +1,5 @@
 import Icon from '../../components/Icon'
+import { getCheckoutEmailWarning } from '../../utils/emailValidation'
 
 function PaymentMethodLogo({ method }) {
   if (method.logoUrl) {
@@ -62,6 +63,7 @@ function CheckoutProduk({
   paymentTotal = 0,
   priceLabel,
   status,
+  emailWarning = '',
   onBack,
   onChange,
   onAnswerChange,
@@ -99,6 +101,9 @@ function CheckoutProduk({
     : []
   const memberName = checkoutCustomer?.name || form.buyerName || 'Member'
   const memberEmail = checkoutCustomer?.email || form.buyerEmail || '-'
+  const visibleEmailWarning = !isMemberCheckout
+    ? emailWarning || getCheckoutEmailWarning(form.buyerEmail)
+    : ''
 
   return (
     <section className="public-detail-page public-checkout-page">
@@ -140,6 +145,9 @@ function CheckoutProduk({
             <label>
               Email
               <input name="buyerEmail" type="email" value={form.buyerEmail} onChange={onChange} required />
+              {visibleEmailWarning && (
+                <small className="checkout-field-warning">{visibleEmailWarning}</small>
+              )}
             </label>
             <label>
               Nomor HP

@@ -11,6 +11,7 @@ $pdo = db();
 $payload = read_json_body();
 $productId = clean_text($payload['productId'] ?? '', 120);
 $buyerName = clean_text($payload['buyerName'] ?? '', 120);
+$buyerEmailWarning = checkout_email_validation_message($payload['buyerEmail'] ?? '');
 $buyerEmail = clean_email($payload['buyerEmail'] ?? '');
 $buyerPhone = clean_phone($payload['buyerPhone'] ?? '');
 $paymentMethod = strtoupper(clean_text($payload['paymentMethod'] ?? '', 40));
@@ -19,6 +20,10 @@ $acceptedMarketing = ($payload['acceptedMarketing'] ?? false) === true;
 
 if ($productId === '') {
     send_json(400, ['message' => 'ID produk wajib dikirim.']);
+}
+
+if ($buyerEmailWarning !== '') {
+    send_json(422, ['message' => $buyerEmailWarning]);
 }
 
 if ($buyerName === '' || $buyerEmail === '' || $buyerPhone === '') {

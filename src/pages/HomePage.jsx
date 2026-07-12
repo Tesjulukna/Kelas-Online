@@ -6,6 +6,7 @@ import CheckoutProduk from './detail/CheckoutProduk'
 import DetailKelas from './detail/DetailKelas'
 import DetailProduk from './detail/DetailProduk'
 import ProductAccessPage from './detail/ProductAccessPage'
+import { getCheckoutEmailWarning } from '../utils/emailValidation'
 
 function CatalogCardMedia({ item }) {
   const [isSquare, setIsSquare] = useState(false)
@@ -763,6 +764,9 @@ function HomePage({
   const isMemberCheckout = checkoutCustomer?.isMember === true
   const memberCheckoutPhone = checkoutCustomer?.phone || ''
   const memberNeedsCheckoutPhone = isMemberCheckout && !memberCheckoutPhone
+  const publicCheckoutEmailWarning = isMemberCheckout
+    ? getCheckoutEmailWarning(checkoutCustomer?.email || publicCheckoutForm.buyerEmail)
+    : getCheckoutEmailWarning(publicCheckoutForm.buyerEmail)
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1197,6 +1201,16 @@ function HomePage({
       return
     }
 
+    const buyerEmail = isMemberCheckout
+      ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
+      : publicCheckoutForm.buyerEmail
+    const emailWarning = getCheckoutEmailWarning(buyerEmail)
+
+    if (!String(buyerEmail || '').trim() || emailWarning) {
+      setPublicCheckoutStatus(emailWarning || 'Email wajib diisi agar invoice dan akun bisa dikirim.')
+      return
+    }
+
     setPublicCheckoutStatus(isPublicClassFree ? 'Memproses pendaftaran kelas gratis...' : 'Membuat invoice kelas...')
 
     try {
@@ -1231,6 +1245,16 @@ function HomePage({
     event.preventDefault()
 
     if (!activeCheckoutProduct) {
+      return
+    }
+
+    const buyerEmail = isMemberCheckout
+      ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
+      : publicCheckoutForm.buyerEmail
+    const emailWarning = getCheckoutEmailWarning(buyerEmail)
+
+    if (!String(buyerEmail || '').trim() || emailWarning) {
+      setPublicCheckoutStatus(emailWarning || 'Email wajib diisi agar invoice dan akses produk bisa dikirim.')
       return
     }
 
@@ -1410,6 +1434,7 @@ function HomePage({
           paymentTotal={publicCheckoutTotal}
           priceLabel={selectedClassPrice ? formatRupiah(selectedClassPrice) : 'Gratis'}
           status={publicCheckoutStatus}
+          emailWarning={publicCheckoutEmailWarning}
           onBack={() => navigateBackFromClassCheckout(checkoutClass.id)}
           onChange={handlePublicCheckoutChange}
           onAnswerChange={handlePublicCheckoutAnswerChange}
@@ -1517,6 +1542,7 @@ function HomePage({
           paymentTotal={publicCheckoutTotal}
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
           status={publicCheckoutStatus}
+          emailWarning={publicCheckoutEmailWarning}
           onBack={() => navigateBackFromProductCheckout(checkoutProduct.id)}
           onChange={handlePublicCheckoutChange}
           onAnswerChange={handlePublicCheckoutAnswerChange}

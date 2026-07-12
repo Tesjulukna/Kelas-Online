@@ -9342,6 +9342,14 @@ img {
   font: inherit;
 }
 
+.checkout-field-warning {
+  display: block;
+  color: #b45309;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .public-checkout-account {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -18936,6 +18944,10 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
 .app-shell.public-theme-dark.is-public-detail-route .payment-method-name {
   color: #93c5fd !important;
+}
+
+.app-shell.public-theme-dark.is-public-detail-route .checkout-field-warning {
+  color: #fbbf24 !important;
 }
 
 .app-shell.public-theme-dark.is-public-detail-route .public-sticky-actions {
