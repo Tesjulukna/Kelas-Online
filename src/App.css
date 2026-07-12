@@ -5834,13 +5834,15 @@ img {
   }
 
   .testimonial-slider-controls {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
   }
 
   .testimonial-dots {
     justify-content: flex-start;
-    width: 100%;
+    width: auto;
   }
 
   .testimonial-submit-box .btn {
@@ -8758,6 +8760,21 @@ img {
   overflow: hidden;
 }
 
+.homepage-testimonials-section .section-heading {
+  justify-self: center;
+  width: min(100%, 760px);
+  max-width: 760px;
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
+}
+
+.homepage-testimonials-section .section-heading .eyebrow,
+.homepage-testimonials-section .section-heading h2 {
+  margin-right: auto;
+  margin-left: auto;
+}
+
 .testimonial-comment-card {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr);
@@ -8834,7 +8851,7 @@ img {
 .testimonial-slider-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 10px;
   min-width: 0;
   max-width: 100%;
@@ -8857,8 +8874,8 @@ img {
 .testimonial-dots {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  flex: 1 1 auto;
+  justify-content: flex-start;
+  flex: 0 1 auto;
   gap: 7px;
   min-width: 0;
   max-width: 100%;
