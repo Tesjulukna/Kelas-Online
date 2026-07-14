@@ -5833,12 +5833,12 @@ img {
 
 @media (max-width: 760px) {
   .testimonial-carousel-shell.has-controls {
-    grid-template-columns: repeat(2, minmax(0, 82px));
+    grid-template-columns: 1fr 1fr;
     grid-template-areas:
       "card card"
       "prev next";
-    justify-content: center;
-    gap: 10px;
+    justify-items: center;
+    gap: 16px;
   }
 
   .testimonial-carousel-shell .testimonial-comment-card {
@@ -5846,17 +5846,23 @@ img {
   }
 
   .testimonial-nav-button {
-    width: 100%;
-    height: 38px;
-    opacity: 0.82;
+    width: 44px;
+    height: 44px;
+    opacity: 1;
+    border-radius: 999px;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
   }
 
   .testimonial-nav-button-prev {
     grid-area: prev;
+    justify-self: end;
   }
 
   .testimonial-nav-button-next {
     grid-area: next;
+    justify-self: start;
   }
 
   .testimonial-comment-card,
