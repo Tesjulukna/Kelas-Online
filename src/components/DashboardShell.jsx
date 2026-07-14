@@ -5,6 +5,7 @@ function DashboardShell({
   loginName,
   avatar,
   menuItems,
+  menuBadges = {},
   activeMenu,
   onMenuChange,
   isMenuOpen = false,
@@ -50,17 +51,25 @@ function DashboardShell({
         </div>
 
         <nav className="dashboard-menu" aria-label={`Menu ${roleLabel}`}>
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              className={activeMenu === item.id ? 'active' : ''}
-              type="button"
-              onClick={() => handleMenuClick(item.id)}
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </button>
-          ))}
+          {menuItems.map((item) => {
+            const badgeCount = menuBadges[item.id] || 0
+            return (
+              <button
+                key={item.id}
+                className={activeMenu === item.id ? 'active' : ''}
+                type="button"
+                onClick={() => handleMenuClick(item.id)}
+              >
+                <Icon name={item.icon} />
+                <span className="dashboard-menu-label">{item.label}</span>
+                {badgeCount > 0 && (
+                  <span className="menu-badge" aria-label={`${badgeCount} notifikasi`}>
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </nav>
       </aside>
 
