@@ -1061,7 +1061,12 @@ function AdminPage({
   const [adminDiscussionSeenTimes, setAdminDiscussionSeenTimes] = useState(() =>
     readAdminDiscussionSeenTimes(loginName),
   )
-  const [seenMenuCounts, setSeenMenuCounts] = useState({})
+  const [seenMenuCounts, setSeenMenuCounts] = useState({
+    submissions: 0,
+    testimonials: 0,
+    certificates: 0,
+    support: 0,
+  })
   const [highlightedAdminDiscussionId, setHighlightedAdminDiscussionId] = useState('')
   const [viewingSubmission, setViewingSubmission] = useState(null)
   const [submissionFeedback, setSubmissionFeedback] = useState('')
@@ -1628,6 +1633,24 @@ function AdminPage({
     { id: 'Disetujui', label: 'Disetujui' },
     { id: 'Perlu Revisi', label: 'Revisi' },
   ]
+
+  useEffect(() => {
+    if (members.length > 0 && seenMenuCounts.students === undefined) {
+      setSeenMenuCounts((prev) => ({
+        ...prev,
+        students: members.length,
+      }))
+    }
+  }, [members.length, seenMenuCounts.students])
+
+  useEffect(() => {
+    if (payments.length > 0 && seenMenuCounts.payments === undefined) {
+      setSeenMenuCounts((prev) => ({
+        ...prev,
+        payments: payments.length,
+      }))
+    }
+  }, [payments.length, seenMenuCounts.payments])
 
   useEffect(() => {
     if (activeMenu !== 'overview' || !sessionToken) {
@@ -3783,14 +3806,14 @@ function AdminPage({
     </article>
   )
 
-  // Badge: max(0, current - seen). ?? current = no badge on first render before click.
+  // Badge: max(0, current - seen).
   const menuBadges = {
     students: Math.max(0, members.length - (seenMenuCounts.students ?? members.length)),
     payments: Math.max(0, payments.length - (seenMenuCounts.payments ?? payments.length)),
-    submissions: Math.max(0, pendingSubmissions - (seenMenuCounts.submissions ?? pendingSubmissions)),
-    testimonials: Math.max(0, pendingTestimonials - (seenMenuCounts.testimonials ?? pendingTestimonials)),
-    certificates: Math.max(0, pendingCertificateNameRequests.length - (seenMenuCounts.certificates ?? pendingCertificateNameRequests.length)),
-    support: Math.max(0, waitingSupportCount - (seenMenuCounts.support ?? waitingSupportCount)),
+    submissions: Math.max(0, pendingSubmissions - (seenMenuCounts.submissions ?? 0)),
+    testimonials: Math.max(0, pendingTestimonials - (seenMenuCounts.testimonials ?? 0)),
+    certificates: Math.max(0, pendingCertificateNameRequests.length - (seenMenuCounts.certificates ?? 0)),
+    support: Math.max(0, waitingSupportCount - (seenMenuCounts.support ?? 0)),
   }
 
   const handleAdminMenuChange = (menuId) => {
@@ -3799,10 +3822,10 @@ function AdminPage({
       ...prev,
       students: menuId === 'students' ? members.length : (prev.students ?? members.length),
       payments: menuId === 'payments' ? payments.length : (prev.payments ?? payments.length),
-      submissions: menuId === 'submissions' ? pendingSubmissions : (prev.submissions ?? pendingSubmissions),
-      testimonials: menuId === 'testimonials' ? pendingTestimonials : (prev.testimonials ?? pendingTestimonials),
-      certificates: menuId === 'certificates' ? pendingCertificateNameRequests.length : (prev.certificates ?? pendingCertificateNameRequests.length),
-      support: menuId === 'support' ? waitingSupportCount : (prev.support ?? waitingSupportCount),
+      submissions: menuId === 'submissions' ? pendingSubmissions : (prev.submissions ?? 0),
+      testimonials: menuId === 'testimonials' ? pendingTestimonials : (prev.testimonials ?? 0),
+      certificates: menuId === 'certificates' ? pendingCertificateNameRequests.length : (prev.certificates ?? 0),
+      support: menuId === 'support' ? waitingSupportCount : (prev.support ?? 0),
     }))
   }
 
