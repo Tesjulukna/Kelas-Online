@@ -1635,22 +1635,16 @@ function AdminPage({
   ]
 
   useEffect(() => {
-    if (members.length > 0 && seenMenuCounts.students === undefined) {
-      setSeenMenuCounts((prev) => ({
-        ...prev,
-        students: members.length,
-      }))
-    }
-  }, [members.length, seenMenuCounts.students])
-
-  useEffect(() => {
-    if (payments.length > 0 && seenMenuCounts.payments === undefined) {
-      setSeenMenuCounts((prev) => ({
-        ...prev,
-        payments: payments.length,
-      }))
-    }
-  }, [payments.length, seenMenuCounts.payments])
+    setSeenMenuCounts((prev) => ({
+      ...prev,
+      students: activeMenu === 'students' ? members.length : (prev.students ?? members.length),
+      payments: activeMenu === 'payments' ? payments.length : (prev.payments ?? payments.length),
+      submissions: activeMenu === 'submissions' ? pendingSubmissions : (prev.submissions ?? 0),
+      testimonials: activeMenu === 'testimonials' ? pendingTestimonials : (prev.testimonials ?? 0),
+      certificates: activeMenu === 'certificates' ? pendingCertificateNameRequests.length : (prev.certificates ?? 0),
+      support: activeMenu === 'support' ? waitingSupportCount : (prev.support ?? 0),
+    }))
+  }, [activeMenu, members.length, payments.length, pendingSubmissions, pendingTestimonials, pendingCertificateNameRequests.length, waitingSupportCount])
 
   useEffect(() => {
     if (activeMenu !== 'overview' || !sessionToken) {
@@ -3806,27 +3800,18 @@ function AdminPage({
     </article>
   )
 
-  // Badge: max(0, current - seen).
+  // Badge: max(0, current - seen). Always show 0 for the active menu.
   const menuBadges = {
-    students: Math.max(0, members.length - (seenMenuCounts.students ?? members.length)),
-    payments: Math.max(0, payments.length - (seenMenuCounts.payments ?? payments.length)),
-    submissions: Math.max(0, pendingSubmissions - (seenMenuCounts.submissions ?? 0)),
-    testimonials: Math.max(0, pendingTestimonials - (seenMenuCounts.testimonials ?? 0)),
-    certificates: Math.max(0, pendingCertificateNameRequests.length - (seenMenuCounts.certificates ?? 0)),
-    support: Math.max(0, waitingSupportCount - (seenMenuCounts.support ?? 0)),
+    students: activeMenu === 'students' ? 0 : Math.max(0, members.length - (seenMenuCounts.students ?? members.length)),
+    payments: activeMenu === 'payments' ? 0 : Math.max(0, payments.length - (seenMenuCounts.payments ?? payments.length)),
+    submissions: activeMenu === 'submissions' ? 0 : Math.max(0, pendingSubmissions - (seenMenuCounts.submissions ?? 0)),
+    testimonials: activeMenu === 'testimonials' ? 0 : Math.max(0, pendingTestimonials - (seenMenuCounts.testimonials ?? 0)),
+    certificates: activeMenu === 'certificates' ? 0 : Math.max(0, pendingCertificateNameRequests.length - (seenMenuCounts.certificates ?? 0)),
+    support: activeMenu === 'support' ? 0 : Math.max(0, waitingSupportCount - (seenMenuCounts.support ?? 0)),
   }
 
   const handleAdminMenuChange = (menuId) => {
     onMenuChange(menuId)
-    setSeenMenuCounts((prev) => ({
-      ...prev,
-      students: menuId === 'students' ? members.length : (prev.students ?? members.length),
-      payments: menuId === 'payments' ? payments.length : (prev.payments ?? payments.length),
-      submissions: menuId === 'submissions' ? pendingSubmissions : (prev.submissions ?? 0),
-      testimonials: menuId === 'testimonials' ? pendingTestimonials : (prev.testimonials ?? 0),
-      certificates: menuId === 'certificates' ? pendingCertificateNameRequests.length : (prev.certificates ?? 0),
-      support: menuId === 'support' ? waitingSupportCount : (prev.support ?? 0),
-    }))
   }
 
   return (
