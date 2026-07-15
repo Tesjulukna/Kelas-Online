@@ -41,6 +41,34 @@ function saveAdminDiscussionSeenTimes(loginName = '', value = {}) {
   }
 }
 
+const adminMenuSeenStorageKey = 'ibnucreative.adminMenuSeen.v1'
+
+function readAdminMenuSeen(loginName = '') {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+
+  try {
+    const key = `${adminMenuSeenStorageKey}.${loginName || 'admin'}`
+    return JSON.parse(window.localStorage.getItem(key) || '{}') || {}
+  } catch {
+    return {}
+  }
+}
+
+function saveAdminMenuSeen(loginName = '', value = {}) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    const key = `${adminMenuSeenStorageKey}.${loginName || 'admin'}`
+    window.localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Unread badges are a convenience layer; menu badges remain available without storage.
+  }
+}
+
 function createEmptyMaterial() {
   return {
     id: `material-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -1061,11 +1089,16 @@ function AdminPage({
   const [adminDiscussionSeenTimes, setAdminDiscussionSeenTimes] = useState(() =>
     readAdminDiscussionSeenTimes(loginName),
   )
-  const [seenMenuCounts, setSeenMenuCounts] = useState({
-    submissions: 0,
-    testimonials: 0,
-    certificates: 0,
-    support: 0,
+  const [seenMenuCounts, setSeenMenuCounts] = useState(() => {
+    const saved = readAdminMenuSeen(loginName)
+    return {
+      submissions: saved.submissions ?? 0,
+      testimonials: saved.testimonials ?? 0,
+      certificates: saved.certificates ?? 0,
+      support: saved.support ?? 0,
+      students: saved.students,
+      payments: saved.payments,
+    }
   })
   const [highlightedAdminDiscussionId, setHighlightedAdminDiscussionId] = useState('')
   const [viewingSubmission, setViewingSubmission] = useState(null)
@@ -1635,16 +1668,20 @@ function AdminPage({
   ]
 
   useEffect(() => {
-    setSeenMenuCounts((prev) => ({
-      ...prev,
-      students: activeMenu === 'students' ? members.length : (prev.students ?? members.length),
-      payments: activeMenu === 'payments' ? payments.length : (prev.payments ?? payments.length),
-      submissions: activeMenu === 'submissions' ? pendingSubmissions : (prev.submissions ?? 0),
-      testimonials: activeMenu === 'testimonials' ? pendingTestimonials : (prev.testimonials ?? 0),
-      certificates: activeMenu === 'certificates' ? pendingCertificateNameRequests.length : (prev.certificates ?? 0),
-      support: activeMenu === 'support' ? waitingSupportCount : (prev.support ?? 0),
-    }))
-  }, [activeMenu, members.length, payments.length, pendingSubmissions, pendingTestimonials, pendingCertificateNameRequests.length, waitingSupportCount])
+    setSeenMenuCounts((prev) => {
+      const next = {
+        ...prev,
+        students: activeMenu === 'students' ? members.length : (prev.students ?? members.length),
+        payments: activeMenu === 'payments' ? payments.length : (prev.payments ?? payments.length),
+        submissions: activeMenu === 'submissions' ? pendingSubmissions : (prev.submissions ?? 0),
+        testimonials: activeMenu === 'testimonials' ? pendingTestimonials : (prev.testimonials ?? 0),
+        certificates: activeMenu === 'certificates' ? pendingCertificateNameRequests.length : (prev.certificates ?? 0),
+        support: activeMenu === 'support' ? waitingSupportCount : (prev.support ?? 0),
+      }
+      saveAdminMenuSeen(loginName, next)
+      return next
+    })
+  }, [activeMenu, members.length, payments.length, pendingSubmissions, pendingTestimonials, pendingCertificateNameRequests.length, waitingSupportCount, loginName])
 
   useEffect(() => {
     if (activeMenu !== 'overview' || !sessionToken) {
