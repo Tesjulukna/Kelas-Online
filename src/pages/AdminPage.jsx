@@ -41,33 +41,7 @@ function saveAdminDiscussionSeenTimes(loginName = '', value = {}) {
   }
 }
 
-const adminMenuSeenStorageKey = 'ibnucreative.adminMenuSeen.v1'
 
-function readAdminMenuSeen(loginName = '') {
-  if (typeof window === 'undefined') {
-    return {}
-  }
-
-  try {
-    const key = `${adminMenuSeenStorageKey}.${loginName || 'admin'}`
-    return JSON.parse(window.localStorage.getItem(key) || '{}') || {}
-  } catch {
-    return {}
-  }
-}
-
-function saveAdminMenuSeen(loginName = '', value = {}) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    const key = `${adminMenuSeenStorageKey}.${loginName || 'admin'}`
-    window.localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // Unread badges are a convenience layer; menu badges remain available without storage.
-  }
-}
 
 function createEmptyMaterial() {
   return {
@@ -954,6 +928,8 @@ function getMemberProgressSummary(member, classes, submissions) {
 }
 
 function AdminPage({
+  initialSeenMenuCounts = {},
+  onSeenMenuCountsChange = () => {},
   loginName,
   avatar,
   sessionToken = '',
@@ -1090,7 +1066,7 @@ function AdminPage({
     readAdminDiscussionSeenTimes(loginName),
   )
   const [seenMenuCounts, setSeenMenuCounts] = useState(() => {
-    const saved = readAdminMenuSeen(loginName)
+    const saved = initialSeenMenuCounts || {}
     return {
       submissions: saved.submissions ?? 0,
       testimonials: saved.testimonials ?? 0,
@@ -1678,10 +1654,10 @@ function AdminPage({
         certificates: activeMenu === 'certificates' ? pendingCertificateNameRequests.length : (prev.certificates ?? 0),
         support: activeMenu === 'support' ? waitingSupportCount : (prev.support ?? 0),
       }
-      saveAdminMenuSeen(loginName, next)
+      onSeenMenuCountsChange(next)
       return next
     })
-  }, [activeMenu, members.length, payments.length, pendingSubmissions, pendingTestimonials, pendingCertificateNameRequests.length, waitingSupportCount, loginName])
+  }, [activeMenu, members.length, payments.length, pendingSubmissions, pendingTestimonials, pendingCertificateNameRequests.length, waitingSupportCount, onSeenMenuCountsChange])
 
   useEffect(() => {
     if (activeMenu !== 'overview' || !sessionToken) {

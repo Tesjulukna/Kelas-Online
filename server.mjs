@@ -359,9 +359,7 @@ function cleanAccounts(value) {
         email: cleanEmail(item.email),
         status: cleanText(item.status || 'Aktif', 40),
         avatar: cleanImage(item.avatar),
-        allowedClassIds: Array.isArray(item.allowedClassIds)
-          ? item.allowedClassIds.map((classId) => cleanText(classId, 90)).filter(Boolean)
-          : null,
+        allowedClassIds: Array.isArray(item.allowedClassIds) ? item.allowedClassIds.map((classId) => cleanText(classId, 90)).filter(Boolean) : (item.allowedClassIds && typeof item.allowedClassIds === 'object' ? item.allowedClassIds : null),
         passwordHash:
           cleanPasswordHash(item.passwordHash) || hashPassword(item.password || 'member123'),
         joinedAt: cleanText(item.joinedAt || new Date().toISOString().slice(0, 10), 40),
@@ -1201,10 +1199,7 @@ const server = createServer(async (request, response) => {
               username: account.username,
               role,
               avatar: account.avatar || '',
-              allowedClassIds:
-                role === 'member' && Array.isArray(account.allowedClassIds)
-                  ? account.allowedClassIds
-                  : null,
+              allowedClassIds: role === 'member' ? (Array.isArray(account.allowedClassIds) ? account.allowedClassIds : null) : account.allowedClassIds,
               signedInAt: new Date().toISOString(),
             },
           },
@@ -1217,6 +1212,9 @@ const server = createServer(async (request, response) => {
         ...account,
         name: cleanText(payload.name || account.name, 100),
         avatar: cleanImage(payload.avatar),
+      }
+      if (role === 'admin' && payload.allowedClassIds !== undefined) {
+        nextAccount.allowedClassIds = payload.allowedClassIds
       }
       const nextAccounts = accounts.map((item) =>
         item.id === account.id ? nextAccount : item,
@@ -1237,10 +1235,7 @@ const server = createServer(async (request, response) => {
             username: nextAccount.username,
             role,
             avatar: nextAccount.avatar || '',
-            allowedClassIds:
-              role === 'member' && Array.isArray(nextAccount.allowedClassIds)
-                ? nextAccount.allowedClassIds
-                : null,
+            allowedClassIds: role === 'member' ? (Array.isArray(nextAccount.allowedClassIds) ? nextAccount.allowedClassIds : null) : nextAccount.allowedClassIds,
             signedInAt: new Date().toISOString(),
           },
         },
