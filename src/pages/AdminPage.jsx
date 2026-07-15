@@ -1053,201 +1053,6 @@ function AdminPage({
   const [pendingDeleteSupport, setPendingDeleteSupport] = useState(null)
   const [discussionClassFilter, setDiscussionClassFilter] = useState('all')
   const [discussionSearchTerm, setDiscussionSearchTerm] = useState('')
-    submittedTaskCount += submittedMaterialIds.size
-    requiredTaskCount += requiredCount
-
-    courseSubmissions.forEach((submission) => {
-      const submissionIndex = materials.findIndex(
-        (material) => material.id === submission.materialId,
-      )
-
-      if (submissionIndex >= 0) {
-        materialIndex = Math.max(materialIndex, submissionIndex)
-      }
-
-      if (getTimeValue(submission.submittedAt) > getTimeValue(activityAt)) {
-        activityAt = submission.submittedAt
-      }
-    })
-
-    if (materialIndex >= 0 && !materialTitle) {
-      materialTitle = materials[materialIndex]?.title || `Materi ${materialIndex + 1}`
-    }
-
-    totalPercent += Math.min(100, Math.max(0, percent))
-
-    const candidate = {
-      classTitle: course.title,
-      materialTitle,
-      materialIndex,
-      materialCount: materials.length,
-      lastActivityAt: activityAt,
-    }
-
-    if (
-      candidate.lastActivityAt &&
-      (!latest || getTimeValue(candidate.lastActivityAt) >= getTimeValue(latest.lastActivityAt))
-    ) {
-      latest = candidate
-    }
-  })
-
-  const percent = Math.round(totalPercent / Math.max(1, accessibleClasses.length))
-  const tasksLabel = requiredTaskCount
-    ? `${submittedTaskCount}/${requiredTaskCount} tugas wajib`
-    : `${submittedTaskCount} tugas`
-
-  if (!latest) {
-    return {
-      percent,
-      title: 'Belum mulai belajar',
-      detail: `${accessibleClasses.length} kelas bisa diakses.`,
-      tasksLabel,
-      lastActivityAt: '',
-    }
-  }
-
-  return {
-    percent,
-    title: latest.classTitle,
-    detail:
-      latest.materialIndex >= 0
-        ? `Materi ${latest.materialIndex + 1}/${Math.max(1, latest.materialCount)}: ${latest.materialTitle || 'Belum ada judul'
-        }`
-        : 'Belum ada materi yang dibuka.',
-    tasksLabel,
-    lastActivityAt: latest.lastActivityAt,
-  }
-}
-
-function AdminPage({
-  loginName,
-  avatar,
-  sessionToken = '',
-  classes,
-  digitalProducts = [],
-  digitalProductAccess = [],
-  members = [],
-  supportTickets = [],
-  classDiscussions = [],
-  submissions = [],
-  testimonials = [],
-  certificates = [],
-  certificateNameChangeRequests = [],
-  certificateTemplates = [],
-  payments = [],
-  publicActivities = [],
-  websiteSettings,
-  onClassesChange,
-  onDigitalProductsChange = async () => { },
-  onWebsiteSettingsChange = async () => { },
-  onSyncTripayPaymentMethods = async () => [],
-  onDownloadBackup = async () => { },
-  onRestoreBackup = async () => { },
-  onCreateMember = async () => { },
-  onUpdateMember = async () => { },
-  onDeleteMember = async () => { },
-  onUpdateSupportTicket = async () => { },
-  onDeleteSupportTicket = async () => { },
-  onCreateClassDiscussionMessage = async () => { },
-  onUpdateClassDiscussionMessage = async () => { },
-  onPinClassDiscussionMessage = async () => { },
-  onDeleteClassDiscussionMessage = async () => { },
-  onUpdateSubmission = async () => { },
-  onCreateTestimonial = async () => { },
-  onUpdateTestimonial = async () => { },
-  onDeleteTestimonial = async () => { },
-  onReviewCertificateNameChange = async () => { },
-  onSaveCertificateTemplate = async () => { },
-  onDuplicateCertificateTemplate = async () => { },
-  onDeleteCertificateTemplate = async () => { },
-  activeMenu,
-  onMenuChange,
-  isMenuOpen,
-  onCloseMenu,
-  onNotify = () => { },
-}) {
-  const [showEarnings, setShowEarnings] = useState(() => {
-    try {
-      const cached = window.localStorage.getItem('ibnucreative.admin.show-earnings')
-      return cached !== 'false'
-    } catch {
-      return true
-    }
-  })
-
-  const handleToggleEarnings = () => {
-    setShowEarnings((prev) => {
-      const next = !prev
-      try {
-        window.localStorage.setItem('ibnucreative.admin.show-earnings', String(next))
-      } catch (e) {
-        console.error(e)
-      }
-      return next
-    })
-  }
-
-  const [classForm, setClassForm] = useState(() => createEmptyClassForm())
-  const [editingClassId, setEditingClassId] = useState(null)
-  const [isClassModalOpen, setIsClassModalOpen] = useState(false)
-  const [pendingDeleteClass, setPendingDeleteClass] = useState(null)
-  const [digitalProductForm, setDigitalProductForm] = useState(() =>
-    createEmptyDigitalProductForm(),
-  )
-  const [editingDigitalProductId, setEditingDigitalProductId] = useState(null)
-  const [isDigitalProductBuilderOpen, setIsDigitalProductBuilderOpen] = useState(false)
-  const [isDigitalReviewManagerOpen, setIsDigitalReviewManagerOpen] = useState(false)
-  const [digitalReviewDraft, setDigitalReviewDraft] = useState(() => createEmptyDigitalProductReview())
-  const [isAdminTestimonialModalOpen, setIsAdminTestimonialModalOpen] = useState(false)
-  const [editingAdminTestimonialId, setEditingAdminTestimonialId] = useState('')
-  const [adminTestimonialForm, setAdminTestimonialForm] = useState(() =>
-    createEmptyAdminTestimonialForm(),
-  )
-  const [memberForm, setMemberForm] = useState(() => createEmptyMemberForm())
-  const [editingMemberId, setEditingMemberId] = useState(null)
-  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false)
-  const [pendingDeleteMember, setPendingDeleteMember] = useState(null)
-  const [memberPageSize, setMemberPageSize] = useState(10)
-  const [memberPage, setMemberPage] = useState(1)
-  const [memberSearchTerm, setMemberSearchTerm] = useState('')
-  const [memberStatusFilter, setMemberStatusFilter] = useState('all')
-  const [memberClassFilter, setMemberClassFilter] = useState('all')
-  const [memberActivityFilter, setMemberActivityFilter] = useState('all')
-  const [isMemberFilterOpen, setIsMemberFilterOpen] = useState(false)
-  const isPromptBuilder = digitalProductForm.productType === 'prompt'
-  const digitalOnlyProducts = digitalProducts.filter((product) => product.productType !== 'prompt')
-  const promptProducts = digitalProducts.filter((product) => product.productType === 'prompt')
-  const [submissionPageSize, setSubmissionPageSize] = useState(10)
-  const [submissionPage, setSubmissionPage] = useState(1)
-  const [submissionSearchTerm, setSubmissionSearchTerm] = useState('')
-  const [submissionListStatusFilter, setSubmissionListStatusFilter] = useState('all')
-  const [submissionListClassFilter, setSubmissionListClassFilter] = useState('all')
-  const [isSubmissionFilterOpen, setIsSubmissionFilterOpen] = useState(false)
-  const [paymentSearchTerm, setPaymentSearchTerm] = useState('')
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all')
-  const [paymentSourceFilter, setPaymentSourceFilter] = useState('all')
-  const [paymentStartDate, setPaymentStartDate] = useState('')
-  const [paymentEndDate, setPaymentEndDate] = useState('')
-  const [paymentPageSize, setPaymentPageSize] = useState(10)
-  const [paymentPage, setPaymentPage] = useState(1)
-  const [analyticsPreset, setAnalyticsPreset] = useState('7d')
-  const [analyticsStartDate, setAnalyticsStartDate] = useState(() =>
-    getAnalyticsPresetRange('7d').startDate,
-  )
-  const [analyticsEndDate, setAnalyticsEndDate] = useState(() =>
-    getAnalyticsPresetRange('7d').endDate,
-  )
-  const [analyticsInsights, setAnalyticsInsights] = useState(() =>
-    createEmptyAnalyticsInsights(),
-  )
-  const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false)
-  const [analyticsError, setAnalyticsError] = useState('')
-  const [supportForm, setSupportForm] = useState(() => createEmptySupportForm())
-  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false)
-  const [pendingDeleteSupport, setPendingDeleteSupport] = useState(null)
-  const [discussionClassFilter, setDiscussionClassFilter] = useState('all')
-  const [discussionSearchTerm, setDiscussionSearchTerm] = useState('')
   const [discussionReplyDrafts, setDiscussionReplyDrafts] = useState({})
   const [discussionReplyTargets, setDiscussionReplyTargets] = useState({})
   const [discussionEditingId, setDiscussionEditingId] = useState('')
@@ -1823,17 +1628,6 @@ function AdminPage({
     { id: 'Disetujui', label: 'Disetujui' },
     { id: 'Perlu Revisi', label: 'Revisi' },
   ]
-
-  useEffect(() => {
-    setSeenMenuCounts({
-      students: members.length,
-      payments: payments.length,
-      submissions: pendingSubmissions,
-      testimonials: pendingTestimonials,
-      certificates: pendingCertificateNameRequests.length,
-      support: waitingSupportCount,
-    })
-  }, [members.length, payments.length, pendingSubmissions, pendingTestimonials, pendingCertificateNameRequests.length, waitingSupportCount])
 
   useEffect(() => {
     if (activeMenu !== 'overview' || !sessionToken) {
@@ -2465,6 +2259,1569 @@ function AdminPage({
       promptItems: normalizeProductPromptItems(product.promptItems, product.promptContent),
       promptPreview: product.promptPreview || '',
       promptInstructions: product.promptInstructions || '',
+      promptExamples: product.promptExamples || '',
+      promptLicense: product.promptLicense || 'Personal & commercial use',
+    })
+    setEditingDigitalProductId(product.id)
+    setIsDigitalProductBuilderOpen(true)
+    onMenuChange(product.productType === 'prompt' ? 'prompts' : 'digital-products')
+  }
+
+  const openCreateDigitalProduct = () => {
+    resetDigitalProductForm()
+    setIsDigitalProductBuilderOpen(true)
+    onMenuChange('digital-products')
+  }
+
+  const openCreatePromptProduct = () => {
+    setDigitalProductForm(createEmptyPromptProductForm())
+    setEditingDigitalProductId(null)
+    setIsDigitalReviewManagerOpen(false)
+    setDigitalReviewDraft(createEmptyDigitalProductReview())
+    setIsDigitalProductBuilderOpen(true)
+    onMenuChange('prompts')
+  }
+
+  const closeDigitalProductBuilder = () => {
+    resetDigitalProductForm()
+    setIsDigitalProductBuilderOpen(false)
+  }
+
+  const handleDeleteDigitalProduct = async (productId) => {
+    try {
+      await onDigitalProductsChange((current) => current.filter((item) => item.id !== productId))
+      if (editingDigitalProductId === productId) {
+        resetDigitalProductForm()
+      }
+      onNotify('Item dihapus.')
+    } catch (error) {
+      onNotify(error.message || 'Produk digital tidak bisa dihapus.')
+    }
+  }
+
+  const updateDigitalProductQuickAction = async (productId, changes, message) => {
+    try {
+      await onDigitalProductsChange((current) =>
+        current.map((item) => (item.id === productId ? { ...item, ...changes } : item)),
+      )
+      onNotify(message)
+    } catch (error) {
+      onNotify(error.message || 'Produk digital tidak bisa diperbarui.')
+    }
+  }
+
+  const duplicateDigitalProduct = async (product) => {
+    try {
+      const copy = {
+        ...product,
+        id: `digital-product-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title: `${product.title} Copy`,
+        status: 'Draft',
+        showOnHomepage: false,
+        showOnMember: false,
+        highlighted: false,
+      }
+
+      await onDigitalProductsChange((current) => [copy, ...current])
+      onNotify(product.productType === 'prompt'
+        ? 'Prompt berhasil diduplikat sebagai draft.'
+        : 'Produk digital berhasil diduplikat sebagai draft.')
+    } catch (error) {
+      onNotify(error.message || 'Produk digital tidak bisa diduplikat.')
+    }
+  }
+
+  const showDigitalProductAnalysis = (product, accessCount) => {
+    const homepageLabel = product.showOnHomepage !== false ? 'tampil di homepage' : 'disembunyikan dari homepage'
+    const memberLabel = product.showOnMember !== false ? 'tampil di member' : 'disembunyikan dari member'
+    const statusLabel = product.status || 'Draft'
+
+    onNotify(`${product.title}: ${accessCount} pembeli, status ${statusLabel}, ${homepageLabel}, ${memberLabel}.`)
+  }
+
+  const openCreateClass = () => {
+    resetClassForm()
+    onMenuChange('manage-classes')
+    setIsClassModalOpen(true)
+  }
+
+  const handleClassFormChange = (event) => {
+    const { name, type, checked, value } = event.target
+    setClassForm((current) => ({
+      ...current,
+      [name]:
+        type === 'checkbox'
+          ? checked
+          : ['displayStudents', 'rating'].includes(name)
+            ? value
+            : name === 'students' || name === 'progress'
+              ? Number(value)
+              : name === 'price'
+                ? parseRupiahValue(value)
+                : value,
+    }))
+  }
+
+  const handleThumbnailChange = async (event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      onNotify('Thumbnail harus berupa gambar.')
+      event.target.value = ''
+      return
+    }
+
+    try {
+      onNotify('Mengupload dan mengompres thumbnail...')
+      const imageUrl = await uploadClassImage(file, sessionToken)
+      setClassForm((current) => ({
+        ...current,
+        thumbnail: imageUrl,
+      }))
+      onNotify('Thumbnail berhasil diupload.')
+    } catch (error) {
+      onNotify(error.message || 'Thumbnail tidak bisa diupload.')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const handleMaterialChange = (materialId, field, value) => {
+    setClassForm((current) => ({
+      ...current,
+      materials: current.materials.map((material) =>
+        material.id === materialId
+          ? {
+            ...material,
+            [field]: ['requiresTask', 'allowTaskImage', 'requireTaskImage'].includes(field)
+              ? Boolean(value)
+              : value,
+          }
+          : material,
+      ),
+    }))
+  }
+
+  const handleMaterialDescriptionInput = (materialId) => {
+    rememberMaterialDescriptionSelection()
+    handleMaterialChange(materialId, 'description', normalizeMaterialDescriptionEditor())
+  }
+
+  const rememberMaterialDescriptionSelection = () => {
+    const editor = materialDescriptionRef.current
+    const selection = window.getSelection()
+
+    if (!editor || !selection?.rangeCount || !editor.contains(selection.anchorNode)) {
+      return
+    }
+
+    descriptionSelectionRef.current = selection.getRangeAt(0).cloneRange()
+  }
+
+  const restoreMaterialDescriptionSelection = () => {
+    const selection = window.getSelection()
+    const range = descriptionSelectionRef.current
+
+    if (!selection || !range) {
+      materialDescriptionRef.current?.focus()
+      return
+    }
+
+    selection.removeAllRanges()
+    selection.addRange(range)
+  }
+
+  const normalizeMaterialDescriptionEditor = () => {
+    const editor = materialDescriptionRef.current
+
+    if (!editor) {
+      return ''
+    }
+
+    editor.querySelectorAll('font[color]').forEach((fontNode) => {
+      const span = document.createElement('span')
+      span.style.color = fontNode.getAttribute('color') || ''
+      span.innerHTML = fontNode.innerHTML
+      fontNode.replaceWith(span)
+    })
+
+    return editor.innerHTML
+  }
+
+  const syncActiveMaterialDescription = () => {
+    if (!activeMaterialEditorId || !materialDescriptionRef.current) {
+      return
+    }
+
+    handleMaterialChange(
+      activeMaterialEditorId,
+      'description',
+      normalizeMaterialDescriptionEditor(),
+    )
+  }
+
+  const applyMaterialRichCommand = (materialId, command, value = null) => {
+    restoreMaterialDescriptionSelection()
+    document.execCommand(command, false, value)
+    const editor = materialDescriptionRef.current
+
+    if (editor) {
+      handleMaterialChange(materialId, 'description', normalizeMaterialDescriptionEditor())
+      rememberMaterialDescriptionSelection()
+      editor.focus()
+    }
+  }
+
+  const openPromptEditor = (materialId, promptItem = null) => {
+    setPromptEditorState({
+      materialId,
+      promptId: promptItem?.id || null,
+      draft: promptItem ? { ...createEmptyPromptItem(), ...promptItem } : createEmptyPromptItem(),
+    })
+  }
+
+  const closePromptEditor = () => {
+    setPromptEditorState(null)
+  }
+
+  const handlePromptDraftChange = (field, value) => {
+    setPromptEditorState((current) =>
+      current
+        ? {
+          ...current,
+          draft: {
+            ...current.draft,
+            [field]: value,
+          },
+        }
+        : current,
+    )
+  }
+
+  const savePromptEditor = () => {
+    if (!promptEditorState) {
+      return
+    }
+
+    const draft = {
+      ...promptEditorState.draft,
+      title: promptEditorState.draft.title.trim(),
+      instruction: promptEditorState.draft.instruction?.trim() || '',
+      prompt: promptEditorState.draft.prompt?.trim() || '',
+    }
+
+    if (!draft.image && !draft.prompt && !draft.instruction) {
+      onNotify('Isi prompt, gambar, atau petunjuk dulu sebelum menyimpan.')
+      return
+    }
+
+    setClassForm((current) => ({
+      ...current,
+      materials: current.materials.map((material) => {
+        if (material.id !== promptEditorState.materialId) {
+          return material
+        }
+
+        const promptItems = material.promptItems ?? []
+        const promptIndex = promptItems.findIndex(
+          (item) => item.id === promptEditorState.promptId,
+        )
+        const nextPrompt = {
+          ...draft,
+          title:
+            draft.title ||
+            `Prompt ${promptIndex >= 0 ? promptIndex + 1 : promptItems.length + 1
+            }`,
+        }
+
+        return {
+          ...material,
+          promptItems:
+            promptIndex >= 0
+              ? promptItems.map((item) =>
+                item.id === promptEditorState.promptId ? nextPrompt : item,
+              )
+              : [...promptItems, nextPrompt],
+        }
+      }),
+    }))
+    setPromptEditorState(null)
+    onNotify(promptEditorState.promptId ? 'Prompt diperbarui.' : 'Prompt ditambahkan.')
+  }
+
+  const removePromptItem = (materialId, promptId) => {
+    setClassForm((current) => ({
+      ...current,
+      materials: current.materials.map((material) =>
+        material.id === materialId
+          ? {
+            ...material,
+            promptItems: (material.promptItems ?? []).filter(
+              (item) => item.id !== promptId,
+            ),
+          }
+          : material,
+      ),
+    }))
+    if (promptEditorState?.promptId === promptId) {
+      setPromptEditorState(null)
+    }
+  }
+
+  const handleResourceLinkChange = (materialId, linkId, field, value) => {
+    setClassForm((current) => ({
+      ...current,
+      materials: current.materials.map((material) =>
+        material.id === materialId
+          ? {
+            ...material,
+            resourceLinks: (material.resourceLinks ?? []).map((link) =>
+              link.id === linkId ? { ...link, [field]: value } : link,
+            ),
+          }
+          : material,
+      ),
+    }))
+  }
+
+  const addResourceLink = (materialId) => {
+    setClassForm((current) => ({
+      ...current,
+      materials: current.materials.map((material) =>
+        material.id === materialId
+          ? {
+            ...material,
+            resourceLinks: [
+              ...(material.resourceLinks ?? []),
+              createEmptyResourceLink(),
+            ],
+          }
+          : material,
+      ),
+    }))
+  }
+
+  const removeResourceLink = (materialId, linkId) => {
+    setClassForm((current) => ({
+      ...current,
+      materials: current.materials.map((material) =>
+        material.id === materialId
+          ? {
+            ...material,
+            resourceLinks: (material.resourceLinks ?? []).filter(
+              (link) => link.id !== linkId,
+            ),
+          }
+          : material,
+      ),
+    }))
+  }
+
+  const handlePromptDraftImageChange = async (event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      onNotify('Gambar prompt harus berupa file gambar.')
+      event.target.value = ''
+      return
+    }
+
+    try {
+      onNotify('Mengupload dan mengompres gambar prompt...')
+      const imageUrl = await uploadClassImage(file, sessionToken)
+      handlePromptDraftChange('image', imageUrl)
+      onNotify('Gambar prompt berhasil diupload.')
+    } catch (error) {
+      onNotify(error.message || 'Gambar prompt tidak bisa diupload.')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const handleMaterialImageChange = async (materialId, event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      onNotify('Foto materi harus berupa file gambar.')
+      event.target.value = ''
+      return
+    }
+
+    try {
+      onNotify('Mengupload dan mengompres foto materi...')
+      const imageUrl = await uploadClassImage(file, sessionToken)
+      setClassForm((current) => ({
+        ...current,
+        materials: current.materials.map((material) =>
+          material.id === materialId
+            ? {
+              ...material,
+              imageFile: imageUrl,
+              imageName: file.name,
+            }
+            : material,
+        ),
+      }))
+      onNotify('Foto materi berhasil diupload. Klik Simpan Kelas agar muncul di materi.')
+    } catch (error) {
+      onNotify(error.message || 'Foto materi tidak bisa diupload.')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const handleCopyPrompt = async (prompt) => {
+    try {
+      await navigator.clipboard.writeText(prompt)
+      onNotify('Prompt berhasil disalin.')
+    } catch {
+      onNotify('Browser tidak mengizinkan copy otomatis.')
+    }
+  }
+
+  const handleMaterialPdfChange = async (materialId, event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (file.type !== 'application/pdf') {
+      onNotify('File materi pendukung harus berformat PDF.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > 12 * 1024 * 1024) {
+      onNotify('Ukuran PDF maksimal 12 MB.')
+      event.target.value = ''
+      return
+    }
+
+    try {
+      onNotify('Mengupload PDF materi...')
+      const data = await uploadStorageFile({
+        endpoint: uploadFileApiPath,
+        file,
+        type: 'document',
+        sessionToken,
+      })
+
+      setClassForm((current) => ({
+        ...current,
+        materials: current.materials.map((material) =>
+          material.id === materialId
+            ? {
+              ...material,
+              pdfFile: data.url,
+              pdfName: data.name || file.name,
+            }
+            : material,
+        ),
+      }))
+      onNotify('PDF berhasil diupload. Klik Simpan Kelas agar muncul di materi.')
+    } catch (error) {
+      onNotify(error.message || 'PDF tidak bisa diupload.')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const handleMaterialVideoUpload = (materialId, event) => {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    if (!allowedVideoTypes.includes(file.type)) {
+      onNotify('Format video harus MP4, WebM, OGG, MOV, atau M4V.')
+      event.target.value = ''
+      return
+    }
+
+    if (file.size > 80 * 1024 * 1024) {
+      onNotify('Ukuran video maksimal 80 MB. Jika gagal, kompres ke MP4 H.264.')
+      event.target.value = ''
+      return
+    }
+
+    setVideoUploads((current) => ({
+      ...current,
+      [materialId]: {
+        fileName: file.name,
+        percent: 0,
+        status: 'uploading',
+      },
+    }))
+    onNotify('Menyiapkan upload video...')
+
+    requestStorageUpload({
+      endpoint: uploadVideoApiPath,
+      file,
+      type: 'video',
+      sessionToken,
+    })
+      .then((upload) => {
+        const xhr = new XMLHttpRequest()
+
+        xhr.open('PUT', upload.signedUrl)
+        xhr.setRequestHeader('x-upsert', 'false')
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
+        xhr.responseType = 'json'
+        xhr.upload.onprogress = (progressEvent) => {
+          if (!progressEvent.lengthComputable) {
+            return
+          }
+
+          setVideoUploads((current) => ({
+            ...current,
+            [materialId]: {
+              ...(current[materialId] ?? {}),
+              percent: Math.round((progressEvent.loaded / progressEvent.total) * 100),
+              status: 'uploading',
+            },
+          }))
+        }
+        xhr.onload = () => {
+          let data = typeof xhr.response === 'object' && xhr.response ? xhr.response : {}
+
+          if (!Object.keys(data).length && xhr.responseText) {
+            try {
+              data = JSON.parse(xhr.responseText)
+            } catch {
+              data = {}
+            }
+          }
+
+          if (xhr.status < 200 || xhr.status >= 300) {
+            setVideoUploads((current) => ({
+              ...current,
+              [materialId]: {
+                ...(current[materialId] ?? {}),
+                percent: 0,
+                status: 'error',
+              },
+            }))
+            onNotify(data.message || 'Video tidak bisa diupload.')
+            event.target.value = ''
+            return
+          }
+
+          setClassForm((current) => ({
+            ...current,
+            materials: current.materials.map((material) =>
+              material.id === materialId
+                ? {
+                  ...material,
+                  videoFile: upload.file || upload.path || '',
+                  videoName: upload.name || file.name,
+                  videoType: upload.type || file.type,
+                }
+                : material,
+            ),
+          }))
+          setVideoUploads((current) => ({
+            ...current,
+            [materialId]: {
+              fileName: upload.name || file.name,
+              percent: 100,
+              status: 'done',
+            },
+          }))
+          onNotify('Video berhasil diupload. Klik Simpan Kelas agar masuk ke materi.')
+          event.target.value = ''
+        }
+        xhr.onerror = () => {
+          setVideoUploads((current) => ({
+            ...current,
+            [materialId]: {
+              ...(current[materialId] ?? {}),
+              percent: 0,
+              status: 'error',
+            },
+          }))
+          onNotify('Upload video gagal. Periksa koneksi dan pengaturan Supabase Storage.')
+          event.target.value = ''
+        }
+        xhr.send(file)
+      })
+      .catch((error) => {
+        uploadVideoToHosting({
+          endpoint: uploadVideoApiPath,
+          file,
+          sessionToken,
+          onProgress: (percent) => {
+            setVideoUploads((current) => ({
+              ...current,
+              [materialId]: {
+                ...(current[materialId] ?? {}),
+                percent,
+                status: 'uploading',
+              },
+            }))
+          },
+        })
+          .then((upload) => {
+            setClassForm((current) => ({
+              ...current,
+              materials: current.materials.map((material) =>
+                material.id === materialId
+                  ? {
+                    ...material,
+                    videoFile: upload.file || upload.path || '',
+                    videoName: upload.name || file.name,
+                    videoType: upload.type || file.type,
+                  }
+                  : material,
+              ),
+            }))
+            setVideoUploads((current) => ({
+              ...current,
+              [materialId]: {
+                fileName: upload.name || file.name,
+                percent: 100,
+                status: 'done',
+              },
+            }))
+            onNotify('Video berhasil diupload. Klik Simpan Kelas agar masuk ke materi.')
+          })
+          .catch((hostingError) => {
+            setVideoUploads((current) => ({
+              ...current,
+              [materialId]: {
+                ...(current[materialId] ?? {}),
+                percent: 0,
+                status: 'error',
+              },
+            }))
+            onNotify(hostingError.message || error.message || 'Video tidak bisa diupload.')
+          })
+          .finally(() => {
+            event.target.value = ''
+          })
+      })
+  }
+
+  const addMaterial = () => {
+    const nextMaterial = createEmptyMaterial()
+
+    setClassForm((current) => ({
+      ...current,
+      materials: [...current.materials, nextMaterial],
+    }))
+    setActiveMaterialEditorId(nextMaterial.id)
+  }
+
+  const removeMaterial = (materialId) => {
+    setClassForm((current) => ({
+      ...current,
+      materials:
+        current.materials.length > 1
+          ? current.materials.filter((material) => material.id !== materialId)
+          : current.materials,
+    }))
+    if (activeMaterialEditorId === materialId) {
+      setActiveMaterialEditorId(null)
+    }
+  }
+
+  const moveMaterialByIndex = (fromIndex, toIndex) => {
+    setClassForm((current) => {
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= current.materials.length ||
+        toIndex >= current.materials.length ||
+        fromIndex === toIndex
+      ) {
+        return current
+      }
+
+      const nextMaterials = [...current.materials]
+      const [movedMaterial] = nextMaterials.splice(fromIndex, 1)
+      nextMaterials.splice(toIndex, 0, movedMaterial)
+
+      return {
+        ...current,
+        materials: nextMaterials,
+      }
+    })
+  }
+
+  const moveMaterialToTarget = (draggedMaterialId, targetMaterialId) => {
+    if (!draggedMaterialId || draggedMaterialId === targetMaterialId) {
+      return
+    }
+
+    setClassForm((current) => {
+      const fromIndex = current.materials.findIndex(
+        (material) => material.id === draggedMaterialId,
+      )
+      const toIndex = current.materials.findIndex(
+        (material) => material.id === targetMaterialId,
+      )
+
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+        return current
+      }
+
+      const nextMaterials = [...current.materials]
+      const [movedMaterial] = nextMaterials.splice(fromIndex, 1)
+      nextMaterials.splice(toIndex, 0, movedMaterial)
+
+      return {
+        ...current,
+        materials: nextMaterials,
+      }
+    })
+  }
+
+  const handleMaterialDragStart = (event, materialId) => {
+    setDraggingMaterialId(materialId)
+    lastMaterialDragTargetRef.current = ''
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', materialId)
+  }
+
+  const handleMaterialDragEnter = (event, targetMaterialId) => {
+    event.preventDefault()
+    if (lastMaterialDragTargetRef.current === targetMaterialId) {
+      return
+    }
+
+    lastMaterialDragTargetRef.current = targetMaterialId
+    moveMaterialToTarget(
+      draggingMaterialId || event.dataTransfer.getData('text/plain'),
+      targetMaterialId,
+    )
+  }
+
+  const handleMaterialDragOver = (event) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleMaterialDragEnd = () => {
+    setDraggingMaterialId(null)
+    lastMaterialDragTargetRef.current = ''
+  }
+
+  const handleSubmitClass = async (event) => {
+    event.preventDefault()
+
+    const materials = classForm.materials.map((material, index) => {
+      const liveDescription =
+        activeMaterialEditorId === material.id && materialDescriptionRef.current
+          ? normalizeMaterialDescriptionEditor()
+          : material.description
+
+      return {
+        id: material.id || `material-${Date.now()}-${index}`,
+        title: material.title.trim() || `Materi ${index + 1}`,
+        description: liveDescription ?? '',
+        videoUrl: material.videoUrl.trim(),
+        videoFile: material.videoFile ?? '',
+        videoName: material.videoName ?? '',
+        videoType: material.videoType ?? '',
+        imageFile: material.imageFile ?? '',
+        imageName: material.imageName ?? '',
+        pdfFile: material.pdfFile ?? '',
+        pdfName: material.pdfName ?? '',
+        requiresTask: Boolean(material.requiresTask),
+        allowTaskImage: material.allowTaskImage !== false,
+        requireTaskImage: Boolean(material.requireTaskImage),
+        taskPrompt:
+          material.taskPrompt.trim() ||
+          'Kirim link tugas atau catatan praktik materi ini.',
+        promptItems: (material.promptItems ?? [])
+          .filter((item) => item.image || item.prompt || item.instruction)
+          .map((item, promptIndex) => ({
+            id: item.id || `prompt-${Date.now()}-${index}-${promptIndex}`,
+            title: item.title.trim() || `Prompt ${promptIndex + 1}`,
+            image: item.image,
+            instruction: item.instruction?.trim() || '',
+            prompt: item.prompt,
+          })),
+        resourceLinks: (material.resourceLinks ?? [])
+          .filter((link) => link.url)
+          .map((link, linkIndex) => ({
+            id: link.id || `resource-link-${Date.now()}-${index}-${linkIndex}`,
+            title: link.title.trim() || `Link ${linkIndex + 1}`,
+            url: link.url.trim(),
+          })),
+      }
+    })
+    const invalidMaterial = materials.find(
+      (material) =>
+        material.videoUrl && !material.videoFile && !isYoutubeUrl(material.videoUrl),
+    )
+
+    if (invalidMaterial) {
+      onNotify('Link video harus dari YouTube, YouTube Shorts, atau youtu.be.')
+      return
+    }
+
+    const existingClass = classes.find((item) => item.id === editingClassId)
+    const nextClass = {
+      id: editingClassId ?? classForm.id,
+      title: classForm.title.trim(),
+      description: classForm.description || '',
+      students: existingClass?.students ?? 0,
+      displayStudents:
+        classForm.displayStudents === ''
+          ? ''
+          : Math.max(0, Math.round(Number(classForm.displayStudents) || 0)),
+      rating:
+        classForm.rating === ''
+          ? ''
+          : Math.min(5, Math.max(0, Number(classForm.rating) || 0)),
+      status: classForm.status,
+      price: Math.max(0, Number(classForm.price) || 0),
+      salePrice:
+        classForm.salePrice === ''
+          ? ''
+          : Math.max(0, Number(classForm.salePrice) || 0),
+      purchaseButtonLabel: classForm.purchaseButtonLabel.trim() || 'Beli Sekarang',
+      registerButtonLabel: classForm.purchaseButtonLabel.trim() || 'Beli Sekarang',
+      purchaseMessage: classForm.purchaseMessage.trim(),
+      lynkProductKey: classForm.lynkProductKey.trim(),
+      tripayProductKey: classForm.tripayProductKey.trim(),
+      thumbnail: classForm.thumbnail,
+      mentor: classForm.mentor.trim() || 'Ibnu Creative',
+      progress: existingClass?.progress ?? 0,
+      next: existingClass?.next ?? 'Mulai materi pertama',
+      liveAt: existingClass?.liveAt ?? '',
+      lessons: `${materials.length} materi`,
+      showOnHomepage: classForm.showOnHomepage !== false,
+      showOnMember: classForm.showOnMember !== false,
+      highlighted: classForm.highlighted === true,
+      materials,
+    }
+
+    if (!nextClass.title) {
+      onNotify('Nama kelas wajib diisi.')
+      return
+    }
+
+    try {
+      await onClassesChange((current) =>
+        editingClassId
+          ? current.map((item) => (item.id === editingClassId ? nextClass : item))
+          : [nextClass, ...current],
+      )
+      setActionStatus(
+        editingClassId
+          ? 'Data kelas berhasil diperbarui.'
+          : 'Kelas baru berhasil ditambahkan.',
+      )
+      onNotify(editingClassId ? 'Kelas diperbarui.' : 'Kelas baru ditambahkan.')
+      resetClassForm()
+      setIsClassModalOpen(false)
+    } catch (error) {
+      onNotify(error.message || 'Kelas tidak bisa disimpan ke hosting.')
+    }
+  }
+
+  const handleEditClass = (item) => {
+    setClassForm({
+      id: item.id,
+      title: item.title,
+      description: descriptionHtmlToEditorText(item.description ?? ''),
+      students: item.students,
+      displayStudents: item.displayStudents ?? '',
+      rating: item.rating ?? '',
+      status: item.status,
+      price: parseRupiahValue(item.price),
+      salePrice: parseRupiahValue(item.salePrice),
+      purchaseButtonLabel: item.purchaseButtonLabel || item.registerButtonLabel || 'Beli Sekarang',
+      registerButtonLabel: item.registerButtonLabel || item.purchaseButtonLabel || 'Beli Sekarang',
+      purchaseMessage: item.purchaseMessage ?? '',
+      lynkProductKey: item.lynkProductKey ?? '',
+      tripayProductKey: item.tripayProductKey ?? '',
+      thumbnail: item.thumbnail ?? '',
+      mentor: item.mentor ?? '',
+      progress: item.progress ?? 0,
+      next: item.next ?? '',
+      liveAt: item.liveAt ?? '',
+      lessons: item.lessons ?? '',
+      showOnHomepage: item.showOnHomepage !== false,
+      showOnMember: item.showOnMember !== false,
+      highlighted: item.highlighted === true,
+      materials: item.materials?.length
+        ? item.materials.map((material) => ({
+          ...material,
+          description: material.description ?? '',
+          videoFile: material.videoFile ?? '',
+          videoName: material.videoName ?? '',
+          videoType: material.videoType ?? '',
+          imageFile: material.imageFile ?? '',
+          imageName: material.imageName ?? '',
+          pdfFile: material.pdfFile ?? '',
+          pdfName: material.pdfName ?? '',
+          allowTaskImage: material.allowTaskImage !== false,
+          requireTaskImage: Boolean(material.requireTaskImage),
+          promptItems: material.promptItems ?? [],
+          resourceLinks: material.resourceLinks ?? [],
+        }))
+        : [createEmptyMaterial()],
+    })
+    setEditingClassId(item.id)
+    setIsClassModalOpen(true)
+    setActionStatus(`Sedang mengedit ${item.title}.`)
+  }
+
+  const updateClassQuickAction = async (classId, changes, message) => {
+    try {
+      await onClassesChange((current) =>
+        current.map((item) => (item.id === classId ? { ...item, ...changes } : item)),
+      )
+      onNotify(message)
+    } catch (error) {
+      onNotify(error.message || 'Kelas tidak bisa diperbarui.')
+    }
+  }
+
+  const duplicateClass = async (item) => {
+    try {
+      const copy = {
+        ...item,
+        id: `admin-class-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title: `${item.title} Copy`,
+        students: 0,
+        status: 'Draft',
+        showOnHomepage: false,
+        showOnMember: false,
+        highlighted: false,
+        materials: (item.materials || []).map((material, index) => ({
+          ...material,
+          id: `material-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`,
+        })),
+      }
+
+      await onClassesChange((current) => [copy, ...current])
+      onNotify('Kelas berhasil diduplikat sebagai draft.')
+    } catch (error) {
+      onNotify(error.message || 'Kelas tidak bisa diduplikat.')
+    }
+  }
+
+  const showClassAnalysis = (item) => {
+    const homepageLabel = item.showOnHomepage !== false ? 'tampil di homepage' : 'disembunyikan dari homepage'
+    const memberLabel = item.showOnMember !== false ? 'tampil di member' : 'disembunyikan dari member'
+    const statusLabel = item.status || 'Draft'
+
+    onNotify(`${item.title}: ${item.students || 0} peserta, status ${statusLabel}, ${homepageLabel}, ${memberLabel}.`)
+  }
+
+  const confirmDeleteClass = async () => {
+    const classId = pendingDeleteClass?.id
+
+    if (!classId) {
+      return
+    }
+
+    try {
+      await onClassesChange((current) => current.filter((item) => item.id !== classId))
+      if (editingClassId === classId) {
+        resetClassForm()
+      }
+      setPendingDeleteClass(null)
+      setActionStatus('Kelas berhasil dihapus.')
+      onNotify('Kelas dihapus.')
+    } catch (error) {
+      onNotify(error.message || 'Kelas tidak bisa dihapus dari hosting.')
+    }
+  }
+
+  const resetMemberForm = () => {
+    setMemberForm(createEmptyMemberForm())
+    setEditingMemberId(null)
+  }
+
+  const openCreateMember = () => {
+    resetMemberForm()
+    onMenuChange('students')
+    setIsMemberModalOpen(true)
+  }
+
+  const handleMemberFormChange = (event) => {
+    const { name, value } = event.target
+
+    setMemberForm((current) => ({
+      ...current,
+      [name]: value,
+    }))
+  }
+
+  const handleMemberAccessModeChange = (event) => {
+    const { value } = event.target
+
+    setMemberForm((current) => ({
+      ...current,
+      classAccessMode: value,
+      allowedClassIds: value === 'all' || value === 'none' ? [] : current.allowedClassIds,
+    }))
+  }
+
+  const handleToggleMemberClassAccess = (classId) => {
+    setMemberForm((current) => {
+      const allowedClassIds = current.allowedClassIds.includes(classId)
+        ? current.allowedClassIds.filter((id) => id !== classId)
+        : [...current.allowedClassIds, classId]
+
+      return {
+        ...current,
+        allowedClassIds,
+      }
+    })
+  }
+
+  const handleSubmitMember = async (event) => {
+    event.preventDefault()
+
+    const payload = {
+      id: editingMemberId,
+      name: memberForm.name.trim(),
+      username: memberForm.username.trim(),
+      email: memberForm.email.trim(),
+      phone: memberForm.phone.trim(),
+      password: memberForm.password,
+      status: memberForm.status,
+      allowedClassIds:
+        memberForm.classAccessMode === 'all'
+          ? classes.map((course) => course.id)
+          : memberForm.classAccessMode === 'none'
+            ? []
+            : memberForm.allowedClassIds,
+    }
+
+    if (
+      !payload.username ||
+      (!editingMemberId && payload.password.length < 6) ||
+      (editingMemberId && payload.password && payload.password.length < 6)
+    ) {
+      onNotify('Username dan password minimal 6 karakter wajib diisi.')
+      return
+    }
+
+    try {
+      if (editingMemberId) {
+        await onUpdateMember(payload)
+      } else {
+        await onCreateMember(payload)
+      }
+
+      setActionStatus(
+        editingMemberId
+          ? 'Data member berhasil diperbarui.'
+          : 'Member baru berhasil ditambahkan.',
+      )
+      onNotify(editingMemberId ? 'Member diperbarui.' : 'Member ditambahkan.')
+      resetMemberForm()
+      setIsMemberModalOpen(false)
+    } catch (error) {
+      onNotify(error.message || 'Data member tidak bisa disimpan.')
+    }
+  }
+
+  const handleEditMember = (member) => {
+    setMemberForm({
+      name: member.name,
+      username: member.username,
+      email: member.email ?? '',
+      phone: member.phone ?? '',
+      password: '',
+      status: member.status ?? 'Aktif',
+      classAccessMode: Array.isArray(member.allowedClassIds)
+        ? member.allowedClassIds.length
+          ? 'custom'
+          : 'none'
+        : 'none',
+      allowedClassIds: Array.isArray(member.allowedClassIds)
+        ? member.allowedClassIds
+        : [],
+    })
+    setEditingMemberId(member.id)
+    setIsMemberModalOpen(true)
+    setActionStatus(`Sedang mengedit member ${member.name}.`)
+  }
+
+  const confirmDeleteMember = async () => {
+    if (!pendingDeleteMember?.id) {
+      return
+    }
+
+    try {
+      await onDeleteMember(pendingDeleteMember.id)
+      setPendingDeleteMember(null)
+      setActionStatus('Member berhasil dihapus.')
+      onNotify('Member dihapus.')
+    } catch (error) {
+      onNotify(error.message || 'Member tidak bisa dihapus.')
+    }
+  }
+
+  const handleOpenSupport = (ticket) => {
+    setSupportForm({
+      id: ticket.id,
+      memberName: ticket.memberName,
+      subject: ticket.subject,
+      message: ticket.message,
+      status: ticket.status === 'Menunggu' ? 'Dibalas' : ticket.status,
+      answer: ticket.answer ?? '',
+      replyDraft: '',
+      replies: ticket.replies ?? [],
+    })
+    setIsSupportModalOpen(true)
+  }
+
+  const handleSupportFormChange = (event) => {
+    const { name, value } = event.target
+
+    setSupportForm((current) => ({
+      ...current,
+      [name]: value,
+    }))
+  }
+
+  const handleSubmitSupport = async (event) => {
+    event.preventDefault()
+
+    try {
+      await onUpdateSupportTicket({
+        id: supportForm.id,
+        status: supportForm.status,
+        message: supportForm.replyDraft.trim(),
+      })
+      setIsSupportModalOpen(false)
+      setSupportForm(createEmptySupportForm())
+      setActionStatus('Tiket bantuan berhasil diperbarui.')
+      onNotify('Balasan bantuan disimpan.')
+    } catch (error) {
+      onNotify(error.message || 'Tiket bantuan tidak bisa disimpan.')
+    }
+  }
+
+  const confirmDeleteSupport = async () => {
+    if (!pendingDeleteSupport?.id) {
+      return
+    }
+
+    try {
+      await onDeleteSupportTicket(pendingDeleteSupport.id)
+      setPendingDeleteSupport(null)
+      setActionStatus('Tiket bantuan berhasil dihapus.')
+      onNotify('Tiket bantuan dihapus.')
+    } catch (error) {
+      onNotify(error.message || 'Tiket bantuan tidak bisa dihapus.')
+    }
+  }
+
+  const handleDiscussionDraftChange = (classId, value) => {
+    setDiscussionReplyDrafts((current) => ({
+      ...current,
+      [classId]: value,
+    }))
+  }
+
+  const setAdminDiscussionMessageNode = (messageId, node) => {
+    if (!messageId) {
+      return
+    }
+
+    if (node) {
+      discussionAdminMessageRefs.current.set(messageId, node)
+    } else {
+      discussionAdminMessageRefs.current.delete(messageId)
+    }
+  }
+
+  const handleJumpToAdminDiscussionMessage = (messageId) => {
+    const node = discussionAdminMessageRefs.current.get(messageId)
+
+    if (!node) {
+      onNotify('Pesan yang dibalas tidak ditemukan di daftar ini.')
+      return
+    }
+
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightedAdminDiscussionId(messageId)
+
+    if (discussionAdminHighlightTimerRef.current) {
+      window.clearTimeout(discussionAdminHighlightTimerRef.current)
+    }
+
+    discussionAdminHighlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedAdminDiscussionId('')
+    }, 1800)
+  }
+
+  const handleStartAdminDiscussionReply = (message) => {
+    setDiscussionReplyTargets((current) => ({
+      ...current,
+      [message.classId]: message,
+    }))
+    setDiscussionEditingId('')
+    setDiscussionEditingDraft('')
+  }
+
+  const handleCancelAdminDiscussionReply = (classId) => {
+    setDiscussionReplyTargets((current) => {
+      const next = { ...current }
+      delete next[classId]
+      return next
+    })
+  }
+
+  const handleStartAdminDiscussionEdit = (message) => {
+    setDiscussionEditingId(message.id)
+    setDiscussionEditingDraft(message.message || '')
+  }
+
+  const handleCancelAdminDiscussionEdit = () => {
+    setDiscussionEditingId('')
+    setDiscussionEditingDraft('')
+  }
+
+  const handleOpenAdminDiscussionLauncher = () => {
+    setDiscussionClassFilter('all')
+    setDiscussionSearchTerm('')
+    setIsAdminDiscussionOpen(true)
+  }
+
+  const handleOpenAdminDiscussionClass = (classId) => {
+    setDiscussionClassFilter(classId)
+    setDiscussionEditingId('')
+    setDiscussionEditingDraft('')
+    setHighlightedAdminDiscussionId('')
+    setIsAdminDiscussionOpen(true)
+  }
+
+  const handleBackToAdminDiscussionList = () => {
+    setDiscussionClassFilter('all')
+    setDiscussionEditingId('')
+    setDiscussionEditingDraft('')
+    setHighlightedAdminDiscussionId('')
+  }
+
+  const handleSubmitAdminDiscussionEdit = async (event, message) => {
+    event.preventDefault()
+
+    const nextMessage = discussionEditingDraft.trim()
+
+    if (!nextMessage) {
+      onNotify('Isi pesan diskusi wajib diisi.')
+      return
+    }
+
+    try {
+      await onUpdateClassDiscussionMessage({
+        id: message.id,
+        message: nextMessage,
+      })
+      handleCancelAdminDiscussionEdit()
+      setActionStatus('Pesan diskusi berhasil diedit.')
+      onNotify('Pesan diskusi diedit.')
+    } catch (error) {
+      onNotify(error.message || 'Pesan diskusi belum bisa diedit.')
+    }
+  }
+
+  const handleSubmitDiscussionReply = async (event, discussionGroup) => {
+    event.preventDefault()
+
+    const message = (discussionReplyDrafts[discussionGroup.classId] || '').trim()
+
+    if (!message) {
+      onNotify('Tulis balasan diskusi terlebih dahulu.')
+      return
+    }
+
+    try {
+      await onCreateClassDiscussionMessage({
+        classId: discussionGroup.classId,
+        classTitle: discussionGroup.classTitle,
+        message,
+        replyToId: discussionReplyTargets[discussionGroup.classId]?.id || '',
+      })
+      setDiscussionReplyDrafts((current) => ({
+        ...current,
+        [discussionGroup.classId]: '',
+      }))
+      handleCancelAdminDiscussionReply(discussionGroup.classId)
+      setActionStatus('Balasan diskusi kelas berhasil dikirim.')
+      onNotify('Balasan diskusi dikirim.')
+    } catch (error) {
+      onNotify(error.message || 'Balasan diskusi belum bisa dikirim.')
+    }
+  }
+
+  const handleToggleDiscussionPin = async (message) => {
+    try {
+      const willPin = !message.isPinned
+
+      if (willPin) {
+        const currentlyPinned = activeDiscussionGroup?.messages.find(
+          (msg) => msg.isPinned && !msg.isDeleted && msg.id !== message.id,
+        )
+
+        if (currentlyPinned) {
+          await onPinClassDiscussionMessage({
+            id: currentlyPinned.id,
+            isPinned: false,
+          })
+        }
+      }
+
+      await onPinClassDiscussionMessage({
+        id: message.id,
+        isPinned: willPin,
+      })
+      setActionStatus(willPin ? 'Pesan diskusi berhasil disematkan.' : 'Sematan pesan diskusi dilepas.')
+      onNotify(willPin ? 'Pesan diskusi disematkan.' : 'Sematan pesan dilepas.')
+    } catch (error) {
+      onNotify(error.message || 'Status sematan pesan belum bisa diubah.')
+    }
+  }
+
+  const handleDeleteDiscussionMessage = async (messageId) => {
+    if (!window.confirm('Hapus pesan diskusi ini?')) {
+      return
+    }
+
+    try {
+      await onDeleteClassDiscussionMessage(messageId)
+      if (discussionEditingId === messageId) {
+        handleCancelAdminDiscussionEdit()
+      }
+      setDiscussionReplyTargets((current) => Object.fromEntries(
+        Object.entries(current).filter(([, target]) => target?.id !== messageId),
+      ))
+      setActionStatus('Pesan diskusi berhasil dihapus.')
+      onNotify('Pesan diskusi dihapus.')
+    } catch (error) {
+      onNotify(error.message || 'Pesan diskusi belum bisa dihapus.')
+    }
+  }
+
+  const handleExportData = () => {
+    const csv = [
+      [
+        'Kelas',
+        'Peserta',
+        'Status',
+        'Harga',
+        'Mentor',
+        'Jadwal Live',
+        'Jumlah Materi',
+        'Materi Wajib Tugas',
+      ]
+        .map(toCsvValue)
+        .join(','),
+      ...classes.map((item) =>
+        [
+          item.title,
+          item.students,
+          item.status,
+          formatClassPrice(item.price),
+          item.mentor,
+          item.liveAt,
+          item.materials?.length ?? 0,
+          item.materials?.filter((material) => material.requiresTask).length ?? 0,
+        ]
+          .map(toCsvValue)
+          .join(','),
+      ),
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = 'data-kelas-ibnucreative.csv'
+    document.body.append(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+    setActionStatus('Data kelas diekspor sebagai file CSV.')
+    onNotify('File CSV data kelas dibuat.')
+  }
+
+  const handleWebsiteImageUpload = (file) => uploadClassImage(file, sessionToken)
+
+  const openSubmissionReview = (submission) => {
+    setViewingSubmission(submission)
+    setSubmissionFeedback(submission.feedback ?? '')
+    setSubmissionRating(Number(submission.rating) || 0)
+  }
+
+  const handleReviewSubmission = async (status = 'Direview') => {
+    if (!viewingSubmission?.id) {
+      return
+    }
+
+    try {
+      await onUpdateSubmission({
+        id: viewingSubmission.id,
+        status,
+        feedback: submissionFeedback.trim(),
+        rating: submissionRating,
+      })
+      setViewingSubmission(null)
+      setSubmissionFeedback('')
+      setSubmissionRating(0)
+      setActionStatus(`Tugas ${viewingSubmission.memberName} diperbarui.`)
+      onNotify('Status tugas peserta diperbarui.')
+    } catch (error) {
+      onNotify(error.message || 'Tugas tidak bisa diperbarui.')
+    }
+  }
+
+  const getInsightItemLabel = (title, rawLabel) => {
+    if (!rawLabel) return 'Tidak diketahui'
+    const code = String(rawLabel).toUpperCase().trim()
+    if (title === 'Negara') {
+      const countryNames = {
+        ID: 'Indonesia',
+        SG: 'Singapura',
+        MY: 'Malaysia',
+        US: 'Amerika Serikat',
+        JP: 'Jepang',
+        KR: 'Korea Selatan',
+        CN: 'Tiongkok',
+        AU: 'Australia',
+        GB: 'Inggris',
+        DE: 'Jerman',
+        NL: 'Belanda',
+        HK: 'Hong Kong',
+        TW: 'Taiwan',
+        TH: 'Thailand',
+        PH: 'Filipina',
+        VN: 'Vietnam',
+        IN: 'India',
+        SA: 'Arab Saudi',
+        BH: 'Bahrain',
+        QA: 'Qatar',
+        PL: 'Polandia',
+        IT: 'Italia',
+      }
+      return countryNames[code] || rawLabel
+    }
+    if (title === 'Daerah') {
+      const regionNames = {
+        AC: 'Aceh',
+        BA: 'Bali',
+        BT: 'Banten',
+        BE: 'Bengkulu',
+        GO: 'Gorontalo',
+        JK: 'DKI Jakarta',
+        JA: 'Jambi',
+        JB: 'Jawa Barat',
+        JT: 'Jawa Tengah',
+        JI: 'Jawa Timur',
+        KB: 'Kalimantan Barat',
+        KS: 'Kalimantan Selatan',
+        KT: 'Kalimantan Tengah',
+        KI: 'Kalimantan Timur',
+        KU: 'Kalimantan Utara',
+        BB: 'Kepulauan Bangka Belitung',
+        KR: 'Kepulauan Riau',
+        LA: 'Lampung',
+        MA: 'Maluku',
+        MU: 'Maluku Utara',
+        NB: 'Nusa Tenggara Barat',
+        NT: 'Nusa Tenggara Timur',
+        PA: 'Papua',
+        PB: 'Papua Barat',
+        RI: 'Riau',
+        SR: 'Sulawesi Barat',
+        SN: 'Sulawesi Selatan',
+        ST: 'Sulawesi Tengah',
+        SG: 'Sulawesi Tenggara',
+        SA: 'Sulawesi Utara',
+        SB: 'Sumatera Barat',
+        SS: 'Sumatera Selatan',
+        SU: 'Sumatera Utara',
+        YO: 'DI Yogyakarta',
+      }
+      return regionNames[code] || rawLabel
+    }
+    return rawLabel
+  }
+
+  const renderInsightList = (title, icon, items, emptyLabel = 'Belum ada data') => (
+    <article className="traffic-breakdown-card">
+      <div className="traffic-breakdown-title">
+        <Icon name={icon} />
+        <h3>{title}</h3>
+      </div>
+      <div className="traffic-ranking-list">
+        {items.map((item) => (
+          <div className="traffic-ranking-row" key={`${title}-${item.label}`}>
+            <span>{getInsightItemLabel(title, item.label)}</span>
+            <strong>{formatCompactNumber(item.count)}</strong>
+            <i style={{ '--traffic-row-size': `${Math.max(6, (item.count / analyticsTopMax) * 100)}%` }} />
+          </div>
+        ))}
+        {!items.length && (
+          <p className="traffic-empty-text">{emptyLabel}</p>
+        )}
+      </div>
+    </article>
+  )
+
+  // Badge: max(0, current - seen). ?? current = no badge on first render before click.
+  const menuBadges = {
+    students: Math.max(0, members.length - (seenMenuCounts.students ?? members.length)),
+    payments: Math.max(0, payments.length - (seenMenuCounts.payments ?? payments.length)),
+    submissions: Math.max(0, pendingSubmissions - (seenMenuCounts.submissions ?? pendingSubmissions)),
+    testimonials: Math.max(0, pendingTestimonials - (seenMenuCounts.testimonials ?? pendingTestimonials)),
+    certificates: Math.max(0, pendingCertificateNameRequests.length - (seenMenuCounts.certificates ?? pendingCertificateNameRequests.length)),
+    support: Math.max(0, waitingSupportCount - (seenMenuCounts.support ?? waitingSupportCount)),
+  }
+
+  const handleAdminMenuChange = (menuId) => {
+    onMenuChange(menuId)
+    setSeenMenuCounts((prev) => ({
+      ...prev,
+      students: menuId === 'students' ? members.length : (prev.students ?? members.length),
+      payments: menuId === 'payments' ? payments.length : (prev.payments ?? payments.length),
+      submissions: menuId === 'submissions' ? pendingSubmissions : (prev.submissions ?? pendingSubmissions),
+      testimonials: menuId === 'testimonials' ? pendingTestimonials : (prev.testimonials ?? pendingTestimonials),
+      certificates: menuId === 'certificates' ? pendingCertificateNameRequests.length : (prev.certificates ?? pendingCertificateNameRequests.length),
+      support: menuId === 'support' ? waitingSupportCount : (prev.support ?? waitingSupportCount),
+    }))
+  }
+
+  return (
+    <DashboardShell
+      role="admin"
+      loginName={loginName}
+      avatar={avatar}
+      menuItems={adminMenuItems}
+      menuBadges={menuBadges}
+      activeMenu={activeMenu}
+      onMenuChange={handleAdminMenuChange}
+      isMenuOpen={isMenuOpen}
+      onCloseMenu={onCloseMenu}
+    >
+      {activeMenu === 'overview' && (
+        <>
+          {(() => {
+            const settings = websiteSettings ? cleanWebsiteSettings(websiteSettings) : defaultWebsiteSettings
             const brandLogo = settings.brandLogo
             const brandIcon = settings.brandIcon || 'spark'
             const number = Math.max(0, Number(String(totalPaidRevenue ?? '').replace(/[^\d]/g, '')) || 0)
