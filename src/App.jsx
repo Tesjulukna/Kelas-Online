@@ -2546,32 +2546,6 @@ function App() {
       })
   }
 
-  const handleUpdateAdminMenuSeen = (seenMenuCounts) => {
-    if (!session || session.role !== 'admin') {
-      return
-    }
-
-    const nextSession = {
-      ...session,
-      allowedClassIds: seenMenuCounts,
-    }
-
-    saveSession(nextSession)
-    setSession(nextSession)
-
-    requestJson(profileApiPath, {
-      method: 'PUT',
-      body: JSON.stringify({
-        userId: session.userId,
-        role: session.role,
-        username: session.username,
-        allowedClassIds: seenMenuCounts,
-      }),
-    }).catch((err) => {
-      console.error('Failed to sync seen menu counts to server:', err)
-    })
-  }
-
   const applyMembersResponse = (data) => {
     const nextMembers = cleanMembers(data.members)
 
@@ -3377,8 +3351,6 @@ function App() {
             <AdminPage
               loginName={session.name}
               avatar={session.avatar}
-              initialSeenMenuCounts={session.allowedClassIds || {}}
-              onSeenMenuCountsChange={handleUpdateAdminMenuSeen}
               sessionToken={session.token}
               classes={classes}
               digitalProducts={digitalProducts}

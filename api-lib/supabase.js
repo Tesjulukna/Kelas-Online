@@ -749,7 +749,8 @@ function sessionPayload(account, token = '') {
     email: account.email || '',
     role: account.role,
     avatar: account.avatar || '',
-    allowedClassIds: parseJson(account.allowed_class_ids, null),
+    allowedClassIds:
+      account.role === 'member' ? parseJson(account.allowed_class_ids, null) : null,
     token,
     signedInAt: new Date().toISOString(),
   }
@@ -3938,10 +3939,6 @@ export async function updateProfile(user, payload) {
   const updates = {
     name: cleanText(payload.name || user.name, 120),
     avatar: cleanUrl(payload.avatar || ''),
-  }
-
-  if (user.role === 'admin' && payload.allowedClassIds !== undefined) {
-    updates.allowed_class_ids = payload.allowedClassIds ? JSON.stringify(payload.allowedClassIds) : null
   }
 
   if (user.role === 'admin') {

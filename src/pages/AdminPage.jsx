@@ -41,7 +41,33 @@ function saveAdminDiscussionSeenTimes(loginName = '', value = {}) {
   }
 }
 
+const adminMenuSeenStorageKey = 'ibnucreative.adminMenuSeen.v1'
 
+function readAdminMenuSeen(loginName = '') {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+
+  try {
+    const key = `${adminMenuSeenStorageKey}.${loginName || 'admin'}`
+    return JSON.parse(window.localStorage.getItem(key) || '{}') || {}
+  } catch {
+    return {}
+  }
+}
+
+function saveAdminMenuSeen(loginName = '', value = {}) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    const key = `${adminMenuSeenStorageKey}.${loginName || 'admin'}`
+    window.localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Unread badges are a convenience layer; menu badges remain available without storage.
+  }
+}
 
 function createEmptyMaterial() {
   return {
@@ -1066,7 +1092,7 @@ function AdminPage({
     readAdminDiscussionSeenTimes(loginName),
   )
   const [seenMenuCounts, setSeenMenuCounts] = useState(() => {
-    const saved = initialSeenMenuCounts || {}
+    const saved = readAdminMenuSeen(loginName)
     return {
       submissions: saved.submissions ?? 0,
       testimonials: saved.testimonials ?? 0,
@@ -1654,10 +1680,10 @@ function AdminPage({
         certificates: activeMenu === 'certificates' ? pendingCertificateNameRequests.length : (prev.certificates ?? 0),
         support: activeMenu === 'support' ? waitingSupportCount : (prev.support ?? 0),
       }
-      onSeenMenuCountsChange(next)
+      saveAdminMenuSeen(loginName, next)
       return next
     })
-  }, [activeMenu, members.length, payments.length, pendingSubmissions, pendingTestimonials, pendingCertificateNameRequests.length, waitingSupportCount, onSeenMenuCountsChange])
+  }, [activeMenu, members.length, payments.length, pendingSubmissions, pendingTestimonials, pendingCertificateNameRequests.length, waitingSupportCount, loginName])
 
   useEffect(() => {
     if (activeMenu !== 'overview' || !sessionToken) {
