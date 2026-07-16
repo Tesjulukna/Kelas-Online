@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import Icon from '../../components/Icon'
 import './Detail.css'
+import { applyGoogleTranslate } from '../../utils/googleTranslate'
 
 const productReviewLikesKey = 'ibnucreative.product-review-likes.v1'
 
@@ -316,7 +317,18 @@ function DetailProduk({
           <span className="card-badge badge-produk-digital" style={{ position: 'static', display: 'inline-block', marginBottom: '8px' }}>
             {isPrompt ? 'Prompt' : 'Produk Digital'}
           </span>
-          <h1>{product.title}</h1>
+          <div className="description-translate-header">
+            <h1>{product.title}</h1>
+            <button
+              className="description-translate-btn"
+              type="button"
+              title="Terjemahkan deskripsi"
+              aria-label="Terjemahkan"
+              onClick={() => applyGoogleTranslate()}
+            >
+              <Icon name="translate" />
+            </button>
+          </div>
           {hasRichDescription ? (
             <StableRichDescription html={product.description} />
           ) : (

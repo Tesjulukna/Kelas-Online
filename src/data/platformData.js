@@ -71,6 +71,7 @@ export const memberMenuItems = [
   { id: 'certificates', label: 'Sertifikat', icon: 'certificate' },
   { id: 'support', label: 'Bantuan Mentor', icon: 'message' },
   { id: 'about', label: 'Tentang', icon: 'fileText' },
+  { id: 'language', label: 'Bahasa', icon: 'globe' },
 ]
 
 export const adminClasses = [

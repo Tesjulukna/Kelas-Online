@@ -2,6 +2,7 @@ import { memo, useState } from 'react'
 import Icon from '../../components/Icon'
 import { benefits } from '../../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../../data/websiteSettings'
+import { applyGoogleTranslate } from '../../utils/googleTranslate'
 
 const StableRichDescription = memo(function StableRichDescription({ html }) {
   return (
@@ -120,7 +121,18 @@ function DetailKelas({
         </div>
 
         <div className="public-detail-copy">
-          <h1>{course.title}</h1>
+          <div className="description-translate-header">
+            <h1>{course.title}</h1>
+            <button
+              className="description-translate-btn"
+              type="button"
+              title="Terjemahkan deskripsi"
+              aria-label="Terjemahkan"
+              onClick={() => applyGoogleTranslate()}
+            >
+              <Icon name="translate" />
+            </button>
+          </div>
           {hasRichDescription ? (
             <StableRichDescription html={course.description} />
           ) : (

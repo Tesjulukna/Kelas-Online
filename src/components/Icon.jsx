@@ -490,6 +490,28 @@ const paths = {
       <path d="m15 15 5 5" />
     </>
   ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 3.5C9 7 7.5 9.5 7.5 12s1.5 5 4.5 8.5" />
+      <path d="M12 3.5c3 3.5 4.5 6 4.5 8.5s-1.5 5-4.5 8.5" />
+      <path d="M3.5 12h17" />
+      <path d="M4.5 7.5h15" />
+      <path d="M4.5 16.5h15" />
+    </>
+  ),
+  translate: (
+    <>
+      <path d="M5 7h8" />
+      <path d="M9 5v2" />
+      <path d="M7 11c.6 1.5 1.8 2.5 3 3" />
+      <path d="M11 11c-.5 1.5-1.8 2.8-3 3" />
+      <path d="M15 20l3-7 3 7" />
+      <path d="M16.6 17h2.8" />
+      <path d="M3 5h7" />
+      <path d="M21 3H11" />
+    </>
+  ),
 }
 
 function Icon({ name, className = '', title }) {

@@ -22339,3 +22339,195 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
     min-width: 196px;
   }
 }
+
+/* ================================================
+   Language Popup
+   ================================================ */
+.language-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  animation: fadeIn 0.15s ease;
+}
+
+.language-popup-modal {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 24px 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22), 0 4px 16px rgba(15, 23, 42, 0.08);
+  animation: slideUpFade 0.2s ease;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.language-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.language-popup-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.language-popup-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.language-popup-modal h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.language-popup-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+}
+.language-popup-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.language-popup-close .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.language-popup-desc {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 0 0 18px;
+}
+
+.language-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.language-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #334155;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  position: relative;
+}
+.language-option-btn:hover {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4338ca;
+}
+.language-option-btn.active {
+  border-color: #6366f1;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #4338ca;
+  font-weight: 600;
+}
+
+.language-flag {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.language-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.language-check {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #6366f1;
+}
+.language-check .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.language-popup-note {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  text-align: center;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Translate button in description header */
+.description-translate-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.description-translate-header h1 {
+  margin: 0;
+  flex: 1;
+}
+
+.description-translate-btn {
+  flex-shrink: 0;
+  background: #f1f5f9;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+  margin-top: 4px;
+}
+.description-translate-btn:hover {
+  background: #e0e7ff;
+  color: #4338ca;
+  border-color: #818cf8;
+  transform: scale(1.08);
+}
+.description-translate-btn .icon {
+  width: 18px;
+  height: 18px;
+}
+
