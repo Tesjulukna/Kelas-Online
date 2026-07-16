@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import Icon from '../../components/Icon'
 import './Detail.css'
+import TranslateWidget from '../../components/TranslateWidget'
 
 const productReviewLikesKey = 'ibnucreative.product-review-likes.v1'
 
@@ -316,7 +317,10 @@ function DetailProduk({
           <span className="card-badge badge-produk-digital" style={{ position: 'static', display: 'inline-block', marginBottom: '8px' }}>
             {isPrompt ? 'Prompt' : 'Produk Digital'}
           </span>
-          <h1>{product.title}</h1>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+            <h1 style={{ margin: 0, flex: '1 1 auto' }}>{product.title}</h1>
+            <TranslateWidget />
+          </div>
           {hasRichDescription ? (
             <StableRichDescription html={product.description} />
           ) : (
