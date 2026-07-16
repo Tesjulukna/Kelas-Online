@@ -724,17 +724,14 @@ function MemberPage({
 }) {
   const safeWebsiteSettings = cleanWebsiteSettings(websiteSettings)
   const tripayPaymentMethods = safeWebsiteSettings.paymentMethods
-  const memberDashboardMenuItems = [
-    ...memberMenuItems.map((item) =>
-      item.id === 'about'
-        ? {
-            ...item,
-            label: safeWebsiteSettings.memberAbout.menuLabel || item.label,
-          }
-        : item,
-    ),
-    { id: 'language', label: 'Bahasa', icon: 'globe' },
-  ]
+  const memberDashboardMenuItems = memberMenuItems.map((item) =>
+    item.id === 'about'
+      ? {
+          ...item,
+          label: safeWebsiteSettings.memberAbout.menuLabel || item.label,
+        }
+      : item,
+  )
   const courses = classes.filter((course) => course.status === 'Aktif')
   const allActiveCourses = allClasses.filter((course) => course.status === 'Aktif')
   const memberVisibleCourses = allActiveCourses.filter((course) => course.showOnMember !== false)
@@ -750,7 +747,6 @@ function MemberPage({
   const [selectedCourseId, setSelectedCourseId] = useState(() =>
     activeMenu === 'my-courses' ? readActiveCourseSnapshot(userId).courseId || null : null,
   )
-  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false)
   const [selectedDigitalProductId, setSelectedDigitalProductId] = useState(null)
   const [digitalProductLibraryView, setDigitalProductLibraryView] = useState('available')
   const [digitalProductSearchQuery, setDigitalProductSearchQuery] = useState('')
@@ -1370,11 +1366,6 @@ function MemberPage({
   }
 
   const handleDashboardMenuChange = useCallback((menuId) => {
-    if (menuId === 'language') {
-      setIsLanguageModalOpen(true)
-      return
-    }
-
     if (menuId !== 'my-courses') {
       setSelectedCourseId(null)
       setActiveMaterialIndex(0)
@@ -4252,11 +4243,6 @@ function MemberPage({
           </section>
         </div>
       )}
-
-      <LanguageModal
-        isOpen={isLanguageModalOpen}
-        onClose={() => setIsLanguageModalOpen(false)}
-      />
     </DashboardShell>
   )
 }

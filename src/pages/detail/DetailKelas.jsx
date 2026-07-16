@@ -2,7 +2,6 @@ import { memo, useState } from 'react'
 import Icon from '../../components/Icon'
 import { benefits } from '../../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../../data/websiteSettings'
-import TranslateWidget from '../../components/TranslateWidget'
 
 const StableRichDescription = memo(function StableRichDescription({ html }) {
   return (
@@ -121,10 +120,7 @@ function DetailKelas({
         </div>
 
         <div className="public-detail-copy">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
-            <h1 style={{ margin: 0, flex: '1 1 auto' }}>{course.title}</h1>
-            <TranslateWidget />
-          </div>
+          <h1>{course.title}</h1>
           {hasRichDescription ? (
             <StableRichDescription html={course.description} />
           ) : (
