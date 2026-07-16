@@ -8,6 +8,7 @@ import CertificateVerifyPage from './pages/CertificateVerifyPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import MemberPage from './pages/MemberPage'
+import LanguagePopup from './components/LanguagePopup'
 import { adminClasses as adminClassSeed } from './data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from './data/websiteSettings'
 import './App.css'
@@ -1684,6 +1685,7 @@ function App() {
   const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(false)
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false)
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
+  const [isLanguagePopupOpen, setIsLanguagePopupOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [memberFocusTarget, setMemberFocusTarget] = useState(null)
   const [pendingCheckoutClassId, setPendingCheckoutClassId] = useState(() => {
@@ -1706,6 +1708,35 @@ function App() {
     const timer = window.setTimeout(() => setNotice(''), 3200)
     return () => window.clearTimeout(timer)
   }, [notice])
+
+  // Global Language Popup Listener
+  useEffect(() => {
+    const handleOpenLangPopup = () => setIsLanguagePopupOpen(true)
+    window.addEventListener('open-language-popup', handleOpenLangPopup)
+    return () => window.removeEventListener('open-language-popup', handleOpenLangPopup)
+  }, [])
+
+  // Google Translate widget initialization
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !document.getElementById('google-translate-script')) {
+      const container = document.createElement('div')
+      container.id = 'google_translate_element'
+      container.style.display = 'none'
+      document.body.appendChild(container)
+
+      window.googleTranslateElementInit = () => {
+        new window.google.translate.TranslateElement(
+          { pageLanguage: 'id', autoDisplay: false },
+          'google_translate_element'
+        )
+      }
+
+      const script = document.createElement('script')
+      script.id = 'google-translate-script'
+      script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'
+      document.head.appendChild(script)
+    }
+  }, [])
 
   useEffect(() => {
     const updateCurrentPath = () => {
@@ -3436,6 +3467,9 @@ function App() {
           onCancel={() => setIsLogoutConfirmOpen(false)}
           onConfirm={handleLogout}
         />
+      )}
+      {isLanguagePopupOpen && (
+        <LanguagePopup onClose={() => setIsLanguagePopupOpen(false)} />
       )}
     </div>
   )
