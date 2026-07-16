@@ -18,20 +18,23 @@ export function applyGoogleTranslate(langCode) {
   const cookieValue = `/id/${langCode}`
   const expireDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString()
 
-  // Helper to set cookie for current domain and root domain safely
+  // Helper to set cookie safely with Secure and SameSite flags for HTTPS
   const setCookie = (value, expires) => {
+    const isHttps = window.location.protocol === 'https:'
+    const secureFlag = isHttps ? '; Secure; SameSite=Lax' : ''
+
     // Always set a local cookie without domain. This is 100% reliable for localhost and single domains.
-    document.cookie = `googtrans=${value}; expires=${expires}; path=/;`
+    document.cookie = `googtrans=${value}; expires=${expires}; path=/` + secureFlag
     
     const hostname = window.location.hostname
     // Avoid setting domain attribute on 'localhost' or raw IP addresses
     if (hostname !== 'localhost' && !/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
-      document.cookie = `googtrans=${value}; expires=${expires}; path=/; domain=${hostname};`
+      document.cookie = `googtrans=${value}; expires=${expires}; path=/; domain=${hostname}` + secureFlag
       
       const domainParts = hostname.split('.')
       if (domainParts.length > 2) {
         const rootDomain = domainParts.slice(-2).join('.')
-        document.cookie = `googtrans=${value}; expires=${expires}; path=/; domain=.${rootDomain};`
+        document.cookie = `googtrans=${value}; expires=${expires}; path=/; domain=.${rootDomain}` + secureFlag
       }
     }
   }
