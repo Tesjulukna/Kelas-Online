@@ -18,15 +18,21 @@ export function applyGoogleTranslate(langCode) {
   const cookieValue = `/id/${langCode}`
   const expireDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString()
 
-  // Helper to set cookie for current domain and root domain
+  // Helper to set cookie for current domain and root domain safely
   const setCookie = (value, expires) => {
+    // Always set a local cookie without domain. This is 100% reliable for localhost and single domains.
     document.cookie = `googtrans=${value}; expires=${expires}; path=/;`
-    document.cookie = `googtrans=${value}; expires=${expires}; path=/; domain=${window.location.hostname};`
     
-    const domainParts = window.location.hostname.split('.')
-    if (domainParts.length > 2) {
-      const rootDomain = domainParts.slice(-2).join('.')
-      document.cookie = `googtrans=${value}; expires=${expires}; path=/; domain=.${rootDomain};`
+    const hostname = window.location.hostname
+    // Avoid setting domain attribute on 'localhost' or raw IP addresses
+    if (hostname !== 'localhost' && !/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+      document.cookie = `googtrans=${value}; expires=${expires}; path=/; domain=${hostname};`
+      
+      const domainParts = hostname.split('.')
+      if (domainParts.length > 2) {
+        const rootDomain = domainParts.slice(-2).join('.')
+        document.cookie = `googtrans=${value}; expires=${expires}; path=/; domain=.${rootDomain};`
+      }
     }
   }
 
