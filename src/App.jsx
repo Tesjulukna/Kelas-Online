@@ -1716,6 +1716,28 @@ function App() {
     return () => window.removeEventListener('open-language-popup', handleOpenLangPopup)
   }, [])
 
+  // Google Translate widget initialization
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !document.getElementById('google-translate-script')) {
+      const container = document.createElement('div')
+      container.id = 'google_translate_element'
+      container.style.display = 'none'
+      document.body.appendChild(container)
+
+      window.googleTranslateElementInit = () => {
+        new window.google.translate.TranslateElement(
+          { pageLanguage: 'id', autoDisplay: false },
+          'google_translate_element'
+        )
+      }
+
+      const script = document.createElement('script')
+      script.id = 'google-translate-script'
+      script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'
+      document.head.appendChild(script)
+    }
+  }, [])
+
   useEffect(() => {
     const updateCurrentPath = () => {
       setCurrentPath(`${window.location.pathname}${window.location.search}${window.location.hash}`)

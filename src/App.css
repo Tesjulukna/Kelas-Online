@@ -22531,3 +22531,40 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   height: 18px;
 }
 
+
+/* ================================================
+   Make Google Translate Completely Invisible / Native
+   ================================================ */
+body {
+  top: 0 !important;
+  position: static !important;
+}
+
+/* Hide google translate banner frame and widgets */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+.goog-te-banner,
+.goog-te-gadget,
+.goog-te-gadget-simple,
+.goog-te-gadget-icon,
+.goog-te-menu-value,
+iframe.goog-te-banner-frame,
+.goog-tooltip,
+.goog-tooltip:hover,
+#goog-gt-tt,
+.goog-te-balloon-frame {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+
+/* Prevent text highlighting when hovering translated elements */
+.goog-text-highlight {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+  -webkit-box-shadow: none !important;
+}
+

@@ -3,6 +3,7 @@ import Icon from '../../components/Icon'
 import { benefits } from '../../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../../data/websiteSettings'
 import { applyGoogleTranslate } from '../../utils/googleTranslate'
+import './Detail.css'
 
 const StableRichDescription = memo(function StableRichDescription({ html }) {
   return (
@@ -96,10 +97,12 @@ function DetailKelas({
           <Icon name="arrowLeft" />
         </button>
         <div className="public-detail-topbar-actions">
-          <button className="icon-action-button cart-action-button" type="button" onClick={onOpenWishlist} aria-label="Keranjang">
-            <Icon name="cart" />
-            {wishlistCount > 0 && <span>{wishlistCount}</span>}
-          </button>
+          {onOpenWishlist && (
+            <button className="icon-action-button cart-action-button" type="button" onClick={onOpenWishlist} aria-label="Keranjang">
+              <Icon name="cart" />
+              {wishlistCount > 0 && <span>{wishlistCount}</span>}
+            </button>
+          )}
           <button
             className="icon-action-button"
             type="button"
@@ -293,11 +296,13 @@ function DetailKelas({
       </div>
 
       <div className="public-sticky-actions">
-        <button className="btn btn-secondary" type="button" onClick={onAddToWishlist}>
-          <Icon name="cart" />
-          Keranjang
-        </button>
-        <button className="btn btn-primary" type="button" onClick={() => onBuy(course.id)}>
+        {onAddToWishlist && (
+          <button className="btn btn-secondary" type="button" onClick={onAddToWishlist}>
+            <Icon name="cart" />
+            Keranjang
+          </button>
+        )}
+        <button className="btn btn-primary" type="button" onClick={() => onBuy(course.id)} style={!onAddToWishlist ? { width: '100%' } : {}}>
           <Icon name={ctaIcon} />
           {ctaButtonLabel}
         </button>
