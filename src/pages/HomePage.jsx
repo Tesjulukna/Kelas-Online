@@ -1130,6 +1130,21 @@ function HomePage({
       return
     }
 
+    if (isMemberCheckout && (selectedClassId || isClassDetailPath)) {
+      setSelectedClassId('')
+      setCheckoutClassId('')
+      setSelectedProductId('')
+      setCheckoutProductId('')
+      setAccessOrderCode('')
+      setProductAccessState({ isLoading: false, data: null, error: '' })
+      setIsWishlistOpen(false)
+      setIsPaymentPickerOpen(false)
+      window.history.pushState({}, '', '/member?menu=available-classes')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
     if (window.history.state?.publicDetailFromApp && window.history.length > 1) {
       window.history.back()
       return
