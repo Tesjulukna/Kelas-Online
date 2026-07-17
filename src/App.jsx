@@ -2278,7 +2278,7 @@ function App() {
     setActiveSection('home')
     setPage('home')
     setCurrentPath(nextPath)
-    window.history.pushState({ publicDetailFromApp: true }, '', nextPath)
+    window.history.pushState({ returnToMemberDashboard: true, memberMenu: 'available-classes' }, '', nextPath)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
