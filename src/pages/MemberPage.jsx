@@ -719,6 +719,7 @@ function MemberPage({
   onRequestCertificateNameChange = async () => {},
   onCreateTripayCheckout = async () => {},
   onOpenPublicProductDetail = null,
+  onOpenPublicClassDetail = null,
   onCheckoutClassRequestHandled = () => {},
   focusTarget = null,
   websiteSettings = defaultWebsiteSettings,
@@ -1454,6 +1455,15 @@ function MemberPage({
     setSelectedDigitalProductId(product.id)
     handleDashboardMenuChange(product.productType === 'prompt' ? 'prompts' : 'digital-products')
     onNotify(`Membuka detail ${product.title}.`)
+  }
+
+  const handleOpenClassDetail = (course) => {
+    if (onOpenPublicClassDetail) {
+      onOpenPublicClassDetail(course)
+      return
+    }
+
+    onNotify(`Membuka detail kelas ${course.title}.`)
   }
 
   const handleBackToDigitalProducts = () => {
@@ -3110,6 +3120,13 @@ function MemberPage({
                         </button>
                       </span>
                     )}
+                    <button
+                      className="btn btn-secondary member-class-button"
+                      type="button"
+                      onClick={() => handleOpenClassDetail(course)}
+                    >
+                      Detail
+                    </button>
                     <button
                       className="btn btn-primary member-class-button"
                       type="button"

@@ -2265,6 +2265,23 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const openPublicClassDetail = (course) => {
+    const classCode = course?.publicCode || course?.id
+
+    if (!classCode) {
+      showNotice('Detail kelas belum bisa dibuka.')
+      return
+    }
+
+    const nextPath = `/kelas/${encodeURIComponent(classCode)}`
+
+    setActiveSection('home')
+    setPage('home')
+    setCurrentPath(nextPath)
+    window.history.pushState({ publicDetailFromApp: true }, '', nextPath)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const applyLoginSession = (nextSession, message) => {
     if (!nextSession || !allowedRoles.includes(nextSession.role)) {
       throw new Error('Session login tidak valid.')
@@ -3364,6 +3381,7 @@ function App() {
               onRequestCertificateNameChange={handleRequestCertificateNameChange}
               onCreateTripayCheckout={handleCreateTripayCheckout}
               onOpenPublicProductDetail={openPublicProductDetail}
+              onOpenPublicClassDetail={openPublicClassDetail}
               onCheckoutClassRequestHandled={clearPendingClassCheckout}
             />
           ) : (
