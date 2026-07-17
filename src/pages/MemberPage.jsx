@@ -11,7 +11,6 @@ import { createQrMatrix, getCertificateVerificationUrl } from '../lib/qrCode'
 import { uploadStorageFile } from '../lib/storageUpload'
 import { withPublicCodes } from '../utils/publicCodes'
 import { applyGoogleTranslate as triggerGoogleTranslate } from '../utils/googleTranslate'
-import DetailKelas from './detail/DetailKelas'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
@@ -746,12 +745,10 @@ function MemberPage({
     ? new Set(allowedClassIds)
     : new Set()
   const availableCourses = memberVisibleCourses.filter((course) => !accessibleClassIds.has(course.id))
-  const selectedAvailableCourse = availableCourses.find((course) => course.id === selectedAvailableCourseId)
   const [selectedCourseId, setSelectedCourseId] = useState(() =>
     activeMenu === 'my-courses' ? readActiveCourseSnapshot(userId).courseId || null : null,
   )
   const [selectedDigitalProductId, setSelectedDigitalProductId] = useState(null)
-  const [selectedAvailableCourseId, setSelectedAvailableCourseId] = useState(null)
   const [digitalProductLibraryView, setDigitalProductLibraryView] = useState('available')
   const [digitalProductSearchQuery, setDigitalProductSearchQuery] = useState('')
   const [digitalProductPriceFilter, setDigitalProductPriceFilter] = useState('all')
@@ -1387,10 +1384,6 @@ function MemberPage({
       setSelectedDigitalProductId(null)
     }
 
-    if (menuId !== 'available-classes') {
-      setSelectedAvailableCourseId(null)
-    }
-
     onMenuChange(menuId)
   }, [onMenuChange, userId])
 
@@ -1494,38 +1487,6 @@ function MemberPage({
     } catch (error) {
       if (error?.name !== 'AbortError') {
         onNotify('Produk belum bisa dibagikan.')
-      }
-    }
-  }
-
-  const handleShareClass = async (title, text) => {
-    const course = availableCourses.find(c => c.title === title || c.id === selectedAvailableCourseId)
-    const detailPath = course ? `kelas/${encodeURIComponent(course.publicCode || course.id)}` : ''
-    const shareUrl = typeof window !== 'undefined' && detailPath
-      ? `${window.location.origin}/${detailPath}`
-      : ''
-    const shareData = {
-      title,
-      text,
-      url: shareUrl,
-    }
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData)
-        return
-      }
-
-      if (navigator.clipboard && shareUrl) {
-        await navigator.clipboard.writeText(shareUrl)
-        onNotify('Link kelas berhasil disalin.')
-        return
-      }
-
-      onNotify('Fitur share belum tersedia di browser ini.')
-    } catch (error) {
-      if (error?.name !== 'AbortError') {
-        onNotify('Kelas belum bisa dibagikan.')
       }
     }
   }
@@ -3079,131 +3040,108 @@ function MemberPage({
       )}
 
       {activeMenu === 'available-classes' && (
-        selectedAvailableCourse ? (
-          <DetailKelas
-            course={selectedAvailableCourse}
-            testimonials={testimonials}
-            onBack={() => setSelectedAvailableCourseId(null)}
-            onBuy={(courseId) => {
-              const targetCourse = availableCourses.find((item) => item.id === courseId)
-              if (targetCourse) {
-                openPaymentMethodPopup(targetCourse)
-              }
-            }}
-            onShare={handleShareClass}
-            settings={websiteSettings}
-          />
-        ) : (
-          <section className="panel">
-            <div className="panel-heading">
-              <div>
-                <p className="eyebrow">Katalog member</p>
-                <h2>Kelas tersedia</h2>
-              </div>
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Katalog member</p>
+              <h2>Kelas tersedia</h2>
             </div>
-            <div className="learning-list">
-              {availableCourses.map((course) => {
-                const normalPrice = Math.max(0, Math.round(Number(course.price) || 0))
-                const salePrice = Math.max(0, Math.round(Number(course.salePrice) || 0))
-                const price = salePrice || normalPrice
-                const isCheckingOut = checkoutClassId === course.id
-                const pendingPayment = activePaymentsByClass.get(course.id)
-                const expiredPayment = expiredPaymentsByClass.get(course.id)
-                const expiredNoticeKey = getExpiredPaymentDismissKey(expiredPayment)
-                const showExpiredNotice =
-                  Boolean(expiredPayment && expiredNoticeKey && !dismissedExpiredPayments.includes(expiredNoticeKey))
-                const accessNote = price
-                  ? 'Akses materi dibuka otomatis setelah pembayaran sukses.'
-                  : 'Kelas gratis bisa langsung dibuka dari akun member.'
-                let checkoutButtonLabel = pendingPayment
-                  ? 'Selesaikan Pembayaran'
-                  : price
-                    ? 'Bayar & Buka Akses'
-                    : 'Masuk Gratis'
+          </div>
+          <div className="learning-list">
+            {availableCourses.map((course) => {
+              const normalPrice = Math.max(0, Math.round(Number(course.price) || 0))
+              const salePrice = Math.max(0, Math.round(Number(course.salePrice) || 0))
+              const price = salePrice || normalPrice
+              const isCheckingOut = checkoutClassId === course.id
+              const pendingPayment = activePaymentsByClass.get(course.id)
+              const expiredPayment = expiredPaymentsByClass.get(course.id)
+              const expiredNoticeKey = getExpiredPaymentDismissKey(expiredPayment)
+              const showExpiredNotice =
+                Boolean(expiredPayment && expiredNoticeKey && !dismissedExpiredPayments.includes(expiredNoticeKey))
+              const accessNote = price
+                ? 'Akses materi dibuka otomatis setelah pembayaran sukses.'
+                : 'Kelas gratis bisa langsung dibuka dari akun member.'
+              let checkoutButtonLabel = pendingPayment
+                ? 'Selesaikan Pembayaran'
+                : price
+                  ? 'Bayar & Buka Akses'
+                  : 'Masuk Gratis'
 
-                if (isCheckingOut) {
-                  checkoutButtonLabel = price ? 'Membuat invoice...' : 'Membuka akses...'
-                }
+              if (isCheckingOut) {
+                checkoutButtonLabel = price ? 'Membuat invoice...' : 'Membuka akses...'
+              }
 
-                return (
-                  <article className="member-class-card available-class-card" key={course.id}>
-                    <span className="member-class-visual">
-                      {course.thumbnail ? (
-                        <img src={course.thumbnail} alt="" />
-                      ) : (
-                        <Icon name="bookOpen" />
-                      )}
-                      <span>{course.status}</span>
-                    </span>
-                    <span className="member-class-body">
-                      <h3>{course.title}</h3>
-                      <p>
-                        {course.mentor}
-                      </p>
-                      <span className="member-class-next">{accessNote}</span>
-                    </span>
-                    <span className="available-class-price">
-                      <small>{price ? 'Harga kelas' : 'Kelas gratis'}</small>
-                      <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
-                      {salePrice > 0 && normalPrice > salePrice && (
-                        <small className="struck-price" style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: '0.85em', marginLeft: '6px' }}>
-                          {formatRupiah(normalPrice)}
-                        </small>
-                      )}
-                    </span>
-                    <span className="available-payment-action">
-                      {showExpiredNotice && (
-                        <span className="expired-payment-notice">
-                          <span>Pembayaran sebelumnya expired.</span>
-                          <button
-                            type="button"
-                            aria-label="Tutup pemberitahuan pembayaran expired"
-                            onClick={() => dismissExpiredPaymentNotice(expiredNoticeKey)}
-                          >
-                            <Icon name="x" />
-                          </button>
-                        </span>
-                      )}
+              return (
+                <article className="member-class-card available-class-card" key={course.id}>
+                  <span className="member-class-visual">
+                    {course.thumbnail ? (
+                      <img src={course.thumbnail} alt="" />
+                    ) : (
+                      <Icon name="bookOpen" />
+                    )}
+                    <span>{course.status}</span>
+                  </span>
+                  <span className="member-class-body">
+                    <h3>{course.title}</h3>
+                    <p>
+                      {course.mentor}
+                    </p>
+                    <span className="member-class-next">{accessNote}</span>
+                  </span>
+                  <span className="available-class-price">
+                    <small>{price ? 'Harga kelas' : 'Kelas gratis'}</small>
+                    <strong>{price ? formatRupiah(price) : 'Gratis'}</strong>
+                    {salePrice > 0 && normalPrice > salePrice && (
+                      <small className="struck-price" style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: '0.85em', marginLeft: '6px' }}>
+                        {formatRupiah(normalPrice)}
+                      </small>
+                    )}
+                  </span>
+                  <span className="available-payment-action">
+                    {showExpiredNotice && (
+                      <span className="expired-payment-notice">
+                        <span>Pembayaran sebelumnya expired.</span>
+                        <button
+                          type="button"
+                          aria-label="Tutup pemberitahuan pembayaran expired"
+                          onClick={() => dismissExpiredPaymentNotice(expiredNoticeKey)}
+                        >
+                          <Icon name="x" />
+                        </button>
+                      </span>
+                    )}
+                    <button
+                      className="btn btn-primary member-class-button"
+                      type="button"
+                      disabled={isCheckingOut}
+                      onClick={() => openPaymentMethodPopup(course)}
+                    >
+                      <Icon name="wallet" />
+                      {checkoutButtonLabel}
+                    </button>
+                    {pendingPayment && (
                       <button
-                        className="btn btn-secondary member-class-button"
-                        type="button"
-                        onClick={() => setSelectedAvailableCourseId(course.id)}
-                      >
-                        Detail
-                      </button>
-                      <button
-                        className="btn btn-primary member-class-button"
+                        className="btn btn-secondary member-class-button change-payment-method-button"
                         type="button"
                         disabled={isCheckingOut}
-                        onClick={() => openPaymentMethodPopup(course)}
+                        onClick={() => openPaymentMethodPopup(course, { forceNewPayment: true })}
                       >
-                        <Icon name="wallet" />
-                        {checkoutButtonLabel}
+                        Ganti Metode
                       </button>
-                      {pendingPayment && (
-                        <button
-                          className="btn btn-secondary member-class-button change-payment-method-button"
-                          type="button"
-                          disabled={isCheckingOut}
-                          onClick={() => openPaymentMethodPopup(course, { forceNewPayment: true })}
-                        >
-                          Ganti Metode
-                        </button>
-                      )}
-                    </span>
-                  </article>
-                )
-              })}
-              {!availableCourses.length && (
-                <article className="empty-state">
-                  <Icon name="checkCircle" />
-                  <h3>Semua kelas aktif sudah terbuka</h3>
-                  <p>Kelas baru akan muncul di sini saat admin menambah kelas aktif.</p>
+                    )}
+                  </span>
                 </article>
-              )}
-            </div>
-          </section>
-        )
+              )
+            })}
+            {!availableCourses.length && (
+              <article className="empty-state">
+                <Icon name="checkCircle" />
+                <h3>Semua kelas aktif sudah terbuka</h3>
+                <p>Kelas baru akan muncul di sini saat admin menambah kelas aktif.</p>
+              </article>
+            )}
+          </div>
+        </section>
       )}
 
       {paymentMethodCourse && (
