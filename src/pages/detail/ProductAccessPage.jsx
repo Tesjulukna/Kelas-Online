@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Icon from '../../components/Icon'
+import { scheduleGoogleTranslateRefresh } from '../../utils/googleTranslate'
 
 const ACCESS_TEXT_LINK_PATTERN = /(https?:\/\/[^\s<]+|www\.[^\s<]+|wa\.me\/[^\s<]+|chat\.whatsapp\.com\/[^\s<]+)/gi
 const TRAILING_URL_PUNCTUATION_PATTERN = /[.,!?;:)\]}]+$/
@@ -90,6 +91,22 @@ function ProductAccessPage({
     .join('\n\n')
   const promptInstructions = delivery?.promptInstructions || accessProduct?.promptInstructions || ''
   const promptExamples = delivery?.promptExamples || accessProduct?.promptExamples || ''
+  const accessTranslationRevision = [
+    accessState.isLoading,
+    accessState.error || '',
+    accessData?.paid || false,
+    accessProduct?.id || '',
+    visiblePromptItems.length,
+    Boolean(promptInstructions),
+    Boolean(promptExamples),
+    Boolean(delivery?.deliveryNote),
+  ].join('|')
+
+  useEffect(
+    () => scheduleGoogleTranslateRefresh(),
+    [accessTranslationRevision],
+  )
+
   const handleCopyPrompt = async (text = allPromptText, label = 'Prompt') => {
     if (!text) {
       return

@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import Icon from './Icon'
-import { applyGoogleTranslate as triggerGoogleTranslate } from '../utils/googleTranslate'
+import {
+  applyGoogleTranslate as triggerGoogleTranslate,
+  getGoogleTranslateLanguage,
+} from '../utils/googleTranslate'
 
 const LANGUAGE_OPTIONS = [
   { code: 'id', label: 'Indonesia', flag: '🇮🇩' },
@@ -22,10 +25,7 @@ const LANGUAGE_OPTIONS = [
 ]
 
 export default function LanguagePopup({ onClose }) {
-  const [activeCode, setActiveCode] = useState(() => {
-    const cookieLang = document.cookie.match(/googtrans=\/[^/]+\/([^;]+)/)
-    return cookieLang ? cookieLang[1] : 'id'
-  })
+  const [activeCode, setActiveCode] = useState(getGoogleTranslateLanguage)
 
   const handleSelect = (langCode) => {
     setActiveCode(langCode)

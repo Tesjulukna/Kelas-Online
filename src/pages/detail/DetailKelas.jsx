@@ -1,8 +1,11 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import Icon from '../../components/Icon'
 import { benefits } from '../../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../../data/websiteSettings'
-import { applyGoogleTranslate } from '../../utils/googleTranslate'
+import {
+  applyGoogleTranslate,
+  scheduleGoogleTranslateRefresh,
+} from '../../utils/googleTranslate'
 
 const StableRichDescription = memo(function StableRichDescription({ html }) {
   return (
@@ -49,6 +52,11 @@ function DetailKelas({
   settings = defaultWebsiteSettings,
 }) {
   const [openAccordion, setOpenAccordion] = useState(null)
+
+  useEffect(
+    () => scheduleGoogleTranslateRefresh(),
+    [course?.description, course?.id, course?.title],
+  )
 
   if (!course) {
     return null

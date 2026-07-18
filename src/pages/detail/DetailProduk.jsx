@@ -1,7 +1,10 @@
 import { memo, useEffect, useState } from 'react'
 import Icon from '../../components/Icon'
 import './Detail.css'
-import { applyGoogleTranslate } from '../../utils/googleTranslate'
+import {
+  applyGoogleTranslate,
+  scheduleGoogleTranslateRefresh,
+} from '../../utils/googleTranslate'
 
 const productReviewLikesKey = 'ibnucreative.product-review-likes.v1'
 
@@ -186,6 +189,11 @@ function DetailProduk({
     setLikedReviewIds(nextLikedReviewIds)
     setReviewsList(buildProductReviewList(product, nextLikedReviewIds))
   }, [product?.id, product?.reviews])
+
+  useEffect(
+    () => scheduleGoogleTranslateRefresh(),
+    [product?.description, product?.id, product?.title],
+  )
 
   if (!product) {
     return null
