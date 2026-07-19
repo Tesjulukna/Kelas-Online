@@ -52,6 +52,7 @@ if ($order) {
         'delivery' => $paid ? [
             'downloadUrl' => clean_asset_url($productRow['file_url'] ?? ($payload['delivery_url'] ?? ''), 1000),
             'deliveryNote' => clean_text($productRow['delivery_note'] ?? ($payload['delivery_note'] ?? ''), 1200),
+            'deliveryNoteEn' => clean_text($productRow['delivery_note_en'] ?? '', 1200),
             'customMessage' => clean_text(!empty($productRow['custom_message_enabled']) ? ($productRow['custom_message'] ?? '') : ($payload['custom_message'] ?? ''), 1200),
             'promptContent' => clean_text($productRow['prompt_content'] ?? '', 40000),
             'promptItems' => digital_prompt_items_public($productRow['prompt_items'] ?? '[]', $productRow['prompt_content'] ?? ''),
@@ -93,6 +94,7 @@ send_json(200, [
     'delivery' => [
         'downloadUrl' => clean_asset_url($productRow['file_url'] ?? ($access['download_url'] ?? ''), 1000),
         'deliveryNote' => clean_text($productRow['delivery_note'] ?? '', 1200),
+        'deliveryNoteEn' => clean_text($productRow['delivery_note_en'] ?? '', 1200),
         'customMessage' => clean_text(!empty($productRow['custom_message_enabled']) ? ($productRow['custom_message'] ?? '') : '', 1200),
         'promptContent' => clean_text($productRow['prompt_content'] ?? '', 40000),
         'promptItems' => digital_prompt_items_public($productRow['prompt_items'] ?? '[]', $productRow['prompt_content'] ?? ''),

@@ -1,35 +1,16 @@
-import { useState } from 'react'
 import Icon from './Icon'
-import {
-  applyGoogleTranslate as triggerGoogleTranslate,
-  getGoogleTranslateLanguage,
-} from '../utils/googleTranslate'
+import { useNativeLanguage } from '../i18n/NativeLanguageContext'
 
 const LANGUAGE_OPTIONS = [
   { code: 'id', label: 'Indonesia', flag: '🇮🇩' },
   { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
-  { code: 'zh-CN', label: '中文 (简体)', flag: '🇨🇳' },
-  { code: 'ja', label: '日本語', flag: '🇯🇵' },
-  { code: 'ko', label: '한국어', flag: '🇰🇷' },
-  { code: 'ms', label: 'Melayu', flag: '🇲🇾' },
-  { code: 'fr', label: 'Français', flag: '🇫🇷' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
-  { code: 'es', label: 'Español', flag: '🇪🇸' },
-  { code: 'pt', label: 'Português', flag: '🇧🇷' },
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { code: 'hi', label: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'th', label: 'ภาษาไทย', flag: '🇹🇭' },
-  { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
-  { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
 ]
 
 export default function LanguagePopup({ onClose }) {
-  const [activeCode, setActiveCode] = useState(getGoogleTranslateLanguage)
+  const { language: activeCode, setLanguage } = useNativeLanguage()
 
   const handleSelect = (langCode) => {
-    setActiveCode(langCode)
-    triggerGoogleTranslate(langCode)
+    setLanguage(langCode)
     onClose()
   }
 
@@ -50,7 +31,7 @@ export default function LanguagePopup({ onClose }) {
             <Icon name="x" />
           </button>
         </div>
-        <p className="language-popup-desc">Terjemahkan halaman ini menggunakan Google Translate</p>
+        <p className="language-popup-desc">Pilih bahasa tampilan website</p>
         <div className="language-popup-grid">
           {LANGUAGE_OPTIONS.map((lang) => (
             <button
@@ -70,7 +51,7 @@ export default function LanguagePopup({ onClose }) {
           ))}
         </div>
         <p className="language-popup-note">
-          Terjemahan otomatis oleh Google Translate. Beberapa teks mungkin kurang akurat.
+          Bahasa tersimpan di perangkat ini dan dapat diubah kapan saja.
         </p>
       </div>
     </div>

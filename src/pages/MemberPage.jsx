@@ -9,11 +9,8 @@ import { createCertificateData } from '../lib/certificateTemplate'
 import { downloadCertificatePdf } from '../lib/certificatePdf'
 import { createQrMatrix, getCertificateVerificationUrl } from '../lib/qrCode'
 import { uploadStorageFile } from '../lib/storageUpload'
+import { openLanguagePopup } from '../i18n/language'
 import { withPublicCodes } from '../utils/publicCodes'
-import {
-  applyGoogleTranslate as triggerGoogleTranslate,
-  scheduleGoogleTranslateRefresh,
-} from '../utils/googleTranslate'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
@@ -1028,25 +1025,6 @@ function MemberPage({
       expiredPaymentsByProduct: nextExpiredPaymentsByProduct,
     }
   }, [paymentExpiryTick, payments])
-  const memberTranslationRevision = [
-    activeMenu,
-    selectedCourseId || '',
-    selectedDigitalProductId || '',
-    activeMaterialIndex,
-    digitalProductLibraryView,
-    isDiscussionOpen,
-    activePromptInstruction?.id || activePromptInstruction?.title || '',
-    paymentMethodCourse?.id || '',
-    selectedCertificateId,
-    classDiscussions.length,
-    submissions.length,
-  ].join('|')
-
-  useEffect(
-    () => scheduleGoogleTranslateRefresh(),
-    [memberTranslationRevision],
-  )
-
   useEffect(() => {
     coursesRef.current = courses
   }, [courses])
@@ -1391,7 +1369,7 @@ function MemberPage({
 
   const handleDashboardMenuChange = useCallback((menuId) => {
     if (menuId === 'language') {
-      triggerGoogleTranslate()
+      openLanguagePopup()
       return
     }
 

@@ -488,7 +488,9 @@ function createEmptyClassForm() {
   return {
     id: `admin-class-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     title: '',
+    titleEn: '',
     description: '',
+    descriptionEn: '',
     students: 0,
     displayStudents: '',
     rating: '',
@@ -496,12 +498,14 @@ function createEmptyClassForm() {
     price: '0',
     salePrice: '0',
     purchaseButtonLabel: 'Beli Sekarang',
+    purchaseButtonLabelEn: '',
     registerButtonLabel: 'Beli Sekarang',
     purchaseMessage: '',
     lynkProductKey: '',
     tripayProductKey: '',
     thumbnail: '',
     mentor: '',
+    mentorEn: '',
     progress: 0,
     next: '',
     liveAt: '',
@@ -531,7 +535,9 @@ function createEmptyDigitalProductForm() {
     id: '',
     productType: 'digital',
     title: '',
+    titleEn: '',
     description: '',
+    descriptionEn: '',
     price: '0',
     displaySales: '',
     rating: '',
@@ -542,6 +548,7 @@ function createEmptyDigitalProductForm() {
     fileUrl: '',
     fileName: '',
     deliveryNote: '',
+    deliveryNoteEn: '',
     platformType: 'upload',
     payWhatYouWant: false,
     salePrice: '0',
@@ -550,6 +557,7 @@ function createEmptyDigitalProductForm() {
     limitQtyPerCheckout: false,
     allowRepeatPurchase: false,
     purchaseButtonLabel: 'Buy Now',
+    purchaseButtonLabelEn: '',
     releaseTimeEnabled: false,
     releaseTime: '',
     whatsappNotification: false,
@@ -2188,6 +2196,7 @@ function AdminPage({
         `${digitalProductForm.productType === 'prompt' ? 'prompt' : 'digital-product'}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       productType: digitalProductForm.productType === 'prompt' ? 'prompt' : 'digital',
       title: digitalProductForm.title.trim(),
+      titleEn: digitalProductForm.titleEn.trim(),
       price: Math.max(0, Math.round(Number(digitalProductForm.price) || 0)),
       displaySales:
         digitalProductForm.displaySales === ''
@@ -2275,7 +2284,9 @@ function AdminPage({
       id: product.id,
       productType: product.productType === 'prompt' ? 'prompt' : 'digital',
       title: product.title,
+      titleEn: product.titleEn || '',
       description: descriptionHtmlToEditorText(product.description || ''),
+      descriptionEn: descriptionHtmlToEditorText(product.descriptionEn || ''),
       price: product.price || '0',
       displaySales: product.displaySales ?? '',
       rating: product.rating ?? '',
@@ -2286,6 +2297,7 @@ function AdminPage({
       fileUrl: product.fileUrl || '',
       fileName: product.fileName || '',
       deliveryNote: product.deliveryNote || '',
+      deliveryNoteEn: product.deliveryNoteEn || '',
       platformType: product.platformType || 'upload',
       payWhatYouWant: product.payWhatYouWant === true,
       salePrice: product.salePrice || '0',
@@ -2294,6 +2306,7 @@ function AdminPage({
       limitQtyPerCheckout: product.limitQtyPerCheckout === true,
       allowRepeatPurchase: product.allowRepeatPurchase === true,
       purchaseButtonLabel: product.purchaseButtonLabel || 'Buy Now',
+      purchaseButtonLabelEn: product.purchaseButtonLabelEn || '',
       releaseTimeEnabled: product.releaseTimeEnabled === true,
       releaseTime: product.releaseTime || '',
       whatsappNotification: product.whatsappNotification === true,
@@ -3134,7 +3147,9 @@ function AdminPage({
     const nextClass = {
       id: editingClassId ?? classForm.id,
       title: classForm.title.trim(),
+      titleEn: classForm.titleEn.trim(),
       description: classForm.description || '',
+      descriptionEn: classForm.descriptionEn || '',
       students: existingClass?.students ?? 0,
       displayStudents:
         classForm.displayStudents === ''
@@ -3151,12 +3166,14 @@ function AdminPage({
           ? ''
           : Math.max(0, Number(classForm.salePrice) || 0),
       purchaseButtonLabel: classForm.purchaseButtonLabel.trim() || 'Beli Sekarang',
+      purchaseButtonLabelEn: classForm.purchaseButtonLabelEn.trim(),
       registerButtonLabel: classForm.purchaseButtonLabel.trim() || 'Beli Sekarang',
       purchaseMessage: classForm.purchaseMessage.trim(),
       lynkProductKey: classForm.lynkProductKey.trim(),
       tripayProductKey: classForm.tripayProductKey.trim(),
       thumbnail: classForm.thumbnail,
       mentor: classForm.mentor.trim() || 'Ibnu Creative',
+      mentorEn: classForm.mentorEn.trim(),
       progress: existingClass?.progress ?? 0,
       next: existingClass?.next ?? 'Mulai materi pertama',
       liveAt: existingClass?.liveAt ?? '',
@@ -3195,7 +3212,9 @@ function AdminPage({
     setClassForm({
       id: item.id,
       title: item.title,
+      titleEn: item.titleEn || '',
       description: descriptionHtmlToEditorText(item.description ?? ''),
+      descriptionEn: descriptionHtmlToEditorText(item.descriptionEn ?? ''),
       students: item.students,
       displayStudents: item.displayStudents ?? '',
       rating: item.rating ?? '',
@@ -3203,12 +3222,14 @@ function AdminPage({
       price: parseRupiahValue(item.price),
       salePrice: parseRupiahValue(item.salePrice),
       purchaseButtonLabel: item.purchaseButtonLabel || item.registerButtonLabel || 'Beli Sekarang',
+      purchaseButtonLabelEn: item.purchaseButtonLabelEn || '',
       registerButtonLabel: item.registerButtonLabel || item.purchaseButtonLabel || 'Beli Sekarang',
       purchaseMessage: item.purchaseMessage ?? '',
       lynkProductKey: item.lynkProductKey ?? '',
       tripayProductKey: item.tripayProductKey ?? '',
       thumbnail: item.thumbnail ?? '',
       mentor: item.mentor ?? '',
+      mentorEn: item.mentorEn ?? '',
       progress: item.progress ?? 0,
       next: item.next ?? '',
       liveAt: item.liveAt ?? '',
@@ -4388,14 +4409,24 @@ function AdminPage({
                   )}
 
                   <label>
-                    Title
+                    Judul (Indonesia)
                     <input
                       name="title"
                       type="text"
                       value={digitalProductForm.title}
                       onChange={handleDigitalProductFormChange}
-                      placeholder="Title"
+                      placeholder="Nama produk atau prompt"
                       required
+                    />
+                  </label>
+                  <label>
+                    Title (English)
+                    <input
+                      name="titleEn"
+                      type="text"
+                      value={digitalProductForm.titleEn}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="English product or prompt title"
                     />
                   </label>
 
@@ -4427,7 +4458,7 @@ function AdminPage({
                   </div>
 
                   <label>
-                    Description
+                    Deskripsi (Indonesia)
                     <span className="digital-rich-toolbar">
                       <button type="button" onClick={() => applyDigitalDescriptionTool('bold')}>B</button>
                       <button type="button" onClick={() => applyDigitalDescriptionTool('underline')}>U</button>
@@ -4466,6 +4497,18 @@ function AdminPage({
                       tabIndex={-1}
                       onChange={handleDigitalDescriptionImageChange}
                     />
+                  </label>
+                  <label>
+                    Description (English)
+                    <textarea
+                      className="digital-description-editor"
+                      name="descriptionEn"
+                      value={digitalProductForm.descriptionEn}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="Explain the product contents, benefits, and access instructions in English."
+                      rows={9}
+                    />
+                    <DescriptionVideoPreview value={digitalProductForm.descriptionEn} />
                   </label>
 
                   {isPromptBuilder && (
@@ -4691,6 +4734,16 @@ function AdminPage({
                       <option>Download Sekarang</option>
                     </select>
                   </label>
+                  <label>
+                    Purchase Button (English)
+                    <input
+                      name="purchaseButtonLabelEn"
+                      type="text"
+                      value={digitalProductForm.purchaseButtonLabelEn}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="Buy Now"
+                    />
+                  </label>
 
                   <label>
                     Status
@@ -4857,6 +4910,16 @@ function AdminPage({
                       value={digitalProductForm.deliveryNote}
                       onChange={handleDigitalProductFormChange}
                       placeholder="Instruksi khusus, password file, atau panduan akses."
+                      rows={4}
+                    />
+                  </label>
+                  <label>
+                    Delivery Note (English)
+                    <textarea
+                      name="deliveryNoteEn"
+                      value={digitalProductForm.deliveryNoteEn}
+                      onChange={handleDigitalProductFormChange}
+                      placeholder="Special instructions, file password, or access guide."
                       rows={4}
                     />
                   </label>
@@ -7552,7 +7615,7 @@ function AdminPage({
                 </label>
               </div>
               <label>
-                Nama kelas
+                Nama kelas (Indonesia)
                 <input
                   name="title"
                   type="text"
@@ -7562,8 +7625,18 @@ function AdminPage({
                   required
                 />
               </label>
+              <label>
+                Class name (English)
+                <input
+                  name="titleEn"
+                  type="text"
+                  value={classForm.titleEn}
+                  onChange={handleClassFormChange}
+                  placeholder="Example: Canva Pro Class"
+                />
+              </label>
               <label className="class-description-field full-field">
-                Deskripsi kelas
+                Deskripsi kelas (Indonesia)
                 <span className="digital-rich-toolbar">
                   <button type="button" onClick={() => applyClassDescriptionTool('bold')}>B</button>
                   <button type="button" onClick={() => applyClassDescriptionTool('underline')}>U</button>
@@ -7600,6 +7673,18 @@ function AdminPage({
                   tabIndex={-1}
                   onChange={handleClassDescriptionImageChange}
                 />
+              </label>
+              <label className="class-description-field full-field">
+                Class description (English)
+                <textarea
+                  className="digital-description-editor"
+                  name="descriptionEn"
+                  value={classForm.descriptionEn}
+                  onChange={handleClassFormChange}
+                  placeholder="Explain the learning outcomes, benefits, bonuses, and target students in English."
+                  rows={12}
+                />
+                <DescriptionVideoPreview value={classForm.descriptionEn} />
               </label>
               <label>
                 Status
@@ -7670,6 +7755,16 @@ function AdminPage({
                   ))}
                 </select>
               </label>
+              <label>
+                Main button (English)
+                <input
+                  name="purchaseButtonLabelEn"
+                  type="text"
+                  value={classForm.purchaseButtonLabelEn}
+                  onChange={handleClassFormChange}
+                  placeholder="Buy Now"
+                />
+              </label>
               <label className="field-span-2">
                 Pesan email setelah pembelian
                 <textarea
@@ -7736,6 +7831,16 @@ function AdminPage({
                   value={classForm.mentor}
                   onChange={handleClassFormChange}
                   placeholder="Nama mentor"
+                />
+              </label>
+              <label>
+                Mentor name (English)
+                <input
+                  name="mentorEn"
+                  type="text"
+                  value={classForm.mentorEn}
+                  onChange={handleClassFormChange}
+                  placeholder="Mentor name for English pages"
                 />
               </label>
               <label>

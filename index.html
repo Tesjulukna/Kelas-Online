@@ -11,35 +11,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <div id="google_translate_element" style="display: none;"></div>
-    <script>
-      window.googleTranslateElementInit = function () {
-        if (
-          !window.google?.translate?.TranslateElement ||
-          window.__ibnucreativeGoogleTranslateInitialized
-        ) {
-          return
-        }
-
-        try {
-          new window.google.translate.TranslateElement(
-            { pageLanguage: 'id', autoDisplay: false },
-            'google_translate_element',
-          )
-        } catch {
-          return
-        }
-
-        window.__ibnucreativeGoogleTranslateInitialized = true
-        window.dispatchEvent(new Event('google-translate-ready'))
-      }
-    </script>
-    <script
-      id="google-translate-script"
-      src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"
-      async
-      defer
-    ></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

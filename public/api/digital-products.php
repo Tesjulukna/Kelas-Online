@@ -20,8 +20,8 @@ $products = is_array($payload['digitalProducts'] ?? null) ? $payload['digitalPro
 
 $insert = $pdo->prepare(
     'INSERT INTO digital_products
-    (id, product_type, title, description, price, display_sales, rating, status, thumbnail, add_video, video_url, file_url, file_name, delivery_note, platform_type, pay_what_you_want, sale_price, item_quantity_enabled, item_quantity, limit_qty_per_checkout, allow_repeat_purchase, purchase_button_label, release_time_enabled, release_time, whatsapp_notification, custom_message_enabled, custom_message, reviews, add_ons, customer_questions, block_layout, require_customer_name, require_customer_phone, auto_create_member, lynk_product_key, tripay_product_key, show_on_homepage, show_on_member, highlighted, prompt_content, prompt_items, prompt_preview, prompt_instructions, prompt_examples, prompt_license)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    (id, product_type, title, title_en, description, description_en, price, display_sales, rating, status, thumbnail, add_video, video_url, file_url, file_name, delivery_note, delivery_note_en, platform_type, pay_what_you_want, sale_price, item_quantity_enabled, item_quantity, limit_qty_per_checkout, allow_repeat_purchase, purchase_button_label, purchase_button_label_en, release_time_enabled, release_time, whatsapp_notification, custom_message_enabled, custom_message, reviews, add_ons, customer_questions, block_layout, require_customer_name, require_customer_phone, auto_create_member, lynk_product_key, tripay_product_key, show_on_homepage, show_on_member, highlighted, prompt_content, prompt_items, prompt_preview, prompt_instructions, prompt_examples, prompt_license)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 
 try {
@@ -54,7 +54,9 @@ try {
             $id,
             $productType,
             clean_text($product['title'] ?? 'Produk Digital ' . ($index + 1), 180),
+            clean_text($product['titleEn'] ?? '', 180),
             clean_rich_html($product['description'] ?? '', 20000),
+            clean_rich_html($product['descriptionEn'] ?? '', 20000),
             clean_number($product['price'] ?? 0, 0, 1000000000),
             isset($product['displaySales']) && $product['displaySales'] !== '' ? clean_number($product['displaySales'], 0, 10000000) : null,
             isset($product['rating']) && $product['rating'] !== '' ? min(5, max(0, (float) $product['rating'])) : null,
@@ -65,6 +67,7 @@ try {
             clean_asset_url($product['fileUrl'] ?? ''),
             clean_text($product['fileName'] ?? '', 220),
             clean_text($product['deliveryNote'] ?? '', 1200),
+            clean_text($product['deliveryNoteEn'] ?? '', 1200),
             clean_text($product['platformType'] ?? 'upload', 60),
             !empty($product['payWhatYouWant']) ? 1 : 0,
             clean_number($product['salePrice'] ?? 0, 0, 1000000000),
@@ -73,6 +76,7 @@ try {
             !empty($product['limitQtyPerCheckout']) ? 1 : 0,
             !empty($product['allowRepeatPurchase']) ? 1 : 0,
             clean_text($product['purchaseButtonLabel'] ?? 'Buy Now', 80),
+            clean_text($product['purchaseButtonLabelEn'] ?? '', 80),
             !empty($product['releaseTimeEnabled']) ? 1 : 0,
             clean_text($product['releaseTime'] ?? '', 120),
             !empty($product['whatsappNotification']) ? 1 : 0,

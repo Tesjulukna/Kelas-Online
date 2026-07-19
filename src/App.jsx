@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from './components/ConfirmDialog'
 import Icon from './components/Icon'
 import ProfileEditor from './components/ProfileEditor'
@@ -11,7 +11,8 @@ import MemberPage from './pages/MemberPage'
 import LanguagePopup from './components/LanguagePopup'
 import { adminClasses as adminClassSeed } from './data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from './data/websiteSettings'
-import { scheduleGoogleTranslateRefresh } from './utils/googleTranslate'
+import { useNativeLanguage } from './i18n/NativeLanguageContext'
+import { localizeCollection } from './i18n/language'
 import './App.css'
 
 const sessionKey = 'ibnucreative.session.v1'
@@ -736,15 +737,19 @@ function seedClasses() {
     ...item,
     id: `admin-class-${index + 1}`,
     description: item.description ?? '',
+    titleEn: item.titleEn ?? '',
+    descriptionEn: item.descriptionEn ?? '',
     thumbnail: item.thumbnail ?? '',
     displayStudents: item.displayStudents ?? '',
     rating: item.rating ?? '',
     mentor: item.mentor ?? 'Ibnu Creative',
+    mentorEn: item.mentorEn ?? '',
     progress: item.progress ?? [72, 46, 88][index] ?? 35,
     next: item.next ?? 'Lanjutkan modul berikutnya',
     liveAt: item.liveAt ?? 'Jumat, 29 Mei 2026, 20.00 WITA',
     lessons: item.lessons ?? `${16 + index * 4} materi`,
     purchaseButtonLabel: item.purchaseButtonLabel ?? 'Beli Sekarang',
+    purchaseButtonLabelEn: item.purchaseButtonLabelEn ?? '',
     registerButtonLabel: item.registerButtonLabel ?? 'Daftar',
     purchaseMessage: item.purchaseMessage ?? '',
     showOnHomepage: item.showOnHomepage !== false,
@@ -767,7 +772,9 @@ function cleanClasses(value) {
       return {
         id: classId,
         title: cleanText(item.title),
+        titleEn: cleanText(item.titleEn || ''),
         description: cleanRichHtml(item.description || ''),
+        descriptionEn: cleanRichHtml(item.descriptionEn || ''),
         students: Math.max(0, Number(item.students) || 0),
         displayStudents:
           item.displayStudents === '' || item.displayStudents === null || item.displayStudents === undefined
@@ -785,12 +792,14 @@ function cleanClasses(value) {
             ? ''
             : Math.max(0, Math.round(Number(item.salePrice) || 0)),
         purchaseButtonLabel: cleanText(item.purchaseButtonLabel || 'Beli Sekarang'),
+        purchaseButtonLabelEn: cleanText(item.purchaseButtonLabelEn || ''),
         registerButtonLabel: cleanText(item.registerButtonLabel || 'Daftar'),
         purchaseMessage: cleanLongText(item.purchaseMessage || '', 2000),
         lynkProductKey: cleanLongText(item.lynkProductKey || '', 160),
         tripayProductKey: cleanLongText(item.tripayProductKey || '', 160),
         thumbnail: cleanAvatar(item.thumbnail),
         mentor: cleanText(item.mentor || 'Ibnu Creative'),
+        mentorEn: cleanText(item.mentorEn || ''),
         progress: Math.min(100, Math.max(0, Number(item.progress) || 0)),
         next: cleanText(item.next || 'Lanjutkan modul berikutnya'),
         liveAt: cleanText(item.liveAt || 'Jadwal menyusul'),
@@ -814,7 +823,9 @@ function cleanDigitalProducts(value) {
       id: cleanText(item.id),
       productType: cleanText(item.productType || 'digital') === 'prompt' ? 'prompt' : 'digital',
       title: cleanLongText(item.title, 160),
+      titleEn: cleanLongText(item.titleEn || '', 160),
       description: cleanRichHtml(item.description || ''),
+      descriptionEn: cleanRichHtml(item.descriptionEn || ''),
       price: Math.max(0, Math.round(Number(item.price) || 0)),
       displaySales:
         item.displaySales === '' || item.displaySales === null || item.displaySales === undefined
@@ -832,6 +843,7 @@ function cleanDigitalProducts(value) {
       fileUrl: cleanLongText(item.fileUrl || '', 1000),
       fileName: cleanLongText(item.fileName || '', 180),
       deliveryNote: cleanLongText(item.deliveryNote || '', 800),
+      deliveryNoteEn: cleanLongText(item.deliveryNoteEn || '', 800),
       platformType: cleanText(item.platformType || 'upload'),
       payWhatYouWant: item.payWhatYouWant === true,
       salePrice: Math.max(0, Math.round(Number(item.salePrice) || 0)),
@@ -840,6 +852,7 @@ function cleanDigitalProducts(value) {
       limitQtyPerCheckout: item.limitQtyPerCheckout === true,
       allowRepeatPurchase: item.allowRepeatPurchase === true,
       purchaseButtonLabel: cleanText(item.purchaseButtonLabel || 'Buy Now'),
+      purchaseButtonLabelEn: cleanText(item.purchaseButtonLabelEn || ''),
       releaseTimeEnabled: item.releaseTimeEnabled === true,
       releaseTime: cleanText(item.releaseTime || ''),
       whatsappNotification: item.whatsappNotification === true,
@@ -1647,6 +1660,7 @@ async function fetchPublicActivities() {
 }
 
 function App() {
+  const { language } = useNativeLanguage()
   const [currentPath, setCurrentPath] = useState(() =>
     typeof window === 'undefined' ? '/' : `${window.location.pathname}${window.location.search}${window.location.hash}`,
   )
@@ -1700,25 +1714,6 @@ function App() {
     readSeenNotifications(readSession()?.userId),
   )
   const lastAnalyticsViewRef = useRef('')
-  const translationContentRevision = [
-    page,
-    currentPath,
-    activeMemberMenu,
-    session?.role || '',
-    isClassesLoaded,
-    isPublicProductsLoaded,
-    isWebsiteSettingsLoaded,
-    classes.length,
-    digitalProducts.length,
-    supportTickets.length,
-    classDiscussions.length,
-    submissions.length,
-    testimonials.length,
-    certificates.length,
-    payments.length,
-    publicActivities.length,
-  ].join('|')
-
   useEffect(() => {
     if (!notice) {
       return undefined
@@ -1734,11 +1729,6 @@ function App() {
     window.addEventListener('open-language-popup', handleOpenLangPopup)
     return () => window.removeEventListener('open-language-popup', handleOpenLangPopup)
   }, [])
-
-  useEffect(
-    () => scheduleGoogleTranslateRefresh(),
-    [translationContentRevision],
-  )
 
   useEffect(() => {
     const updateCurrentPath = () => {
@@ -3230,11 +3220,19 @@ function App() {
         phone: currentMember?.phone || '',
       }
     : null
-  const memberClasses = session?.role === 'member'
+  const localizedClasses = useMemo(
+    () => localizeCollection(classes, language),
+    [classes, language],
+  )
+  const localizedDigitalProducts = useMemo(
+    () => localizeCollection(digitalProducts, language),
+    [digitalProducts, language],
+  )
+  const localizedMemberClasses = session?.role === 'member'
     ? Array.isArray(currentMemberAccess)
-      ? classes.filter((course) => currentMemberAccess.includes(course.id))
+      ? localizedClasses.filter((course) => currentMemberAccess.includes(course.id))
       : []
-    : classes
+    : localizedClasses
   const publicDetailTarget = typeof window === 'undefined'
     ? null
     : getPublicDetailFromPath(currentPath.split(/[?#]/)[0] || '/')
@@ -3315,8 +3313,8 @@ function App() {
             isClassesLoaded={isClassesLoaded}
             isProductsLoaded={isPublicProductsLoaded}
             checkoutCustomer={checkoutCustomer}
-            classes={classes}
-            digitalProducts={digitalProducts}
+            classes={localizedClasses}
+            digitalProducts={localizedDigitalProducts}
             testimonials={testimonials}
             settings={websiteSettings}
             members={members}
@@ -3348,9 +3346,9 @@ function App() {
               loginName={session.name}
               avatar={session.avatar}
               sessionToken={session.token}
-              classes={memberClasses}
-              allClasses={classes}
-              digitalProducts={digitalProducts}
+              classes={localizedMemberClasses}
+              allClasses={localizedClasses}
+              digitalProducts={localizedDigitalProducts}
               digitalProductAccess={digitalProductAccess}
               allowedClassIds={currentMemberAccess}
               supportTickets={supportTickets}

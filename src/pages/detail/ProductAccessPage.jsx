@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Icon from '../../components/Icon'
-import { scheduleGoogleTranslateRefresh } from '../../utils/googleTranslate'
+import { useNativeLanguage } from '../../i18n/NativeLanguageContext'
+import { localizeContent } from '../../i18n/language'
 
 const ACCESS_TEXT_LINK_PATTERN = /(https?:\/\/[^\s<]+|www\.[^\s<]+|wa\.me\/[^\s<]+|chat\.whatsapp\.com\/[^\s<]+)/gi
 const TRAILING_URL_PUNCTUATION_PATTERN = /[.,!?;:)\]}]+$/
@@ -61,10 +62,11 @@ function ProductAccessPage({
   onBack,
   onRetry,
 }) {
+  const { language } = useNativeLanguage()
   const [copyStatus, setCopyStatus] = useState('')
   const accessData = accessState.data
-  const accessProduct = accessData?.product
-  const delivery = accessData?.delivery
+  const accessProduct = localizeContent(accessData?.product, language)
+  const delivery = localizeContent(accessData?.delivery, language)
   const isPrompt = accessProduct?.productType === 'prompt'
   const promptContent = delivery?.promptContent || accessProduct?.promptContent || ''
   const rawPromptItems = Array.isArray(delivery?.promptItems)
@@ -91,22 +93,6 @@ function ProductAccessPage({
     .join('\n\n')
   const promptInstructions = delivery?.promptInstructions || accessProduct?.promptInstructions || ''
   const promptExamples = delivery?.promptExamples || accessProduct?.promptExamples || ''
-  const accessTranslationRevision = [
-    accessState.isLoading,
-    accessState.error || '',
-    accessData?.paid || false,
-    accessProduct?.id || '',
-    visiblePromptItems.length,
-    Boolean(promptInstructions),
-    Boolean(promptExamples),
-    Boolean(delivery?.deliveryNote),
-  ].join('|')
-
-  useEffect(
-    () => scheduleGoogleTranslateRefresh(),
-    [accessTranslationRevision],
-  )
-
   const handleCopyPrompt = async (text = allPromptText, label = 'Prompt') => {
     if (!text) {
       return

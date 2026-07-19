@@ -79,12 +79,15 @@ function ensure_digital_products_schema(PDO $pdo): void
 
     ensure_digital_product_column($pdo, 'display_sales', 'INT NULL');
     ensure_digital_product_column($pdo, 'product_type', "VARCHAR(40) NOT NULL DEFAULT 'digital'");
+    ensure_digital_product_column($pdo, 'title_en', "VARCHAR(180) NOT NULL DEFAULT ''");
+    ensure_digital_product_column($pdo, 'description_en', 'LONGTEXT NULL');
     ensure_digital_product_column($pdo, 'rating', 'DECIMAL(2,1) NULL');
     ensure_digital_product_column($pdo, 'add_video', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'video_url', 'TEXT NULL');
     ensure_digital_product_column($pdo, 'file_url', 'MEDIUMTEXT NULL');
     ensure_digital_product_column($pdo, 'file_name', "VARCHAR(220) NOT NULL DEFAULT ''");
     ensure_digital_product_column($pdo, 'delivery_note', 'LONGTEXT NULL');
+    ensure_digital_product_column($pdo, 'delivery_note_en', 'LONGTEXT NULL');
     ensure_digital_product_column($pdo, 'platform_type', "VARCHAR(60) NOT NULL DEFAULT 'upload'");
     ensure_digital_product_column($pdo, 'pay_what_you_want', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'sale_price', 'INT NOT NULL DEFAULT 0');
@@ -93,6 +96,7 @@ function ensure_digital_products_schema(PDO $pdo): void
     ensure_digital_product_column($pdo, 'limit_qty_per_checkout', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'allow_repeat_purchase', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'purchase_button_label', "VARCHAR(80) NOT NULL DEFAULT 'Buy Now'");
+    ensure_digital_product_column($pdo, 'purchase_button_label_en', "VARCHAR(80) NOT NULL DEFAULT ''");
     ensure_digital_product_column($pdo, 'release_time_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'release_time', "VARCHAR(120) NOT NULL DEFAULT ''");
     ensure_digital_product_column($pdo, 'whatsapp_notification', 'TINYINT(1) NOT NULL DEFAULT 0');
@@ -127,7 +131,9 @@ function digital_product_public(array $row): array
         'id' => $row['id'],
         'productType' => $productType,
         'title' => $row['title'],
+        'titleEn' => $row['title_en'] ?? '',
         'description' => $row['description'] ?? '',
+        'descriptionEn' => $row['description_en'] ?? '',
         'price' => (int) ($row['price'] ?? 0),
         'displaySales' => $row['display_sales'] ?? '',
         'accessCount' => (int) ($row['access_count'] ?? 0),
@@ -139,6 +145,7 @@ function digital_product_public(array $row): array
         'fileUrl' => $row['file_url'] ?? '',
         'fileName' => $row['file_name'] ?? '',
         'deliveryNote' => $row['delivery_note'] ?? '',
+        'deliveryNoteEn' => $row['delivery_note_en'] ?? '',
         'platformType' => $row['platform_type'] ?? 'upload',
         'payWhatYouWant' => !empty($row['pay_what_you_want']),
         'salePrice' => (int) ($row['sale_price'] ?? 0),
@@ -147,6 +154,7 @@ function digital_product_public(array $row): array
         'limitQtyPerCheckout' => !empty($row['limit_qty_per_checkout']),
         'allowRepeatPurchase' => !empty($row['allow_repeat_purchase']),
         'purchaseButtonLabel' => $row['purchase_button_label'] ?? 'Buy Now',
+        'purchaseButtonLabelEn' => $row['purchase_button_label_en'] ?? '',
         'releaseTimeEnabled' => !empty($row['release_time_enabled']),
         'releaseTime' => $row['release_time'] ?? '',
         'whatsappNotification' => !empty($row['whatsapp_notification']),

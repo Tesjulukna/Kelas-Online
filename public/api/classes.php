@@ -101,6 +101,21 @@ try {
     if (!$query->fetch()) {
         $pdo->exec('ALTER TABLE classes ADD purchase_message LONGTEXT NULL AFTER register_button_label');
     }
+
+    $translationColumns = [
+        'title_en' => "VARCHAR(160) NOT NULL DEFAULT '' AFTER title",
+        'description_en' => 'LONGTEXT NULL AFTER description',
+        'purchase_button_label_en' => "VARCHAR(80) NOT NULL DEFAULT '' AFTER purchase_button_label",
+        'mentor_en' => "VARCHAR(120) NOT NULL DEFAULT '' AFTER mentor",
+    ];
+
+    foreach ($translationColumns as $column => $definition) {
+        $query->execute([$column]);
+
+        if (!$query->fetch()) {
+            $pdo->exec("ALTER TABLE classes ADD {$column} {$definition}");
+        }
+    }
 } catch (Throwable $error) {
     // Installer can add the column if runtime ALTER is blocked.
 }
@@ -119,8 +134,8 @@ $classes = is_array($payload['classes'] ?? null) ? $payload['classes'] : [];
 
 $insertClass = $pdo->prepare(
     'INSERT INTO classes
-    (id, title, description, students, display_students, rating, status, revenue, price, sale_price, purchase_button_label, register_button_label, purchase_message, lynk_product_key, tripay_product_key, thumbnail, mentor, progress, next_label, live_at, lessons, show_on_homepage, show_on_member, highlighted)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    (id, title, title_en, description, description_en, students, display_students, rating, status, revenue, price, sale_price, purchase_button_label, purchase_button_label_en, register_button_label, purchase_message, lynk_product_key, tripay_product_key, thumbnail, mentor, mentor_en, progress, next_label, live_at, lessons, show_on_homepage, show_on_member, highlighted)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 $insertMaterial = $pdo->prepare(
     'INSERT INTO materials
@@ -153,7 +168,9 @@ try {
         $insertClass->execute([
             $classId,
             clean_text($class['title'] ?? 'Kelas ' . ($classIndex + 1), 160),
+            clean_text($class['titleEn'] ?? '', 160),
             clean_rich_html($class['description'] ?? '', 20000),
+            clean_rich_html($class['descriptionEn'] ?? '', 20000),
             clean_number($class['students'] ?? 0, 0, 1000000),
             isset($class['displayStudents']) && $class['displayStudents'] !== ''
                 ? clean_number($class['displayStudents'], 0, 10000000)
@@ -166,12 +183,14 @@ try {
             clean_number($class['price'] ?? 0, 0, 1000000000),
             clean_number($class['salePrice'] ?? 0, 0, 1000000000),
             clean_text($class['purchaseButtonLabel'] ?? 'Beli Sekarang', 80),
+            clean_text($class['purchaseButtonLabelEn'] ?? '', 80),
             clean_text($class['registerButtonLabel'] ?? 'Daftar', 80),
             clean_text($class['purchaseMessage'] ?? '', 2000),
             clean_text($class['lynkProductKey'] ?? '', 180),
             clean_text($class['tripayProductKey'] ?? '', 180),
             clean_image($class['thumbnail'] ?? ''),
             clean_text($class['mentor'] ?? 'Ibnu Creative', 120),
+            clean_text($class['mentorEn'] ?? '', 120),
             clean_number($class['progress'] ?? 0, 0, 100),
             clean_text($class['next'] ?? 'Lanjutkan modul berikutnya', 160),
             clean_text($class['liveAt'] ?? 'Jadwal menyusul', 160),
