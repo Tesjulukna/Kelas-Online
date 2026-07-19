@@ -1,52 +1,9 @@
 import { useState } from 'react'
 import Icon from './Icon'
+import UploadProgress from './UploadProgress'
 import { uploadStorageFile } from '../lib/storageUpload'
 
 const uploadFileApiPath = '/api/upload-file'
-
-async function compressImageFile(file, { maxSize = 1400, quality = 0.9 } = {}) {
-  if (!file.type.startsWith('image/')) {
-    return file
-  }
-
-  const imageUrl = URL.createObjectURL(file)
-  const image = new Image()
-
-  try {
-    await new Promise((resolve, reject) => {
-      image.onload = resolve
-      image.onerror = reject
-      image.src = imageUrl
-    })
-
-    const scale = Math.min(1, maxSize / Math.max(image.width, image.height))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1, Math.round(image.width * scale))
-    canvas.height = Math.max(1, Math.round(image.height * scale))
-    const context = canvas.getContext('2d')
-
-    if (!context) {
-      return file
-    }
-
-    context.drawImage(image, 0, 0, canvas.width, canvas.height)
-    const outputType = file.type === 'image/png' ? 'image/webp' : file.type
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, outputType, quality),
-    )
-
-    if (!blob || blob.size >= file.size) {
-      return file
-    }
-
-    const extension = outputType === 'image/webp' ? 'webp' : 'jpg'
-    const baseName = file.name.replace(/\.[^.]+$/, '') || 'profile'
-
-    return new File([blob], `${baseName}.${extension}`, { type: outputType })
-  } finally {
-    URL.revokeObjectURL(imageUrl)
-  }
-}
 
 function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
   const [name, setName] = useState(session.name)
@@ -56,6 +13,7 @@ function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [avatar, setAvatar] = useState(session.avatar || '')
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState({ percent: 0, stage: '' })
   const canEditCredentials = session.role === 'admin'
 
   const handleAvatarChange = async (event) => {
@@ -73,12 +31,14 @@ function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
 
     try {
       setIsUploading(true)
-      const compressedFile = await compressImageFile(file)
+      setUploadProgress({ percent: 0, stage: 'Menyiapkan gambar...' })
+      onNotify('Mengompres dan mengupload foto profil...')
       const data = await uploadStorageFile({
         endpoint: uploadFileApiPath,
-        file: compressedFile,
+        file,
         type: 'profile',
         sessionToken: session.token,
+        onProgress: setUploadProgress,
       })
 
       setAvatar(data.url)
@@ -134,16 +94,22 @@ function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
           <span className="profile-preview-avatar" aria-hidden="true">
             {avatar ? <img src={avatar} alt="" /> : <Icon name="user" />}
           </span>
-          <label className="upload-control">
-            <Icon name="image" />
-            {isUploading ? 'Mengupload...' : 'Upload foto'}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleAvatarChange}
-              disabled={isUploading}
-            />
-          </label>
+          <div className="profile-upload-control">
+            <label className="upload-control">
+              <Icon name="image" />
+              {isUploading ? 'Mengompres & mengupload...' : 'Upload foto'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleAvatarChange}
+                disabled={isUploading}
+              />
+            </label>
+            <small>Ukuran gambar asli bebas dan otomatis dikompres sebelum upload.</small>
+            {isUploading && (
+              <UploadProgress value={uploadProgress.percent} label={uploadProgress.stage} />
+            )}
+          </div>
         </div>
 
         <label>

@@ -1516,6 +1516,66 @@
   gap: 14px;
 }
 
+.profile-upload-control {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.profile-upload-control small {
+  max-width: 320px;
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.image-upload-progress {
+  display: grid;
+  width: min(100%, 320px);
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.image-upload-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.image-upload-progress-meta > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-upload-progress-meta strong {
+  flex: 0 0 auto;
+  color: #2563eb;
+  font-size: 0.76rem;
+}
+
+.image-upload-progress-track {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.image-upload-progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #14b8a6);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.28);
+  transition: width 0.2s ease;
+}
+
 .profile-preview-avatar {
   width: 72px;
   height: 72px;

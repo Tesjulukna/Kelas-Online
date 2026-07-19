@@ -3,6 +3,7 @@ import CertificateTemplateCanvas from '../components/CertificateTemplateCanvas'
 import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
+import UploadProgress from '../components/UploadProgress'
 import { memberMenuItems } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import { createCertificateData } from '../lib/certificateTemplate'
@@ -638,50 +639,6 @@ function getPaymentMethodFee(method, amount) {
   return flatFee + Math.max(0, Math.round((Math.max(0, amount) * percentFee) / 100))
 }
 
-async function compressImageFile(file, { maxSize = 1800, quality = 0.9 } = {}) {
-  if (!file.type.startsWith('image/')) {
-    return file
-  }
-
-  const imageUrl = URL.createObjectURL(file)
-  const image = new Image()
-
-  try {
-    await new Promise((resolve, reject) => {
-      image.onload = resolve
-      image.onerror = reject
-      image.src = imageUrl
-    })
-
-    const scale = Math.min(1, maxSize / Math.max(image.width, image.height))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1, Math.round(image.width * scale))
-    canvas.height = Math.max(1, Math.round(image.height * scale))
-    const context = canvas.getContext('2d')
-
-    if (!context) {
-      return file
-    }
-
-    context.drawImage(image, 0, 0, canvas.width, canvas.height)
-    const outputType = file.type === 'image/png' ? 'image/webp' : file.type
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, outputType, quality),
-    )
-
-    if (!blob || blob.size >= file.size) {
-      return file
-    }
-
-    const extension = outputType === 'image/webp' ? 'webp' : 'jpg'
-    const baseName = file.name.replace(/\.[^.]+$/, '') || 'task-image'
-
-    return new File([blob], `${baseName}.${extension}`, { type: outputType })
-  } finally {
-    URL.revokeObjectURL(imageUrl)
-  }
-}
-
 function MemberPage({
   userId = '',
   loginName,
@@ -759,6 +716,8 @@ function MemberPage({
   )
   const [taskDraft, setTaskDraft] = useState('')
   const [taskAttachment, setTaskAttachment] = useState(null)
+  const [isTaskImageUploading, setIsTaskImageUploading] = useState(false)
+  const [taskImageProgress, setTaskImageProgress] = useState({ percent: 0, stage: '' })
   const [editingSubmissionId, setEditingSubmissionId] = useState('')
   const [submittedTasks, setSubmittedTasks] = useState(() => readSubmittedTasks(userId))
   const [courseProgress, setCourseProgress] = useState(() => readCourseProgress(userId))
@@ -1572,6 +1531,11 @@ function MemberPage({
       return
     }
 
+    if (isTaskImageUploading) {
+      onNotify('Tunggu kompresi dan upload gambar tugas selesai.')
+      return
+    }
+
     if (isTaskImageRequired && !taskAttachment?.url) {
       onNotify('Upload gambar tugas dulu karena materi ini mewajibkannya.')
       return
@@ -1687,22 +1651,26 @@ function MemberPage({
     }
 
     try {
-      const compressedFile = await compressImageFile(file)
+      setIsTaskImageUploading(true)
+      setTaskImageProgress({ percent: 0, stage: 'Menyiapkan gambar...' })
+      onNotify('Mengompres dan mengupload gambar tugas...')
       const data = await uploadStorageFile({
         endpoint: uploadFileApiPath,
-        file: compressedFile,
+        file,
         type: 'task',
         sessionToken,
+        onProgress: setTaskImageProgress,
       })
 
       setTaskAttachment({
         url: data.url,
-        name: data.name || compressedFile.name,
+        name: data.name || file.name,
       })
-      onNotify('Gambar tugas berhasil diupload.')
+      onNotify('Gambar tugas berhasil dikompres dan diupload.')
     } catch (error) {
       onNotify(error.message || 'Gambar tugas tidak bisa diupload.')
     } finally {
+      setIsTaskImageUploading(false)
       event.target.value = ''
     }
   }
@@ -2562,13 +2530,16 @@ function MemberPage({
                           <div className="task-upload-box">
                             <label className="upload-control">
                               <Icon name="image" />
-                              {isTaskImageRequired
-                                ? 'Upload gambar tugas wajib'
-                                : 'Upload gambar tugas'}
+                              {isTaskImageUploading
+                                ? 'Mengompres & mengupload...'
+                                : isTaskImageRequired
+                                  ? 'Upload gambar tugas wajib'
+                                  : 'Upload gambar tugas'}
                               <input
                                 type="file"
                                 accept="image/jpeg,image/png,image/webp"
                                 onChange={handleTaskImageChange}
+                                disabled={isTaskImageUploading}
                               />
                             </label>
                             <div>
@@ -2576,8 +2547,14 @@ function MemberPage({
                                 {taskAttachment?.name || 'Belum ada gambar tugas'}
                               </strong>
                               <small>
-                                Gambar tugas akan tersimpan di Supabase Storage.
+                                Ukuran gambar asli bebas dan otomatis dikompres sebelum upload.
                               </small>
+                              {isTaskImageUploading && (
+                                <UploadProgress
+                                  value={taskImageProgress.percent}
+                                  label={taskImageProgress.stage}
+                                />
+                              )}
                             </div>
                             {taskAttachment && (
                               <button
@@ -2609,6 +2586,7 @@ function MemberPage({
                             className="btn btn-primary"
                             type="button"
                             onClick={handleSubmitTask}
+                            disabled={isTaskImageUploading}
                           >
                             <Icon name="message" />
                             {canReviseActiveSubmission
