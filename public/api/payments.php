@@ -1069,7 +1069,10 @@ function payment_backfill_product_access_snapshots(PDO $pdo): void
 
         $existingPairs = payment_collect_existing_product_pairs($pdo);
         $accessRows = $pdo
-            ->query("SELECT * FROM digital_product_access WHERE status = 'active' ORDER BY created_at ASC")
+            ->query("SELECT * FROM digital_product_access
+                WHERE status = 'active'
+                  AND COALESCE(source, '') NOT IN ('admin-manual', 'class-bundle')
+                ORDER BY created_at ASC")
             ->fetchAll();
         $insert = $pdo->prepare(
             'INSERT IGNORE INTO payment_snapshots

@@ -291,6 +291,9 @@ function cleanClasses(value) {
         salePrice: cleanNumber(item.salePrice, 0, 1000000000),
         purchaseButtonLabel: cleanText(item.purchaseButtonLabel || 'Beli Sekarang', 80),
         purchaseButtonLabelEn: cleanText(item.purchaseButtonLabelEn || '', 80),
+        bundledProductIds: Array.isArray(item.bundledProductIds)
+          ? [...new Set(item.bundledProductIds.map((productId) => cleanText(productId, 90)).filter(Boolean))]
+          : [],
         lynkProductKey: cleanText(item.lynkProductKey || '', 180),
         tripayProductKey: cleanText(item.tripayProductKey || '', 180),
         thumbnail: cleanImage(item.thumbnail),

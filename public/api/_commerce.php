@@ -158,18 +158,18 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
     $existing = null;
 
     if ($orderId !== '') {
-        $query = $pdo->prepare('SELECT * FROM digital_product_access WHERE order_id = ? LIMIT 1');
-        $query->execute([$orderId]);
+        $query = $pdo->prepare('SELECT * FROM digital_product_access WHERE order_id = ? AND status = ? LIMIT 1');
+        $query->execute([$orderId, 'active']);
         $existing = $query->fetch();
     }
 
     if (!$existing && empty($product['allow_repeat_purchase']) && ($memberId !== '' || $buyerEmail !== '')) {
         $query = $pdo->prepare(
             'SELECT * FROM digital_product_access
-            WHERE product_id = ? AND (member_id = ? OR buyer_email = ?)
+            WHERE product_id = ? AND status = ? AND (member_id = ? OR buyer_email = ?)
             LIMIT 1',
         );
-        $query->execute([$productId, $memberId, $buyerEmail]);
+        $query->execute([$productId, 'active', $memberId, $buyerEmail]);
         $existing = $query->fetch();
     }
 
@@ -217,7 +217,9 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
         clean_asset_url($product['file_url'] ?? '', 1000),
     ]);
 
-    commerce_decrement_product_stock($pdo, $product['id']);
+    if (!array_key_exists('decrementStock', $args) || $args['decrementStock'] !== false) {
+        commerce_decrement_product_stock($pdo, $product['id']);
+    }
 
     $query = $pdo->prepare('SELECT * FROM digital_product_access WHERE id = ? LIMIT 1');
     $query->execute([$accessId]);
@@ -227,6 +229,141 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
         'access' => $query->fetch(),
         'product' => $product,
     ];
+}
+
+function commerce_class_bundled_product_ids($value): array
+{
+    $ids = is_string($value) ? json_decode($value, true) : $value;
+
+    if (!is_array($ids)) {
+        return [];
+    }
+
+    return array_values(array_unique(array_filter(array_map(static function ($productId): string {
+        return clean_text($productId, 120);
+    }, array_slice($ids, 0, 300)))));
+}
+
+function commerce_grant_class_bundled_products(PDO $pdo, array $args): array
+{
+    $class = is_array($args['class'] ?? null) ? $args['class'] : [];
+    $classId = clean_text($class['id'] ?? ($args['classId'] ?? ''), 120);
+
+    if (!$class && $classId !== '') {
+        $classQuery = $pdo->prepare('SELECT * FROM classes WHERE id = ? LIMIT 1');
+        $classQuery->execute([$classId]);
+        $class = $classQuery->fetch() ?: [];
+    }
+
+    $productIds = commerce_class_bundled_product_ids($class['bundled_product_ids'] ?? []);
+    $memberId = clean_text($args['memberId'] ?? '', 120);
+    $buyerEmail = clean_email($args['buyerEmail'] ?? '');
+    $buyerName = clean_text($args['buyerName'] ?? '', 160) ?: 'Peserta IbnuCreative';
+
+    if (!$productIds || ($memberId === '' && $buyerEmail === '')) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+    $productQuery = $pdo->prepare(
+        "SELECT * FROM digital_products WHERE id IN ({$placeholders})",
+    );
+    $productQuery->execute($productIds);
+    $productsById = [];
+
+    foreach ($productQuery->fetchAll() as $product) {
+        $productsById[$product['id']] = $product;
+    }
+
+    $bundleItems = [];
+    $ownerKey = $memberId !== '' ? $memberId : $buyerEmail;
+
+    foreach ($productIds as $productId) {
+        $product = $productsById[$productId] ?? null;
+
+        if (!$product) {
+            continue;
+        }
+
+        $orderId = 'bundle-' . substr(hash('sha256', $classId . '|' . $productId . '|' . $ownerKey), 0, 40);
+
+        if ($buyerEmail !== '') {
+            $existingQuery = $pdo->prepare(
+                'SELECT * FROM digital_product_access
+                WHERE product_id = ? AND status = ? AND (member_id = ? OR buyer_email = ?)
+                ORDER BY created_at ASC LIMIT 1',
+            );
+            $existingQuery->execute([$productId, 'active', $memberId, $buyerEmail]);
+        } else {
+            $existingQuery = $pdo->prepare(
+                'SELECT * FROM digital_product_access
+                WHERE product_id = ? AND status = ? AND member_id = ?
+                ORDER BY created_at ASC LIMIT 1',
+            );
+            $existingQuery->execute([$productId, 'active', $memberId]);
+        }
+
+        $existingAccess = $existingQuery->fetch();
+
+        if ($existingAccess) {
+            $accessOrderId = clean_text($existingAccess['order_id'] ?? '', 180) ?: $orderId;
+            $nextMemberId = clean_text($existingAccess['member_id'] ?? '', 120) ?: $memberId;
+            $nextSource = strtolower(clean_text($existingAccess['source'] ?? '', 80)) === 'admin-manual'
+                ? 'class-bundle'
+                : clean_text($existingAccess['source'] ?? 'class-bundle', 80);
+            $updateAccess = $pdo->prepare(
+                'UPDATE digital_product_access
+                SET member_id = ?, buyer_name = ?, buyer_email = ?, source = ?, order_id = ?
+                WHERE id = ?',
+            );
+            $updateAccess->execute([
+                $nextMemberId,
+                $buyerName,
+                $buyerEmail ?: clean_email($existingAccess['buyer_email'] ?? ''),
+                $nextSource,
+                $accessOrderId,
+                $existingAccess['id'],
+            ]);
+            $existingAccess['member_id'] = $nextMemberId;
+            $existingAccess['buyer_name'] = $buyerName;
+            $existingAccess['buyer_email'] = $buyerEmail ?: ($existingAccess['buyer_email'] ?? '');
+            $existingAccess['source'] = $nextSource;
+            $existingAccess['order_id'] = $accessOrderId;
+            $accessResult = [
+                'granted' => false,
+                'access' => $existingAccess,
+                'product' => $product,
+            ];
+        } else {
+            $accessResult = commerce_grant_digital_product_access($pdo, [
+                'productId' => $productId,
+                'memberId' => $memberId,
+                'buyerEmail' => $buyerEmail,
+                'buyerName' => $buyerName,
+                'source' => 'class-bundle',
+                'orderId' => $orderId,
+                'decrementStock' => false,
+            ]);
+        }
+
+        $accessOrderId = clean_text($accessResult['access']['order_id'] ?? $orderId, 180);
+        $productType = clean_text($product['product_type'] ?? 'digital', 40) === 'prompt' ? 'prompt' : 'digital';
+        $accessUrl = $accessOrderId !== ''
+            ? commerce_public_product_access_url($accessOrderId, $productType)
+            : clean_asset_url($product['file_url'] ?? '', 1000);
+
+        $bundleItems[] = [
+            'productId' => $productId,
+            'productTitle' => clean_text($product['title'] ?? 'Produk digital', 180),
+            'productType' => $productType,
+            'accessOrderId' => $accessOrderId,
+            'accessUrl' => $accessUrl,
+            'deliveryNote' => clean_text($product['delivery_note'] ?? '', 1200),
+            'granted' => !empty($accessResult['granted']),
+        ];
+    }
+
+    return $bundleItems;
 }
 
 function commerce_grant_product_member_account(PDO $pdo, array $args, array $config): array

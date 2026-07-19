@@ -663,7 +663,11 @@ function HomePage({
   }
 
   const getProductAccessCount = (productId) =>
-    digitalProductAccess.filter((access) => access.productId === productId).length
+    digitalProductAccess.filter((access) =>
+      access.productId === productId &&
+      String(access.status || 'active').toLowerCase() === 'active' &&
+      !['admin-manual', 'class-bundle'].includes(String(access.source || '').toLowerCase()),
+    ).length
 
   const catalogItems = [
     ...homepageClasses.map((course) => {

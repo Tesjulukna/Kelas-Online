@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS classes (
   purchase_button_label_en VARCHAR(80) NOT NULL DEFAULT '',
   register_button_label VARCHAR(80) NOT NULL DEFAULT 'Daftar',
   purchase_message LONGTEXT,
+  bundled_product_ids LONGTEXT,
   lynk_product_key VARCHAR(180) NOT NULL DEFAULT '',
   tripay_product_key VARCHAR(180) NOT NULL DEFAULT '',
   thumbnail MEDIUMTEXT,

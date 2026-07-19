@@ -42,10 +42,10 @@ if ($checkoutType === 'digital_product') {
 
     $accessQuery = $pdo->prepare(
         'SELECT id, order_id FROM digital_product_access
-        WHERE product_id = ? AND (member_id = ? OR buyer_email = ?)
+        WHERE product_id = ? AND status = ? AND (member_id = ? OR buyer_email = ?)
         LIMIT 1',
     );
-    $accessQuery->execute([$productId, $member['id'], clean_email($member['email'] ?? '')]);
+    $accessQuery->execute([$productId, 'active', $member['id'], clean_email($member['email'] ?? '')]);
     $existingAccess = $accessQuery->fetch();
 
     if ($existingAccess && empty($checkoutItem['allow_repeat_purchase'])) {
@@ -72,9 +72,25 @@ if ($checkoutType === 'digital_product') {
 }
 
 if ($checkoutType === 'class' && tripay_has_class_access($member, $classId)) {
+    $bundleItems = commerce_grant_class_bundled_products($pdo, [
+        'class' => $checkoutItem,
+        'memberId' => $member['id'],
+        'buyerName' => $member['name'] ?? 'Member',
+        'buyerEmail' => $member['email'] ?? '',
+    ]);
+    $bundleEmailResult = send_class_bundle_access_email([
+        'buyerName' => $member['name'] ?? 'Member',
+        'buyerEmail' => $member['email'] ?? '',
+        'classTitle' => $checkoutItem['title'] ?? 'Kelas IbnuCreative',
+        'bundleItems' => $bundleItems,
+    ]);
+
     send_json(200, [
         'ok' => true,
         'alreadyHasAccess' => true,
+        'bundleAccessCount' => count($bundleItems),
+        'bundleEmailSent' => $bundleEmailResult['sent'] ?? false,
+        'bundleEmailError' => !$bundleItems || !empty($bundleEmailResult['sent']) ? '' : ($bundleEmailResult['message'] ?? ''),
         'message' => 'Akses kelas sudah aktif.',
     ]);
 }
@@ -116,11 +132,26 @@ if ($amount <= 0) {
     }
 
     $accessGranted = tripay_grant_class_access($pdo, $member['id'], $checkoutItem['id']);
+    $bundleItems = commerce_grant_class_bundled_products($pdo, [
+        'class' => $checkoutItem,
+        'memberId' => $member['id'],
+        'buyerName' => $member['name'] ?? 'Member',
+        'buyerEmail' => $member['email'] ?? '',
+    ]);
+    $bundleEmailResult = send_class_bundle_access_email([
+        'buyerName' => $member['name'] ?? 'Member',
+        'buyerEmail' => $member['email'] ?? '',
+        'classTitle' => $checkoutItem['title'] ?? 'Kelas IbnuCreative',
+        'bundleItems' => $bundleItems,
+    ]);
 
     send_json(200, [
         'ok' => true,
         'freeAccessGranted' => $accessGranted,
         'alreadyHasAccess' => !$accessGranted,
+        'bundleAccessCount' => count($bundleItems),
+        'bundleEmailSent' => $bundleEmailResult['sent'] ?? false,
+        'bundleEmailError' => !$bundleItems || !empty($bundleEmailResult['sent']) ? '' : ($bundleEmailResult['message'] ?? ''),
         'message' => $accessGranted
             ? 'Akses kelas gratis sudah aktif.'
             : 'Akses kelas sudah aktif.',

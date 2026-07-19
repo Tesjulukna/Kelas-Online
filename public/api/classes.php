@@ -102,14 +102,15 @@ try {
         $pdo->exec('ALTER TABLE classes ADD purchase_message LONGTEXT NULL AFTER register_button_label');
     }
 
-    $translationColumns = [
+    $classColumns = [
         'title_en' => "VARCHAR(160) NOT NULL DEFAULT '' AFTER title",
         'description_en' => 'LONGTEXT NULL AFTER description',
         'purchase_button_label_en' => "VARCHAR(80) NOT NULL DEFAULT '' AFTER purchase_button_label",
         'mentor_en' => "VARCHAR(120) NOT NULL DEFAULT '' AFTER mentor",
+        'bundled_product_ids' => 'LONGTEXT NULL AFTER purchase_message',
     ];
 
-    foreach ($translationColumns as $column => $definition) {
+    foreach ($classColumns as $column => $definition) {
         $query->execute([$column]);
 
         if (!$query->fetch()) {
@@ -134,8 +135,8 @@ $classes = is_array($payload['classes'] ?? null) ? $payload['classes'] : [];
 
 $insertClass = $pdo->prepare(
     'INSERT INTO classes
-    (id, title, title_en, description, description_en, students, display_students, rating, status, revenue, price, sale_price, purchase_button_label, purchase_button_label_en, register_button_label, purchase_message, lynk_product_key, tripay_product_key, thumbnail, mentor, mentor_en, progress, next_label, live_at, lessons, show_on_homepage, show_on_member, highlighted)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    (id, title, title_en, description, description_en, students, display_students, rating, status, revenue, price, sale_price, purchase_button_label, purchase_button_label_en, register_button_label, purchase_message, bundled_product_ids, lynk_product_key, tripay_product_key, thumbnail, mentor, mentor_en, progress, next_label, live_at, lessons, show_on_homepage, show_on_member, highlighted)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
 $insertMaterial = $pdo->prepare(
     'INSERT INTO materials
@@ -186,6 +187,7 @@ try {
             clean_text($class['purchaseButtonLabelEn'] ?? '', 80),
             clean_text($class['registerButtonLabel'] ?? 'Daftar', 80),
             clean_text($class['purchaseMessage'] ?? '', 2000),
+            json_encode(clean_allowed_class_ids($class['bundledProductIds'] ?? []) ?? [], JSON_UNESCAPED_UNICODE),
             clean_text($class['lynkProductKey'] ?? '', 180),
             clean_text($class['tripayProductKey'] ?? '', 180),
             clean_image($class['thumbnail'] ?? ''),

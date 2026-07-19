@@ -507,6 +507,7 @@ function createEmptyClassForm() {
     purchaseButtonLabelEn: '',
     registerButtonLabel: 'Beli Sekarang',
     purchaseMessage: '',
+    bundledProductIds: [],
     lynkProductKey: '',
     tripayProductKey: '',
     thumbnail: '',
@@ -533,6 +534,8 @@ function createEmptyMemberForm() {
     status: 'Aktif',
     classAccessMode: 'all',
     allowedClassIds: [],
+    allowedDigitalProductIds: [],
+    lockedDigitalProductIds: [],
   }
 }
 
@@ -798,6 +801,20 @@ function getMemberAccessibleClasses(member, classes) {
   return []
 }
 
+function getMemberDigitalAccessRows(member, digitalProductAccess) {
+  const memberEmail = String(member.email || '').trim().toLowerCase()
+
+  return digitalProductAccess.filter((access) => {
+    const accessEmail = String(access.buyerEmail || '').trim().toLowerCase()
+    const status = String(access.status || 'active').trim().toLowerCase()
+
+    return status === 'active' && (
+      access.memberId === member.id ||
+      Boolean(memberEmail && accessEmail === memberEmail)
+    )
+  })
+}
+
 function getMemberProgressSummary(member, classes, submissions) {
   const accessibleClasses = getMemberAccessibleClasses(member, classes)
   const memberSubmissions = submissions.filter((item) => item.memberId === member.id)
@@ -935,6 +952,7 @@ function AdminPage({
   onCreateMember = async () => { },
   onUpdateMember = async () => { },
   onDeleteMember = async () => { },
+  onMemberProductAccessChange = async () => { },
   onUpdateSupportTicket = async () => { },
   onDeleteSupportTicket = async () => { },
   onCreateClassDiscussionMessage = async () => { },
@@ -1006,6 +1024,12 @@ function AdminPage({
   const isPromptBuilder = digitalProductForm.productType === 'prompt'
   const digitalOnlyProducts = digitalProducts.filter((product) => product.productType !== 'prompt')
   const promptProducts = digitalProducts.filter((product) => product.productType === 'prompt')
+  const memberDigitalProducts = digitalOnlyProducts.filter(
+    (product) => product.status === 'Aktif' && product.showOnMember !== false,
+  )
+  const memberPromptProducts = promptProducts.filter(
+    (product) => product.status === 'Aktif' && product.showOnMember !== false,
+  )
   const [submissionPageSize, setSubmissionPageSize] = useState(10)
   const [submissionPage, setSubmissionPage] = useState(1)
   const [submissionSearchTerm, setSubmissionSearchTerm] = useState('')
@@ -3033,6 +3057,15 @@ function AdminPage({
     lastMaterialDragTargetRef.current = ''
   }
 
+  const handleToggleClassBundledProduct = (productId) => {
+    setClassForm((current) => ({
+      ...current,
+      bundledProductIds: current.bundledProductIds.includes(productId)
+        ? current.bundledProductIds.filter((id) => id !== productId)
+        : [...current.bundledProductIds, productId],
+    }))
+  }
+
   const handleSubmitClass = async (event) => {
     event.preventDefault()
 
@@ -3114,6 +3147,7 @@ function AdminPage({
       purchaseButtonLabelEn: classForm.purchaseButtonLabelEn.trim(),
       registerButtonLabel: classForm.purchaseButtonLabel.trim() || 'Beli Sekarang',
       purchaseMessage: classForm.purchaseMessage.trim(),
+      bundledProductIds: classForm.bundledProductIds,
       lynkProductKey: classForm.lynkProductKey.trim(),
       tripayProductKey: classForm.tripayProductKey.trim(),
       thumbnail: classForm.thumbnail,
@@ -3170,6 +3204,7 @@ function AdminPage({
       purchaseButtonLabelEn: item.purchaseButtonLabelEn || '',
       registerButtonLabel: item.registerButtonLabel || item.purchaseButtonLabel || 'Beli Sekarang',
       purchaseMessage: item.purchaseMessage ?? '',
+      bundledProductIds: Array.isArray(item.bundledProductIds) ? item.bundledProductIds : [],
       lynkProductKey: item.lynkProductKey ?? '',
       tripayProductKey: item.tripayProductKey ?? '',
       thumbnail: item.thumbnail ?? '',
@@ -3311,6 +3346,23 @@ function AdminPage({
     })
   }
 
+  const handleToggleMemberDigitalProductAccess = (productId) => {
+    setMemberForm((current) => {
+      if (current.lockedDigitalProductIds.includes(productId)) {
+        return current
+      }
+
+      const allowedDigitalProductIds = current.allowedDigitalProductIds.includes(productId)
+        ? current.allowedDigitalProductIds.filter((id) => id !== productId)
+        : [...current.allowedDigitalProductIds, productId]
+
+      return {
+        ...current,
+        allowedDigitalProductIds,
+      }
+    })
+  }
+
   const handleSubmitMember = async (event) => {
     event.preventDefault()
 
@@ -3340,10 +3392,29 @@ function AdminPage({
     }
 
     try {
-      if (editingMemberId) {
-        await onUpdateMember(payload)
-      } else {
-        await onCreateMember(payload)
+      const savedMembers = editingMemberId
+        ? await onUpdateMember(payload)
+        : await onCreateMember(payload)
+      const savedMemberList = Array.isArray(savedMembers) ? savedMembers : []
+      const savedMemberId = editingMemberId || savedMemberList.find(
+        (member) => String(member.username || '').toLowerCase() === payload.username.toLowerCase(),
+      )?.id || savedMemberList[0]?.id
+
+      if (!savedMemberId) {
+        throw new Error('Member tersimpan, tetapi ID untuk pemberian akses tidak ditemukan.')
+      }
+
+      try {
+        await onMemberProductAccessChange({
+          memberId: savedMemberId,
+          productIds: memberForm.allowedDigitalProductIds,
+        })
+      } catch (accessError) {
+        setEditingMemberId(savedMemberId)
+        setMemberForm((current) => ({ ...current, password: '' }))
+        setActionStatus('Data member tersimpan, tetapi akses produk dan prompt belum tersimpan.')
+        onNotify(accessError.message || 'Data member tersimpan, tetapi akses produk dan prompt gagal diperbarui.')
+        return
       }
 
       setActionStatus(
@@ -3360,6 +3431,17 @@ function AdminPage({
   }
 
   const handleEditMember = (member) => {
+    const memberProductAccessRows = getMemberDigitalAccessRows(member, digitalProductAccess)
+    const allowedDigitalProductIds = [...new Set(
+      memberProductAccessRows.map((access) => access.productId).filter(Boolean),
+    )]
+    const lockedDigitalProductIds = [...new Set(
+      memberProductAccessRows
+        .filter((access) => String(access.source || '').trim().toLowerCase() !== 'admin-manual')
+        .map((access) => access.productId)
+        .filter(Boolean),
+    )]
+
     setMemberForm({
       name: member.name,
       username: member.username,
@@ -3375,6 +3457,8 @@ function AdminPage({
       allowedClassIds: Array.isArray(member.allowedClassIds)
         ? member.allowedClassIds
         : [],
+      allowedDigitalProductIds,
+      lockedDigitalProductIds,
     })
     setEditingMemberId(member.id)
     setIsMemberModalOpen(true)
@@ -5218,7 +5302,11 @@ function AdminPage({
                   0,
                   Math.round(
                     Number(product.accessCount) ||
-                    digitalProductAccess.filter((access) => access.productId === product.id).length,
+                    digitalProductAccess.filter((access) =>
+                      access.productId === product.id &&
+                      String(access.status || 'active').toLowerCase() === 'active' &&
+                      !['admin-manual', 'class-bundle'].includes(String(access.source || '').toLowerCase()),
+                    ).length,
                   ),
                 )
 
@@ -7125,6 +7213,77 @@ function AdminPage({
                   halaman belajar sampai admin memberikan akses.
                 </p>
               )}
+              <div className="member-product-access-section full-field">
+                <div className="member-product-access-heading">
+                  <div>
+                    <strong>Akses produk digital</strong>
+                    <small>Pilih produk yang langsung bisa dibuka peserta dari dashboard.</small>
+                  </div>
+                  <span>{memberDigitalProducts.filter((product) => memberForm.allowedDigitalProductIds.includes(product.id)).length}/{memberDigitalProducts.length}</span>
+                </div>
+                <div className="member-product-access-list">
+                  {memberDigitalProducts.map((product) => {
+                    const isLocked = memberForm.lockedDigitalProductIds.includes(product.id)
+                    const isChecked = memberForm.allowedDigitalProductIds.includes(product.id)
+
+                    return (
+                      <label className={`check-field member-product-access-option ${isLocked ? 'locked' : ''}`} key={product.id}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={isLocked}
+                          onChange={() => handleToggleMemberDigitalProductAccess(product.id)}
+                        />
+                        <span>
+                          <strong>{product.title}</strong>
+                          <small>{isLocked ? 'Akses checkout/bundle - tidak dicabut dari form ini' : isChecked ? 'Akses manual aktif' : 'Belum diberikan'}</small>
+                        </span>
+                        <em>{isLocked ? 'Terkunci' : 'Produk'}</em>
+                      </label>
+                    )
+                  })}
+                  {!memberDigitalProducts.length && (
+                    <p className="password-note">Belum ada produk digital aktif yang ditampilkan di dashboard member.</p>
+                  )}
+                </div>
+              </div>
+              <div className="member-product-access-section full-field">
+                <div className="member-product-access-heading">
+                  <div>
+                    <strong>Akses prompt</strong>
+                    <small>Prompt yang dipilih dapat dibuka dan disalin tanpa checkout.</small>
+                  </div>
+                  <span>{memberPromptProducts.filter((product) => memberForm.allowedDigitalProductIds.includes(product.id)).length}/{memberPromptProducts.length}</span>
+                </div>
+                <div className="member-product-access-list">
+                  {memberPromptProducts.map((product) => {
+                    const isLocked = memberForm.lockedDigitalProductIds.includes(product.id)
+                    const isChecked = memberForm.allowedDigitalProductIds.includes(product.id)
+
+                    return (
+                      <label className={`check-field member-product-access-option ${isLocked ? 'locked' : ''}`} key={product.id}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={isLocked}
+                          onChange={() => handleToggleMemberDigitalProductAccess(product.id)}
+                        />
+                        <span>
+                          <strong>{product.title}</strong>
+                          <small>{isLocked ? 'Akses checkout/bundle - tidak dicabut dari form ini' : isChecked ? 'Akses manual aktif' : 'Belum diberikan'}</small>
+                        </span>
+                        <em>{isLocked ? 'Terkunci' : 'Prompt'}</em>
+                      </label>
+                    )
+                  })}
+                  {!memberPromptProducts.length && (
+                    <p className="password-note">Belum ada prompt aktif yang ditampilkan di dashboard member.</p>
+                  )}
+                </div>
+              </div>
+              <p className="member-product-access-note password-note full-field">
+                Akses hasil checkout atau bonus kelas tetap aktif dan dikunci untuk menjaga hak peserta. Admin hanya dapat menambah atau mencabut akses manual dari form ini.
+              </p>
               <label className="full-field">
                 Password {editingMemberId ? 'baru' : ''}
                 <input
@@ -7732,6 +7891,83 @@ function AdminPage({
                   Pesan ini dikirim lewat Resend setelah akses kelas aktif. Kosongkan jika tidak perlu.
                 </span>
               </label>
+              <section className="class-bundle-access field-span-2">
+                <div className="class-bundle-access-heading">
+                  <div>
+                    <p className="eyebrow">Bonus checkout kelas</p>
+                    <h3>Berikan produk digital dan prompt</h3>
+                    <small>Setelah checkout kelas berhasil, akses bonus aktif otomatis dan link akses dikirim melalui email.</small>
+                  </div>
+                  <span>{classForm.bundledProductIds.length} dipilih</span>
+                </div>
+                <div className="class-bundle-access-grid">
+                  <div className="member-product-access-section">
+                    <div className="member-product-access-heading">
+                      <div>
+                        <strong>Produk digital</strong>
+                        <small>Bonus file atau produk digital.</small>
+                      </div>
+                      <span>{memberDigitalProducts.filter((product) => classForm.bundledProductIds.includes(product.id)).length}/{memberDigitalProducts.length}</span>
+                    </div>
+                    <div className="member-product-access-list">
+                      {memberDigitalProducts.map((product) => {
+                        const isChecked = classForm.bundledProductIds.includes(product.id)
+
+                        return (
+                          <label className="check-field member-product-access-option" key={product.id}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleClassBundledProduct(product.id)}
+                            />
+                            <span>
+                              <strong>{product.title}</strong>
+                              <small>{isChecked ? 'Bonus kelas aktif' : 'Tidak termasuk bundle'}</small>
+                            </span>
+                            <em>Produk</em>
+                          </label>
+                        )
+                      })}
+                      {!memberDigitalProducts.length && (
+                        <p className="password-note">Belum ada produk digital aktif untuk dijadikan bonus.</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="member-product-access-section">
+                    <div className="member-product-access-heading">
+                      <div>
+                        <strong>Prompt</strong>
+                        <small>Bonus prompt yang dapat langsung disalin.</small>
+                      </div>
+                      <span>{memberPromptProducts.filter((product) => classForm.bundledProductIds.includes(product.id)).length}/{memberPromptProducts.length}</span>
+                    </div>
+                    <div className="member-product-access-list">
+                      {memberPromptProducts.map((product) => {
+                        const isChecked = classForm.bundledProductIds.includes(product.id)
+
+                        return (
+                          <label className="check-field member-product-access-option" key={product.id}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleClassBundledProduct(product.id)}
+                            />
+                            <span>
+                              <strong>{product.title}</strong>
+                              <small>{isChecked ? 'Bonus kelas aktif' : 'Tidak termasuk bundle'}</small>
+                            </span>
+                            <em>Prompt</em>
+                          </label>
+                        )
+                      })}
+                      {!memberPromptProducts.length && (
+                        <p className="password-note">Belum ada prompt aktif untuk dijadikan bonus.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <p className="password-note">Bonus tidak mengurangi stok dan tidak dihitung sebagai penjualan produk terpisah.</p>
+              </section>
               <div className="digital-metric-grid">
                 <label>
                   Jumlah peserta tampilan

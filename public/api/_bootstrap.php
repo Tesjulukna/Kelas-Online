@@ -1309,6 +1309,7 @@ function fetch_classes(PDO $pdo): array
             'purchaseButtonLabelEn' => $class['purchase_button_label_en'] ?? '',
             'registerButtonLabel' => $class['register_button_label'] ?? 'Daftar',
             'purchaseMessage' => $class['purchase_message'] ?? '',
+            'bundledProductIds' => clean_allowed_class_ids($class['bundled_product_ids'] ?? null) ?? [],
             'lynkProductKey' => $class['lynk_product_key'] ?? '',
             'tripayProductKey' => $class['tripay_product_key'] ?? '',
             'thumbnail' => $class['thumbnail'],

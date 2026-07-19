@@ -1797,6 +1797,48 @@ if ($newAccessIds) {
     }
 }
 
+$classBundleItems = [];
+$classBundleTitles = [];
+$seenClassBundleProducts = array_fill_keys($productIds, true);
+$classBundleQuery = $pdo->prepare('SELECT * FROM classes WHERE id = ? LIMIT 1');
+
+foreach ($classIds as $classId) {
+    $classBundleQuery->execute([$classId]);
+    $bundleClass = $classBundleQuery->fetch();
+
+    if (!$bundleClass) {
+        continue;
+    }
+
+    $bundleItems = commerce_grant_class_bundled_products($pdo, [
+        'class' => $bundleClass,
+        'memberId' => $member['id'],
+        'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
+        'buyerEmail' => $buyerEmail,
+    ]);
+
+    if (!$bundleItems) {
+        continue;
+    }
+
+    $classBundleTitles[] = clean_text($bundleClass['title'] ?? '', 180);
+
+    foreach ($bundleItems as $bundleItem) {
+        $bundleKey = clean_text($bundleItem['productId'] ?? '', 120)
+            ?: clean_text($bundleItem['accessOrderId'] ?? '', 180);
+
+        if ($bundleKey !== '' && isset($seenClassBundleProducts[$bundleKey])) {
+            continue;
+        }
+
+        if ($bundleKey !== '') {
+            $seenClassBundleProducts[$bundleKey] = true;
+        }
+
+        $classBundleItems[] = $bundleItem;
+    }
+}
+
 if ($reprocessSavedOrderAsClass) {
     $updateOrder = $pdo->prepare(
         'UPDATE lynk_orders
@@ -1858,6 +1900,12 @@ $emailResult = lynk_send_credentials_email(
     $account,
     $config,
 );
+$bundleEmailResult = send_class_bundle_access_email([
+    'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
+    'buyerEmail' => $buyerEmail,
+    'classTitle' => implode(', ', array_values(array_unique(array_filter($classBundleTitles)))) ?: ($productDisplayName ?: 'Kelas IbnuCreative'),
+    'bundleItems' => $classBundleItems,
+]);
 lynk_store_email_result($pdo, $orderId, $emailResult);
 
 send_json(200, [
@@ -1867,6 +1915,9 @@ send_json(200, [
     'reprocessed' => $reprocessSavedOrderAsClass,
     'emailSent' => !empty($emailResult['sent']),
     'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? 'Email Resend gagal dikirim.'),
+    'bundleAccessCount' => count($classBundleItems),
+    'bundleEmailSent' => $bundleEmailResult['sent'] ?? false,
+    'bundleEmailError' => !$classBundleItems || !empty($bundleEmailResult['sent']) ? '' : ($bundleEmailResult['message'] ?? ''),
     'productEmailResults' => $productEmailResults,
     'productAccountEmailResults' => $productAccountEmailResults,
     'fulfillmentMessage' => sprintf(

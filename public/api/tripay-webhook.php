@@ -203,6 +203,13 @@ if ($isPublicClassOrder) {
         'buyerEmail' => $order['buyer_email'] ?? '',
         'buyerPhone' => $orderPayload['buyer_phone'] ?? '',
     ], $config);
+    $bundleItems = commerce_grant_class_bundled_products($pdo, [
+        'class' => $accessResult['class'] ?? [],
+        'classId' => $order['class_id'] ?? ($orderPayload['class_id'] ?? ''),
+        'memberId' => $accessResult['member']['id'] ?? '',
+        'buyerName' => $order['buyer_name'] ?? 'Peserta IbnuCreative',
+        'buyerEmail' => $order['buyer_email'] ?? '',
+    ]);
 
     $update = $pdo->prepare(
         'UPDATE tripay_orders
@@ -227,6 +234,12 @@ if ($isPublicClassOrder) {
         'purchaseMessage' => clean_text($accessResult['class']['purchase_message'] ?? '', 2000),
         'loginUrl' => $accessResult['loginUrl'],
     ]);
+    $bundleEmailResult = send_class_bundle_access_email([
+        'buyerName' => $order['buyer_name'] ?? 'Peserta IbnuCreative',
+        'buyerEmail' => $order['buyer_email'] ?? '',
+        'classTitle' => $accessResult['class']['title'] ?? ($order['class_title'] ?? 'Kelas IbnuCreative'),
+        'bundleItems' => $bundleItems,
+    ]);
 
     send_json(200, [
         'ok' => true,
@@ -240,23 +253,13 @@ if ($isPublicClassOrder) {
         'accessGranted' => $accessResult['accessGranted'],
         'emailSent' => $emailResult['sent'] ?? false,
         'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
+        'bundleAccessCount' => count($bundleItems),
+        'bundleEmailSent' => $bundleEmailResult['sent'] ?? false,
+        'bundleEmailError' => !$bundleItems || !empty($bundleEmailResult['sent']) ? '' : ($bundleEmailResult['message'] ?? ''),
     ]);
 }
 
 $accessGranted = tripay_grant_class_access($pdo, $order['member_id'], $order['class_id']);
-$update = $pdo->prepare(
-    'UPDATE tripay_orders
-    SET reference = ?, status = ?, access_granted = ?, payload = ?
-    WHERE id = ?',
-);
-$update->execute([
-    $reference ?: ($order['reference'] ?? ''),
-    'processed',
-    $accessGranted ? 1 : 0,
-    $rawBody,
-    $order['id'],
-]);
-
 $classInfo = [];
 $memberInfo = [];
 
@@ -277,6 +280,32 @@ try {
 }
 
 $memberEmail = clean_email($order['buyer_email'] ?? ($memberInfo['email'] ?? ''));
+$bundleBuyerName = clean_text($order['buyer_name'] ?? ($memberInfo['name'] ?? 'Peserta IbnuCreative'), 160);
+$bundleItems = commerce_grant_class_bundled_products($pdo, [
+    'class' => $classInfo,
+    'classId' => $order['class_id'],
+    'memberId' => $order['member_id'],
+    'buyerName' => $bundleBuyerName,
+    'buyerEmail' => $memberEmail,
+]);
+$update = $pdo->prepare(
+    'UPDATE tripay_orders
+    SET reference = ?, status = ?, access_granted = ?, payload = ?
+    WHERE id = ?',
+);
+$update->execute([
+    $reference ?: ($order['reference'] ?? ''),
+    'processed',
+    $accessGranted ? 1 : 0,
+    $rawBody,
+    $order['id'],
+]);
+$bundleEmailResult = send_class_bundle_access_email([
+    'buyerName' => $bundleBuyerName,
+    'buyerEmail' => $memberEmail,
+    'classTitle' => $classInfo['title'] ?? ($order['class_title'] ?? 'Kelas IbnuCreative'),
+    'bundleItems' => $bundleItems,
+]);
 $emailResult = $memberEmail !== ''
     ? send_class_access_credentials_email([
         'buyerName' => clean_text($order['buyer_name'] ?? ($memberInfo['name'] ?? 'Peserta IbnuCreative'), 160),
@@ -301,4 +330,7 @@ send_json(200, [
     'accessGranted' => $accessGranted,
     'emailSent' => $emailResult['sent'] ?? false,
     'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
+    'bundleAccessCount' => count($bundleItems),
+    'bundleEmailSent' => $bundleEmailResult['sent'] ?? false,
+    'bundleEmailError' => !$bundleItems || !empty($bundleEmailResult['sent']) ? '' : ($bundleEmailResult['message'] ?? ''),
 ]);

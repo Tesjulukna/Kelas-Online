@@ -209,6 +209,7 @@ function fetch_digital_products(PDO $pdo, ?array $user): array
             FROM digital_product_access dpa
             WHERE dpa.product_id = p.id
               AND dpa.status = 'active'
+              AND COALESCE(dpa.source, '') NOT IN ('admin-manual', 'class-bundle')
         ) AS access_count
         FROM digital_products p
     ";

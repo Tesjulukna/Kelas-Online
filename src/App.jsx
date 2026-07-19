@@ -25,6 +25,7 @@ const websiteSettingsSyncKey = 'ibnucreative.website-settings.sync.v1'
 const pendingClassCheckoutKey = 'ibnucreative.pending-class-checkout.v1'
 const classesApiPath = '/api/classes'
 const digitalProductsApiPath = '/api/digital-products'
+const memberProductAccessApiPath = '/api/member-product-access'
 const membersApiPath = '/api/members'
 const supportApiPath = '/api/support'
 const classDiscussionsApiPath = '/api/class-discussions'
@@ -713,6 +714,7 @@ function seedClasses() {
     purchaseButtonLabelEn: item.purchaseButtonLabelEn ?? '',
     registerButtonLabel: item.registerButtonLabel ?? 'Daftar',
     purchaseMessage: item.purchaseMessage ?? '',
+    bundledProductIds: Array.isArray(item.bundledProductIds) ? item.bundledProductIds : [],
     showOnHomepage: item.showOnHomepage !== false,
     showOnMember: item.showOnMember !== false,
     highlighted: item.highlighted === true,
@@ -756,6 +758,9 @@ function cleanClasses(value) {
         purchaseButtonLabelEn: cleanText(item.purchaseButtonLabelEn || ''),
         registerButtonLabel: cleanText(item.registerButtonLabel || 'Daftar'),
         purchaseMessage: cleanLongText(item.purchaseMessage || '', 2000),
+        bundledProductIds: Array.isArray(item.bundledProductIds)
+          ? [...new Set(item.bundledProductIds.map((productId) => cleanText(productId)).filter(Boolean))]
+          : [],
         lynkProductKey: cleanLongText(item.lynkProductKey || '', 160),
         tripayProductKey: cleanLongText(item.tripayProductKey || '', 160),
         thumbnail: cleanAvatar(item.thumbnail),
@@ -2823,6 +2828,15 @@ function App() {
     return applyMembersResponse(data)
   }
 
+  const handleMemberProductAccessChange = async ({ memberId, productIds }) => {
+    const data = await requestJson(memberProductAccessApiPath, {
+      method: 'PUT',
+      body: JSON.stringify({ memberId, productIds }),
+    })
+
+    return applyDigitalProductsResponse(data)
+  }
+
   const handleCreateSupportTicket = async ({ message, subject }) => {
     if (!session) {
       throw new Error('Silakan login ulang untuk mengirim bantuan.')
@@ -3385,6 +3399,7 @@ function App() {
               onCreateMember={handleCreateMember}
               onUpdateMember={handleUpdateMember}
               onDeleteMember={handleDeleteMember}
+              onMemberProductAccessChange={handleMemberProductAccessChange}
               onUpdateSupportTicket={handleUpdateSupportTicket}
               onDeleteSupportTicket={handleDeleteSupportTicket}
               onCreateClassDiscussionMessage={handleCreateClassDiscussionMessage}

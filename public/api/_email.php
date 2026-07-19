@@ -242,6 +242,94 @@ function send_digital_product_delivery_email(array $order): array
     ]);
 }
 
+function send_class_bundle_access_email(array $order): array
+{
+    $buyerName = clean_text($order['buyerName'] ?? 'Peserta', 160) ?: 'Peserta';
+    $buyerEmail = clean_email($order['buyerEmail'] ?? '');
+    $classTitle = clean_text($order['classTitle'] ?? 'Kelas IbnuCreative', 300) ?: 'Kelas IbnuCreative';
+    $bundleItems = is_array($order['bundleItems'] ?? null) ? $order['bundleItems'] : [];
+    $items = [];
+    $seenProductIds = [];
+
+    foreach ($bundleItems as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $productId = clean_text($item['productId'] ?? '', 120);
+
+        if ($productId !== '' && isset($seenProductIds[$productId])) {
+            continue;
+        }
+
+        if ($productId !== '') {
+            $seenProductIds[$productId] = true;
+        }
+
+        $productType = clean_text($item['productType'] ?? 'digital', 40) === 'prompt' ? 'prompt' : 'digital';
+        $items[] = [
+            'title' => clean_text($item['productTitle'] ?? '', 180) ?: ($productType === 'prompt' ? 'Prompt' : 'Produk digital'),
+            'type' => $productType,
+            'accessUrl' => clean_asset_url($item['accessUrl'] ?? '', 1000),
+            'deliveryNote' => clean_text($item['deliveryNote'] ?? '', 1200),
+        ];
+    }
+
+    if (!$items) {
+        return ['sent' => false, 'message' => 'Kelas tidak memiliki bonus produk atau prompt.'];
+    }
+
+    $textItems = '';
+    $htmlItems = '';
+
+    foreach ($items as $index => $item) {
+        $itemLabel = $item['type'] === 'prompt' ? 'Prompt' : 'Produk digital';
+        $itemNumber = $index + 1;
+        $textItems .= "{$itemNumber}. [{$itemLabel}] {$item['title']}\n"
+            . ($item['accessUrl'] !== '' ? "Link akses: {$item['accessUrl']}\n" : '')
+            . ($item['deliveryNote'] !== '' ? "Catatan akses: {$item['deliveryNote']}\n" : '')
+            . "\n";
+        $htmlItems .= email_panel(
+            $itemNumber . '. ' . $itemLabel . ' - ' . $item['title'],
+            ($item['accessUrl'] !== ''
+                ? '<div>' . email_button($item['accessUrl'], $item['type'] === 'prompt' ? 'Akses Prompt' : 'Akses Produk') . '</div>'
+                . '<p style="margin:8px 0 0;color:#6b7280;font-size:12px;line-height:1.6;overflow-wrap:anywhere;word-break:break-word">Link akses:<br><a href="' . email_escape($item['accessUrl']) . '" style="color:#2563eb;overflow-wrap:anywhere;word-break:break-word">' . email_escape($item['accessUrl']) . '</a></p>'
+                : '<p style="margin:0;color:#6b7280;font-size:13px">Buka dashboard member untuk mengakses bonus ini.</p>')
+            . ($item['deliveryNote'] !== ''
+                ? '<p style="margin:12px 0 0;color:#374151;font-size:13px;line-height:1.6"><strong>Catatan akses:</strong><br>' . email_escape_breaks($item['deliveryNote']) . '</p>'
+                : '')
+        );
+    }
+
+    $text = "Halo {$buyerName},\n\n"
+        . "Bonus dari checkout kelas Anda sudah aktif.\n\n"
+        . "Kelas: {$classTitle}\n\n"
+        . $textItems
+        . "Anda juga dapat membuka bonus ini dari dashboard member.\n\nIbnuCreative Academy";
+    $html = '<div style="box-sizing:border-box;width:100%;margin:0;padding:16px 8px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.6;overflow-wrap:break-word">'
+        . '<div style="box-sizing:border-box;width:100%;max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="box-sizing:border-box;width:100%;padding:20px 16px 16px;background:#1d4ed8;color:#ffffff">'
+        . '<p style="margin:0 0 8px;color:#dbeafe;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Bonus checkout kelas</p>'
+        . '<h2 style="margin:0;font-size:24px;line-height:1.25;color:#ffffff">Produk digital dan prompt Anda sudah aktif</h2>'
+        . '</div>'
+        . '<div style="box-sizing:border-box;width:100%;padding:18px 14px">'
+        . '<p style="margin:0 0 10px;color:#374151;font-size:15px;line-height:1.7">Halo <strong style="color:#111827">' . email_escape($buyerName) . '</strong>, berikut bonus yang Anda dapatkan setelah checkout kelas.</p>'
+        . '<p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.6"><strong>Kelas:</strong> ' . email_escape($classTitle) . '</p>'
+        . $htmlItems
+        . '<p style="margin:18px 0 0;color:#374151;font-size:14px">Bonus juga tersedia di dashboard member Anda.</p>'
+        . '<p style="margin:22px 0 0;color:#374151;font-size:14px">IbnuCreative Academy</p>'
+        . '</div>'
+        . '</div>'
+        . '</div>';
+
+    return send_resend_email([
+        'to' => $buyerEmail,
+        'subject' => 'Bonus kelas ' . $classTitle . ' sudah siap',
+        'text' => $text,
+        'html' => $html,
+    ]);
+}
+
 function send_tripay_payment_email(array $order): array
 {
     $checkoutUrl = clean_asset_url($order['checkoutUrl'] ?? '', 1000);

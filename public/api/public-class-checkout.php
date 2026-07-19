@@ -56,6 +56,12 @@ if ($amount <= 0) {
         'buyerEmail' => $buyerEmail,
         'buyerPhone' => $buyerPhone,
     ], $config);
+    $bundleItems = commerce_grant_class_bundled_products($pdo, [
+        'class' => $class,
+        'memberId' => $accessResult['member']['id'] ?? '',
+        'buyerName' => $buyerName,
+        'buyerEmail' => $buyerEmail,
+    ]);
     $emailResult = send_class_access_credentials_email([
         'buyerName' => $buyerName,
         'buyerEmail' => $buyerEmail,
@@ -65,6 +71,12 @@ if ($amount <= 0) {
         'purchaseMessage' => $class['purchase_message'] ?? '',
         'loginUrl' => $accessResult['loginUrl'],
     ]);
+    $bundleEmailResult = send_class_bundle_access_email([
+        'buyerName' => $buyerName,
+        'buyerEmail' => $buyerEmail,
+        'classTitle' => $class['title'] ?? 'Kelas IbnuCreative',
+        'bundleItems' => $bundleItems,
+    ]);
 
     send_json(200, [
         'ok' => true,
@@ -73,6 +85,9 @@ if ($amount <= 0) {
         'loginUrl' => $accessResult['loginUrl'],
         'emailSent' => $emailResult['sent'] ?? false,
         'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
+        'bundleAccessCount' => count($bundleItems),
+        'bundleEmailSent' => $bundleEmailResult['sent'] ?? false,
+        'bundleEmailError' => !$bundleItems || !empty($bundleEmailResult['sent']) ? '' : ($bundleEmailResult['message'] ?? ''),
         'message' => 'Akses kelas gratis sudah aktif. Data login dikirim ke email.',
     ]);
 }

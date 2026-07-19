@@ -302,6 +302,9 @@ function cleanClasses(value) {
           item.salePrice === '' || item.salePrice === null || item.salePrice === undefined
             ? ''
             : cleanNumber(item.salePrice, 0, 1000000000),
+        bundledProductIds: Array.isArray(item.bundledProductIds)
+          ? [...new Set(item.bundledProductIds.map((productId) => cleanText(productId, 90)).filter(Boolean))]
+          : [],
         lynkProductKey: cleanText(item.lynkProductKey || '', 180),
         tripayProductKey: cleanText(item.tripayProductKey || '', 180),
         thumbnail: cleanImage(item.thumbnail),
