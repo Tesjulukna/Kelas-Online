@@ -15,6 +15,7 @@ $classId = clean_text($payload['classId'] ?? '', 120);
 $buyerName = clean_text($payload['buyerName'] ?? '', 120);
 $buyerEmailWarning = checkout_email_validation_message($payload['buyerEmail'] ?? '');
 $buyerEmail = clean_email($payload['buyerEmail'] ?? '');
+$buyerPhoneWarning = checkout_phone_validation_message($payload['buyerPhone'] ?? '');
 $buyerPhone = clean_phone($payload['buyerPhone'] ?? '');
 $paymentMethod = strtoupper(clean_text($payload['paymentMethod'] ?? '', 40));
 $acceptedTerms = ($payload['acceptedTerms'] ?? false) === true;
@@ -26,6 +27,10 @@ if ($classId === '') {
 
 if ($buyerEmailWarning !== '') {
     send_json(422, ['message' => $buyerEmailWarning]);
+}
+
+if ($buyerPhoneWarning !== '') {
+    send_json(422, ['message' => $buyerPhoneWarning]);
 }
 
 if ($buyerName === '' || $buyerEmail === '' || $buyerPhone === '') {
@@ -109,6 +114,7 @@ $privateKey = tripay_config_value($config, 'tripay_private_key', 300);
 $expiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
 $callbackUrl = clean_external_url($config['tripay_callback_url'] ?? '') ?: tripay_absolute_url('/api/tripay-webhook.php');
 $returnUrl = commerce_login_url($config);
+$tripayCustomerPhone = tripay_customer_phone($buyerPhone);
 
 $checkoutPayload = [
     'method' => $paymentMethod,
@@ -116,7 +122,6 @@ $checkoutPayload = [
     'amount' => $amount,
     'customer_name' => $buyerName,
     'customer_email' => $buyerEmail,
-    'customer_phone' => $buyerPhone,
     'order_items' => [
         [
             'sku' => clean_text(($class['tripay_product_key'] ?? '') ?: $class['id'], 80),
@@ -130,6 +135,10 @@ $checkoutPayload = [
     'expired_time' => time() + ($expiredMinutes * 60),
     'signature' => tripay_checkout_signature($merchantCode, $merchantRef, $amount, $privateKey),
 ];
+
+if ($tripayCustomerPhone !== '') {
+    $checkoutPayload['customer_phone'] = $tripayCustomerPhone;
+}
 
 $tripayResponse = tripay_post_transaction($config, $checkoutPayload);
 $tripayData = is_array($tripayResponse['data']['data'] ?? null)

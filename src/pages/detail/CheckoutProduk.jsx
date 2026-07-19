@@ -1,5 +1,6 @@
 import Icon from '../../components/Icon'
 import { getCheckoutEmailWarning } from '../../utils/emailValidation'
+import { getCheckoutPhoneWarning } from '../../utils/phoneValidation'
 
 function PaymentMethodLogo({ method }) {
   if (method.logoUrl) {
@@ -64,6 +65,7 @@ function CheckoutProduk({
   priceLabel,
   status,
   emailWarning = '',
+  phoneWarning = '',
   onBack,
   onChange,
   onAnswerChange,
@@ -104,6 +106,7 @@ function CheckoutProduk({
   const visibleEmailWarning = !isMemberCheckout
     ? emailWarning || getCheckoutEmailWarning(form.buyerEmail)
     : ''
+  const visiblePhoneWarning = phoneWarning || getCheckoutPhoneWarning(form.buyerPhone)
 
   return (
     <section className="public-detail-page public-checkout-page">
@@ -151,7 +154,22 @@ function CheckoutProduk({
             </label>
             <label>
               Nomor HP
-              <input name="buyerPhone" value={form.buyerPhone} onChange={onChange} required />
+              <input
+                name="buyerPhone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="+628123456789 atau +14155552671"
+                value={form.buyerPhone}
+                onChange={onChange}
+                aria-invalid={Boolean(visiblePhoneWarning)}
+                required
+              />
+              {visiblePhoneWarning ? (
+                <small className="checkout-field-warning">{visiblePhoneWarning}</small>
+              ) : (
+                <small className="checkout-field-hint">Nomor luar negeri: awali dengan +kode negara.</small>
+              )}
             </label>
           </div>
         )}
@@ -159,7 +177,22 @@ function CheckoutProduk({
           <div className="public-checkout-grid">
             <label>
               Nomor HP untuk invoice
-              <input name="buyerPhone" value={form.buyerPhone} onChange={onChange} required />
+              <input
+                name="buyerPhone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="+628123456789 atau +14155552671"
+                value={form.buyerPhone}
+                onChange={onChange}
+                aria-invalid={Boolean(visiblePhoneWarning)}
+                required
+              />
+              {visiblePhoneWarning ? (
+                <small className="checkout-field-warning">{visiblePhoneWarning}</small>
+              ) : (
+                <small className="checkout-field-hint">Nomor luar negeri: awali dengan +kode negara.</small>
+              )}
             </label>
           </div>
         )}

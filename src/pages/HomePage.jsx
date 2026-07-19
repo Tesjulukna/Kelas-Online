@@ -7,6 +7,7 @@ import DetailKelas from './detail/DetailKelas'
 import DetailProduk from './detail/DetailProduk'
 import ProductAccessPage from './detail/ProductAccessPage'
 import { getCheckoutEmailWarning } from '../utils/emailValidation'
+import { getCheckoutPhoneWarning, normalizeCheckoutPhone } from '../utils/phoneValidation'
 
 const TESTIMONIAL_AUTO_DELAY_MS = 5200
 const TESTIMONIAL_MANUAL_PAUSE_MS = 20000
@@ -876,10 +877,15 @@ function HomePage({
   const wishlistCount = wishlistItems.length
   const isMemberCheckout = checkoutCustomer?.isMember === true
   const memberCheckoutPhone = checkoutCustomer?.phone || ''
-  const memberNeedsCheckoutPhone = isMemberCheckout && !memberCheckoutPhone
+  const memberCheckoutPhoneWarning = getCheckoutPhoneWarning(memberCheckoutPhone)
+  const memberNeedsCheckoutPhone = isMemberCheckout && (!memberCheckoutPhone || Boolean(memberCheckoutPhoneWarning))
+  const effectiveCheckoutPhone = isMemberCheckout && !memberNeedsCheckoutPhone
+    ? memberCheckoutPhone
+    : publicCheckoutForm.buyerPhone
   const publicCheckoutEmailWarning = isMemberCheckout
     ? getCheckoutEmailWarning(checkoutCustomer?.email || publicCheckoutForm.buyerEmail)
     : getCheckoutEmailWarning(publicCheckoutForm.buyerEmail)
+  const publicCheckoutPhoneWarning = getCheckoutPhoneWarning(effectiveCheckoutPhone)
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1353,10 +1359,19 @@ function HomePage({
     const buyerEmail = isMemberCheckout
       ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
       : publicCheckoutForm.buyerEmail
+    const buyerPhone = isMemberCheckout && !memberNeedsCheckoutPhone
+      ? memberCheckoutPhone
+      : publicCheckoutForm.buyerPhone
     const emailWarning = getCheckoutEmailWarning(buyerEmail)
+    const phoneWarning = getCheckoutPhoneWarning(buyerPhone)
 
     if (!String(buyerEmail || '').trim() || emailWarning) {
       setPublicCheckoutStatus(emailWarning || 'Email wajib diisi agar invoice dan akun bisa dikirim.')
+      return
+    }
+
+    if (!String(buyerPhone || '').trim() || phoneWarning) {
+      setPublicCheckoutStatus(phoneWarning || 'Nomor HP wajib diisi agar invoice dan akses bisa diproses.')
       return
     }
 
@@ -1372,9 +1387,7 @@ function HomePage({
         buyerEmail: isMemberCheckout
           ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
           : publicCheckoutForm.buyerEmail,
-        buyerPhone: isMemberCheckout
-          ? memberCheckoutPhone || publicCheckoutForm.buyerPhone
-          : publicCheckoutForm.buyerPhone,
+        buyerPhone: normalizeCheckoutPhone(buyerPhone),
         paymentMethod: isPublicClassFree ? '' : publicCheckoutForm.paymentMethod,
       })
 
@@ -1400,10 +1413,19 @@ function HomePage({
     const buyerEmail = isMemberCheckout
       ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
       : publicCheckoutForm.buyerEmail
+    const buyerPhone = isMemberCheckout && !memberNeedsCheckoutPhone
+      ? memberCheckoutPhone
+      : publicCheckoutForm.buyerPhone
     const emailWarning = getCheckoutEmailWarning(buyerEmail)
+    const phoneWarning = getCheckoutPhoneWarning(buyerPhone)
 
     if (!String(buyerEmail || '').trim() || emailWarning) {
       setPublicCheckoutStatus(emailWarning || 'Email wajib diisi agar invoice dan akses produk bisa dikirim.')
+      return
+    }
+
+    if (!String(buyerPhone || '').trim() || phoneWarning) {
+      setPublicCheckoutStatus(phoneWarning || 'Nomor HP wajib diisi agar invoice dan akses bisa diproses.')
       return
     }
 
@@ -1424,9 +1446,7 @@ function HomePage({
         buyerEmail: isMemberCheckout
           ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
           : publicCheckoutForm.buyerEmail,
-        buyerPhone: isMemberCheckout
-          ? memberCheckoutPhone || publicCheckoutForm.buyerPhone
-          : publicCheckoutForm.buyerPhone,
+        buyerPhone: normalizeCheckoutPhone(buyerPhone),
         paymentMethod: isPublicProductFree ? '' : publicCheckoutForm.paymentMethod,
       })
 
@@ -1584,6 +1604,7 @@ function HomePage({
           priceLabel={selectedClassPrice ? formatRupiah(selectedClassPrice) : 'Gratis'}
           status={publicCheckoutStatus}
           emailWarning={publicCheckoutEmailWarning}
+          phoneWarning={publicCheckoutPhoneWarning}
           onBack={() => navigateBackFromClassCheckout(checkoutClass.id)}
           onChange={handlePublicCheckoutChange}
           onAnswerChange={handlePublicCheckoutAnswerChange}
@@ -1692,6 +1713,7 @@ function HomePage({
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
           status={publicCheckoutStatus}
           emailWarning={publicCheckoutEmailWarning}
+          phoneWarning={publicCheckoutPhoneWarning}
           onBack={() => navigateBackFromProductCheckout(checkoutProduct.id)}
           onChange={handlePublicCheckoutChange}
           onAnswerChange={handlePublicCheckoutAnswerChange}

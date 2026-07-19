@@ -405,7 +405,49 @@ function checkout_email_validation_message($value): string
 
 function clean_phone($value): string
 {
-    return substr(preg_replace('/[^0-9+()\-\s.]/', '', clean_text($value, 40)) ?? '', 0, 40);
+    $phone = trim(clean_text($value, 40));
+
+    if ($phone === '') {
+        return '';
+    }
+
+    $compactPhone = preg_replace('/[().\-\s]/', '', $phone) ?? '';
+
+    if (strpos($compactPhone, '00') === 0) {
+        $compactPhone = '+' . substr($compactPhone, 2);
+    }
+
+    $hasCountryPrefix = strpos($compactPhone, '+') === 0;
+    $digits = preg_replace('/\D/', '', $compactPhone) ?? '';
+
+    return $hasCountryPrefix ? '+' . $digits : $digits;
+}
+
+function checkout_phone_validation_message($value): string
+{
+    $phone = trim(clean_text($value, 40));
+
+    if ($phone === '') {
+        return '';
+    }
+
+    if (!preg_match('/^\+?[0-9().\-\s]+$/', $phone)) {
+        return 'Format nomor HP belum benar. Gunakan angka serta tanda +, -, spasi, atau kurung.';
+    }
+
+    $normalizedPhone = clean_phone($phone);
+    $digits = preg_replace('/\D/', '', $normalizedPhone) ?? '';
+    $digitCount = strlen($digits);
+
+    if ($digitCount < 7 || $digitCount > 15) {
+        return 'Gunakan 7-15 digit. Untuk nomor luar Indonesia, awali dengan +kode negara, contoh +14155552671.';
+    }
+
+    if (strpos($normalizedPhone, '+') === 0 && !preg_match('/^\+[1-9]/', $normalizedPhone)) {
+        return 'Setelah tanda +, masukkan kode negara tanpa angka 0 di depannya.';
+    }
+
+    return '';
 }
 
 function clean_number($value, int $min = 0, int $max = 1000000): int

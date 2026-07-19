@@ -9875,6 +9875,14 @@ img {
   line-height: 1.45;
 }
 
+.checkout-field-hint {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .public-checkout-account {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

@@ -205,7 +205,61 @@ function cleanEmail(value) {
 }
 
 function cleanPhone(value) {
-  return cleanText(value, 40).replace(/[^0-9+()\-\s.]/g, '')
+  const phone = cleanText(value, 40).trim()
+
+  if (!phone) {
+    return ''
+  }
+
+  const compactPhone = phone.replace(/[().\-\s]/g, '')
+  const internationalPhone = compactPhone.startsWith('00')
+    ? `+${compactPhone.slice(2)}`
+    : compactPhone
+  const digits = internationalPhone.replace(/\D/g, '')
+
+  return internationalPhone.startsWith('+') ? `+${digits}` : digits
+}
+
+function checkoutPhoneValidationMessage(value) {
+  const phone = cleanText(value, 40).trim()
+
+  if (!phone) {
+    return ''
+  }
+
+  if (!/^\+?[0-9().\-\s]+$/.test(phone)) {
+    return 'Format nomor HP belum benar. Gunakan angka serta tanda +, -, spasi, atau kurung.'
+  }
+
+  const normalizedPhone = cleanPhone(phone)
+  const digits = normalizedPhone.replace(/\D/g, '')
+
+  if (digits.length < 7 || digits.length > 15) {
+    return 'Gunakan 7-15 digit. Untuk nomor luar Indonesia, awali dengan +kode negara, contoh +14155552671.'
+  }
+
+  if (normalizedPhone.startsWith('+') && !/^\+[1-9]/.test(normalizedPhone)) {
+    return 'Setelah tanda +, masukkan kode negara tanpa angka 0 di depannya.'
+  }
+
+  return ''
+}
+
+function tripayCustomerPhone(value) {
+  const normalizedPhone = cleanPhone(value)
+  let digits = normalizedPhone.replace(/\D/g, '')
+
+  if (normalizedPhone.startsWith('+62')) {
+    digits = `0${digits.slice(2)}`
+  } else if (normalizedPhone.startsWith('+')) {
+    return ''
+  } else if (digits.startsWith('62')) {
+    digits = `0${digits.slice(2)}`
+  } else if (!digits.startsWith('0')) {
+    return ''
+  }
+
+  return /^0[0-9]{7,14}$/.test(digits) ? digits : ''
 }
 
 function cleanNumber(value, min = 0, max = 1000000) {
@@ -5732,6 +5786,7 @@ export async function createPublicDigitalProductCheckout(request) {
   const paymentMethod = cleanText(payload.paymentMethod || '', 40).toUpperCase()
   const buyerName = cleanText(payload.buyerName || '', 120)
   const buyerEmail = cleanEmail(payload.buyerEmail || '')
+  const buyerPhoneWarning = checkoutPhoneValidationMessage(payload.buyerPhone || '')
   const buyerPhone = cleanPhone(payload.buyerPhone || '')
   const acceptedTerms = payload.acceptedTerms === true
   const acceptedMarketing = payload.acceptedMarketing === true
@@ -5745,6 +5800,10 @@ export async function createPublicDigitalProductCheckout(request) {
 
   if (!productId) {
     throw new ApiError(400, 'ID produk wajib dikirim.')
+  }
+
+  if (buyerPhoneWarning) {
+    throw new ApiError(422, buyerPhoneWarning)
   }
 
   if (!buyerName || !buyerEmail || !buyerPhone) {
@@ -5805,13 +5864,14 @@ export async function createPublicDigitalProductCheckout(request) {
   const merchantRef = `ICP${Date.now()}${randomBytes(3).toString('hex').toUpperCase()}`
   const itemSku = cleanText(product.tripay_product_key || product.id, 80)
   const expiresAt = new Date(Date.now() + config.expiredMinutes * 60 * 1000).toISOString()
+  const customerPhone = tripayCustomerPhone(buyerPhone)
   const checkoutPayload = {
     method: paymentMethod,
     merchant_ref: merchantRef,
     amount,
     customer_name: buyerName,
     customer_email: buyerEmail,
-    customer_phone: buyerPhone || config.customerPhone,
+    ...(customerPhone ? { customer_phone: customerPhone } : {}),
     order_items: [
       {
         sku: itemSku,

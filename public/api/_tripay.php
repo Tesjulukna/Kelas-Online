@@ -73,6 +73,24 @@ function tripay_config_value(array $config, string $key, int $maxLength = 240): 
     return clean_text($config[$key] ?? '', $maxLength);
 }
 
+function tripay_customer_phone(string $phone): string
+{
+    $normalizedPhone = clean_phone($phone);
+    $digits = preg_replace('/\D/', '', $normalizedPhone) ?? '';
+
+    if (strpos($normalizedPhone, '+62') === 0) {
+        $digits = '0' . substr($digits, 2);
+    } elseif (strpos($normalizedPhone, '+') === 0) {
+        return '';
+    } elseif (strpos($digits, '62') === 0) {
+        $digits = '0' . substr($digits, 2);
+    } elseif (strpos($digits, '0') !== 0) {
+        return '';
+    }
+
+    return preg_match('/^0[0-9]{7,14}$/', $digits) ? $digits : '';
+}
+
 function tripay_assert_config(array $config): void
 {
     if (

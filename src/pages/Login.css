@@ -731,3 +731,143 @@
     margin-bottom: 24px;
   }
 }
+
+/* The login follows the public theme; light is the default until dark mode is selected. */
+.app-shell.public-theme-light.is-login-route .modern-auth-container {
+  color: #0f172a;
+  background:
+    radial-gradient(circle at 82% 8%, rgba(59, 130, 246, 0.16), transparent 34%),
+    radial-gradient(circle at 8% 88%, rgba(20, 184, 166, 0.14), transparent 32%),
+    linear-gradient(145deg, #f8fbff 0%, #eef5ff 52%, #f8fafc 100%);
+}
+
+.app-shell.public-theme-light.is-login-route .modern-auth-grid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+  opacity: 0.5;
+}
+
+.app-shell.public-theme-light.is-login-route .bg-blob {
+  opacity: 0.2;
+  mix-blend-mode: multiply;
+}
+
+.app-shell.public-theme-light.is-login-route .showcase-name,
+.app-shell.public-theme-light.is-login-route .login-showcase h1,
+.app-shell.public-theme-light.is-login-route .mobile-brand-name {
+  background-image: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+}
+
+.app-shell.public-theme-light.is-login-route .login-showcase p {
+  color: #475569;
+}
+
+.app-shell.public-theme-light.is-login-route .floating-3d-card {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 18px 38px rgba(51, 65, 85, 0.12);
+}
+
+.app-shell.public-theme-light.is-login-route .floating-3d-card:hover {
+  border-color: rgba(37, 99, 235, 0.24);
+  box-shadow: 0 26px 52px rgba(51, 65, 85, 0.18);
+}
+
+.app-shell.public-theme-light.is-login-route .card-icon-wrap {
+  border-color: rgba(37, 99, 235, 0.12);
+  background: rgba(219, 234, 254, 0.72);
+}
+
+.app-shell.public-theme-light.is-login-route .card-icon-wrap .icon {
+  color: #2563eb;
+}
+
+.app-shell.public-theme-light.is-login-route .floating-3d-card h3 {
+  color: #0f172a;
+}
+
+.app-shell.public-theme-light.is-login-route .floating-3d-card span,
+.app-shell.public-theme-light.is-login-route .modern-login-card .form-heading p,
+.app-shell.public-theme-light.is-login-route .google-login-block p {
+  color: #64748b;
+}
+
+.app-shell.public-theme-light.is-login-route .modern-login-card {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 30px 70px rgba(51, 65, 85, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.app-shell.public-theme-light.is-login-route .modern-login-card:hover {
+  box-shadow:
+    0 36px 82px rgba(51, 65, 85, 0.2),
+    0 0 36px rgba(59, 130, 246, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.app-shell.public-theme-light.is-login-route .card-sheen {
+  background: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 50%),
+    rgba(59, 130, 246, 0.08) 0%,
+    transparent 60%
+  );
+}
+
+.app-shell.public-theme-light.is-login-route .modern-login-card .form-heading h2 {
+  color: #0f172a;
+}
+
+.app-shell.public-theme-light.is-login-route .input-group input {
+  color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.42);
+  background: rgba(248, 250, 252, 0.94);
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.app-shell.public-theme-light.is-login-route .input-group input:hover {
+  border-color: rgba(59, 130, 246, 0.38);
+  background: #ffffff;
+}
+
+.app-shell.public-theme-light.is-login-route .input-group input:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 4px rgba(37, 99, 235, 0.12),
+    inset 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.app-shell.public-theme-light.is-login-route .input-group input:focus ~ .floating-label,
+.app-shell.public-theme-light.is-login-route .input-group input:not(:placeholder-shown) ~ .floating-label {
+  background: #ffffff;
+}
+
+.app-shell.public-theme-light.is-login-route .input-group input:not(:focus):not(:placeholder-shown) ~ .floating-label {
+  color: #64748b;
+  background: #ffffff;
+}
+
+.app-shell.public-theme-light.is-login-route .password-toggle-btn:hover {
+  color: #0f172a;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.app-shell.public-theme-light.is-login-route .google-login-block {
+  border-top-color: rgba(148, 163, 184, 0.28);
+}
+
+.app-shell.public-theme-light.is-login-route .google-login-button {
+  color: #1e293b;
+  border-color: rgba(148, 163, 184, 0.38);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.app-shell.public-theme-light.is-login-route .google-login-button:hover:not(:disabled) {
+  color: #0f172a;
+  border-color: rgba(37, 99, 235, 0.3);
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(51, 65, 85, 0.12);
+}
