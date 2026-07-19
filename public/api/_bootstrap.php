@@ -116,7 +116,26 @@ function rich_youtube_embed_url($value): string
     return $videoId !== '' ? 'https://www.youtube.com/embed/' . rawurlencode($videoId) : '';
 }
 
-function rich_convert_youtube_lines_to_embeds(string $html): string
+function rich_is_youtube_media_line(string $line): bool
+{
+    $trimmed = trim($line);
+
+    if ($trimmed === '') {
+        return false;
+    }
+
+    if (preg_match('/^https?:\/\/\S+$/i', $trimmed)) {
+        return rich_youtube_embed_url($trimmed) !== '';
+    }
+
+    if (!preg_match('/^<iframe\b[^>]*\bsrc=(["\'])(.*?)\1[^>]*>\s*<\/iframe>$/i', $trimmed, $matches)) {
+        return false;
+    }
+
+    return rich_youtube_embed_url(html_entity_decode($matches[2] ?? '', ENT_QUOTES, 'UTF-8')) !== '';
+}
+
+function rich_normalize_youtube_spacing(string $html): string
 {
     $lines = preg_split("/\r\n|\r|\n/", $html);
 
@@ -124,7 +143,47 @@ function rich_convert_youtube_lines_to_embeds(string $html): string
         return $html;
     }
 
-    return implode("\n", array_map(static function ($line): string {
+    $mediaLines = array_map('rich_is_youtube_media_line', $lines);
+    $normalized = [];
+    $lineCount = count($lines);
+
+    foreach ($lines as $index => $line) {
+        if (trim($line) !== '') {
+            $normalized[] = $line;
+            continue;
+        }
+
+        $previousIndex = $index - 1;
+        $nextIndex = $index + 1;
+
+        while ($previousIndex >= 0 && trim($lines[$previousIndex]) === '') {
+            $previousIndex--;
+        }
+
+        while ($nextIndex < $lineCount && trim($lines[$nextIndex]) === '') {
+            $nextIndex++;
+        }
+
+        $touchesVideo = ($previousIndex >= 0 && !empty($mediaLines[$previousIndex]))
+            || ($nextIndex < $lineCount && !empty($mediaLines[$nextIndex]));
+
+        if (!$touchesVideo) {
+            $normalized[] = $line;
+        }
+    }
+
+    return implode("\n", $normalized);
+}
+
+function rich_convert_youtube_lines_to_embeds(string $html): string
+{
+    $lines = preg_split("/\r\n|\r|\n/", rich_normalize_youtube_spacing($html));
+
+    if (!is_array($lines)) {
+        return $html;
+    }
+
+    $converted = implode("\n", array_map(static function ($line): string {
         $trimmed = trim($line);
         $embedUrl = preg_match('/^https?:\/\/\S+$/i', $trimmed) ? rich_youtube_embed_url($trimmed) : '';
 
@@ -132,6 +191,8 @@ function rich_convert_youtube_lines_to_embeds(string $html): string
             ? '<iframe src="' . htmlspecialchars($embedUrl, ENT_QUOTES, 'UTF-8') . '" title="Video YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
             : $line;
     }, $lines));
+
+    return rich_normalize_youtube_spacing($converted);
 }
 
 function rich_clean_style(string $styleValue): string

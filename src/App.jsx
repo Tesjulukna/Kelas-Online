@@ -13,6 +13,7 @@ import { adminClasses as adminClassSeed } from './data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from './data/websiteSettings'
 import { useNativeLanguage } from './i18n/NativeLanguageContext'
 import { localizeCollection } from './i18n/language'
+import { convertYoutubeLinesToEmbeds } from './utils/richDescription'
 import './App.css'
 
 const sessionKey = 'ibnucreative.session.v1'
@@ -265,46 +266,6 @@ function cleanLongText(value, maxLength = 260) {
 
 function cleanPromptText(value) {
   return String(value ?? '').split(String.fromCharCode(0)).join('')
-}
-
-function youtubeEmbedUrlFromText(value) {
-  try {
-    const url = new URL(String(value || '').trim())
-    const host = url.hostname.replace(/^www\./, '')
-    let videoId = ''
-
-    if (host === 'youtu.be') {
-      videoId = url.pathname.split('/').filter(Boolean)[0] || ''
-    }
-
-    if (['youtube.com', 'm.youtube.com'].includes(host)) {
-      if (url.pathname.startsWith('/shorts/')) {
-        videoId = url.pathname.split('/').filter(Boolean)[1] || ''
-      } else if (url.pathname.startsWith('/embed/')) {
-        videoId = url.pathname.split('/').filter(Boolean)[1] || ''
-      } else {
-        videoId = url.searchParams.get('v') || ''
-      }
-    }
-
-    return videoId ? `https://www.youtube.com/embed/${encodeURIComponent(videoId)}` : ''
-  } catch {
-    return ''
-  }
-}
-
-function convertYoutubeLinesToEmbeds(value) {
-  return String(value ?? '')
-    .split('\n')
-    .map((line) => {
-      const trimmed = line.trim()
-      const embedUrl = /^https?:\/\/\S+$/i.test(trimmed) ? youtubeEmbedUrlFromText(trimmed) : ''
-
-      return embedUrl
-        ? `<iframe src="${embedUrl}" title="Video YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`
-        : line
-    })
-    .join('\n')
 }
 
 function repairUtf8Mojibake(value) {

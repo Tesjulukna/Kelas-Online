@@ -6,6 +6,10 @@ import { pipeline } from 'node:stream/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from './src/data/websiteSettings.js'
+import {
+  convertYoutubeLinesToEmbeds,
+  descriptionHtmlToEditorText,
+} from './src/utils/richDescription.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dataDir = path.join(__dirname, 'data')
@@ -37,7 +41,7 @@ function cleanPromptText(value) {
 }
 
 function cleanRichHtml(value, maxLength = 6000) {
-  return String(value ?? '')
+  const safeText = descriptionHtmlToEditorText(value)
     .slice(0, maxLength)
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
     .replace(/\son\w+="[^"]*"/gi, '')
@@ -51,6 +55,8 @@ function cleanRichHtml(value, maxLength = 6000) {
 
       return allowed.length ? `style="${allowed.join('; ')}"` : ''
     })
+
+  return convertYoutubeLinesToEmbeds(safeText)
 }
 
 function cleanUsername(value) {

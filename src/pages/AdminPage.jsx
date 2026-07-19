@@ -11,6 +11,12 @@ import {
   requestStorageUpload,
   uploadStorageFile,
 } from '../lib/storageUpload'
+import {
+  createYoutubeLineInsertion,
+  descriptionHtmlToEditorText,
+  getYoutubeEmbedUrl,
+  getYoutubeEmbedsFromText,
+} from '../utils/richDescription'
 
 const analyticsApiPath = '/api/analytics'
 const adminDiscussionSeenStorageKey = 'ibnucreative.adminClassDiscussionSeen.v1'
@@ -657,65 +663,7 @@ function createEmptySupportForm() {
 }
 
 function isYoutubeUrl(value) {
-  if (!value) {
-    return true
-  }
-
-  try {
-    const url = new URL(value)
-    const host = url.hostname.replace(/^www\./, '')
-
-    return ['youtube.com', 'm.youtube.com', 'youtu.be'].includes(host)
-  } catch {
-    return false
-  }
-}
-
-function getYoutubeEmbedUrl(value) {
-  if (!value) {
-    return ''
-  }
-
-  try {
-    const url = new URL(value)
-    const host = url.hostname.replace(/^www\./, '')
-    let videoId = ''
-
-    if (host === 'youtu.be') {
-      videoId = url.pathname.split('/').filter(Boolean)[0] || ''
-    }
-
-    if (['youtube.com', 'm.youtube.com'].includes(host)) {
-      if (url.pathname.startsWith('/shorts/')) {
-        videoId = url.pathname.split('/').filter(Boolean)[1] || ''
-      } else if (url.pathname.startsWith('/embed/')) {
-        videoId = url.pathname.split('/').filter(Boolean)[1] || ''
-      } else {
-        videoId = url.searchParams.get('v') || ''
-      }
-    }
-
-    return videoId ? `https://www.youtube.com/embed/${encodeURIComponent(videoId)}` : ''
-  } catch {
-    return ''
-  }
-}
-
-function getYoutubeEmbedsFromText(value) {
-  const seen = new Set()
-
-  return String(value || '')
-    .split(/\s+/)
-    .map((chunk) => chunk.trim().replace(/[),.;]+$/, ''))
-    .map((chunk) => getYoutubeEmbedUrl(chunk))
-    .filter((embedUrl) => {
-      if (!embedUrl || seen.has(embedUrl)) {
-        return false
-      }
-
-      seen.add(embedUrl)
-      return true
-    })
+  return !value || Boolean(getYoutubeEmbedUrl(value))
 }
 
 function DescriptionVideoPreview({ value }) {
@@ -726,7 +674,11 @@ function DescriptionVideoPreview({ value }) {
   }
 
   return (
-    <div className="description-video-preview">
+    <span className="description-video-preview">
+      <span className="description-video-preview-label">
+        <Icon name="youtube" />
+        Preview video dalam deskripsi
+      </span>
       {embedUrls.map((embedUrl) => (
         <iframe
           key={embedUrl}
@@ -736,14 +688,7 @@ function DescriptionVideoPreview({ value }) {
           allowFullScreen
         />
       ))}
-    </div>
-  )
-}
-
-function descriptionHtmlToEditorText(value) {
-  return String(value || '').replace(
-    /<iframe\b[^>]*\bsrc=(["'])(.*?)\1[^>]*>\s*<\/iframe>/gi,
-    (_, _quote, src) => `\n${src}\n`,
+    </span>
   )
 }
 
@@ -1956,7 +1901,7 @@ function AdminPage({
         return
       }
 
-      insertClassDescriptionHtml(`\n${url.trim()}\n`)
+      insertClassDescriptionHtml(createYoutubeLineInsertion(description, start, end, url))
       return
     }
 
@@ -2047,7 +1992,7 @@ function AdminPage({
         return
       }
 
-      replacement = `\n${url.trim()}\n`
+      replacement = createYoutubeLineInsertion(description, start, end, url)
     }
 
     insertDigitalDescriptionHtml(replacement)
@@ -4457,38 +4402,40 @@ function AdminPage({
                     </label>
                   </div>
 
-                  <label>
+                  <label className="description-editor-field">
                     Deskripsi (Indonesia)
-                    <span className="digital-rich-toolbar">
-                      <button type="button" onClick={() => applyDigitalDescriptionTool('bold')}>B</button>
-                      <button type="button" onClick={() => applyDigitalDescriptionTool('underline')}>U</button>
-                      <button type="button" onClick={() => applyDigitalDescriptionTool('heading')}>H</button>
-                      <button type="button" onClick={() => applyDigitalDescriptionTool('align-left')} title="Rata kiri">L</button>
-                      <button type="button" onClick={() => applyDigitalDescriptionTool('align-center')} title="Rata tengah">C</button>
-                      <button type="button" onClick={() => applyDigitalDescriptionTool('align-justify')} title="Justify">J</button>
-                      <button
-                        type="button"
-                        onClick={() => digitalDescriptionImageInputRef.current?.click()}
-                        title="Tambah gambar"
-                      >
-                        <Icon name="image" />
-                      </button>
-                      <button type="button" onClick={() => applyDigitalDescriptionTool('youtube')} title="Tambah video YouTube">
-                        <Icon name="youtube" />
-                      </button>
-                      <button type="button" onClick={() => applyDigitalDescriptionTool('list')}><Icon name="menu" /></button>
-                      <button type="button" onClick={() => applyDigitalDescriptionTool('link')}><Icon name="link" /></button>
+                    <span className="description-editor-shell">
+                      <span className="digital-rich-toolbar">
+                        <button type="button" onClick={() => applyDigitalDescriptionTool('bold')}>B</button>
+                        <button type="button" onClick={() => applyDigitalDescriptionTool('underline')}>U</button>
+                        <button type="button" onClick={() => applyDigitalDescriptionTool('heading')}>H</button>
+                        <button type="button" onClick={() => applyDigitalDescriptionTool('align-left')} title="Rata kiri">L</button>
+                        <button type="button" onClick={() => applyDigitalDescriptionTool('align-center')} title="Rata tengah">C</button>
+                        <button type="button" onClick={() => applyDigitalDescriptionTool('align-justify')} title="Justify">J</button>
+                        <button
+                          type="button"
+                          onClick={() => digitalDescriptionImageInputRef.current?.click()}
+                          title="Tambah gambar"
+                        >
+                          <Icon name="image" />
+                        </button>
+                        <button type="button" onClick={() => applyDigitalDescriptionTool('youtube')} title="Tambah video YouTube">
+                          <Icon name="youtube" />
+                        </button>
+                        <button type="button" onClick={() => applyDigitalDescriptionTool('list')}><Icon name="menu" /></button>
+                        <button type="button" onClick={() => applyDigitalDescriptionTool('link')}><Icon name="link" /></button>
+                      </span>
+                      <textarea
+                        className="digital-description-editor"
+                        data-digital-description-editor="true"
+                        name="description"
+                        value={digitalProductForm.description}
+                        onChange={handleDigitalProductFormChange}
+                        placeholder={isPromptBuilder ? 'Jelaskan manfaat prompt, contoh penggunaan, target pengguna, dan hasil yang bisa didapat.' : 'Jelaskan isi produk, manfaat, bonus, dan cara aksesnya.'}
+                        rows={9}
+                      />
+                      <DescriptionVideoPreview value={digitalProductForm.description} />
                     </span>
-                    <textarea
-                      className="digital-description-editor"
-                      data-digital-description-editor="true"
-                      name="description"
-                      value={digitalProductForm.description}
-                      onChange={handleDigitalProductFormChange}
-                      placeholder={isPromptBuilder ? 'Jelaskan manfaat prompt, contoh penggunaan, target pengguna, dan hasil yang bisa didapat.' : 'Jelaskan isi produk, manfaat, bonus, dan cara aksesnya.'}
-                      rows={9}
-                    />
-                    <DescriptionVideoPreview value={digitalProductForm.description} />
                     <input
                       ref={digitalDescriptionImageInputRef}
                       type="file"
@@ -4498,17 +4445,19 @@ function AdminPage({
                       onChange={handleDigitalDescriptionImageChange}
                     />
                   </label>
-                  <label>
+                  <label className="description-editor-field">
                     Description (English)
-                    <textarea
-                      className="digital-description-editor"
-                      name="descriptionEn"
-                      value={digitalProductForm.descriptionEn}
-                      onChange={handleDigitalProductFormChange}
-                      placeholder="Explain the product contents, benefits, and access instructions in English."
-                      rows={9}
-                    />
-                    <DescriptionVideoPreview value={digitalProductForm.descriptionEn} />
+                    <span className="description-editor-shell description-editor-shell-plain">
+                      <textarea
+                        className="digital-description-editor"
+                        name="descriptionEn"
+                        value={digitalProductForm.descriptionEn}
+                        onChange={handleDigitalProductFormChange}
+                        placeholder="Explain the product contents, benefits, and access instructions in English."
+                        rows={9}
+                      />
+                      <DescriptionVideoPreview value={digitalProductForm.descriptionEn} />
+                    </span>
                   </label>
 
                   {isPromptBuilder && (
@@ -7637,34 +7586,36 @@ function AdminPage({
               </label>
               <label className="class-description-field full-field">
                 Deskripsi kelas (Indonesia)
-                <span className="digital-rich-toolbar">
-                  <button type="button" onClick={() => applyClassDescriptionTool('bold')}>B</button>
-                  <button type="button" onClick={() => applyClassDescriptionTool('underline')}>U</button>
-                  <button type="button" onClick={() => applyClassDescriptionTool('heading')}>H</button>
-                  <button type="button" onClick={() => applyClassDescriptionTool('align-left')} title="Rata kiri">L</button>
-                  <button type="button" onClick={() => applyClassDescriptionTool('align-center')} title="Rata tengah">C</button>
-                  <button type="button" onClick={() => applyClassDescriptionTool('align-justify')} title="Justify">J</button>
-                  <button
-                    type="button"
-                    onClick={() => classDescriptionImageInputRef.current?.click()}
-                    title="Tambah gambar"
-                  >
-                    <Icon name="image" />
-                  </button>
-                  <button type="button" onClick={() => applyClassDescriptionTool('youtube')} title="Tambah video YouTube"><Icon name="youtube" /></button>
-                  <button type="button" onClick={() => applyClassDescriptionTool('list')}><Icon name="menu" /></button>
-                  <button type="button" onClick={() => applyClassDescriptionTool('link')}><Icon name="link" /></button>
+                <span className="description-editor-shell">
+                  <span className="digital-rich-toolbar">
+                    <button type="button" onClick={() => applyClassDescriptionTool('bold')}>B</button>
+                    <button type="button" onClick={() => applyClassDescriptionTool('underline')}>U</button>
+                    <button type="button" onClick={() => applyClassDescriptionTool('heading')}>H</button>
+                    <button type="button" onClick={() => applyClassDescriptionTool('align-left')} title="Rata kiri">L</button>
+                    <button type="button" onClick={() => applyClassDescriptionTool('align-center')} title="Rata tengah">C</button>
+                    <button type="button" onClick={() => applyClassDescriptionTool('align-justify')} title="Justify">J</button>
+                    <button
+                      type="button"
+                      onClick={() => classDescriptionImageInputRef.current?.click()}
+                      title="Tambah gambar"
+                    >
+                      <Icon name="image" />
+                    </button>
+                    <button type="button" onClick={() => applyClassDescriptionTool('youtube')} title="Tambah video YouTube"><Icon name="youtube" /></button>
+                    <button type="button" onClick={() => applyClassDescriptionTool('list')}><Icon name="menu" /></button>
+                    <button type="button" onClick={() => applyClassDescriptionTool('link')}><Icon name="link" /></button>
+                  </span>
+                  <textarea
+                    className="digital-description-editor"
+                    data-class-description-editor="true"
+                    name="description"
+                    value={classForm.description}
+                    onChange={handleClassFormChange}
+                    placeholder="Jelaskan manfaat, hasil belajar, bonus, dan siapa yang cocok mengikuti kelas ini."
+                    rows={12}
+                  />
+                  <DescriptionVideoPreview value={classForm.description} />
                 </span>
-                <textarea
-                  className="digital-description-editor"
-                  data-class-description-editor="true"
-                  name="description"
-                  value={classForm.description}
-                  onChange={handleClassFormChange}
-                  placeholder="Jelaskan manfaat, hasil belajar, bonus, dan siapa yang cocok mengikuti kelas ini."
-                  rows={12}
-                />
-                <DescriptionVideoPreview value={classForm.description} />
                 <input
                   ref={classDescriptionImageInputRef}
                   type="file"
@@ -7676,15 +7627,17 @@ function AdminPage({
               </label>
               <label className="class-description-field full-field">
                 Class description (English)
-                <textarea
-                  className="digital-description-editor"
-                  name="descriptionEn"
-                  value={classForm.descriptionEn}
-                  onChange={handleClassFormChange}
-                  placeholder="Explain the learning outcomes, benefits, bonuses, and target students in English."
-                  rows={12}
-                />
-                <DescriptionVideoPreview value={classForm.descriptionEn} />
+                <span className="description-editor-shell description-editor-shell-plain">
+                  <textarea
+                    className="digital-description-editor"
+                    name="descriptionEn"
+                    value={classForm.descriptionEn}
+                    onChange={handleClassFormChange}
+                    placeholder="Explain the learning outcomes, benefits, bonuses, and target students in English."
+                    rows={12}
+                  />
+                  <DescriptionVideoPreview value={classForm.descriptionEn} />
+                </span>
               </label>
               <label>
                 Status
