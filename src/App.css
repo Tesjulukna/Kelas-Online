@@ -5649,6 +5649,7 @@ img {
   display: grid;
   gap: 12px;
   min-width: 0;
+  scroll-margin-top: 88px;
 }
 
 .material-media-stack {

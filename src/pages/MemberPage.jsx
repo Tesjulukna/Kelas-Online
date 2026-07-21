@@ -752,6 +752,7 @@ function MemberPage({
   )
   const [paymentExpiryTick, setPaymentExpiryTick] = useState(() => Date.now())
   const handledCheckoutRequestRef = useRef('')
+  const materialViewerRef = useRef(null)
   const discussionListRef = useRef(null)
   const discussionMessageRefs = useRef(new Map())
   const discussionHighlightTimerRef = useRef(null)
@@ -1511,6 +1512,22 @@ function MemberPage({
     onNotify(`Membuka materi ${course.title}.`)
   }
 
+  const scrollToActiveMaterial = () => {
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'auto'
+      : 'smooth'
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        materialViewerRef.current?.scrollIntoView({
+          behavior,
+          block: 'start',
+          inline: 'nearest',
+        })
+      })
+    })
+  }
+
   const handleOpenMaterial = (index) => {
     if (!isMaterialUnlocked(index)) {
       onNotify('Kirim tugas materi sebelumnya dulu untuk membuka materi ini.')
@@ -1524,6 +1541,7 @@ function MemberPage({
     if (selectedCourse) {
       rememberCoursePosition(selectedCourse.id, index)
     }
+    scrollToActiveMaterial()
   }
 
   const handleSubmitTask = async () => {
@@ -1620,6 +1638,7 @@ function MemberPage({
     setTaskDraft('')
     setTaskAttachment(null)
     setEditingSubmissionId('')
+    scrollToActiveMaterial()
   }
 
   const handleNextMaterial = () => {
@@ -1635,6 +1654,7 @@ function MemberPage({
     setTaskDraft('')
     setTaskAttachment(null)
     setEditingSubmissionId('')
+    scrollToActiveMaterial()
   }
 
   const handleTaskImageChange = async (event) => {
@@ -2282,7 +2302,7 @@ function MemberPage({
 
           {materials.length ? (
             <div className="course-room-grid">
-              <article className="material-viewer">
+              <article className="material-viewer" ref={materialViewerRef}>
                 {hasActiveMaterialMedia && (
                   <div className="material-media-stack">
                     {(activeProtectedVideoUrl || activeEmbedUrl) && (
