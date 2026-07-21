@@ -1364,6 +1364,8 @@ function fetch_classes(PDO $pdo): array
             'showOnHomepage' => array_key_exists('show_on_homepage', $class) ? (bool) $class['show_on_homepage'] : true,
             'showOnMember' => array_key_exists('show_on_member', $class) ? (bool) $class['show_on_member'] : true,
             'highlighted' => !empty($class['highlighted']),
+            'createdAt' => (string) ($class['created_at'] ?? ''),
+            'updatedAt' => (string) ($class['updated_at'] ?? ''),
             'materials' => array_map(function (array $material) use ($assetsQuery): array {
                 $assetsQuery->execute([$material['id']]);
                 $assets = $assetsQuery->fetchAll();

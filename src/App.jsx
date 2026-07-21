@@ -773,6 +773,8 @@ function cleanClasses(value) {
         showOnHomepage: item.showOnHomepage !== false,
         showOnMember: item.showOnMember !== false,
         highlighted: item.highlighted === true,
+        createdAt: cleanText(item.createdAt || ''),
+        updatedAt: cleanText(item.updatedAt || ''),
         materials: cleanMaterials(item.materials, classId, item.title),
       }
     })

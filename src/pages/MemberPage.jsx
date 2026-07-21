@@ -54,6 +54,31 @@ function parsePaymentTime(value) {
   return Number.isNaN(time) ? 0 : time
 }
 
+function getCatalogIdTimestamp(value) {
+  const match = String(value || '').match(/(?:^|-)(\d{13})(?:-|$)/)
+
+  return match ? Number(match[1]) || 0 : 0
+}
+
+function sortCatalogNewestFirst(items) {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((first, second) => {
+      const createdAtDifference =
+        parsePaymentTime(second.item.createdAt) - parsePaymentTime(first.item.createdAt)
+
+      if (createdAtDifference !== 0) {
+        return createdAtDifference
+      }
+
+      const idTimestampDifference =
+        getCatalogIdTimestamp(second.item.id) - getCatalogIdTimestamp(first.item.id)
+
+      return idTimestampDifference || first.index - second.index
+    })
+    .map(({ item }) => item)
+}
+
 function readSubmittedTasks(userId = '') {
   if (typeof window === 'undefined') {
     return {}
@@ -694,15 +719,17 @@ function MemberPage({
   const courses = classes.filter((course) => course.status === 'Aktif')
   const allActiveCourses = allClasses.filter((course) => course.status === 'Aktif')
   const memberVisibleCourses = allActiveCourses.filter((course) => course.showOnMember !== false)
-  const activeSellableProducts = withPublicCodes(digitalProducts.filter(
+  const activeSellableProducts = sortCatalogNewestFirst(withPublicCodes(digitalProducts.filter(
     (product) => product.status === 'Aktif' && product.showOnMember !== false,
-  ))
+  )))
   const activeDigitalProducts = activeSellableProducts.filter((product) => product.productType !== 'prompt')
   const activePromptProducts = activeSellableProducts.filter((product) => product.productType === 'prompt')
   const accessibleClassIds = Array.isArray(allowedClassIds)
     ? new Set(allowedClassIds)
     : new Set()
-  const availableCourses = memberVisibleCourses.filter((course) => !accessibleClassIds.has(course.id))
+  const availableCourses = sortCatalogNewestFirst(
+    memberVisibleCourses.filter((course) => !accessibleClassIds.has(course.id)),
+  )
   const [selectedCourseId, setSelectedCourseId] = useState(() =>
     activeMenu === 'my-courses' ? readActiveCourseSnapshot(userId).courseId || null : null,
   )

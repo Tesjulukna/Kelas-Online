@@ -148,9 +148,13 @@ $insertAsset = $pdo->prepare(
     (id, material_id, sort_order, title, image, instruction, prompt)
     VALUES (?, ?, ?, ?, ?, ?, ?)',
 );
+$restoreClassCreatedAt = $pdo->prepare('UPDATE classes SET created_at = ? WHERE id = ?');
 
 try {
     $pdo->beginTransaction();
+    $existingClassCreatedAt = $pdo
+        ->query('SELECT id, created_at FROM classes')
+        ->fetchAll(PDO::FETCH_KEY_PAIR);
     $pdo->exec('DELETE FROM classes');
 
     foreach (array_slice($classes, 0, 200) as $classIndex => $class) {
@@ -201,6 +205,10 @@ try {
             array_key_exists('showOnMember', $class) && empty($class['showOnMember']) ? 0 : 1,
             !empty($class['highlighted']) ? 1 : 0,
         ]);
+
+        if (isset($existingClassCreatedAt[$classId])) {
+            $restoreClassCreatedAt->execute([$existingClassCreatedAt[$classId], $classId]);
+        }
 
         foreach (array_slice($materials, 0, 80) as $materialIndex => $material) {
             if (!is_array($material)) {

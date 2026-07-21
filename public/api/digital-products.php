@@ -23,9 +23,13 @@ $insert = $pdo->prepare(
     (id, product_type, title, title_en, description, description_en, price, display_sales, rating, status, thumbnail, add_video, video_url, file_url, file_name, delivery_note, delivery_note_en, platform_type, pay_what_you_want, sale_price, item_quantity_enabled, item_quantity, limit_qty_per_checkout, allow_repeat_purchase, purchase_button_label, purchase_button_label_en, release_time_enabled, release_time, whatsapp_notification, custom_message_enabled, custom_message, reviews, add_ons, customer_questions, block_layout, require_customer_name, require_customer_phone, auto_create_member, lynk_product_key, tripay_product_key, show_on_homepage, show_on_member, highlighted, prompt_content, prompt_items, prompt_preview, prompt_instructions, prompt_examples, prompt_license)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
 );
+$restoreProductCreatedAt = $pdo->prepare('UPDATE digital_products SET created_at = ? WHERE id = ?');
 
 try {
     $pdo->beginTransaction();
+    $existingProductCreatedAt = $pdo
+        ->query('SELECT id, created_at FROM digital_products')
+        ->fetchAll(PDO::FETCH_KEY_PAIR);
     $pdo->exec('DELETE FROM digital_products');
 
     foreach (array_slice($products, 0, 300) as $index => $product) {
@@ -101,6 +105,10 @@ try {
             clean_text($product['promptExamples'] ?? '', 8000),
             clean_text($product['promptLicense'] ?? 'Personal & commercial use', 120),
         ]);
+
+        if (isset($existingProductCreatedAt[$id])) {
+            $restoreProductCreatedAt->execute([$existingProductCreatedAt[$id], $id]);
+        }
     }
 
     $pdo->commit();
