@@ -3916,6 +3916,31 @@ function Header({
 
 function NotificationBell({ notifications, unreadCount, onOpenNotification }) {
   const [isOpen, setIsOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+
+    const handlePointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
 
   const handleOpenNotification = (notification) => {
     setIsOpen(false)
@@ -3923,10 +3948,11 @@ function NotificationBell({ notifications, unreadCount, onOpenNotification }) {
   }
 
   return (
-    <div className="notification-menu">
+    <div className="notification-menu" ref={menuRef}>
       <button
         className="notification-trigger"
         type="button"
+        aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label="Buka notifikasi"
         onClick={() => setIsOpen((current) => !current)}

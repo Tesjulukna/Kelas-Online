@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Icon from './Icon'
 
 function ProfileMenu({
@@ -9,8 +9,33 @@ function ProfileMenu({
   onTogglePublicTheme = () => {},
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const menuRef = useRef(null)
   const isDarkTheme = publicTheme === 'dark'
   const canToggleTheme = session?.role === 'member'
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+
+    const handlePointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
 
   const closeAndEdit = () => {
     setIsOpen(false)
@@ -27,10 +52,11 @@ function ProfileMenu({
   }
 
   return (
-    <div className="profile-menu">
+    <div className="profile-menu" ref={menuRef}>
       <button
         className="profile-trigger"
         type="button"
+        aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label="Buka menu profil"
         onClick={() => setIsOpen((current) => !current)}
