@@ -231,6 +231,7 @@ function HomePage({
   digitalProductAccess = [],
   publicActivities = [],
   onDigitalProductReviewLike = async () => {},
+  onOpenBundle = () => {},
 }) {
   const websiteSettings = cleanWebsiteSettings(settings)
   const initialState = getInitialDetailState(initialDetail)
@@ -1870,6 +1871,25 @@ function HomePage({
           )}
         </div>
       </section>
+
+      {websiteSettings.bundling.enabled && websiteSettings.bundling.programs.some((program) => program.active && program.showOnHomepage) && (
+        <section className="content-section homepage-bundle-section" id="bundles">
+          <div className="section-heading reveal-panel centered">
+            <p className="eyebrow">BUNDLING PILIHAN</p>
+            <h2>Pilih paket, lalu tentukan isinya sendiri</h2>
+            <p className="section-subheading">Gabungkan kelas, produk digital, atau prompt dari pilihan yang sudah disiapkan admin.</p>
+          </div>
+          <div className="homepage-bundle-grid">
+            {websiteSettings.bundling.programs.filter((program) => program.active && program.showOnHomepage).map((program) => (
+              <article className="homepage-bundle-card" key={program.id}>
+                <span className="homepage-bundle-media">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}<small>{program.badge}</small></span>
+                <div><h3>{program.title}</h3><p>{program.description}</p><span>Minimal pilih {program.minimumItems} item</span></div>
+                <footer><strong>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</strong><button className="btn btn-primary" type="button" onClick={() => onOpenBundle(program.id)}>Pilih bundling <Icon name="arrowRight" /></button></footer>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {activeTestimonial && (
         <section className="content-section modern-section homepage-testimonials-section" id="testimonials">

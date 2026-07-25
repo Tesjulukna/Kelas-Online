@@ -638,6 +638,7 @@ function default_website_settings(): array
                 ['minimumItems' => 3, 'discountPercent' => 15],
                 ['minimumItems' => 4, 'discountPercent' => 20],
             ],
+            'programs' => [],
         ],
         'memberAbout' => [
             'menuLabel' => 'Tentang',
@@ -881,6 +882,33 @@ function clean_website_settings($value): array
             'discountPercent' => clean_number($tier['discountPercent'] ?? 0, 0, 100),
         ];
     }
+    $bundlePrograms = [];
+    foreach (array_slice(is_array($bundling['programs'] ?? null) ? $bundling['programs'] : [], 0, 100) as $index => $program) {
+        $eligibleItems = [];
+        foreach (array_slice(is_array($program['eligibleItems'] ?? null) ? $program['eligibleItems'] : [], 0, 200) as $item) {
+            $itemId = clean_text($item['id'] ?? '', 120);
+            if ($itemId !== '') $eligibleItems[] = [
+                'type' => ($item['type'] ?? '') === 'class' ? 'class' : 'digital_product',
+                'id' => $itemId,
+            ];
+        }
+        $bundlePrograms[] = [
+            'id' => clean_text($program['id'] ?? ('bundle-' . ($index + 1)), 120),
+            'title' => clean_text($program['title'] ?? 'Paket Bundling', 120),
+            'description' => clean_text($program['description'] ?? '', 360),
+            'badge' => clean_text($program['badge'] ?? 'Paket hemat', 50),
+            'thumbnail' => clean_asset_url($program['thumbnail'] ?? ''),
+            'active' => !array_key_exists('active', $program) || !empty($program['active']),
+            'showOnHomepage' => !array_key_exists('showOnHomepage', $program) || !empty($program['showOnHomepage']),
+            'showOnMember' => !array_key_exists('showOnMember', $program) || !empty($program['showOnMember']),
+            'minimumItems' => clean_number($program['minimumItems'] ?? 2, 1, 50),
+            'priceMode' => ($program['priceMode'] ?? '') === 'fixed' ? 'fixed' : 'percent',
+            'fixedPrice' => clean_number($program['fixedPrice'] ?? 0, 0, 1000000000),
+            'discountPercent' => clean_number($program['discountPercent'] ?? 0, 0, 100),
+            'maximumDiscount' => clean_number($program['maximumDiscount'] ?? 0, 0, 1000000000),
+            'eligibleItems' => $eligibleItems,
+        ];
+    }
 
     $navItems = [];
     $sourceNavItems = is_array($header['navItems'] ?? null) ? $header['navItems'] : [];
@@ -1034,6 +1062,7 @@ function clean_website_settings($value): array
             'allowDigitalProducts' => !array_key_exists('allowDigitalProducts', $bundling) || !empty($bundling['allowDigitalProducts']),
             'allowPrompts' => !array_key_exists('allowPrompts', $bundling) || !empty($bundling['allowPrompts']),
             'tiers' => $bundleTiers,
+            'programs' => $bundlePrograms,
         ],
         'memberAbout' => [
             'menuLabel' => clean_text($memberAbout['menuLabel'] ?? $defaults['memberAbout']['menuLabel'], 40),

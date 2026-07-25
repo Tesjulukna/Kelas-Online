@@ -16,6 +16,7 @@ $payload = read_json_body();
 $classId = clean_text($payload['classId'] ?? '', 120);
 $productId = clean_text($payload['productId'] ?? '', 120);
 $requestedBundleItems = is_array($payload['bundleItems'] ?? null) ? $payload['bundleItems'] : [];
+$bundleProgramId = clean_text($payload['bundleProgramId'] ?? '', 120);
 $checkoutType = $requestedBundleItems ? 'bundle' : ($productId !== '' ? 'digital_product' : 'class');
 
 if ($classId === '' && $productId === '' && !$requestedBundleItems) {
@@ -40,6 +41,18 @@ if ($checkoutType === 'bundle') {
     if (empty($bundleRules['enabled'])) {
         send_json(422, ['message' => 'Program bundling sedang tidak aktif.']);
     }
+    $bundleProgram = null;
+    foreach (($bundleRules['programs'] ?? []) as $program) {
+        if (($program['id'] ?? '') === $bundleProgramId && !empty($program['active'])) {
+            $bundleProgram = $program;
+            break;
+        }
+    }
+    if (!$bundleProgram) send_json(422, ['message' => 'Program bundling tidak ditemukan atau sudah tidak aktif.']);
+    $eligibleKeys = [];
+    foreach (($bundleProgram['eligibleItems'] ?? []) as $eligibleItem) {
+        $eligibleKeys[clean_text($eligibleItem['type'] ?? '', 40) . ':' . clean_text($eligibleItem['id'] ?? '', 120)] = true;
+    }
     $seen = [];
     $bundleItems = [];
     $subtotal = 0;
@@ -47,7 +60,7 @@ if ($checkoutType === 'bundle') {
         $type = clean_text($requestedItem['type'] ?? '', 40);
         $id = clean_text($requestedItem['id'] ?? '', 120);
         $key = $type . ':' . $id;
-        if ($id === '' || isset($seen[$key])) continue;
+        if ($id === '' || isset($seen[$key]) || empty($eligibleKeys[$key])) continue;
         $seen[$key] = true;
         if ($type === 'class') {
             if (empty($bundleRules['allowClasses']) || tripay_has_class_access($member, $id)) continue;
@@ -74,36 +87,29 @@ if ($checkoutType === 'bundle') {
             $subtotal += $price;
         }
     }
-    $minimumItems = clean_number($bundleRules['minimumItems'] ?? 2, 2, 50);
+    $minimumItems = clean_number($bundleProgram['minimumItems'] ?? 1, 1, 50);
     if (count($bundleItems) < $minimumItems) {
         send_json(422, ['message' => 'Pilih minimal ' . $minimumItems . ' item yang belum dimiliki.']);
     }
     if ($subtotal < clean_number($bundleRules['minimumSubtotal'] ?? 0, 0, 1000000000)) {
         send_json(422, ['message' => 'Subtotal bundling belum memenuhi batas minimal.']);
     }
-    $discountMode = clean_text($bundleRules['discountMode'] ?? 'percent', 20);
-    $discountPercent = clean_number($bundleRules['discountPercent'] ?? 0, 0, 100);
-    if ($discountMode === 'tiered') {
-        $discountPercent = 0;
-        foreach (($bundleRules['tiers'] ?? []) as $tier) {
-            if (count($bundleItems) >= clean_number($tier['minimumItems'] ?? 2, 2, 50)) {
-                $discountPercent = clean_number($tier['discountPercent'] ?? 0, 0, 100);
-            }
-        }
-    }
+    $discountMode = clean_text($bundleProgram['priceMode'] ?? 'fixed', 20);
+    $discountPercent = clean_number($bundleProgram['discountPercent'] ?? 0, 0, 100);
     $discount = $discountMode === 'fixed'
-        ? max(0, $subtotal - clean_number($bundleRules['fixedPrice'] ?? 0, 0, 1000000000))
+        ? max(0, $subtotal - clean_number($bundleProgram['fixedPrice'] ?? 0, 0, 1000000000))
         : (int) round($subtotal * $discountPercent / 100);
-    $maximumDiscount = clean_number($bundleRules['maximumDiscount'] ?? 0, 0, 1000000000);
+    $maximumDiscount = clean_number($bundleProgram['maximumDiscount'] ?? 0, 0, 1000000000);
     if ($maximumDiscount > 0) $discount = min($discount, $maximumDiscount);
     $checkoutItem = [
         'id' => 'custom-bundle',
-        'title' => clean_text($bundleRules['title'] ?? 'Custom Bundling', 180),
+        'title' => clean_text($bundleProgram['title'] ?? 'Custom Bundling', 180),
         'price' => max(0, $subtotal - $discount),
         'sale_price' => 0,
         'bundle_items' => $bundleItems,
         'bundle_subtotal' => $subtotal,
         'bundle_discount' => $discount,
+        'bundle_program_id' => $bundleProgramId,
     ];
 } elseif ($checkoutType === 'digital_product') {
     $checkoutItem = commerce_fetch_product($pdo, $productId, true);
@@ -321,6 +327,7 @@ $insert->execute([
         'bundle_items' => $checkoutType === 'bundle' ? $checkoutItem['bundle_items'] : [],
         'bundle_subtotal' => $checkoutType === 'bundle' ? $checkoutItem['bundle_subtotal'] : 0,
         'bundle_discount' => $checkoutType === 'bundle' ? $checkoutItem['bundle_discount'] : 0,
+        'bundle_program_id' => $checkoutType === 'bundle' ? $checkoutItem['bundle_program_id'] : '',
         'delivery_url' => $checkoutType === 'digital_product' ? ($checkoutItem['file_url'] ?? '') : '',
         'delivery_note' => $checkoutType === 'digital_product' ? ($checkoutItem['delivery_note'] ?? '') : '',
         'payment_method' => $method,

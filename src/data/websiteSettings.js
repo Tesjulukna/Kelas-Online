@@ -82,6 +82,7 @@ export const defaultWebsiteSettings = {
       { minimumItems: 3, discountPercent: 15 },
       { minimumItems: 4, discountPercent: 20 },
     ],
+    programs: [],
   },
   memberAbout: {
     menuLabel: 'Tentang',
@@ -493,6 +494,25 @@ function cleanBundlingSettings(value = {}) {
     allowDigitalProducts: source.allowDigitalProducts !== false,
     allowPrompts: source.allowPrompts !== false,
     tiers: tiers.length ? tiers : defaults.tiers,
+    programs: (Array.isArray(source.programs) ? source.programs : []).slice(0, 100).map((program, index) => ({
+      id: cleanText(program?.id || `bundle-${index + 1}`, 120),
+      title: cleanText(program?.title || 'Paket Bundling', 120),
+      description: cleanText(program?.description || '', 360),
+      badge: cleanText(program?.badge || 'Paket hemat', 50),
+      thumbnail: cleanUrl(program?.thumbnail || '', 2000),
+      active: program?.active !== false,
+      showOnHomepage: program?.showOnHomepage !== false,
+      showOnMember: program?.showOnMember !== false,
+      minimumItems: number(program?.minimumItems, 2, 1, 50),
+      priceMode: program?.priceMode === 'fixed' ? 'fixed' : 'percent',
+      fixedPrice: number(program?.fixedPrice, 0, 0, 1000000000),
+      discountPercent: number(program?.discountPercent, 0, 0, 100),
+      maximumDiscount: number(program?.maximumDiscount, 0, 0, 1000000000),
+      eligibleItems: (Array.isArray(program?.eligibleItems) ? program.eligibleItems : []).slice(0, 200).map((item) => ({
+        type: item?.type === 'class' ? 'class' : 'digital_product',
+        id: cleanText(item?.id || '', 120),
+      })).filter((item) => item.id),
+    })),
   }
 }
 

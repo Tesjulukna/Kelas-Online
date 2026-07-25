@@ -985,22 +985,58 @@ function AdminPage({
     cleanWebsiteSettings(websiteSettings).bundling,
   )
   const [isSavingBundle, setIsSavingBundle] = useState(false)
+  const [editingBundleProgramId, setEditingBundleProgramId] = useState('')
+  const [bundleProgramDraft, setBundleProgramDraft] = useState(null)
 
-  const saveBundleSettings = async (event) => {
+  const createBundleProgramDraft = (seedItem = null) => ({
+    id: `bundle-${Date.now()}`,
+    title: '',
+    description: '',
+    badge: 'Paket hemat',
+    thumbnail: '',
+    active: true,
+    showOnHomepage: true,
+    showOnMember: true,
+    minimumItems: seedItem ? 1 : 2,
+    priceMode: 'fixed',
+    fixedPrice: 0,
+    discountPercent: 10,
+    maximumDiscount: 0,
+    eligibleItems: seedItem ? [{ type: seedItem.type, id: seedItem.id }] : [],
+  })
+  const openBundleProgramEditor = (program = null, seedItem = null) => {
+    setEditingBundleProgramId(program?.id || '')
+    setBundleProgramDraft(program ? { ...program, eligibleItems: [...program.eligibleItems] } : createBundleProgramDraft(seedItem))
+    onMenuChange('bundles')
+  }
+  const saveBundleProgram = async (event) => {
     event.preventDefault()
+    if (!bundleProgramDraft.title.trim()) return onNotify('Nama bundling wajib diisi.')
+    if (!bundleProgramDraft.eligibleItems.length) return onNotify('Pilih minimal satu kelas, produk, atau prompt.')
+    const programs = editingBundleProgramId
+      ? bundleDraft.programs.map((program) => program.id === editingBundleProgramId ? bundleProgramDraft : program)
+      : [...bundleDraft.programs, bundleProgramDraft]
+    const nextBundling = { ...bundleDraft, programs }
     setIsSavingBundle(true)
     try {
-      await onWebsiteSettingsChange({
-        ...cleanWebsiteSettings(websiteSettings),
-        bundling: bundleDraft,
-      })
-      onNotify('Pengaturan bundling berhasil disimpan.')
+      await onWebsiteSettingsChange({ ...cleanWebsiteSettings(websiteSettings), bundling: nextBundling })
+      setBundleDraft(nextBundling)
+      setBundleProgramDraft(null)
+      setEditingBundleProgramId('')
+      onNotify('Program bundling berhasil disimpan.')
     } catch (error) {
-      onNotify(error.message || 'Pengaturan bundling belum bisa disimpan.')
+      onNotify(error.message || 'Program bundling belum bisa disimpan.')
     } finally {
       setIsSavingBundle(false)
     }
   }
+  const deleteBundleProgram = async (programId) => {
+    const nextBundling = { ...bundleDraft, programs: bundleDraft.programs.filter((program) => program.id !== programId) }
+    await onWebsiteSettingsChange({ ...cleanWebsiteSettings(websiteSettings), bundling: nextBundling })
+    setBundleDraft(nextBundling)
+    onNotify('Program bundling dihapus.')
+  }
+
 
   const handleToggleEarnings = () => {
     setShowEarnings((prev) => {
@@ -4189,6 +4225,10 @@ function AdminPage({
               <h2>Kelola kelas</h2>
             </div>
             <div className="button-row">
+              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor()}>
+                <Icon name="wallet" />
+                Custom Bundle
+              </button>
               <button className="btn btn-secondary" type="button" onClick={handleExportData}>
                 <Icon name="arrowRight" />
                 Ekspor
@@ -5299,6 +5339,10 @@ function AdminPage({
                     : 'Jual file, template, preset, ebook, atau link akses otomatis lewat Tripay dan Lynk.id.'}
                 </small>
               </div>
+            <div className="button-row">
+              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor()}>
+                <Icon name="wallet" /> Custom Bundle
+              </button>
               <button
                 className="btn btn-primary"
                 type="button"
@@ -5307,6 +5351,7 @@ function AdminPage({
                 <Icon name={activeMenu === 'prompts' ? 'spark' : 'download'} />
                 {activeMenu === 'prompts' ? 'Tambahkan Prompt' : 'Tambahkan Produk Digital'}
               </button>
+            </div>
             </div>
 
             <div className="admin-table compact-list-table digital-product-table admin-catalog-table" role="table" aria-label={activeMenu === 'prompts' ? 'Prompt' : 'Produk digital'}>
@@ -7106,82 +7151,52 @@ function AdminPage({
               <h2>Atur bundling</h2>
               <p>Pembeli dapat mencampur kelas, produk digital, dan prompt yang belum dimiliki.</p>
             </div>
-          </div>
-          <form className="bundle-admin-form" onSubmit={saveBundleSettings}>
-            <label className="bundle-toggle">
-              <input
-                type="checkbox"
-                checked={bundleDraft.enabled}
-                onChange={(event) => setBundleDraft((current) => ({ ...current, enabled: event.target.checked }))}
-              />
-              <span>Aktifkan custom bundling untuk member</span>
-            </label>
-            <div className="form-grid">
-              <label>
-                <span>Judul</span>
-                <input value={bundleDraft.title} onChange={(event) => setBundleDraft((current) => ({ ...current, title: event.target.value }))} />
-              </label>
-              <label>
-                <span>Minimal item</span>
-                <input type="number" min="2" value={bundleDraft.minimumItems} onChange={(event) => setBundleDraft((current) => ({ ...current, minimumItems: Number(event.target.value) }))} />
-              </label>
-              <label className="full-field">
-                <span>Deskripsi</span>
-                <textarea value={bundleDraft.description} onChange={(event) => setBundleDraft((current) => ({ ...current, description: event.target.value }))} />
-              </label>
-              <label>
-                <span>Model harga</span>
-                <select value={bundleDraft.discountMode} onChange={(event) => setBundleDraft((current) => ({ ...current, discountMode: event.target.value }))}>
-                  <option value="percent">Diskon persen</option>
-                  <option value="tiered">Persen bertingkat</option>
-                  <option value="fixed">Harga akhir tetap</option>
-                </select>
-              </label>
-              {bundleDraft.discountMode === 'fixed' ? (
-                <label>
-                  <span>Harga akhir tetap</span>
-                  <input type="number" min="0" value={bundleDraft.fixedPrice} onChange={(event) => setBundleDraft((current) => ({ ...current, fixedPrice: Number(event.target.value) }))} />
-                </label>
-              ) : (
-                <label>
-                  <span>Diskon dasar (%)</span>
-                  <input type="number" min="0" max="100" value={bundleDraft.discountPercent} onChange={(event) => setBundleDraft((current) => ({ ...current, discountPercent: Number(event.target.value) }))} />
-                </label>
-              )}
-              <label>
-                <span>Minimal subtotal</span>
-                <input type="number" min="0" value={bundleDraft.minimumSubtotal} onChange={(event) => setBundleDraft((current) => ({ ...current, minimumSubtotal: Number(event.target.value) }))} />
-              </label>
-              <label>
-                <span>Maksimal potongan (0 = tanpa batas)</span>
-                <input type="number" min="0" value={bundleDraft.maximumDiscount} onChange={(event) => setBundleDraft((current) => ({ ...current, maximumDiscount: Number(event.target.value) }))} />
-              </label>
-            </div>
-            <div className="bundle-eligibility">
-              <strong>Item yang boleh dipilih</strong>
-              <label><input type="checkbox" checked={bundleDraft.allowClasses} onChange={(event) => setBundleDraft((current) => ({ ...current, allowClasses: event.target.checked }))} /> Kelas</label>
-              <label><input type="checkbox" checked={bundleDraft.allowDigitalProducts} onChange={(event) => setBundleDraft((current) => ({ ...current, allowDigitalProducts: event.target.checked }))} /> Produk digital</label>
-              <label><input type="checkbox" checked={bundleDraft.allowPrompts} onChange={(event) => setBundleDraft((current) => ({ ...current, allowPrompts: event.target.checked }))} /> Prompt</label>
-            </div>
-            {bundleDraft.discountMode === 'tiered' && (
-              <div className="bundle-tier-editor">
-                <strong>Diskon bertingkat</strong>
-                {bundleDraft.tiers.map((tier, index) => (
-                  <div key={index}>
-                    <input type="number" min="2" aria-label="Minimal item tier" value={tier.minimumItems} onChange={(event) => setBundleDraft((current) => ({ ...current, tiers: current.tiers.map((item, itemIndex) => itemIndex === index ? { ...item, minimumItems: Number(event.target.value) } : item) }))} />
-                    <span>item mendapat</span>
-                    <input type="number" min="0" max="100" aria-label="Diskon tier" value={tier.discountPercent} onChange={(event) => setBundleDraft((current) => ({ ...current, tiers: current.tiers.map((item, itemIndex) => itemIndex === index ? { ...item, discountPercent: Number(event.target.value) } : item) }))} />
-                    <span>%</span>
-                    <button type="button" className="icon-button" aria-label="Hapus tier" onClick={() => setBundleDraft((current) => ({ ...current, tiers: current.tiers.filter((_, itemIndex) => itemIndex !== index) }))}><Icon name="x" /></button>
-                  </div>
-                ))}
-                <button type="button" className="btn btn-secondary" onClick={() => setBundleDraft((current) => ({ ...current, tiers: [...current.tiers, { minimumItems: Math.max(2, current.tiers.length + 2), discountPercent: 10 }] }))}>Tambah tingkat</button>
-              </div>
-            )}
-            <button className="btn btn-primary" type="submit" disabled={isSavingBundle}>
-              {isSavingBundle ? 'Menyimpan...' : 'Simpan pengaturan bundling'}
+            <button className="btn btn-primary" type="button" onClick={() => openBundleProgramEditor()}>
+              <Icon name="plus" /> Buat Bundling
             </button>
-          </form>
+          </div>
+          <div className="bundle-program-admin-list">
+            {bundleDraft.programs.map((program) => (
+              <article key={program.id}>
+                <span className="bundle-program-admin-thumb">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}</span>
+                <div><small>{program.badge}</small><h3>{program.title}</h3><p>{program.eligibleItems.length} item tersedia - minimal pilih {program.minimumItems}</p></div>
+                <strong>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</strong>
+                <span className={program.active ? 'status active' : 'status'}>{program.active ? 'Aktif' : 'Nonaktif'}</span>
+                <div className="button-row">
+                  <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(program)}>Edit</button>
+                  <button className="icon-button danger" type="button" aria-label={`Hapus ${program.title}`} onClick={() => deleteBundleProgram(program.id)}><Icon name="trash" /></button>
+                </div>
+              </article>
+            ))}
+            {!bundleDraft.programs.length && <div className="bundle-program-empty"><Icon name="wallet" /><h3>Belum ada program bundling</h3><p>Buat paket pertama dan tentukan item serta harganya.</p></div>}
+          </div>
+          {bundleProgramDraft && (
+            <form className="bundle-program-editor" onSubmit={saveBundleProgram}>
+              <div className="bundle-program-editor-heading"><div><p className="eyebrow">Editor bundling</p><h3>{editingBundleProgramId ? 'Edit program bundling' : 'Buat program bundling baru'}</h3></div><button className="icon-button" type="button" onClick={() => setBundleProgramDraft(null)}><Icon name="x" /></button></div>
+              <div className="form-grid">
+                <label><span>Nama bundling</span><input value={bundleProgramDraft.title} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Contoh: Paket Konten Creator" required /></label>
+                <label><span>Label kartu</span><input value={bundleProgramDraft.badge} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, badge: event.target.value }))} placeholder="Paling hemat" /></label>
+                <label className="full-field"><span>Deskripsi</span><textarea value={bundleProgramDraft.description} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, description: event.target.value }))} /></label>
+                <label><span>URL gambar kartu</span><input value={bundleProgramDraft.thumbnail} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, thumbnail: event.target.value }))} placeholder="https://..." /></label>
+                <label><span>Minimal pilihan</span><input type="number" min="1" value={bundleProgramDraft.minimumItems} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, minimumItems: Number(event.target.value) }))} /></label>
+                <label><span>Model harga</span><select value={bundleProgramDraft.priceMode} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, priceMode: event.target.value }))}><option value="fixed">Harga tetap</option><option value="percent">Diskon persen</option></select></label>
+                {bundleProgramDraft.priceMode === 'fixed' ? <label><span>Harga bundling</span><input type="number" min="0" value={bundleProgramDraft.fixedPrice} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, fixedPrice: Number(event.target.value) }))} /></label> : <label><span>Diskon (%)</span><input type="number" min="0" max="100" value={bundleProgramDraft.discountPercent} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, discountPercent: Number(event.target.value) }))} /></label>}
+              </div>
+              <div className="bundle-program-visibility">
+                <label><input type="checkbox" checked={bundleProgramDraft.active} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, active: event.target.checked }))} /> Aktif</label>
+                <label><input type="checkbox" checked={bundleProgramDraft.showOnHomepage} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, showOnHomepage: event.target.checked }))} /> Tampilkan di homepage</label>
+                <label><input type="checkbox" checked={bundleProgramDraft.showOnMember} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, showOnMember: event.target.checked }))} /> Tampilkan di member</label>
+              </div>
+              <div className="bundle-program-item-picker">
+                <div><h4>Pilih isi yang boleh dibundling</h4><p>Member hanya dapat memilih dari item yang dicentang.</p></div>
+                {[...classes.filter((item) => item.status === 'Aktif').map((item) => ({ ...item, type: 'class', kind: 'Kelas' })), ...digitalProducts.filter((item) => item.status === 'Aktif').map((item) => ({ ...item, type: 'digital_product', kind: item.productType === 'prompt' ? 'Prompt' : 'Produk digital' }))].map((item) => {
+                  const checked = bundleProgramDraft.eligibleItems.some((selected) => selected.type === item.type && selected.id === item.id)
+                  return <label key={`${item.type}:${item.id}`}><input type="checkbox" checked={checked} onChange={() => setBundleProgramDraft((current) => ({ ...current, eligibleItems: checked ? current.eligibleItems.filter((selected) => !(selected.type === item.type && selected.id === item.id)) : [...current.eligibleItems, { type: item.type, id: item.id }] }))} /><span>{item.thumbnail ? <img src={item.thumbnail} alt="" /> : <Icon name={item.type === 'class' ? 'bookOpen' : 'download'} />}</span><p><strong>{item.title}</strong><small>{item.kind}</small></p></label>
+                })}
+              </div>
+              <div className="button-row"><button className="btn btn-secondary" type="button" onClick={() => setBundleProgramDraft(null)}>Batal</button><button className="btn btn-primary" type="submit" disabled={isSavingBundle}>{isSavingBundle ? 'Menyimpan...' : 'Simpan bundling'}</button></div>
+            </form>
+          )}
         </section>
       )}
 

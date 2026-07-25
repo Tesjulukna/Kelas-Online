@@ -2263,10 +2263,16 @@ function App() {
             ? window.sessionStorage.getItem(pendingClassCheckoutKey) || ''
             : '')
         : ''
+    const pendingBundleProgramId =
+      nextSession.role === 'member' && typeof window !== 'undefined'
+        ? window.sessionStorage.getItem('ibnucreative.bundle-program') || ''
+        : ''
 
     if (pendingClassId) {
       setPendingCheckoutClassId(pendingClassId)
       navigateToDashboardMenu(nextSession.role, 'available-classes', { replace: true })
+    } else if (pendingBundleProgramId) {
+      navigateToDashboardMenu(nextSession.role, 'bundles', { replace: true })
     } else {
       navigateToDashboardMenu(nextSession.role, 'overview', { replace: true })
     }
@@ -3129,6 +3135,7 @@ function App() {
         classId: options.itemType === 'digital_product' ? '' : item.id,
         productId: options.itemType === 'digital_product' ? item.id : '',
         bundleItems: options.itemType === 'bundle' ? item.bundleItems : [],
+        bundleProgramId: options.itemType === 'bundle' ? item.bundleProgramId : '',
         memberId: session.userId,
         paymentMethod,
         forceNewPayment: options.forceNewPayment === true,
@@ -3302,6 +3309,15 @@ function App() {
             digitalProductAccess={digitalProductAccess}
             publicActivities={publicActivities}
             onDigitalProductReviewLike={handleDigitalProductReviewLike}
+            onOpenBundle={(bundleProgramId) => {
+              if (session?.role === 'member') {
+                window.sessionStorage.setItem('ibnucreative.bundle-program', bundleProgramId)
+                navigateToDashboardMenu('member', 'bundles')
+              } else {
+                window.sessionStorage.setItem('ibnucreative.bundle-program', bundleProgramId)
+                goToLogin()
+              }
+            }}
           />
         )}
         {page === 'login' && (
