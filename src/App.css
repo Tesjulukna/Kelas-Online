@@ -23029,8 +23029,27 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .member-bundle-picker-modal > header span { color: #64748b; font-size: .8rem; }
 .member-bundle-picker-modal > header button { display: grid; place-items: center; flex: 0 0 40px; height: 40px; border: 1px solid #e2e8f0; border-radius: 11px; color: #475569; background: #fff; cursor: pointer; }
 .member-bundle-picker-modal > .bundle-builder-layout { display: grid; grid-template-columns: 1fr; min-height: 0; padding: 18px; overflow-y: auto; }
-.member-bundle-picker-modal .bundle-summary { position: sticky; bottom: -1px; z-index: 5; grid-template-columns: 1fr; border-color: #bfdbfe; box-shadow: 0 -12px 35px rgb(15 23 42 / 10%); }
-.member-bundle-picker-modal .bundle-selected-list { max-height: 150px; }
+.member-bundle-picker-modal .bundle-summary {
+  position: static;
+  z-index: 1;
+  grid-template-columns: minmax(150px,.65fr) minmax(240px,1fr) minmax(170px,.65fr);
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px 14px;
+  border-color: #bfdbfe;
+  border-radius: 15px;
+  box-shadow: 0 8px 22px rgb(15 23 42 / 7%);
+}
+.member-bundle-picker-modal .bundle-summary-heading,
+.member-bundle-picker-modal .bundle-selected-list { display: none; }
+.member-bundle-picker-modal .bundle-progress { min-width: 0; }
+.member-bundle-picker-modal .bundle-progress > div { margin-bottom: 5px; font-size: .7rem; }
+.member-bundle-picker-modal .bundle-progress-track { height: 5px; }
+.member-bundle-picker-modal .bundle-price-lines { grid-column: 2; gap: 4px; padding: 0; border: 0; font-size: .7rem; }
+.member-bundle-picker-modal .bundle-price-lines .bundle-summary-total { margin-top: 1px; padding-top: 4px; border-top: 1px solid #dbeafe; }
+.member-bundle-picker-modal .bundle-summary-total strong { font-size: 1rem; }
+.member-bundle-picker-modal .bundle-summary-hint { grid-column: 1 / -1; padding: 7px 9px; font-size: .68rem; }
+.member-bundle-picker-modal .bundle-checkout-button { grid-column: 3; min-height: 40px; padding: 9px 12px; font-size: .78rem; }
 
 @media (max-width: 1050px) {
   .bundle-builder-layout { grid-template-columns: minmax(0, 1fr) 310px; }
@@ -23076,4 +23095,7 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   .member-bundle-picker-modal { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); border-radius: 14px; }
   .member-bundle-picker-modal > header { padding: 14px; }
   .member-bundle-picker-modal > .bundle-builder-layout { padding: 10px; }
+  .member-bundle-picker-modal .bundle-summary { grid-template-columns: 1fr; padding: 10px; }
+  .member-bundle-picker-modal .bundle-price-lines,
+  .member-bundle-picker-modal .bundle-checkout-button { grid-column: 1; }
 }
