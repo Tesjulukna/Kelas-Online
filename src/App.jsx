@@ -111,7 +111,7 @@ function getPublicDetailFromPath(pathname) {
     }
   }
 
-  if ((type === 'kelas' || type === 'produk' || type === 'prompt') && id) {
+  if ((type === 'kelas' || type === 'produk' || type === 'prompt' || type === 'bundling') && id) {
     return {
       type,
       id: decodeURIComponent(id),
@@ -2838,6 +2838,17 @@ function App() {
     return applyMembersResponse(data)
   }
 
+  const openPublicBundleDetail = (bundleProgram) => {
+    const bundleId = bundleProgram?.id || bundleProgram
+    if (!bundleId) return
+    const nextPath = `/bundling/${encodeURIComponent(bundleId)}`
+    setActiveSection('home')
+    setPage('home')
+    setCurrentPath(nextPath)
+    window.history.pushState({ returnToMemberDashboard: true, memberMenu: 'bundles' }, '', nextPath)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const handleMemberProductAccessChange = async ({ memberId, productIds }) => {
     const data = await requestJson(memberProductAccessApiPath, {
       method: 'PUT',
@@ -3378,6 +3389,7 @@ function App() {
               onCreateTripayCheckout={handleCreateTripayCheckout}
               onOpenPublicProductDetail={openPublicProductDetail}
               onOpenPublicClassDetail={openPublicClassDetail}
+              onOpenPublicBundleDetail={openPublicBundleDetail}
               onCheckoutClassRequestHandled={clearPendingClassCheckout}
             />
           ) : (

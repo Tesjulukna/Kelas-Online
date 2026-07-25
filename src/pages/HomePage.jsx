@@ -5,6 +5,7 @@ import { withPublicCodes } from '../utils/publicCodes'
 import CheckoutProduk from './detail/CheckoutProduk'
 import DetailKelas from './detail/DetailKelas'
 import DetailProduk from './detail/DetailProduk'
+import DetailBundle from './detail/DetailBundle'
 import ProductAccessPage from './detail/ProductAccessPage'
 import { getCheckoutEmailWarning } from '../utils/emailValidation'
 import { getCheckoutPhoneWarning, normalizeCheckoutPhone } from '../utils/phoneValidation'
@@ -635,6 +636,20 @@ function HomePage({
   const homepageClasses = detailClasses.filter((course) => course.showOnHomepage !== false)
   const detailProducts = withPublicCodes(digitalProducts.filter((product) => product.status === 'Aktif'))
   const homepageProducts = detailProducts.filter((product) => product.showOnHomepage !== false)
+  const detailBundlePrograms = websiteSettings.bundling.programs.filter((program) => program.active)
+  const selectedBundleDetail = initialDetail?.type === 'bundling'
+    ? detailBundlePrograms.find((program) => program.id === initialDetail.id)
+    : null
+  const selectedBundleItems = selectedBundleDetail
+    ? selectedBundleDetail.eligibleItems.map((eligible) => {
+        if (eligible.type === 'class') {
+          const item = detailClasses.find((course) => course.id === eligible.id)
+          return item ? { ...item, itemType: 'class' } : null
+        }
+        const item = detailProducts.find((product) => product.id === eligible.id)
+        return item ? { ...item, itemType: 'digital_product' } : null
+      }).filter(Boolean)
+    : []
 
   const getItemMockMetrics = (itemId) => {
     let code = 0
@@ -1093,6 +1108,16 @@ function HomePage({
       { publicDetailFromApp: true },
       '',
       `/${detailPath}/${encodeURIComponent(product?.publicCode || productId)}`,
+    )
+    notifyRouteChange()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const openBundleDetail = (bundleId) => {
+    window.history.pushState(
+      { publicDetailFromApp: true },
+      '',
+      `/bundling/${encodeURIComponent(bundleId)}`,
     )
     notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -1586,6 +1611,27 @@ function HomePage({
     </section>
   )
 
+  if (selectedBundleDetail) {
+    return (
+      <>
+        <DetailBundle
+          bundle={selectedBundleDetail}
+          items={selectedBundleItems}
+          onBack={closePublicDetail}
+          onChoose={onOpenBundle}
+        />
+        {activityToast}
+      </>
+    )
+  }
+
+  if (initialDetailType === 'bundling' && initialDetailId) {
+    return renderDetailStatus({
+      title: 'Bundling tidak ditemukan',
+      message: 'Paket bundling ini tidak tersedia atau sudah dinonaktifkan.',
+    })
+  }
+
   if (checkoutClass) {
     return (
       <>
@@ -1884,7 +1930,7 @@ function HomePage({
               <article className="homepage-bundle-card" key={program.id}>
                 <span className="homepage-bundle-media">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}<small>{program.badge}</small></span>
                 <div><h3>{program.title}</h3><p>{program.description}</p><span>Minimal pilih {program.minimumItems} item</span></div>
-                <footer><strong>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</strong><button className={`btn ${program.priceMode === 'fixed' ? 'btn-secondary' : 'btn-primary'}`} type="button" onClick={() => onOpenBundle(program.id)}>{program.priceMode === 'fixed' ? 'Lihat Paket' : 'Buat Bundling'} <Icon name="arrowRight" /></button></footer>
+                <footer><strong>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</strong><button className={`btn ${program.priceMode === 'fixed' ? 'btn-secondary' : 'btn-primary'}`} type="button" onClick={() => openBundleDetail(program.id)}>Lihat Detail <Icon name="arrowRight" /></button></footer>
               </article>
             ))}
           </div>

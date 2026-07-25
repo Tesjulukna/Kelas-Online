@@ -702,6 +702,7 @@ function MemberPage({
   onCreateTripayCheckout = async () => {},
   onOpenPublicProductDetail = null,
   onOpenPublicClassDetail = null,
+  onOpenPublicBundleDetail = null,
   onCheckoutClassRequestHandled = () => {},
   focusTarget = null,
   websiteSettings = defaultWebsiteSettings,
@@ -3176,7 +3177,7 @@ function MemberPage({
                       <article key={program.id}>
                         <span className="member-fixed-package-image">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}<small>{program.badge}</small></span>
                         <div><h3>{program.title}</h3><p>{program.description}</p><div className="fixed-package-items">{packageItems.slice(0, 4).map((item) => <span key={item.key}><Icon name={item.itemType === 'class' ? 'bookOpen' : item.productType === 'prompt' ? 'spark' : 'download'} /> {item.title}{item.owned ? ' (dimiliki)' : ''}</span>)}</div></div>
-                        <footer><span><small>Harga paket</small><strong>{formatRupiah(program.fixedPrice)}</strong></span><button className="btn btn-primary" type="button" disabled={!purchasableItems.length} onClick={() => openPaymentMethodPopup({ id: `fixed-${program.id}`, title: program.title, price: program.fixedPrice, itemType: 'bundle', bundleProgramId: program.id, bundleItems: purchasableItems.map((item) => ({ type: item.itemType, id: item.id })) }, { itemType: 'bundle' })}>{purchasableItems.length ? 'Beli paket' : 'Sudah dimiliki'} <Icon name="arrowRight" /></button></footer>
+                        <footer><span><small>Harga paket</small><strong>{formatRupiah(program.fixedPrice)}</strong></span><div className="button-row"><button className="btn btn-secondary" type="button" onClick={() => onOpenPublicBundleDetail?.(program)}>Detail</button><button className="btn btn-primary" type="button" disabled={!purchasableItems.length} onClick={() => openPaymentMethodPopup({ id: `fixed-${program.id}`, title: program.title, price: program.fixedPrice, itemType: 'bundle', bundleProgramId: program.id, bundleItems: purchasableItems.map((item) => ({ type: item.itemType, id: item.id })) }, { itemType: 'bundle' })}>{purchasableItems.length ? 'Beli paket' : 'Sudah dimiliki'} <Icon name="arrowRight" /></button></div></footer>
                       </article>
                     )
                   })}
