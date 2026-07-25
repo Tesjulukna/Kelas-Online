@@ -330,6 +330,73 @@ function send_class_bundle_access_email(array $order): array
     ]);
 }
 
+function send_bundle_access_credentials_email(array $order): array
+{
+    $buyerName = clean_text($order['buyerName'] ?? 'Peserta', 160) ?: 'Peserta';
+    $buyerEmail = clean_email($order['buyerEmail'] ?? '');
+    $username = clean_text($order['username'] ?? '', 120);
+    $passwordText = !empty($order['password'])
+        ? (string) $order['password']
+        : 'Gunakan password akun yang sudah terdaftar.';
+    $bundleTitle = clean_text($order['bundleTitle'] ?? 'Paket bundling IbnuCreative', 180);
+    $loginUrl = clean_asset_url($order['loginUrl'] ?? '', 1000);
+    $bundleItems = is_array($order['bundleItems'] ?? null) ? $order['bundleItems'] : [];
+    $itemLines = [];
+    $itemRows = '';
+
+    foreach ($bundleItems as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $type = clean_text($item['type'] ?? '', 40);
+        $label = $type === 'class'
+            ? 'Kelas'
+            : (clean_text($item['productType'] ?? '', 40) === 'prompt' ? 'Prompt' : 'Produk digital');
+        $title = clean_text($item['title'] ?? '', 180) ?: $label;
+        $itemLines[] = "- [{$label}] {$title}";
+        $itemRows .= '<li style="margin:0 0 7px;color:#374151"><strong>' . email_escape($label) . ':</strong> ' . email_escape($title) . '</li>';
+    }
+
+    $itemsText = $itemLines ? implode("\n", $itemLines) : '- Seluruh isi paket bundling';
+    $loginButton = $loginUrl ? email_button($loginUrl, 'Login dan buka bundling', '#2563eb') : '';
+    $text = "Halo {$buyerName},\n\n"
+        . "Pembayaran paket bundling Anda sudah berhasil dan seluruh akses yang dibeli sudah aktif.\n\n"
+        . "Paket: {$bundleTitle}\n"
+        . "{$itemsText}\n\n"
+        . "Email: {$buyerEmail}\n"
+        . "Username: {$username}\n"
+        . "Password: {$passwordText}\n"
+        . ($loginUrl ? "Login: {$loginUrl}\n\n" : "\n")
+        . "Silakan login menggunakan akun tersebut. Kelas tersedia di Kelas Saya, sedangkan produk digital dan prompt tersedia di menu produk akun Anda.\n\n"
+        . "IbnuCreative Academy";
+    $html = '<div style="box-sizing:border-box;width:100%;margin:0;padding:16px 8px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.6">'
+        . '<div style="box-sizing:border-box;width:100%;max-width:680px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="padding:20px 16px;background:#0f172a;color:#fff">'
+        . '<p style="margin:0 0 8px;color:#bfdbfe;font-size:13px;font-weight:700;text-transform:uppercase">Pembayaran berhasil</p>'
+        . '<h2 style="margin:0;color:#fff;font-size:24px">Akses bundling Anda sudah aktif</h2>'
+        . '</div>'
+        . '<div style="padding:18px 14px">'
+        . '<p>Halo <strong>' . email_escape($buyerName) . '</strong>, seluruh akses dari paket <strong>' . email_escape($bundleTitle) . '</strong> sudah dapat digunakan.</p>'
+        . '<ul style="margin:14px 0;padding-left:20px">' . ($itemRows ?: '<li>Seluruh isi paket bundling</li>') . '</ul>'
+        . email_panel('Data login akun', email_data_rows([
+            ['label' => 'Email', 'value' => $buyerEmail],
+            ['label' => 'Username', 'value' => $username],
+            ['label' => 'Password', 'value' => $passwordText],
+        ]))
+        . ($loginButton ? '<div style="margin:16px 0">' . $loginButton . '</div>' : '')
+        . '<p style="color:#374151;font-size:14px">Silakan login menggunakan akun yang terdaftar. Kelas tersedia di menu Kelas Saya; produk digital dan prompt tersedia di menu produk akun Anda.</p>'
+        . '<p style="margin-top:22px">IbnuCreative Academy</p>'
+        . '</div></div></div>';
+
+    return send_resend_email([
+        'to' => $buyerEmail,
+        'subject' => 'Akses bundling ' . $bundleTitle . ' sudah aktif',
+        'text' => $text,
+        'html' => $html,
+    ]);
+}
+
 function send_tripay_payment_email(array $order): array
 {
     $checkoutUrl = clean_asset_url($order['checkoutUrl'] ?? '', 1000);

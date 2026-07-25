@@ -117,6 +117,13 @@ $isPublicClassOrder = clean_text($orderPayload['order_type'] ?? '', 60) === 'pub
 $isBundleOrder = clean_text($orderPayload['order_type'] ?? '', 60) === 'bundle';
 
 if ($isBundleOrder) {
+    $accountResult = commerce_find_or_create_member_account($pdo, [
+        'memberId' => $order['member_id'] ?? '',
+        'buyerName' => $order['buyer_name'] ?? 'Peserta IbnuCreative',
+        'buyerEmail' => $order['buyer_email'] ?? '',
+        'buyerPhone' => $orderPayload['buyer_phone'] ?? '',
+    ], $config);
+    $memberId = clean_text($accountResult['member']['id'] ?? ($order['member_id'] ?? ''), 120);
     $grantedCount = 0;
     $bundleItems = is_array($orderPayload['bundle_items'] ?? null) ? $orderPayload['bundle_items'] : [];
     foreach ($bundleItems as $bundleItem) {
@@ -124,13 +131,13 @@ if ($isBundleOrder) {
         $itemId = clean_text($bundleItem['id'] ?? '', 120);
         if ($itemId === '') continue;
         if ($itemType === 'class') {
-            if (tripay_grant_class_access($pdo, $order['member_id'], $itemId)) $grantedCount++;
+            if (tripay_grant_class_access($pdo, $memberId, $itemId)) $grantedCount++;
             $classQuery = $pdo->prepare('SELECT * FROM classes WHERE id = ? LIMIT 1');
             $classQuery->execute([$itemId]);
             $class = $classQuery->fetch() ?: [];
             commerce_grant_class_bundled_products($pdo, [
                 'class' => $class,
-                'memberId' => $order['member_id'],
+                'memberId' => $memberId,
                 'buyerName' => $order['buyer_name'] ?? 'Member',
                 'buyerEmail' => $order['buyer_email'] ?? '',
             ]);
@@ -139,7 +146,7 @@ if ($isBundleOrder) {
         if ($itemType === 'digital_product') {
             $result = commerce_grant_digital_product_access($pdo, [
                 'productId' => $itemId,
-                'memberId' => $order['member_id'],
+                'memberId' => $memberId,
                 'buyerEmail' => $order['buyer_email'] ?? '',
                 'buyerName' => $order['buyer_name'] ?? 'Member',
                 'source' => 'tripay-bundle',
@@ -148,21 +155,35 @@ if ($isBundleOrder) {
             if (!empty($result['granted'])) $grantedCount++;
         }
     }
-    $update = $pdo->prepare('UPDATE tripay_orders SET reference = ?, status = ?, access_granted = ?, payload = ? WHERE id = ?');
+    $update = $pdo->prepare('UPDATE tripay_orders SET reference = ?, member_id = ?, status = ?, access_granted = ?, payload = ? WHERE id = ?');
     $update->execute([
         $reference ?: ($order['reference'] ?? ''),
+        $memberId,
         'processed',
         $grantedCount > 0 ? 1 : 0,
         json_encode(array_merge($orderPayload, ['callback' => $payload]), JSON_UNESCAPED_UNICODE),
         $order['id'],
+    ]);
+    $emailResult = send_bundle_access_credentials_email([
+        'buyerName' => $order['buyer_name'] ?? 'Peserta IbnuCreative',
+        'buyerEmail' => $order['buyer_email'] ?? '',
+        'username' => $accountResult['member']['username'] ?? '',
+        'password' => $accountResult['password'] ?? null,
+        'bundleTitle' => $order['class_title'] ?? 'Paket Bundling IbnuCreative',
+        'bundleItems' => $bundleItems,
+        'loginUrl' => $accountResult['loginUrl'] ?? commerce_login_url($config),
     ]);
     send_json(200, [
         'ok' => true,
         'message' => 'Pembayaran bundling sukses dan seluruh akses sudah diproses.',
         'merchantRef' => $order['merchant_ref'],
         'reference' => $reference ?: ($order['reference'] ?? ''),
+        'memberId' => $memberId,
+        'memberAccountCreated' => !empty($accountResult['created']),
         'accessGranted' => $grantedCount > 0,
         'grantedCount' => $grantedCount,
+        'emailSent' => $emailResult['sent'] ?? false,
+        'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
     ]);
 }
 

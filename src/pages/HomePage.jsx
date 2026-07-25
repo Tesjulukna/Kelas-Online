@@ -1638,6 +1638,7 @@ function HomePage({
           bundle={selectedBundleDetail}
           items={selectedBundleItems}
           paymentMethods={paymentMethods}
+          checkoutCustomer={checkoutCustomer}
           onBack={() => backToBundleDetail(selectedBundleDetail.id)}
           onCheckout={onCheckoutBundle}
         />

@@ -23025,22 +23025,26 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .member-fixed-package-grid footer > .button-row { display: flex; flex-wrap: wrap; justify-content: flex-end; }
 
 @media (min-width: 761px) {
-  .homepage-bundle-grid { grid-template-columns: repeat(auto-fit,minmax(500px,1fr)); }
+  .homepage-bundle-grid { grid-template-columns: repeat(auto-fit,minmax(500px,580px)); justify-content: center; }
   .homepage-bundle-card {
     display: grid;
-    grid-template-columns: clamp(190px,20vw,250px) minmax(0,1fr);
+    grid-template-columns: clamp(180px,18vw,225px) minmax(0,1fr);
     grid-template-rows: minmax(0,1fr) auto;
-    min-height: 210px;
+    min-height: 180px;
   }
   .homepage-bundle-media {
     grid-row: 1 / 3;
     width: 100%;
     height: 100%;
-    min-height: 210px;
+    min-height: 180px;
     aspect-ratio: auto;
   }
-  .homepage-bundle-card > div { align-self: center; }
-  .homepage-bundle-card p { min-height: 0; }
+  .homepage-bundle-card > div { display: grid; align-self: stretch; align-content: center; gap: 6px; padding: 14px 17px 10px; }
+  .homepage-bundle-card h3 { margin: 0; font-size: 1.08rem; line-height: 1.25; }
+  .homepage-bundle-card p { display: -webkit-box; min-height: 0; margin: 0; overflow: hidden; font-size: .82rem; line-height: 1.48; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  .homepage-bundle-card > div > span { font-size: .73rem; }
+  .homepage-bundle-card footer { padding: 10px 17px 13px; }
+  .homepage-bundle-card footer strong { font-size: .96rem; }
   .member-fixed-package-grid { grid-template-columns: repeat(auto-fit,minmax(520px,1fr)); }
   .member-fixed-package-grid > article {
     display: grid;
@@ -23116,6 +23120,20 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .bundle-checkout-title h1,.bundle-checkout-title p { margin: 0; }
 .bundle-checkout-title h1 { color: #172033; font-size: 1.35rem; }
 .bundle-checkout-title small { color: #64748b; }
+.bundle-checkout-account { display: grid; grid-template-columns: 44px minmax(0,1fr); align-items: center; gap: 11px; margin-top: 16px; padding: 12px; border: 1px solid #bfdbfe; border-radius: 13px; background: #eff6ff; }
+.bundle-checkout-account > span { display: grid; place-items: center; height: 44px; border-radius: 11px; color: #2563eb; background: #dbeafe; }
+.bundle-checkout-account > div { display: grid; min-width: 0; }
+.bundle-checkout-account small,.bundle-checkout-account p { margin: 0; color: #64748b; font-size: .7rem; }
+.bundle-checkout-account strong { color: #172033; }
+.bundle-checkout-customer { display: grid; gap: 11px; margin-top: 16px; padding: 15px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }
+.bundle-checkout-customer h2,.bundle-checkout-customer p { margin: 0; }
+.bundle-checkout-customer h2 { color: #172033; font-size: 1rem; }
+.bundle-checkout-customer > p { color: #64748b; font-size: .74rem; }
+.bundle-checkout-customer > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; }
+.bundle-checkout-customer.compact > div { grid-template-columns: minmax(220px,360px); }
+.bundle-checkout-customer label { display: grid; gap: 6px; color: #334155; font-size: .72rem; font-weight: 800; }
+.bundle-checkout-customer input { min-width: 0; padding: 10px 11px; border: 1px solid #cbd5e1; border-radius: 9px; color: #172033; background: #fff; outline: 0; }
+.bundle-checkout-customer input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgb(37 99 235 / 10%); }
 .bundle-checkout-items { display: grid; gap: 9px; margin-top: 16px; }
 .bundle-checkout-items article { display: grid; grid-template-columns: 54px minmax(0,1fr) auto; align-items: center; gap: 11px; padding: 9px; border: 1px solid #eef2f7; border-radius: 12px; }
 .bundle-checkout-items article > span { display: grid; place-items: center; height: 54px; overflow: hidden; border-radius: 9px; color: #2563eb; background: #eff6ff; }
@@ -23133,11 +23151,14 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .bundle-checkout-layout aside .total strong { color: #1d4ed8; font-size: 1.35rem; }
 .bundle-checkout-methods { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
 .bundle-checkout-methods > span { color: #334155; font-size: .8rem; font-weight: 800; }
-.bundle-checkout-methods > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+.bundle-checkout-methods > div { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
 .bundle-checkout-methods button { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 9px; border: 1px solid #dbe3ef; border-radius: 10px; color: #334155; background: #fff; text-align: left; cursor: pointer; }
 .bundle-checkout-methods button > strong { min-width: 0; font-size: .72rem; line-height: 1.25; overflow-wrap: anywhere; }
 .bundle-checkout-methods .payment-method-logo { flex: 0 0 auto; width: 48px; height: 31px; }
 .bundle-checkout-methods .payment-method-logo.custom-logo { width: 52px; height: 32px; }
+.bundle-payment-picker-button { justify-content: space-between; width: 100%; font-weight: 800; }
+.bundle-selected-payment { min-height: 48px; padding: 7px 9px; border: 1px solid #bfdbfe; border-radius: 11px; background: #eff6ff; }
+.bundle-selected-payment > button { margin-left: auto; padding: 6px 9px; color: #1d4ed8; font-size: .7rem; font-weight: 800; }
 .bundle-checkout-methods button.active { border-color: #2563eb; color: #1d4ed8; background: #eff6ff; box-shadow: 0 0 0 2px rgb(37 99 235 / 10%); }
 .bundle-checkout-methods button small { color: #64748b; font-size: .64rem; text-transform: none; }
 .bundle-checkout-terms { display: grid; grid-template-columns: 17px minmax(0,1fr); gap: 8px; align-items: start; color: #64748b; font-size: .72rem; line-height: 1.4; cursor: pointer; }
@@ -23151,6 +23172,26 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .app-shell.public-theme-dark .bundle-checkout-methods button { border-color: rgb(148 163 184 / 24%); color: #e2e8f0; background: #18263d; }
 .app-shell.public-theme-dark .bundle-checkout-methods button.active { border-color: #38bdf8; color: #7dd3fc; background: #132b4d; }
 .app-shell.public-theme-dark .bundle-checkout-status { color: #fcd34d; background: rgb(120 53 15 / 32%); }
+.app-shell.public-theme-dark .bundle-checkout-account,.app-shell.public-theme-dark .bundle-checkout-customer,.app-shell.public-theme-dark .bundle-selected-payment { border-color: rgb(96 165 250 / 24%); background: #17263d; }
+.app-shell.public-theme-dark .bundle-checkout-account strong,.app-shell.public-theme-dark .bundle-checkout-customer h2,.app-shell.public-theme-dark .bundle-checkout-customer label { color: #f8fafc; }
+.app-shell.public-theme-dark .bundle-checkout-customer input { border-color: rgb(148 163 184 / 24%); color: #f8fafc; background: #101b2e; }
+
+.bundle-payment-modal-backdrop { position: fixed; inset: 0; z-index: 10060; display: grid; place-items: center; padding: 16px; background: rgb(15 23 42 / 72%); backdrop-filter: blur(7px); }
+.bundle-payment-modal { width: min(680px,100%); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid #e2e8f0; border-radius: 20px; background: #fff; box-shadow: 0 28px 90px rgb(15 23 42 / 34%); }
+.bundle-payment-modal > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 19px 20px; border-bottom: 1px solid #e2e8f0; }
+.bundle-payment-modal > header small { color: #2563eb; font-weight: 900; letter-spacing: .08em; }
+.bundle-payment-modal > header h2,.bundle-payment-modal > header p { margin: 0; }
+.bundle-payment-modal > header h2 { margin-top: 3px; color: #172033; font-size: 1.2rem; }
+.bundle-payment-modal > header p { margin-top: 4px; color: #64748b; font-size: .76rem; }
+.bundle-payment-modal > header > button { display: grid; place-items: center; flex: 0 0 38px; height: 38px; border: 1px solid #e2e8f0; border-radius: 10px; color: #475569; background: #fff; cursor: pointer; }
+.bundle-payment-modal > .payment-method-grid { grid-template-columns: repeat(auto-fill,minmax(120px,1fr)); max-height: 58vh; padding: 18px 20px 22px; overflow: auto; }
+.app-shell.public-theme-dark .bundle-payment-modal { border-color: rgb(148 163 184 / 20%); background: #101b2e; }
+.app-shell.public-theme-dark .bundle-payment-modal > header { border-color: rgb(148 163 184 / 20%); }
+.app-shell.public-theme-dark .bundle-payment-modal > header h2 { color: #f8fafc; }
+.app-shell.public-theme-dark .bundle-payment-modal > header p { color: #94a3b8; }
+.app-shell.public-theme-dark .bundle-payment-modal > header > button { border-color: rgb(148 163 184 / 24%); color: #cbd5e1; background: #18263d; }
+.app-shell.public-theme-dark .bundle-payment-modal .payment-method-option { border-color: rgb(148 163 184 / 20%); background: #142137; }
+.app-shell.public-theme-dark .bundle-payment-modal .payment-method-name { color: #e2e8f0; }
 
 @media (max-width: 760px) {
   .bundle-detail-page { width: min(100% - 20px,1180px); margin-top: 15px; }
@@ -23167,16 +23208,17 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   .bundle-checkout-items article { grid-template-columns: 48px minmax(0,1fr); }
   .bundle-checkout-items article > span { height: 48px; }
   .bundle-checkout-items article > b { grid-column: 2; }
+  .bundle-checkout-customer > div { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
   .homepage-bundle-grid { grid-template-columns: 1fr; gap: 12px; }
   .homepage-bundle-card { display: block; min-height: 0; }
-  .homepage-bundle-media { width: 100%; height: auto; min-height: 0; aspect-ratio: 16 / 9; }
-  .homepage-bundle-card > div { padding: 13px 13px 8px; }
+  .homepage-bundle-media { width: 100%; height: 142px; min-height: 0; aspect-ratio: auto; }
+  .homepage-bundle-card > div { display: grid !important; visibility: visible; opacity: 1; padding: 13px 13px 8px; }
   .homepage-bundle-card h3 { font-size: .92rem; }
   .homepage-bundle-card p { display: -webkit-box; min-height: 0; margin: 5px 0; overflow: hidden; font-size: .72rem; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .homepage-bundle-card footer { padding: 9px 13px 13px; }
+  .homepage-bundle-card footer { display: flex !important; visibility: visible; opacity: 1; padding: 9px 13px 13px; }
   .homepage-bundle-card footer strong { font-size: .84rem; }
   .homepage-bundle-card footer .btn { min-height: 32px; padding: 6px 9px; font-size: .68rem; }
   .member-fixed-package-grid { grid-template-columns: 1fr; }

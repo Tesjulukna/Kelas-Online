@@ -39,6 +39,7 @@ const tripayPaymentMethodsApiPath = '/api/tripay-payment-methods'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
 const publicClassCheckoutApiPath = '/api/public-class-checkout'
 const publicProductCheckoutApiPath = '/api/public-product-checkout'
+const publicBundleCheckoutApiPath = '/api/public-bundle-checkout'
 const publicProductAccessApiPath = '/api/public-product-access'
 const digitalProductReviewLikeApiPath = '/api/digital-product-review-like'
 const publicActivityApiPath = '/api/public-activity'
@@ -3202,6 +3203,16 @@ function App() {
     return data
   }
 
+  const handlePublicBundleCheckout = async (payload) => {
+    const data = await requestJson(publicBundleCheckoutApiPath, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    showNotice(data.message || 'Checkout bundling berhasil dibuat.')
+    return data
+  }
+
   const currentMember = session?.role === 'member'
     ? members.find((member) => member.id === session.userId)
     : null
@@ -3329,20 +3340,36 @@ function App() {
                 goToLogin()
               }
             }}
-            onCheckoutBundle={async ({ bundle, items, paymentMethod }) => {
-              if (session?.role !== 'member') {
-                window.sessionStorage.setItem('ibnucreative.bundle-program', bundle.id)
-                goToLogin()
-                return
-              }
-              const data = await handleCreateTripayCheckout({
-                id: `fixed-${bundle.id}`,
-                title: bundle.title,
-                price: bundle.fixedPrice,
-                itemType: 'bundle',
-                bundleProgramId: bundle.id,
-                bundleItems: items.map((item) => ({ type: item.itemType, id: item.id })),
-              }, paymentMethod, { itemType: 'bundle' })
+            onCheckoutBundle={async ({
+              bundle,
+              items,
+              paymentMethod,
+              buyerName,
+              buyerEmail,
+              buyerPhone,
+              acceptedTerms,
+              acceptedMarketing,
+            }) => {
+              const bundleItems = items.map((item) => ({ type: item.itemType, id: item.id }))
+              const data = session?.role === 'member'
+                ? await handleCreateTripayCheckout({
+                    id: `fixed-${bundle.id}`,
+                    title: bundle.title,
+                    price: bundle.fixedPrice,
+                    itemType: 'bundle',
+                    bundleProgramId: bundle.id,
+                    bundleItems,
+                  }, paymentMethod, { itemType: 'bundle' })
+                : await handlePublicBundleCheckout({
+                    bundleProgramId: bundle.id,
+                    bundleItems,
+                    buyerName,
+                    buyerEmail,
+                    buyerPhone,
+                    paymentMethod,
+                    acceptedTerms,
+                    acceptedMarketing,
+                  })
               if (data?.checkoutUrl) {
                 window.location.assign(data.checkoutUrl)
               }

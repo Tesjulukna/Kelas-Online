@@ -458,6 +458,88 @@ function commerce_grant_product_member_account(PDO $pdo, array $args, array $con
     ];
 }
 
+function commerce_find_or_create_member_account(PDO $pdo, array $args, array $config): array
+{
+    $buyerEmail = clean_email($args['buyerEmail'] ?? '');
+    $buyerName = clean_text($args['buyerName'] ?? '', 160) ?: 'Peserta IbnuCreative';
+    $buyerPhone = clean_phone($args['buyerPhone'] ?? '');
+    $preferredMemberId = clean_text($args['memberId'] ?? '', 120);
+
+    if ($buyerEmail === '') {
+        send_json(422, ['message' => 'Email pembeli wajib tersedia untuk membuat akun member.']);
+    }
+
+    $password = commerce_generated_password($buyerEmail, $config);
+    $passwordCreated = false;
+    $accountCreated = false;
+    $memberQuery = $preferredMemberId !== ''
+        ? $pdo->prepare('SELECT * FROM accounts WHERE id = ? AND role = ? LIMIT 1')
+        : $pdo->prepare('SELECT * FROM accounts WHERE role = ? AND email = ? LIMIT 1');
+    $preferredMemberId !== ''
+        ? $memberQuery->execute([$preferredMemberId, 'member'])
+        : $memberQuery->execute(['member', $buyerEmail]);
+    $member = $memberQuery->fetch();
+
+    if (!$member && $preferredMemberId !== '') {
+        $memberQuery = $pdo->prepare('SELECT * FROM accounts WHERE role = ? AND email = ? LIMIT 1');
+        $memberQuery->execute(['member', $buyerEmail]);
+        $member = $memberQuery->fetch();
+    }
+
+    if ($member) {
+        $update = $pdo->prepare(
+            'UPDATE accounts
+            SET name = ?, phone = ?, status = ?
+            WHERE id = ? AND role = ?',
+        );
+        $update->execute([
+            $buyerName ?: ($member['name'] ?? 'Peserta IbnuCreative'),
+            $buyerPhone ?: ($member['phone'] ?? ''),
+            'Aktif',
+            $member['id'],
+            'member',
+        ]);
+        $member['name'] = $buyerName ?: ($member['name'] ?? 'Peserta IbnuCreative');
+        $member['phone'] = $buyerPhone ?: ($member['phone'] ?? '');
+    } else {
+        $accountCreated = true;
+        $member = [
+            'id' => make_id('member'),
+            'username' => commerce_unique_username($pdo, $buyerEmail, $buyerName),
+            'name' => $buyerName,
+            'email' => $buyerEmail,
+            'phone' => $buyerPhone,
+        ];
+        $passwordCreated = true;
+        $insert = $pdo->prepare(
+            'INSERT INTO accounts
+            (id, role, name, username, email, phone, status, avatar, allowed_class_ids, password_hash, joined_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        );
+        $insert->execute([
+            $member['id'],
+            'member',
+            $buyerName,
+            $member['username'],
+            $buyerEmail,
+            $buyerPhone,
+            'Aktif',
+            '',
+            json_encode([], JSON_UNESCAPED_UNICODE),
+            hash_password_value($password),
+            date('Y-m-d'),
+        ]);
+    }
+
+    return [
+        'member' => $member,
+        'created' => $accountCreated,
+        'passwordCreated' => $passwordCreated,
+        'password' => $passwordCreated ? $password : null,
+        'loginUrl' => commerce_login_url($config),
+    ];
+}
+
 function commerce_grant_class_account_access(PDO $pdo, array $args, array $config): array
 {
     $classId = clean_text($args['classId'] ?? '', 120);
