@@ -750,6 +750,7 @@ function MemberPage({
       return ''
     }
   })
+  const [isPercentBundleModalOpen, setIsPercentBundleModalOpen] = useState(false)
   const [activeMaterialIndex, setActiveMaterialIndex] = useState(() =>
     activeMenu === 'my-courses' ? readActiveCourseSnapshot(userId).materialIndex : 0,
   )
@@ -3185,15 +3186,18 @@ function MemberPage({
             {percentBundlePrograms.length > 0 && <div className="bundle-type-heading"><span><Icon name="spark" /></span><div><h3>Bundling custom dengan diskon persen</h3><p>Pilih sendiri item yang kamu mau. Total dan potongan dihitung otomatis.</p></div></div>}
             <div className="bundle-program-picker">
               {percentBundlePrograms.map((program) => (
-                <button type="button" key={program.id} className={selectedBundleProgram?.id === program.id ? 'active' : ''} onClick={() => { setSelectedBundleProgramId(program.id); setBundleItemKeys([]) }}>
+                <button type="button" key={program.id} className={selectedBundleProgram?.id === program.id ? 'active' : ''} onClick={() => { setSelectedBundleProgramId(program.id); setBundleItemKeys([]); setIsPercentBundleModalOpen(true) }}>
                   <span>{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}</span>
-                  <p><small>{program.badge}</small><strong>{program.title}</strong><em>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</em></p>
+                  <p><small>Bundling custom</small><strong>Diskon {program.discountPercent}%</strong><em>Tentukan Pilihanmu</em></p>
                   <Icon name="arrowRight" />
                 </button>
               ))}
               {!memberBundlePrograms.length && <div className="bundle-program-empty"><Icon name="wallet" /><h3>Belum ada bundling aktif</h3><p>Program bundling dari admin akan muncul di sini.</p></div>}
             </div>
-            {selectedBundleProgram && <div className="bundle-builder-layout">
+            {selectedBundleProgram && isPercentBundleModalOpen && <div className="member-bundle-modal-backdrop" role="presentation">
+            <section className="member-bundle-picker-modal" role="dialog" aria-modal="true" aria-label="Tentukan pilihan bundling">
+              <header><div><p className="eyebrow">Bundling diskon {bundlePercent}%</p><h2>Tentukan Pilihanmu</h2><span>Pilih minimal {bundleMinimumItems} item. Total dihitung otomatis.</span></div><button type="button" aria-label="Tutup pilihan bundling" onClick={() => setIsPercentBundleModalOpen(false)}><Icon name="x" /></button></header>
+            <div className="bundle-builder-layout">
               <main className="bundle-catalog">
                 <div className="bundle-catalog-heading">
                   <div>
@@ -3292,6 +3296,8 @@ function MemberPage({
                   Lanjut ke pembayaran <Icon name="arrowRight" />
                 </button>
               </aside>
+            </div>
+            </section>
             </div>}
             </>
           )}

@@ -23022,6 +23022,15 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .member-fixed-package-grid footer > span { display: grid; }
 .member-fixed-package-grid footer small { color: #64748b; }
 .member-fixed-package-grid footer strong { color: #1d4ed8; font-size: 1.08rem; }
+.member-bundle-modal-backdrop { position: fixed; inset: 0; z-index: 10030; display: grid; place-items: start center; padding: clamp(8px,2vw,22px); overflow-y: auto; background: rgb(15 23 42 / 72%); backdrop-filter: blur(8px); }
+.member-bundle-picker-modal { display: grid; grid-template-rows: auto minmax(0,1fr); width: min(1050px,calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: hidden; border-radius: 20px; background: #f5f7fb; box-shadow: 0 30px 90px rgb(15 23 42 / 32%); }
+.member-bundle-picker-modal > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; border-bottom: 1px solid #e2e8f0; background: #fff; }
+.member-bundle-picker-modal > header h2,.member-bundle-picker-modal > header p { margin: 0; }
+.member-bundle-picker-modal > header span { color: #64748b; font-size: .8rem; }
+.member-bundle-picker-modal > header button { display: grid; place-items: center; flex: 0 0 40px; height: 40px; border: 1px solid #e2e8f0; border-radius: 11px; color: #475569; background: #fff; cursor: pointer; }
+.member-bundle-picker-modal > .bundle-builder-layout { display: grid; grid-template-columns: 1fr; min-height: 0; padding: 18px; overflow-y: auto; }
+.member-bundle-picker-modal .bundle-summary { position: sticky; bottom: -1px; z-index: 5; grid-template-columns: 1fr; border-color: #bfdbfe; box-shadow: 0 -12px 35px rgb(15 23 42 / 10%); }
+.member-bundle-picker-modal .bundle-selected-list { max-height: 150px; }
 
 @media (max-width: 1050px) {
   .bundle-builder-layout { grid-template-columns: minmax(0, 1fr) 310px; }
@@ -23063,4 +23072,8 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   .bundle-editor-actions .btn { flex: 1; justify-content: center; }
   .member-fixed-package-grid footer { align-items: stretch; flex-direction: column; }
   .member-fixed-package-grid footer .btn { justify-content: center; }
+  .member-bundle-modal-backdrop { padding: 6px; }
+  .member-bundle-picker-modal { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); border-radius: 14px; }
+  .member-bundle-picker-modal > header { padding: 14px; }
+  .member-bundle-picker-modal > .bundle-builder-layout { padding: 10px; }
 }

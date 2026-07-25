@@ -1038,11 +1038,20 @@ function AdminPage({
   }
   const saveBundleProgram = async (event) => {
     event.preventDefault()
-    if (!bundleProgramDraft.title.trim()) return onNotify('Nama bundling wajib diisi.')
-    if (!bundleProgramDraft.eligibleItems.length) return onNotify('Pilih minimal satu kelas, produk, atau prompt.')
-    const finalBundleProgram = bundleProgramDraft.priceMode === 'fixed'
-      ? { ...bundleProgramDraft, fixedPrice: bundleCalculatedFixedPrice }
+    const normalizedBundleDraft = bundleProgramDraft.priceMode === 'percent'
+      ? {
+          ...bundleProgramDraft,
+          title: `Bundling Custom Diskon ${bundleProgramDraft.discountPercent}%`,
+          description: 'Pilih sendiri item yang kamu inginkan dan dapatkan potongan otomatis.',
+          badge: `Diskon ${bundleProgramDraft.discountPercent}%`,
+          thumbnail: '',
+        }
       : bundleProgramDraft
+    if (!normalizedBundleDraft.title.trim()) return onNotify('Nama paket wajib diisi.')
+    if (!bundleProgramDraft.eligibleItems.length) return onNotify('Pilih minimal satu kelas, produk, atau prompt.')
+    const finalBundleProgram = normalizedBundleDraft.priceMode === 'fixed'
+      ? { ...normalizedBundleDraft, fixedPrice: bundleCalculatedFixedPrice, minimumItems: 1 }
+      : normalizedBundleDraft
     const programs = editingBundleProgramId
       ? bundleDraft.programs.map((program) => program.id === editingBundleProgramId ? finalBundleProgram : program)
       : [...bundleDraft.programs, finalBundleProgram]
@@ -7228,7 +7237,7 @@ function AdminPage({
                 <button type="button" aria-label="Tutup editor bundling" onClick={() => setBundleProgramDraft(null)}><Icon name="x" /></button>
               </div>
               <div className="bundle-editor-scroll">
-                <section className="bundle-editor-section bundle-editor-identity">
+                {bundleProgramDraft.priceMode === 'fixed' && <section className="bundle-editor-section bundle-editor-identity">
                   <div className="bundle-editor-section-title"><span>1</span><div><h3>Informasi bundling</h3><p>Informasi ini tampil pada kartu homepage dan member.</p></div></div>
                   <div className="bundle-editor-identity-grid">
                     <label className="bundle-thumbnail-field">
@@ -7243,11 +7252,11 @@ function AdminPage({
                       <label className="full-field"><span>Deskripsi singkat</span><textarea value={bundleProgramDraft.description} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, description: event.target.value }))} placeholder="Jelaskan manfaat paket untuk pembeli..." /></label>
                     </div>
                   </div>
-                </section>
+                </section>}
                 <section className="bundle-editor-section">
-                  <div className="bundle-editor-section-title"><span>2</span><div><h3>Harga dan aturan</h3><p>Tentukan jumlah pilihan dan cara menghitung harga.</p></div></div>
+                  <div className="bundle-editor-section-title"><span>{bundleProgramDraft.priceMode === 'fixed' ? '2' : '1'}</span><div><h3>Harga dan aturan</h3><p>Tentukan jumlah pilihan dan cara menghitung harga.</p></div></div>
                   <div className="bundle-pricing-grid">
-                    <label><span>Minimal item dipilih</span><input type="number" min="1" value={bundleProgramDraft.minimumItems} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, minimumItems: Number(event.target.value) }))} /><small>Pembeli harus memilih minimal sejumlah ini.</small></label>
+                    {bundleProgramDraft.priceMode === 'percent' && <label><span>Minimal item dipilih</span><input type="number" min="2" value={bundleProgramDraft.minimumItems} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, minimumItems: Number(event.target.value) }))} /><small>Pembeli harus memilih minimal sejumlah ini.</small></label>}
                     <div className="bundle-mode-summary"><span>{bundleProgramDraft.priceMode === 'fixed' ? <Icon name="wallet" /> : <Icon name="spark" />}</span><p><strong>{bundleProgramDraft.priceMode === 'fixed' ? 'Paket harga tetap' : 'Bundling persen'}</strong><small>{bundleProgramDraft.priceMode === 'fixed' ? 'Isi ditentukan admin, dibeli sebagai satu paket.' : 'Isi dipilih member, total dipotong persen.'}</small></p></div>
                     {bundleProgramDraft.priceMode === 'fixed' ? (
                       <div className="bundle-price-highlight bundle-fixed-price-control">
@@ -7278,7 +7287,7 @@ function AdminPage({
                   </div>
                 </section>
                 <section className="bundle-editor-section">
-                  <div className="bundle-editor-section-title"><span>3</span><div><h3>Pilih isi bundling</h3><p>Centang kelas, produk digital, atau prompt yang boleh dipilih pembeli.</p></div><strong>{bundleProgramDraft.eligibleItems.length} dipilih</strong></div>
+                  <div className="bundle-editor-section-title"><span>{bundleProgramDraft.priceMode === 'fixed' ? '3' : '2'}</span><div><h3>Pilih isi bundling</h3><p>Centang kelas, produk digital, atau prompt yang boleh dipilih pembeli.</p></div><strong>{bundleProgramDraft.eligibleItems.length} dipilih</strong></div>
                   <div className="bundle-item-picker-toolbar">
                     <label><Icon name="search" /><input type="search" value={bundleItemSearch} onChange={(event) => setBundleItemSearch(event.target.value)} placeholder="Cari kelas, produk, atau prompt..." /></label>
                     <div>{[['all','Semua'],['class','Kelas'],['digital','Produk'],['prompt','Prompt']].map(([id,label]) => <button type="button" key={id} className={bundleItemFilter === id ? 'active' : ''} onClick={() => setBundleItemFilter(id)}>{label}</button>)}</div>
