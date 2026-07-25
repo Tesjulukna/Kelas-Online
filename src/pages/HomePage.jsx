@@ -1884,7 +1884,7 @@ function HomePage({
               <article className="homepage-bundle-card" key={program.id}>
                 <span className="homepage-bundle-media">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}<small>{program.badge}</small></span>
                 <div><h3>{program.title}</h3><p>{program.description}</p><span>Minimal pilih {program.minimumItems} item</span></div>
-                <footer><strong>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</strong><button className="btn btn-primary" type="button" onClick={() => onOpenBundle(program.id)}>Pilih bundling <Icon name="arrowRight" /></button></footer>
+                <footer><strong>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</strong><button className={`btn ${program.priceMode === 'fixed' ? 'btn-secondary' : 'btn-primary'}`} type="button" onClick={() => onOpenBundle(program.id)}>{program.priceMode === 'fixed' ? 'Lihat Paket' : 'Buat Bundling'} <Icon name="arrowRight" /></button></footer>
               </article>
             ))}
           </div>

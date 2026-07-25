@@ -879,8 +879,10 @@ function MemberPage({
   }, [activeDigitalProductAccess, paidDigitalProductOrdersByProduct])
   const bundleSettings = safeWebsiteSettings.bundling
   const memberBundlePrograms = bundleSettings.programs.filter((program) => program.active && program.showOnMember)
-  const selectedBundleProgram = memberBundlePrograms.find((program) => program.id === selectedBundleProgramId) || memberBundlePrograms[0] || null
-  const bundleCatalog = (() => {
+  const fixedBundlePrograms = memberBundlePrograms.filter((program) => program.priceMode === 'fixed')
+  const percentBundlePrograms = memberBundlePrograms.filter((program) => program.priceMode === 'percent')
+  const selectedBundleProgram = percentBundlePrograms.find((program) => program.id === selectedBundleProgramId) || percentBundlePrograms[0] || null
+  const allBundleCatalog = (() => {
     const items = []
     if (bundleSettings.allowClasses) {
       allActiveCourses.forEach((course) => items.push({
@@ -900,10 +902,13 @@ function MemberPage({
         owned: ownedDigitalProductIds.has(product.id) && product.allowRepeatPurchase !== true,
       })
     })
-    if (!selectedBundleProgram) return []
-    const eligibleKeys = new Set(selectedBundleProgram.eligibleItems.map((item) => `${item.type === 'class' ? 'class' : 'product'}:${item.id}`))
-    return items.filter((item) => eligibleKeys.has(item.key))
+    return items
   })()
+  const getBundleProgramItems = (program) => {
+    const eligibleKeys = new Set((program?.eligibleItems || []).map((item) => `${item.type === 'class' ? 'class' : 'product'}:${item.id}`))
+    return allBundleCatalog.filter((item) => eligibleKeys.has(item.key))
+  }
+  const bundleCatalog = getBundleProgramItems(selectedBundleProgram)
   const selectedBundleItems = bundleCatalog.filter((item) => bundleItemKeys.includes(item.key) && !item.owned)
   const bundleSubtotal = selectedBundleItems.reduce((total, item) => {
     const normalPrice = Math.max(0, Math.round(Number(item.price) || 0))
@@ -3159,8 +3164,27 @@ function MemberPage({
             <article className="empty-state"><Icon name="wallet" /><h3>Bundling sedang tidak aktif</h3><p>Admin akan mengaktifkannya kembali saat tersedia.</p></article>
           ) : (
             <>
+            {fixedBundlePrograms.length > 0 && (
+              <section className="member-fixed-packages">
+                <div className="bundle-type-heading"><span><Icon name="wallet" /></span><div><h3>Paket harga tetap</h3><p>Isi dan harga paket sudah ditentukan admin. Tinggal pilih lalu bayar.</p></div></div>
+                <div className="member-fixed-package-grid">
+                  {fixedBundlePrograms.map((program) => {
+                    const packageItems = getBundleProgramItems(program)
+                    const purchasableItems = packageItems.filter((item) => !item.owned)
+                    return (
+                      <article key={program.id}>
+                        <span className="member-fixed-package-image">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}<small>{program.badge}</small></span>
+                        <div><h3>{program.title}</h3><p>{program.description}</p><div className="fixed-package-items">{packageItems.slice(0, 4).map((item) => <span key={item.key}><Icon name={item.itemType === 'class' ? 'bookOpen' : item.productType === 'prompt' ? 'spark' : 'download'} /> {item.title}{item.owned ? ' (dimiliki)' : ''}</span>)}</div></div>
+                        <footer><span><small>Harga paket</small><strong>{formatRupiah(program.fixedPrice)}</strong></span><button className="btn btn-primary" type="button" disabled={!purchasableItems.length} onClick={() => openPaymentMethodPopup({ id: `fixed-${program.id}`, title: program.title, price: program.fixedPrice, itemType: 'bundle', bundleProgramId: program.id, bundleItems: purchasableItems.map((item) => ({ type: item.itemType, id: item.id })) }, { itemType: 'bundle' })}>{purchasableItems.length ? 'Beli paket' : 'Sudah dimiliki'} <Icon name="arrowRight" /></button></footer>
+                      </article>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+            {percentBundlePrograms.length > 0 && <div className="bundle-type-heading"><span><Icon name="spark" /></span><div><h3>Bundling custom dengan diskon persen</h3><p>Pilih sendiri item yang kamu mau. Total dan potongan dihitung otomatis.</p></div></div>}
             <div className="bundle-program-picker">
-              {memberBundlePrograms.map((program) => (
+              {percentBundlePrograms.map((program) => (
                 <button type="button" key={program.id} className={selectedBundleProgram?.id === program.id ? 'active' : ''} onClick={() => { setSelectedBundleProgramId(program.id); setBundleItemKeys([]) }}>
                   <span>{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}</span>
                   <p><small>{program.badge}</small><strong>{program.title}</strong><em>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</em></p>

@@ -49,6 +49,9 @@ if ($checkoutType === 'bundle') {
         }
     }
     if (!$bundleProgram) send_json(422, ['message' => 'Program bundling tidak ditemukan atau sudah tidak aktif.']);
+    if (($bundleProgram['priceMode'] ?? '') === 'fixed') {
+        $requestedBundleItems = is_array($bundleProgram['eligibleItems'] ?? null) ? $bundleProgram['eligibleItems'] : [];
+    }
     $eligibleKeys = [];
     foreach (($bundleProgram['eligibleItems'] ?? []) as $eligibleItem) {
         $eligibleKeys[clean_text($eligibleItem['type'] ?? '', 40) . ':' . clean_text($eligibleItem['id'] ?? '', 120)] = true;
@@ -87,7 +90,9 @@ if ($checkoutType === 'bundle') {
             $subtotal += $price;
         }
     }
-    $minimumItems = clean_number($bundleProgram['minimumItems'] ?? 1, 1, 50);
+    $minimumItems = ($bundleProgram['priceMode'] ?? '') === 'fixed'
+        ? 1
+        : clean_number($bundleProgram['minimumItems'] ?? 1, 1, 50);
     if (count($bundleItems) < $minimumItems) {
         send_json(422, ['message' => 'Pilih minimal ' . $minimumItems . ' item yang belum dimiliki.']);
     }

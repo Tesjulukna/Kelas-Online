@@ -989,8 +989,9 @@ function AdminPage({
   const [bundleProgramDraft, setBundleProgramDraft] = useState(null)
   const [bundleItemSearch, setBundleItemSearch] = useState('')
   const [bundleItemFilter, setBundleItemFilter] = useState('all')
+  const [isBundleImageUploading, setIsBundleImageUploading] = useState(false)
 
-  const createBundleProgramDraft = (seedItem = null) => ({
+  const createBundleProgramDraft = (seedItem = null, priceMode = 'fixed') => ({
     id: `bundle-${Date.now()}`,
     title: '',
     description: '',
@@ -1000,18 +1001,39 @@ function AdminPage({
     showOnHomepage: true,
     showOnMember: true,
     minimumItems: seedItem ? 1 : 2,
-    priceMode: 'fixed',
+    priceMode,
     fixedPrice: 0,
     discountPercent: 10,
     maximumDiscount: 0,
     eligibleItems: seedItem ? [{ type: seedItem.type, id: seedItem.id }] : [],
   })
-  const openBundleProgramEditor = (program = null, seedItem = null) => {
+  const openBundleProgramEditor = (program = null, seedItem = null, priceMode = 'fixed') => {
     setEditingBundleProgramId(program?.id || '')
-    setBundleProgramDraft(program ? { ...program, eligibleItems: [...program.eligibleItems] } : createBundleProgramDraft(seedItem))
+    setBundleProgramDraft(program ? { ...program, eligibleItems: [...program.eligibleItems] } : createBundleProgramDraft(seedItem, priceMode))
     setBundleItemSearch('')
     setBundleItemFilter('all')
     onMenuChange('bundles')
+  }
+  const handleBundleThumbnailUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      onNotify('Gambar bundling harus berupa file gambar.')
+      event.target.value = ''
+      return
+    }
+    setIsBundleImageUploading(true)
+    try {
+      onNotify('Mengompres dan mengupload gambar bundling...')
+      const imageUrl = await uploadClassImage(file, sessionToken)
+      setBundleProgramDraft((current) => ({ ...current, thumbnail: imageUrl }))
+      onNotify('Gambar bundling berhasil diupload.')
+    } catch (error) {
+      onNotify(error.message || 'Gambar bundling tidak bisa diupload.')
+    } finally {
+      setIsBundleImageUploading(false)
+      event.target.value = ''
+    }
   }
   const saveBundleProgram = async (event) => {
     event.preventDefault()
@@ -4242,10 +4264,8 @@ function AdminPage({
               <h2>Kelola kelas</h2>
             </div>
             <div className="button-row">
-              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor()}>
-                <Icon name="wallet" />
-                Custom Bundle
-              </button>
+              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(null, null, 'fixed')}><Icon name="wallet" /> Paket Tetap</button>
+              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(null, null, 'percent')}><Icon name="spark" /> Bundle Persen</button>
               <button className="btn btn-secondary" type="button" onClick={handleExportData}>
                 <Icon name="arrowRight" />
                 Ekspor
@@ -5357,9 +5377,8 @@ function AdminPage({
                 </small>
               </div>
             <div className="button-row">
-              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor()}>
-                <Icon name="wallet" /> Custom Bundle
-              </button>
+              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(null, null, 'fixed')}><Icon name="wallet" /> Paket Tetap</button>
+              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(null, null, 'percent')}><Icon name="spark" /> Bundle Persen</button>
               <button
                 className="btn btn-primary"
                 type="button"
@@ -7168,9 +7187,14 @@ function AdminPage({
               <h2>Atur bundling</h2>
               <p>Pembeli dapat mencampur kelas, produk digital, dan prompt yang belum dimiliki.</p>
             </div>
-            <button className="btn btn-primary" type="button" onClick={() => openBundleProgramEditor()}>
-              <Icon name="plus" /> Buat Bundling
-            </button>
+            <div className="button-row">
+              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(null, null, 'fixed')}>
+                <Icon name="wallet" /> Paket Harga Tetap
+              </button>
+              <button className="btn btn-primary" type="button" onClick={() => openBundleProgramEditor(null, null, 'percent')}>
+                <Icon name="spark" /> Bundling Persen
+              </button>
+            </div>
           </div>
           <div className="bundle-program-admin-list">
             {bundleDraft.programs.map((program) => (
@@ -7191,7 +7215,7 @@ function AdminPage({
             <div className="modal-backdrop bundle-editor-backdrop" role="presentation">
             <form className="crud-editor bundle-program-editor" onSubmit={saveBundleProgram}>
               <div className="modal-heading">
-                <div><p className="eyebrow">Kelola bundling</p><h2>{editingBundleProgramId ? 'Edit bundling' : 'Tambah bundling'}</h2><small>Atur tampilan, harga, dan produk yang dapat dipilih pembeli.</small></div>
+                <div><p className="eyebrow">{bundleProgramDraft.priceMode === 'fixed' ? 'Paket harga tetap' : 'Bundling custom persen'}</p><h2>{editingBundleProgramId ? 'Edit' : 'Tambah'} {bundleProgramDraft.priceMode === 'fixed' ? 'paket tetap' : 'bundling persen'}</h2><small>{bundleProgramDraft.priceMode === 'fixed' ? 'Admin menentukan isi paket dan satu harga final.' : 'Member memilih sendiri item, lalu diskon dihitung otomatis.'}</small></div>
                 <button type="button" aria-label="Tutup editor bundling" onClick={() => setBundleProgramDraft(null)}><Icon name="x" /></button>
               </div>
               <div className="bundle-editor-scroll">
@@ -7200,8 +7224,9 @@ function AdminPage({
                   <div className="bundle-editor-identity-grid">
                     <label className="bundle-thumbnail-field">
                       <span className="bundle-thumbnail-preview">{bundleProgramDraft.thumbnail ? <img src={bundleProgramDraft.thumbnail} alt="" /> : <Icon name="image" />}</span>
-                      <span>URL gambar kartu</span>
-                      <input value={bundleProgramDraft.thumbnail} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, thumbnail: event.target.value }))} placeholder="https://..." />
+                      <span>Gambar kartu bundling</span>
+                      <span className="btn btn-secondary bundle-image-upload-button"><Icon name="upload" /> {isBundleImageUploading ? 'Mengupload...' : bundleProgramDraft.thumbnail ? 'Ganti gambar' : 'Upload gambar'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={isBundleImageUploading} onChange={handleBundleThumbnailUpload} /></span>
+                      <small>Gambar otomatis dikompres sebelum diupload.</small>
                     </label>
                     <div className="form-grid">
                       <label><span>Nama bundling</span><input value={bundleProgramDraft.title} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, title: event.target.value }))} placeholder="Contoh: Paket Konten Creator" required /></label>
@@ -7214,7 +7239,7 @@ function AdminPage({
                   <div className="bundle-editor-section-title"><span>2</span><div><h3>Harga dan aturan</h3><p>Tentukan jumlah pilihan dan cara menghitung harga.</p></div></div>
                   <div className="bundle-pricing-grid">
                     <label><span>Minimal item dipilih</span><input type="number" min="1" value={bundleProgramDraft.minimumItems} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, minimumItems: Number(event.target.value) }))} /><small>Pembeli harus memilih minimal sejumlah ini.</small></label>
-                    <label><span>Model harga</span><select value={bundleProgramDraft.priceMode} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, priceMode: event.target.value }))}><option value="fixed">Harga bundling tetap</option><option value="percent">Potongan persen</option></select><small>{bundleProgramDraft.priceMode === 'fixed' ? 'Semua pilihan dibayar dengan satu harga.' : 'Diskon dihitung dari subtotal pilihan.'}</small></label>
+                    <div className="bundle-mode-summary"><span>{bundleProgramDraft.priceMode === 'fixed' ? <Icon name="wallet" /> : <Icon name="spark" />}</span><p><strong>{bundleProgramDraft.priceMode === 'fixed' ? 'Paket harga tetap' : 'Bundling persen'}</strong><small>{bundleProgramDraft.priceMode === 'fixed' ? 'Isi ditentukan admin, dibeli sebagai satu paket.' : 'Isi dipilih member, total dipotong persen.'}</small></p></div>
                     {bundleProgramDraft.priceMode === 'fixed' ? <label className="bundle-price-highlight"><span>Harga bundling</span><input type="number" min="0" value={bundleProgramDraft.fixedPrice} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, fixedPrice: Number(event.target.value) }))} /><strong>{formatRupiah(bundleProgramDraft.fixedPrice)}</strong></label> : <label className="bundle-price-highlight"><span>Diskon</span><div className="bundle-percent-input"><input type="number" min="0" max="100" value={bundleProgramDraft.discountPercent} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, discountPercent: Number(event.target.value) }))} /><b>%</b></div><strong>Potongan {bundleProgramDraft.discountPercent}%</strong></label>}
                   </div>
                   <div className="bundle-program-visibility">
