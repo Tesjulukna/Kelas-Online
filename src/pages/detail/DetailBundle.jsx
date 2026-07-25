@@ -39,7 +39,11 @@ function DetailBundle({ bundle, items = [], onBack, onChoose, onCustomChoose }) 
               <strong>{items.length} item</strong>
             </span>
           </div>
-          <button className="btn btn-primary" type="button" onClick={() => (isFixed ? onChoose : onCustomChoose)(bundle.id)}>
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={() => (isFixed ? onChoose : onCustomChoose)(bundle.id)}
+          >
             {isFixed ? 'Pilih Paket Ini' : 'Tentukan Pilihanmu'} <Icon name="arrowRight" />
           </button>
         </div>

@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import Icon from '../../components/Icon'
 
 function formatRupiah(value) {
@@ -8,18 +9,44 @@ function formatRupiah(value) {
   }).format(Math.max(0, Math.round(Number(value) || 0)))
 }
 
-function CheckoutBundle({ bundle, items = [], onBack, onContinue }) {
-  const isFixed = bundle?.priceMode === 'fixed'
-  const subtotal = items.reduce(
-    (total, item) => total + Math.max(0, Number(item.salePrice) || Number(item.price) || 0),
-    0,
+function CheckoutBundle({
+  bundle,
+  items = [],
+  paymentMethods = [],
+  onBack,
+  onCheckout,
+}) {
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [status, setStatus] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const subtotal = useMemo(
+    () => items.reduce((total, item) => total + Math.max(0, Number(item.salePrice) || Number(item.price) || 0), 0),
+    [items],
   )
-  const discount = isFixed
-    ? Math.max(0, subtotal - Number(bundle?.fixedPrice || 0))
-    : Math.round(subtotal * Number(bundle?.discountPercent || 0) / 100)
-  const total = isFixed ? Number(bundle?.fixedPrice || 0) : Math.max(0, subtotal - discount)
+  const total = Math.max(0, Number(bundle?.fixedPrice) || 0)
+  const discount = Math.max(0, subtotal - total)
 
   if (!bundle) return null
+
+  const submitCheckout = async () => {
+    if (!paymentMethod) {
+      setStatus('Pilih metode pembayaran terlebih dahulu.')
+      return
+    }
+    if (!acceptedTerms) {
+      setStatus('Centang persetujuan syarat penggunaan terlebih dahulu.')
+      return
+    }
+    setIsSubmitting(true)
+    setStatus('')
+    try {
+      await onCheckout({ bundle, items, paymentMethod })
+    } catch (error) {
+      setStatus(error.message || 'Checkout bundle belum bisa dibuat.')
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <section className="bundle-checkout-page">
@@ -48,9 +75,29 @@ function CheckoutBundle({ bundle, items = [], onBack, onContinue }) {
           <div><span>Subtotal</span><strong>{formatRupiah(subtotal)}</strong></div>
           <div className="discount"><span>Potongan paket</span><strong>-{formatRupiah(discount)}</strong></div>
           <div className="total"><span>Total</span><strong>{formatRupiah(total)}</strong></div>
-          <p><Icon name="shield" /> Akses diberikan otomatis setelah pembayaran berhasil.</p>
-          <button className="btn btn-primary" type="button" onClick={() => onContinue(bundle.id)}>
-            Lanjutkan Pembayaran <Icon name="arrowRight" />
+          <div className="bundle-checkout-methods">
+            <span>Metode pembayaran</span>
+            <div>
+              {paymentMethods.map((method) => (
+                <button
+                  className={paymentMethod === method.code ? 'active' : ''}
+                  key={method.code}
+                  type="button"
+                  onClick={() => setPaymentMethod(method.code)}
+                >
+                  <strong>{method.label || method.code}</strong>
+                </button>
+              ))}
+              {!paymentMethods.length && <small>Metode pembayaran belum tersedia.</small>}
+            </div>
+          </div>
+          <label className="bundle-checkout-terms">
+            <input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} />
+            <span>Saya menyetujui syarat penggunaan dan kebijakan pembayaran.</span>
+          </label>
+          {status && <p className="bundle-checkout-status">{status}</p>}
+          <button className="btn btn-primary" type="button" disabled={isSubmitting} onClick={submitCheckout}>
+            {isSubmitting ? 'Memproses...' : 'Bayar Sekarang'} <Icon name="arrowRight" />
           </button>
         </aside>
       </div>

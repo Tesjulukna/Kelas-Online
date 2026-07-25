@@ -234,6 +234,7 @@ function HomePage({
   publicActivities = [],
   onDigitalProductReviewLike = async () => {},
   onOpenBundle = () => {},
+  onCheckoutBundle = async () => {},
 }) {
   const websiteSettings = cleanWebsiteSettings(settings)
   const initialState = getInitialDetailState(initialDetail)
@@ -1636,8 +1637,9 @@ function HomePage({
         <CheckoutBundle
           bundle={selectedBundleDetail}
           items={selectedBundleItems}
+          paymentMethods={paymentMethods}
           onBack={() => backToBundleDetail(selectedBundleDetail.id)}
-          onContinue={onOpenBundle}
+          onCheckout={onCheckoutBundle}
         />
       )
     }

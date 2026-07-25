@@ -3329,6 +3329,24 @@ function App() {
                 goToLogin()
               }
             }}
+            onCheckoutBundle={async ({ bundle, items, paymentMethod }) => {
+              if (session?.role !== 'member') {
+                window.sessionStorage.setItem('ibnucreative.bundle-program', bundle.id)
+                goToLogin()
+                return
+              }
+              const data = await handleCreateTripayCheckout({
+                id: `fixed-${bundle.id}`,
+                title: bundle.title,
+                price: bundle.fixedPrice,
+                itemType: 'bundle',
+                bundleProgramId: bundle.id,
+                bundleItems: items.map((item) => ({ type: item.itemType, id: item.id })),
+              }, paymentMethod, { itemType: 'bundle' })
+              if (data?.checkoutUrl) {
+                window.location.assign(data.checkoutUrl)
+              }
+            }}
           />
         )}
         {page === 'login' && (
