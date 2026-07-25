@@ -8,7 +8,7 @@ function formatRupiah(value) {
   }).format(Math.max(0, Math.round(Number(value) || 0)))
 }
 
-function DetailBundle({ bundle, items = [], onBack, onChoose }) {
+function DetailBundle({ bundle, items = [], onBack, onChoose, onCustomChoose }) {
   if (!bundle) return null
 
   const isFixed = bundle.priceMode === 'fixed'
@@ -39,7 +39,7 @@ function DetailBundle({ bundle, items = [], onBack, onChoose }) {
               <strong>{items.length} item</strong>
             </span>
           </div>
-          <button className="btn btn-primary" type="button" onClick={() => onChoose(bundle.id)}>
+          <button className="btn btn-primary" type="button" onClick={() => (isFixed ? onChoose : onCustomChoose)(bundle.id)}>
             {isFixed ? 'Pilih Paket Ini' : 'Tentukan Pilihanmu'} <Icon name="arrowRight" />
           </button>
         </div>

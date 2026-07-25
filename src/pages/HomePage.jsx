@@ -6,6 +6,7 @@ import CheckoutProduk from './detail/CheckoutProduk'
 import DetailKelas from './detail/DetailKelas'
 import DetailProduk from './detail/DetailProduk'
 import DetailBundle from './detail/DetailBundle'
+import CheckoutBundle from './detail/CheckoutBundle'
 import ProductAccessPage from './detail/ProductAccessPage'
 import { getCheckoutEmailWarning } from '../utils/emailValidation'
 import { getCheckoutPhoneWarning, normalizeCheckoutPhone } from '../utils/phoneValidation'
@@ -1122,6 +1123,24 @@ function HomePage({
     notifyRouteChange()
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+  const openBundleCheckout = (bundleId) => {
+    window.history.pushState(
+      { publicDetailFromApp: true, checkoutFromBundleDetail: true },
+      '',
+      `/bundling/${encodeURIComponent(bundleId)}/checkout`,
+    )
+    notifyRouteChange()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const backToBundleDetail = (bundleId) => {
+    window.history.replaceState(
+      { publicDetailFromApp: true },
+      '',
+      `/bundling/${encodeURIComponent(bundleId)}`,
+    )
+    notifyRouteChange()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const closePublicDetail = () => {
     const isProductAccessRoute =
@@ -1612,13 +1631,24 @@ function HomePage({
   )
 
   if (selectedBundleDetail) {
+    if (initialDetailAction === 'checkout') {
+      return (
+        <CheckoutBundle
+          bundle={selectedBundleDetail}
+          items={selectedBundleItems}
+          onBack={() => backToBundleDetail(selectedBundleDetail.id)}
+          onContinue={onOpenBundle}
+        />
+      )
+    }
     return (
       <>
         <DetailBundle
           bundle={selectedBundleDetail}
           items={selectedBundleItems}
           onBack={closePublicDetail}
-          onChoose={onOpenBundle}
+          onChoose={openBundleCheckout}
+          onCustomChoose={onOpenBundle}
         />
         {activityToast}
       </>
