@@ -23196,11 +23196,15 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 @media (max-width: 760px) {
   .bundle-detail-page { width: min(100% - 20px,1180px); margin-top: 15px; }
   .bundle-detail-hero { grid-template-columns: 1fr; }
-  .bundle-detail-cover { min-height: 0; aspect-ratio: 16 / 9; }
+  .bundle-detail-cover { min-height: 0; aspect-ratio: 1 / 1; }
   .bundle-detail-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .bundle-detail-copy { padding: 22px 18px; }
   .bundle-detail-content { padding: 16px; }
   .bundle-detail-items { grid-template-columns: 1fr; }
+  .bundle-detail-items article { grid-template-columns: minmax(96px,120px) minmax(0,1fr); align-items: start; }
+  .bundle-detail-items article > span { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  .bundle-detail-items article > div { align-content: start; }
+  .bundle-detail-items h3 { overflow: visible; margin: 2px 0 5px; line-height: 1.35; text-overflow: clip; white-space: normal; }
   .bundle-checkout-page { width: calc(100% - 20px); margin-top: 15px; }
   .bundle-checkout-layout { grid-template-columns: 1fr; }
   .bundle-checkout-layout > main { padding: 15px; }
@@ -23213,8 +23217,8 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 
 @media (max-width: 760px) {
   .homepage-bundle-grid { grid-template-columns: 1fr; gap: 12px; }
-  .homepage-bundle-card { display: grid !important; grid-template-areas: "bundle-media" "bundle-copy" "bundle-footer"; grid-template-columns: minmax(0,1fr); grid-template-rows: 142px auto auto; width: 100%; height: auto !important; min-height: 0; max-height: none !important; }
-  .homepage-bundle-media { grid-area: bundle-media; width: 100%; height: 142px; min-height: 0; aspect-ratio: auto; }
+  .homepage-bundle-card { display: grid !important; grid-template-areas: "bundle-media" "bundle-copy" "bundle-footer"; grid-template-columns: minmax(0,1fr); grid-template-rows: auto auto auto; width: 100%; height: auto !important; min-height: 0; max-height: none !important; }
+  .homepage-bundle-media { grid-area: bundle-media; width: 100%; height: auto; min-height: 0; aspect-ratio: 1 / 1; }
   .homepage-bundle-card > div { grid-area: bundle-copy; display: grid !important; position: relative; z-index: 1; visibility: visible !important; opacity: 1 !important; min-height: 82px; padding: 13px 13px 8px; background: inherit; }
   .homepage-bundle-card h3 { font-size: .92rem; }
   .homepage-bundle-card p { display: -webkit-box; min-height: 0; margin: 5px 0; overflow: hidden; font-size: .72rem; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

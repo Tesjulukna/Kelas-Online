@@ -1134,6 +1134,11 @@ function HomePage({
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
   const backToBundleDetail = (bundleId) => {
+    if (window.history.state?.checkoutFromBundleDetail && window.history.length > 1) {
+      window.history.back()
+      return
+    }
+
     window.history.replaceState(
       { publicDetailFromApp: true },
       '',
