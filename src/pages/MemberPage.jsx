@@ -3283,15 +3283,18 @@ function MemberPage({
                   className="btn btn-primary bundle-checkout-button"
                   type="button"
                   disabled={selectedBundleItems.length < bundleMinimumItems}
-                  onClick={() => openPaymentMethodPopup({
-                    id: 'custom-bundle',
-                    title: selectedBundleProgram.title,
-                    price: bundleTotal,
-                    salePrice: 0,
-                    itemType: 'bundle',
-                    bundleProgramId: selectedBundleProgram.id,
-                    bundleItems: selectedBundleItems.map((item) => ({ type: item.itemType, id: item.id })),
-                  }, { itemType: 'bundle' })}
+                  onClick={() => {
+                    setIsPercentBundleModalOpen(false)
+                    openPaymentMethodPopup({
+                      id: 'custom-bundle',
+                      title: selectedBundleProgram.title,
+                      price: bundleTotal,
+                      salePrice: 0,
+                      itemType: 'bundle',
+                      bundleProgramId: selectedBundleProgram.id,
+                      bundleItems: selectedBundleItems.map((item) => ({ type: item.itemType, id: item.id })),
+                    }, { itemType: 'bundle' })
+                  }}
                 >
                   Lanjut ke pembayaran <Icon name="arrowRight" />
                 </button>

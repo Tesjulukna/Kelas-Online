@@ -1,4 +1,12 @@
 const paths = {
+  bundle: (
+    <>
+      <path d="m4 8 8-4 8 4-8 4z" />
+      <path d="m4 8 8 4 8-4v8l-8 4-8-4z" />
+      <path d="M12 12v8" />
+      <path d="m8 6 8 4" />
+    </>
+  ),
   search: (
     <>
       <circle cx="11" cy="11" r="7" />
