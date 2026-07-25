@@ -2,7 +2,7 @@ import Icon from '../../components/Icon'
 import { getCheckoutEmailWarning } from '../../utils/emailValidation'
 import { getCheckoutPhoneWarning } from '../../utils/phoneValidation'
 
-function PaymentMethodLogo({ method }) {
+export function PaymentMethodLogo({ method }) {
   if (method.logoUrl) {
     return (
       <span className="payment-method-logo custom-logo" aria-hidden="true">

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import Icon from '../../components/Icon'
+import { PaymentMethodLogo } from './CheckoutProduk'
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', {
@@ -85,6 +86,7 @@ function CheckoutBundle({
                   type="button"
                   onClick={() => setPaymentMethod(method.code)}
                 >
+                  <PaymentMethodLogo method={method} />
                   <strong>{method.label || method.code}</strong>
                 </button>
               ))}
