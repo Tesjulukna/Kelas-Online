@@ -903,6 +903,7 @@ function clean_website_settings($value): array
             'showOnMember' => !array_key_exists('showOnMember', $program) || !empty($program['showOnMember']),
             'minimumItems' => clean_number($program['minimumItems'] ?? 2, 1, 50),
             'priceMode' => ($program['priceMode'] ?? '') === 'fixed' ? 'fixed' : 'percent',
+            'packagePriceMethod' => ($program['packagePriceMethod'] ?? '') === 'percent' ? 'percent' : 'fixed',
             'fixedPrice' => clean_number($program['fixedPrice'] ?? 0, 0, 1000000000),
             'discountPercent' => clean_number($program['discountPercent'] ?? 0, 0, 100),
             'maximumDiscount' => clean_number($program['maximumDiscount'] ?? 0, 0, 1000000000),

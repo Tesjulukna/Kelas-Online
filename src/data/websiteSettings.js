@@ -505,6 +505,7 @@ function cleanBundlingSettings(value = {}) {
       showOnMember: program?.showOnMember !== false,
       minimumItems: number(program?.minimumItems, 2, 1, 50),
       priceMode: program?.priceMode === 'fixed' ? 'fixed' : 'percent',
+      packagePriceMethod: program?.packagePriceMethod === 'percent' ? 'percent' : 'fixed',
       fixedPrice: number(program?.fixedPrice, 0, 0, 1000000000),
       discountPercent: number(program?.discountPercent, 0, 0, 100),
       maximumDiscount: number(program?.maximumDiscount, 0, 0, 1000000000),

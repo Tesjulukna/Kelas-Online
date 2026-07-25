@@ -1002,6 +1002,7 @@ function AdminPage({
     showOnMember: true,
     minimumItems: seedItem ? 1 : 2,
     priceMode,
+    packagePriceMethod: 'fixed',
     fixedPrice: 0,
     discountPercent: 10,
     maximumDiscount: 0,
@@ -1039,9 +1040,12 @@ function AdminPage({
     event.preventDefault()
     if (!bundleProgramDraft.title.trim()) return onNotify('Nama bundling wajib diisi.')
     if (!bundleProgramDraft.eligibleItems.length) return onNotify('Pilih minimal satu kelas, produk, atau prompt.')
+    const finalBundleProgram = bundleProgramDraft.priceMode === 'fixed'
+      ? { ...bundleProgramDraft, fixedPrice: bundleCalculatedFixedPrice }
+      : bundleProgramDraft
     const programs = editingBundleProgramId
-      ? bundleDraft.programs.map((program) => program.id === editingBundleProgramId ? bundleProgramDraft : program)
-      : [...bundleDraft.programs, bundleProgramDraft]
+      ? bundleDraft.programs.map((program) => program.id === editingBundleProgramId ? finalBundleProgram : program)
+      : [...bundleDraft.programs, finalBundleProgram]
     const nextBundling = { ...bundleDraft, programs }
     setIsSavingBundle(true)
     try {
@@ -1112,10 +1116,11 @@ function AdminPage({
   const memberPromptProducts = promptProducts.filter(
     (product) => product.status === 'Aktif' && product.showOnMember !== false,
   )
-  const bundleEditorCatalog = [
+  const bundleEditorAllItems = [
     ...classes.filter((item) => item.status === 'Aktif').map((item) => ({ ...item, type: 'class', kind: 'Kelas' })),
     ...digitalProducts.filter((item) => item.status === 'Aktif').map((item) => ({ ...item, type: 'digital_product', kind: item.productType === 'prompt' ? 'Prompt' : 'Produk digital' })),
-  ].filter((item) => {
+  ]
+  const bundleEditorCatalog = bundleEditorAllItems.filter((item) => {
     const query = bundleItemSearch.trim().toLowerCase()
     const matchesSearch = !query || String(item.title || '').toLowerCase().includes(query)
     const matchesType =
@@ -1125,6 +1130,14 @@ function AdminPage({
       (bundleItemFilter === 'prompt' && item.productType === 'prompt')
     return matchesSearch && matchesType
   })
+  const bundlePackageSubtotal = bundleProgramDraft
+    ? bundleEditorAllItems
+      .filter((item) => bundleProgramDraft.eligibleItems.some((selected) => selected.type === item.type && selected.id === item.id))
+      .reduce((total, item) => total + Math.max(0, Math.round(Number(item.salePrice) || Number(item.price) || 0)), 0)
+    : 0
+  const bundleCalculatedFixedPrice = bundleProgramDraft?.priceMode === 'fixed' && bundleProgramDraft.packagePriceMethod === 'percent'
+    ? Math.max(0, Math.round(bundlePackageSubtotal * (100 - Math.min(100, Math.max(0, Number(bundleProgramDraft.discountPercent) || 0))) / 100))
+    : Math.max(0, Math.round(Number(bundleProgramDraft?.fixedPrice) || 0))
   const [submissionPageSize, setSubmissionPageSize] = useState(10)
   const [submissionPage, setSubmissionPage] = useState(1)
   const [submissionSearchTerm, setSubmissionSearchTerm] = useState('')
@@ -4264,8 +4277,6 @@ function AdminPage({
               <h2>Kelola kelas</h2>
             </div>
             <div className="button-row">
-              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(null, null, 'fixed')}><Icon name="wallet" /> Paket Tetap</button>
-              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(null, null, 'percent')}><Icon name="spark" /> Bundle Persen</button>
               <button className="btn btn-secondary" type="button" onClick={handleExportData}>
                 <Icon name="arrowRight" />
                 Ekspor
@@ -5377,8 +5388,6 @@ function AdminPage({
                 </small>
               </div>
             <div className="button-row">
-              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(null, null, 'fixed')}><Icon name="wallet" /> Paket Tetap</button>
-              <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(null, null, 'percent')}><Icon name="spark" /> Bundle Persen</button>
               <button
                 className="btn btn-primary"
                 type="button"
@@ -7240,7 +7249,27 @@ function AdminPage({
                   <div className="bundle-pricing-grid">
                     <label><span>Minimal item dipilih</span><input type="number" min="1" value={bundleProgramDraft.minimumItems} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, minimumItems: Number(event.target.value) }))} /><small>Pembeli harus memilih minimal sejumlah ini.</small></label>
                     <div className="bundle-mode-summary"><span>{bundleProgramDraft.priceMode === 'fixed' ? <Icon name="wallet" /> : <Icon name="spark" />}</span><p><strong>{bundleProgramDraft.priceMode === 'fixed' ? 'Paket harga tetap' : 'Bundling persen'}</strong><small>{bundleProgramDraft.priceMode === 'fixed' ? 'Isi ditentukan admin, dibeli sebagai satu paket.' : 'Isi dipilih member, total dipotong persen.'}</small></p></div>
-                    {bundleProgramDraft.priceMode === 'fixed' ? <label className="bundle-price-highlight"><span>Harga bundling</span><input type="number" min="0" value={bundleProgramDraft.fixedPrice} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, fixedPrice: Number(event.target.value) }))} /><strong>{formatRupiah(bundleProgramDraft.fixedPrice)}</strong></label> : <label className="bundle-price-highlight"><span>Diskon</span><div className="bundle-percent-input"><input type="number" min="0" max="100" value={bundleProgramDraft.discountPercent} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, discountPercent: Number(event.target.value) }))} /><b>%</b></div><strong>Potongan {bundleProgramDraft.discountPercent}%</strong></label>}
+                    {bundleProgramDraft.priceMode === 'fixed' ? (
+                      <div className="bundle-price-highlight bundle-fixed-price-control">
+                        <span>Cara menentukan harga paket</span>
+                        <div className="bundle-package-price-tabs">
+                          <button type="button" className={bundleProgramDraft.packagePriceMethod !== 'percent' ? 'active' : ''} onClick={() => setBundleProgramDraft((current) => ({ ...current, packagePriceMethod: 'fixed' }))}>Harga final</button>
+                          <button type="button" className={bundleProgramDraft.packagePriceMethod === 'percent' ? 'active' : ''} onClick={() => setBundleProgramDraft((current) => ({ ...current, packagePriceMethod: 'percent' }))}>Hitung dari persen</button>
+                        </div>
+                        {bundleProgramDraft.packagePriceMethod === 'percent' ? (
+                          <>
+                            <div className="bundle-percent-input"><input type="number" min="0" max="100" value={bundleProgramDraft.discountPercent} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, discountPercent: Number(event.target.value) }))} /><b>%</b></div>
+                            <small>Subtotal item {formatRupiah(bundlePackageSubtotal)}</small>
+                            <strong>Harga paket otomatis: {formatRupiah(bundleCalculatedFixedPrice)}</strong>
+                          </>
+                        ) : (
+                          <>
+                            <input type="number" min="0" value={bundleProgramDraft.fixedPrice} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, fixedPrice: Number(event.target.value) }))} />
+                            <strong>Harga paket: {formatRupiah(bundleCalculatedFixedPrice)}</strong>
+                          </>
+                        )}
+                      </div>
+                    ) : <label className="bundle-price-highlight"><span>Diskon</span><div className="bundle-percent-input"><input type="number" min="0" max="100" value={bundleProgramDraft.discountPercent} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, discountPercent: Number(event.target.value) }))} /><b>%</b></div><strong>Potongan {bundleProgramDraft.discountPercent}%</strong></label>}
                   </div>
                   <div className="bundle-program-visibility">
                     <label><input type="checkbox" checked={bundleProgramDraft.active} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, active: event.target.checked }))} /><span><strong>Bundling aktif</strong><small>Dapat digunakan untuk checkout</small></span></label>
