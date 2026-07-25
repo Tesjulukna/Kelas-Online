@@ -23211,14 +23211,14 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   .bundle-checkout-customer > div { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 620px) {
+@media (max-width: 760px) {
   .homepage-bundle-grid { grid-template-columns: 1fr; gap: 12px; }
-  .homepage-bundle-card { display: block; min-height: 0; }
-  .homepage-bundle-media { width: 100%; height: 142px; min-height: 0; aspect-ratio: auto; }
-  .homepage-bundle-card > div { display: grid !important; visibility: visible; opacity: 1; padding: 13px 13px 8px; }
+  .homepage-bundle-card { display: grid !important; grid-template-areas: "bundle-media" "bundle-copy" "bundle-footer"; grid-template-columns: minmax(0,1fr); grid-template-rows: 142px auto auto; width: 100%; height: auto !important; min-height: 0; max-height: none !important; }
+  .homepage-bundle-media { grid-area: bundle-media; width: 100%; height: 142px; min-height: 0; aspect-ratio: auto; }
+  .homepage-bundle-card > div { grid-area: bundle-copy; display: grid !important; position: relative; z-index: 1; visibility: visible !important; opacity: 1 !important; min-height: 82px; padding: 13px 13px 8px; background: inherit; }
   .homepage-bundle-card h3 { font-size: .92rem; }
   .homepage-bundle-card p { display: -webkit-box; min-height: 0; margin: 5px 0; overflow: hidden; font-size: .72rem; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .homepage-bundle-card footer { display: flex !important; visibility: visible; opacity: 1; padding: 9px 13px 13px; }
+  .homepage-bundle-card footer { grid-area: bundle-footer; display: flex !important; position: relative; z-index: 1; visibility: visible !important; opacity: 1 !important; min-height: 54px; padding: 9px 13px 13px; background: inherit; }
   .homepage-bundle-card footer strong { font-size: .84rem; }
   .homepage-bundle-card footer .btn { min-height: 32px; padding: 6px 9px; font-size: .68rem; }
   .member-fixed-package-grid { grid-template-columns: 1fr; }

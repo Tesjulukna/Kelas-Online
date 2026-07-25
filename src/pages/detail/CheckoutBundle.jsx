@@ -12,6 +12,15 @@ function formatRupiah(value) {
   }).format(Math.max(0, Math.round(Number(value) || 0)))
 }
 
+function getPaymentMethodFee(method, amount) {
+  if (!method) return 0
+
+  const flatFee = Math.max(0, Math.round(Number(method.feeFlat) || 0))
+  const percentFee = Math.max(0, Number(method.feePercent) || 0)
+
+  return flatFee + Math.max(0, Math.round((Math.max(0, amount) * percentFee) / 100))
+}
+
 function CheckoutBundle({
   bundle,
   items = [],
@@ -37,6 +46,8 @@ function CheckoutBundle({
   )
   const total = Math.max(0, Number(bundle?.fixedPrice) || 0)
   const discount = Math.max(0, subtotal - total)
+  const serviceFee = getPaymentMethodFee(selectedPaymentMethod, total)
+  const paymentTotal = total + serviceFee
 
   if (!bundle) return null
 
@@ -138,7 +149,9 @@ function CheckoutBundle({
           <h2>Ringkasan pembayaran</h2>
           <div><span>Subtotal</span><strong>{formatRupiah(subtotal)}</strong></div>
           <div className="discount"><span>Potongan paket</span><strong>-{formatRupiah(discount)}</strong></div>
-          <div className="total"><span>Total</span><strong>{formatRupiah(total)}</strong></div>
+          <div><span>Harga bundle</span><strong>{formatRupiah(total)}</strong></div>
+          <div><span>Biaya layanan</span><strong>{selectedPaymentMethod ? formatRupiah(serviceFee) : 'Pilih metode'}</strong></div>
+          <div className="total"><span>Total pembayaran</span><strong>{formatRupiah(paymentTotal)}</strong></div>
           <div className="bundle-checkout-methods">
             <span>Metode pembayaran</span>
             {selectedPaymentMethod ? (
