@@ -64,6 +64,25 @@ export const defaultWebsiteSettings = {
     selectedActivityIds: [],
     customActivities: [],
   },
+  bundling: {
+    enabled: true,
+    title: 'Buat Bundling Hemat',
+    description: 'Pilih minimal 2 kelas, produk digital, atau prompt dan dapatkan harga khusus.',
+    minimumItems: 2,
+    discountMode: 'tiered',
+    discountPercent: 10,
+    fixedPrice: 0,
+    maximumDiscount: 100000,
+    minimumSubtotal: 0,
+    allowClasses: true,
+    allowDigitalProducts: true,
+    allowPrompts: true,
+    tiers: [
+      { minimumItems: 2, discountPercent: 10 },
+      { minimumItems: 3, discountPercent: 15 },
+      { minimumItems: 4, discountPercent: 20 },
+    ],
+  },
   memberAbout: {
     menuLabel: 'Tentang',
     eyebrow: 'Profil Ibnu Creative',
@@ -443,6 +462,40 @@ function cleanMemberAbout(value = {}) {
   }
 }
 
+function cleanBundlingSettings(value = {}) {
+  const defaults = defaultWebsiteSettings.bundling
+  const source = value && typeof value === 'object' ? value : {}
+  const number = (input, fallback, min, max) => {
+    const parsed = Math.round(Number(input))
+    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback
+  }
+  const tiers = (Array.isArray(source.tiers) ? source.tiers : defaults.tiers)
+    .map((tier) => ({
+      minimumItems: number(tier?.minimumItems, 2, 2, 50),
+      discountPercent: number(tier?.discountPercent, 0, 0, 100),
+    }))
+    .sort((a, b) => a.minimumItems - b.minimumItems)
+    .slice(0, 10)
+
+  return {
+    enabled: source.enabled !== false,
+    title: cleanText(source.title || defaults.title, 100),
+    description: cleanText(source.description || defaults.description, 300),
+    minimumItems: number(source.minimumItems, defaults.minimumItems, 2, 50),
+    discountMode: ['fixed', 'percent', 'tiered'].includes(source.discountMode)
+      ? source.discountMode
+      : defaults.discountMode,
+    discountPercent: number(source.discountPercent, defaults.discountPercent, 0, 100),
+    fixedPrice: number(source.fixedPrice, 0, 0, 1000000000),
+    maximumDiscount: number(source.maximumDiscount, defaults.maximumDiscount, 0, 1000000000),
+    minimumSubtotal: number(source.minimumSubtotal, defaults.minimumSubtotal, 0, 1000000000),
+    allowClasses: source.allowClasses !== false,
+    allowDigitalProducts: source.allowDigitalProducts !== false,
+    allowPrompts: source.allowPrompts !== false,
+    tiers: tiers.length ? tiers : defaults.tiers,
+  }
+}
+
 export function cleanWebsiteSettings(value = {}) {
   const source = value && typeof value === 'object' ? value : {}
 
@@ -509,6 +562,7 @@ export function cleanWebsiteSettings(value = {}) {
       ),
     },
     homepageNotifications: cleanHomepageNotifications(source.homepageNotifications),
+    bundling: cleanBundlingSettings(source.bundling),
     memberAbout: cleanMemberAbout(source.memberAbout),
     paymentMethods: cleanPaymentMethods(source.paymentMethods),
     benefits: {

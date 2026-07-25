@@ -174,6 +174,7 @@ function getDashboardMenuFromUrl(role) {
         'manage-classes',
         'digital-products',
         'prompts',
+        'bundles',
         'students',
         'payments',
         'submissions',
@@ -188,6 +189,7 @@ function getDashboardMenuFromUrl(role) {
         'available-classes',
         'digital-products',
         'prompts',
+        'bundles',
         'testimonials',
         'certificates',
         'support',
@@ -3126,6 +3128,7 @@ function App() {
       body: JSON.stringify({
         classId: options.itemType === 'digital_product' ? '' : item.id,
         productId: options.itemType === 'digital_product' ? item.id : '',
+        bundleItems: options.itemType === 'bundle' ? item.bundleItems : [],
         memberId: session.userId,
         paymentMethod,
         forceNewPayment: options.forceNewPayment === true,

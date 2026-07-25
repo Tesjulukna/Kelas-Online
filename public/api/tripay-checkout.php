@@ -15,9 +15,10 @@ $config = api_config();
 $payload = read_json_body();
 $classId = clean_text($payload['classId'] ?? '', 120);
 $productId = clean_text($payload['productId'] ?? '', 120);
-$checkoutType = $productId !== '' ? 'digital_product' : 'class';
+$requestedBundleItems = is_array($payload['bundleItems'] ?? null) ? $payload['bundleItems'] : [];
+$checkoutType = $requestedBundleItems ? 'bundle' : ($productId !== '' ? 'digital_product' : 'class');
 
-if ($classId === '' && $productId === '') {
+if ($classId === '' && $productId === '' && !$requestedBundleItems) {
     send_json(400, ['message' => 'ID kelas atau produk wajib dikirim.']);
 }
 
@@ -33,7 +34,78 @@ if (!$member) {
 
 $checkoutItem = null;
 
-if ($checkoutType === 'digital_product') {
+if ($checkoutType === 'bundle') {
+    $settings = fetch_website_settings($pdo);
+    $bundleRules = is_array($settings['bundling'] ?? null) ? $settings['bundling'] : [];
+    if (empty($bundleRules['enabled'])) {
+        send_json(422, ['message' => 'Program bundling sedang tidak aktif.']);
+    }
+    $seen = [];
+    $bundleItems = [];
+    $subtotal = 0;
+    foreach (array_slice($requestedBundleItems, 0, 50) as $requestedItem) {
+        $type = clean_text($requestedItem['type'] ?? '', 40);
+        $id = clean_text($requestedItem['id'] ?? '', 120);
+        $key = $type . ':' . $id;
+        if ($id === '' || isset($seen[$key])) continue;
+        $seen[$key] = true;
+        if ($type === 'class') {
+            if (empty($bundleRules['allowClasses']) || tripay_has_class_access($member, $id)) continue;
+            $query = $pdo->prepare('SELECT * FROM classes WHERE id = ? AND status = ? LIMIT 1');
+            $query->execute([$id, 'Aktif']);
+            $item = $query->fetch();
+            if (!$item) continue;
+            $price = commerce_class_effective_price($item);
+            $bundleItems[] = ['type' => 'class', 'id' => $id, 'title' => clean_text($item['title'] ?? 'Kelas', 180), 'price' => $price];
+            $subtotal += $price;
+            continue;
+        }
+        if ($type === 'digital_product') {
+            $item = commerce_fetch_product($pdo, $id, true);
+            if (!$item) continue;
+            $isPrompt = clean_text($item['product_type'] ?? '', 40) === 'prompt';
+            if (($isPrompt && empty($bundleRules['allowPrompts'])) || (!$isPrompt && empty($bundleRules['allowDigitalProducts']))) continue;
+            $accessQuery = $pdo->prepare('SELECT id FROM digital_product_access WHERE product_id = ? AND status = ? AND (member_id = ? OR buyer_email = ?) LIMIT 1');
+            $accessQuery->execute([$id, 'active', $member['id'], clean_email($member['email'] ?? '')]);
+            if ($accessQuery->fetch() && empty($item['allow_repeat_purchase'])) continue;
+            commerce_assert_product_stock_available($item);
+            $price = commerce_product_effective_price($item);
+            $bundleItems[] = ['type' => 'digital_product', 'id' => $id, 'title' => clean_text($item['title'] ?? 'Produk digital', 180), 'price' => $price, 'productType' => $isPrompt ? 'prompt' : 'digital'];
+            $subtotal += $price;
+        }
+    }
+    $minimumItems = clean_number($bundleRules['minimumItems'] ?? 2, 2, 50);
+    if (count($bundleItems) < $minimumItems) {
+        send_json(422, ['message' => 'Pilih minimal ' . $minimumItems . ' item yang belum dimiliki.']);
+    }
+    if ($subtotal < clean_number($bundleRules['minimumSubtotal'] ?? 0, 0, 1000000000)) {
+        send_json(422, ['message' => 'Subtotal bundling belum memenuhi batas minimal.']);
+    }
+    $discountMode = clean_text($bundleRules['discountMode'] ?? 'percent', 20);
+    $discountPercent = clean_number($bundleRules['discountPercent'] ?? 0, 0, 100);
+    if ($discountMode === 'tiered') {
+        $discountPercent = 0;
+        foreach (($bundleRules['tiers'] ?? []) as $tier) {
+            if (count($bundleItems) >= clean_number($tier['minimumItems'] ?? 2, 2, 50)) {
+                $discountPercent = clean_number($tier['discountPercent'] ?? 0, 0, 100);
+            }
+        }
+    }
+    $discount = $discountMode === 'fixed'
+        ? max(0, $subtotal - clean_number($bundleRules['fixedPrice'] ?? 0, 0, 1000000000))
+        : (int) round($subtotal * $discountPercent / 100);
+    $maximumDiscount = clean_number($bundleRules['maximumDiscount'] ?? 0, 0, 1000000000);
+    if ($maximumDiscount > 0) $discount = min($discount, $maximumDiscount);
+    $checkoutItem = [
+        'id' => 'custom-bundle',
+        'title' => clean_text($bundleRules['title'] ?? 'Custom Bundling', 180),
+        'price' => max(0, $subtotal - $discount),
+        'sale_price' => 0,
+        'bundle_items' => $bundleItems,
+        'bundle_subtotal' => $subtotal,
+        'bundle_discount' => $discount,
+    ];
+} elseif ($checkoutType === 'digital_product') {
     $checkoutItem = commerce_fetch_product($pdo, $productId, true);
 
     if (!$checkoutItem) {
@@ -100,6 +172,9 @@ $amount = $checkoutType === 'digital_product'
     : commerce_class_effective_price($checkoutItem);
 
 if ($amount <= 0) {
+    if ($checkoutType === 'bundle') {
+        send_json(422, ['message' => 'Total bundling harus lebih dari Rp0.']);
+    }
     if ($checkoutType === 'digital_product') {
         $orderCode = 'FREE-MEMBER-' . $checkoutItem['id'] . '-' . time();
         $accessResult = commerce_grant_digital_product_access($pdo, [
@@ -233,7 +308,7 @@ $insert->execute([
     $member['id'],
     clean_text($member['name'] ?? ($user['name'] ?? 'Member'), 160),
     $buyerEmail,
-    $checkoutType === 'digital_product' ? 'product:' . $checkoutItem['id'] : $checkoutItem['id'],
+    $checkoutType === 'digital_product' ? 'product:' . $checkoutItem['id'] : ($checkoutType === 'bundle' ? 'bundle:' . $merchantRef : $checkoutItem['id']),
     $checkoutItem['title'],
     $amount,
     'pending',
@@ -243,6 +318,9 @@ $insert->execute([
         'product_type' => $checkoutType === 'digital_product' ? clean_text($checkoutItem['product_type'] ?? 'digital', 40) : '',
         'product_id' => $checkoutType === 'digital_product' ? $checkoutItem['id'] : '',
         'product_title' => $checkoutType === 'digital_product' ? $checkoutItem['title'] : '',
+        'bundle_items' => $checkoutType === 'bundle' ? $checkoutItem['bundle_items'] : [],
+        'bundle_subtotal' => $checkoutType === 'bundle' ? $checkoutItem['bundle_subtotal'] : 0,
+        'bundle_discount' => $checkoutType === 'bundle' ? $checkoutItem['bundle_discount'] : 0,
         'delivery_url' => $checkoutType === 'digital_product' ? ($checkoutItem['file_url'] ?? '') : '',
         'delivery_note' => $checkoutType === 'digital_product' ? ($checkoutItem['delivery_note'] ?? '') : '',
         'payment_method' => $method,

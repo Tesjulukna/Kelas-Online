@@ -620,6 +620,25 @@ function default_website_settings(): array
             'selectedActivityIds' => [],
             'customActivities' => [],
         ],
+        'bundling' => [
+            'enabled' => true,
+            'title' => 'Buat Bundling Hemat',
+            'description' => 'Pilih minimal 2 kelas, produk digital, atau prompt dan dapatkan harga khusus.',
+            'minimumItems' => 2,
+            'discountMode' => 'tiered',
+            'discountPercent' => 10,
+            'fixedPrice' => 0,
+            'maximumDiscount' => 100000,
+            'minimumSubtotal' => 0,
+            'allowClasses' => true,
+            'allowDigitalProducts' => true,
+            'allowPrompts' => true,
+            'tiers' => [
+                ['minimumItems' => 2, 'discountPercent' => 10],
+                ['minimumItems' => 3, 'discountPercent' => 15],
+                ['minimumItems' => 4, 'discountPercent' => 20],
+            ],
+        ],
         'memberAbout' => [
             'menuLabel' => 'Tentang',
             'eyebrow' => 'Profil Ibnu Creative',
@@ -853,6 +872,15 @@ function clean_website_settings($value): array
     $memberAbout = is_array($source['memberAbout'] ?? null) ? $source['memberAbout'] : [];
     $schedule = is_array($source['schedule'] ?? null) ? $source['schedule'] : [];
     $footer = is_array($source['footer'] ?? null) ? $source['footer'] : [];
+    $bundling = is_array($source['bundling'] ?? null) ? $source['bundling'] : [];
+    $bundleDefaults = $defaults['bundling'];
+    $bundleTiers = [];
+    foreach (array_slice(is_array($bundling['tiers'] ?? null) ? $bundling['tiers'] : $bundleDefaults['tiers'], 0, 10) as $tier) {
+        $bundleTiers[] = [
+            'minimumItems' => clean_number($tier['minimumItems'] ?? 2, 2, 50),
+            'discountPercent' => clean_number($tier['discountPercent'] ?? 0, 0, 100),
+        ];
+    }
 
     $navItems = [];
     $sourceNavItems = is_array($header['navItems'] ?? null) ? $header['navItems'] : [];
@@ -992,6 +1020,21 @@ function clean_website_settings($value): array
             'emptyPrice' => clean_text($courses['emptyPrice'] ?? $defaults['courses']['emptyPrice'], 90),
         ],
         'homepageNotifications' => clean_homepage_notifications($source['homepageNotifications'] ?? []),
+        'bundling' => [
+            'enabled' => !array_key_exists('enabled', $bundling) || !empty($bundling['enabled']),
+            'title' => clean_text($bundling['title'] ?? $bundleDefaults['title'], 100),
+            'description' => clean_text($bundling['description'] ?? $bundleDefaults['description'], 300),
+            'minimumItems' => clean_number($bundling['minimumItems'] ?? 2, 2, 50),
+            'discountMode' => in_array($bundling['discountMode'] ?? '', ['fixed', 'percent', 'tiered'], true) ? $bundling['discountMode'] : 'tiered',
+            'discountPercent' => clean_number($bundling['discountPercent'] ?? 10, 0, 100),
+            'fixedPrice' => clean_number($bundling['fixedPrice'] ?? 0, 0, 1000000000),
+            'maximumDiscount' => clean_number($bundling['maximumDiscount'] ?? 0, 0, 1000000000),
+            'minimumSubtotal' => clean_number($bundling['minimumSubtotal'] ?? 0, 0, 1000000000),
+            'allowClasses' => !array_key_exists('allowClasses', $bundling) || !empty($bundling['allowClasses']),
+            'allowDigitalProducts' => !array_key_exists('allowDigitalProducts', $bundling) || !empty($bundling['allowDigitalProducts']),
+            'allowPrompts' => !array_key_exists('allowPrompts', $bundling) || !empty($bundling['allowPrompts']),
+            'tiers' => $bundleTiers,
+        ],
         'memberAbout' => [
             'menuLabel' => clean_text($memberAbout['menuLabel'] ?? $defaults['memberAbout']['menuLabel'], 40),
             'eyebrow' => clean_text($memberAbout['eyebrow'] ?? $defaults['memberAbout']['eyebrow'], 80),

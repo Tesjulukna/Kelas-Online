@@ -738,6 +738,7 @@ function MemberPage({
   const [digitalProductSearchQuery, setDigitalProductSearchQuery] = useState('')
   const [digitalProductPriceFilter, setDigitalProductPriceFilter] = useState('all')
   const [digitalProductCartIds, setDigitalProductCartIds] = useState([])
+  const [bundleItemKeys, setBundleItemKeys] = useState([])
   const [activeMaterialIndex, setActiveMaterialIndex] = useState(() =>
     activeMenu === 'my-courses' ? readActiveCourseSnapshot(userId).materialIndex : 0,
   )
@@ -865,6 +866,45 @@ function MemberPage({
 
     return ids
   }, [activeDigitalProductAccess, paidDigitalProductOrdersByProduct])
+  const bundleSettings = safeWebsiteSettings.bundling
+  const bundleCatalog = (() => {
+    const items = []
+    if (bundleSettings.allowClasses) {
+      allActiveCourses.forEach((course) => items.push({
+        ...course,
+        itemType: 'class',
+        key: `class:${course.id}`,
+        owned: accessibleClassIds.has(course.id),
+      }))
+    }
+    activeSellableProducts.forEach((product) => {
+      const isPrompt = product.productType === 'prompt'
+      if ((isPrompt && !bundleSettings.allowPrompts) || (!isPrompt && !bundleSettings.allowDigitalProducts)) return
+      items.push({
+        ...product,
+        itemType: 'digital_product',
+        key: `product:${product.id}`,
+        owned: ownedDigitalProductIds.has(product.id) && product.allowRepeatPurchase !== true,
+      })
+    })
+    return items
+  })()
+  const selectedBundleItems = bundleCatalog.filter((item) => bundleItemKeys.includes(item.key) && !item.owned)
+  const bundleSubtotal = selectedBundleItems.reduce((total, item) => {
+    const normalPrice = Math.max(0, Math.round(Number(item.price) || 0))
+    const salePrice = Math.max(0, Math.round(Number(item.salePrice) || 0))
+    return total + (salePrice || normalPrice)
+  }, 0)
+  const bundlePercent = bundleSettings.discountMode === 'tiered'
+    ? bundleSettings.tiers.reduce((percent, tier) => selectedBundleItems.length >= tier.minimumItems ? tier.discountPercent : percent, 0)
+    : bundleSettings.discountPercent
+  const rawBundleDiscount = bundleSettings.discountMode === 'fixed'
+    ? Math.max(0, bundleSubtotal - bundleSettings.fixedPrice)
+    : Math.round(bundleSubtotal * bundlePercent / 100)
+  const bundleDiscount = bundleSettings.maximumDiscount > 0
+    ? Math.min(rawBundleDiscount, bundleSettings.maximumDiscount)
+    : rawBundleDiscount
+  const bundleTotal = Math.max(0, bundleSubtotal - bundleDiscount)
   const certificatesByClass = useMemo(
     () => new Map(certificates.map((certificate) => [certificate.classId, certificate])),
     [certificates],
@@ -3070,6 +3110,69 @@ function MemberPage({
               </article>
             )}
           </div>
+        </section>
+      )}
+
+      {activeMenu === 'bundles' && (
+        <section className="panel bundle-builder">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Custom bundle</p>
+              <h2>{bundleSettings.title}</h2>
+              <p>{bundleSettings.description}</p>
+            </div>
+          </div>
+          {!bundleSettings.enabled ? (
+            <article className="empty-state"><Icon name="wallet" /><h3>Bundling sedang tidak aktif</h3><p>Admin akan mengaktifkannya kembali saat tersedia.</p></article>
+          ) : (
+            <>
+              <div className="bundle-builder-grid">
+                {bundleCatalog.map((item) => {
+                  const selected = bundleItemKeys.includes(item.key)
+                  const normalPrice = Math.max(0, Math.round(Number(item.price) || 0))
+                  const salePrice = Math.max(0, Math.round(Number(item.salePrice) || 0))
+                  const price = salePrice || normalPrice
+                  return (
+                    <button
+                      className={`bundle-item-card ${selected ? 'selected' : ''} ${item.owned ? 'owned' : ''}`}
+                      key={item.key}
+                      type="button"
+                      disabled={item.owned}
+                      onClick={() => setBundleItemKeys((current) => current.includes(item.key) ? current.filter((key) => key !== item.key) : [...current, item.key])}
+                    >
+                      <span className="bundle-item-check"><Icon name={item.owned ? 'checkCircle' : selected ? 'checkCircle' : 'plus'} /></span>
+                      <small>{item.itemType === 'class' ? 'Kelas' : item.productType === 'prompt' ? 'Prompt' : 'Produk digital'}</small>
+                      <strong>{item.title}</strong>
+                      <span>{item.owned ? 'Sudah dibeli • tidak dapat dipilih' : formatRupiah(price)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <aside className="bundle-summary">
+                <div><span>Item dipilih</span><strong>{selectedBundleItems.length} / minimal {bundleSettings.minimumItems}</strong></div>
+                <div><span>Subtotal</span><strong>{formatRupiah(bundleSubtotal)}</strong></div>
+                <div><span>Potongan {bundleSettings.discountMode === 'fixed' ? 'harga tetap' : `${bundlePercent}%`}</span><strong>-{formatRupiah(bundleDiscount)}</strong></div>
+                <div className="bundle-summary-total"><span>Total</span><strong>{formatRupiah(bundleTotal)}</strong></div>
+                {selectedBundleItems.length < bundleSettings.minimumItems && <p>Tambah {bundleSettings.minimumItems - selectedBundleItems.length} item lagi untuk membuka diskon.</p>}
+                {bundleSubtotal < bundleSettings.minimumSubtotal && <p>Subtotal minimal {formatRupiah(bundleSettings.minimumSubtotal)}.</p>}
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  disabled={selectedBundleItems.length < bundleSettings.minimumItems || bundleSubtotal < bundleSettings.minimumSubtotal}
+                  onClick={() => openPaymentMethodPopup({
+                    id: 'custom-bundle',
+                    title: bundleSettings.title,
+                    price: bundleTotal,
+                    salePrice: 0,
+                    itemType: 'bundle',
+                    bundleItems: selectedBundleItems.map((item) => ({ type: item.itemType, id: item.id })),
+                  }, { itemType: 'bundle' })}
+                >
+                  <Icon name="wallet" /> Bayar bundling
+                </button>
+              </aside>
+            </>
+          )}
         </section>
       )}
 

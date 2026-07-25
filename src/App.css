@@ -22787,3 +22787,126 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   height: 18px;
 }
 
+.bundle-admin-form,
+.bundle-tier-editor,
+.bundle-summary {
+  display: grid;
+  gap: 16px;
+}
+
+.bundle-toggle,
+.bundle-eligibility,
+.bundle-tier-editor > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bundle-toggle {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--surface-soft, #f8fafc);
+  font-weight: 700;
+}
+
+.bundle-eligibility,
+.bundle-tier-editor {
+  padding: 18px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 16px;
+}
+
+.bundle-tier-editor input {
+  width: 90px;
+}
+
+.bundle-builder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.bundle-item-card {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  min-height: 150px;
+  padding: 18px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 18px;
+  background: var(--surface, #fff);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bundle-item-card.selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 12%);
+}
+
+.bundle-item-card.owned {
+  opacity: .68;
+  cursor: not-allowed;
+}
+
+.bundle-item-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.bundle-item-card small {
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.bundle-item-card strong {
+  padding-right: 24px;
+  font-size: 1rem;
+}
+
+.bundle-summary {
+  position: sticky;
+  bottom: 14px;
+  grid-template-columns: repeat(4, minmax(120px, 1fr)) auto;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 14px 40px rgb(15 23 42 / 12%);
+  backdrop-filter: blur(14px);
+  z-index: 5;
+}
+
+.bundle-summary > div {
+  display: grid;
+  gap: 4px;
+}
+
+.bundle-summary span,
+.bundle-summary p {
+  color: #64748b;
+  font-size: .84rem;
+}
+
+.bundle-summary-total strong {
+  color: #2563eb;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 760px) {
+  .bundle-summary {
+    position: static;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .bundle-summary .btn,
+  .bundle-summary p {
+    grid-column: 1 / -1;
+  }
+}

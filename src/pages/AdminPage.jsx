@@ -981,6 +981,26 @@ function AdminPage({
       return true
     }
   })
+  const [bundleDraft, setBundleDraft] = useState(() =>
+    cleanWebsiteSettings(websiteSettings).bundling,
+  )
+  const [isSavingBundle, setIsSavingBundle] = useState(false)
+
+  const saveBundleSettings = async (event) => {
+    event.preventDefault()
+    setIsSavingBundle(true)
+    try {
+      await onWebsiteSettingsChange({
+        ...cleanWebsiteSettings(websiteSettings),
+        bundling: bundleDraft,
+      })
+      onNotify('Pengaturan bundling berhasil disimpan.')
+    } catch (error) {
+      onNotify(error.message || 'Pengaturan bundling belum bisa disimpan.')
+    } finally {
+      setIsSavingBundle(false)
+    }
+  }
 
   const handleToggleEarnings = () => {
     setShowEarnings((prev) => {
@@ -7075,6 +7095,93 @@ function AdminPage({
               </article>
             )}
           </div>
+        </section>
+      )}
+
+      {activeMenu === 'bundles' && (
+        <section className="panel bundle-admin-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Penawaran</p>
+              <h2>Atur bundling</h2>
+              <p>Pembeli dapat mencampur kelas, produk digital, dan prompt yang belum dimiliki.</p>
+            </div>
+          </div>
+          <form className="bundle-admin-form" onSubmit={saveBundleSettings}>
+            <label className="bundle-toggle">
+              <input
+                type="checkbox"
+                checked={bundleDraft.enabled}
+                onChange={(event) => setBundleDraft((current) => ({ ...current, enabled: event.target.checked }))}
+              />
+              <span>Aktifkan custom bundling untuk member</span>
+            </label>
+            <div className="form-grid">
+              <label>
+                <span>Judul</span>
+                <input value={bundleDraft.title} onChange={(event) => setBundleDraft((current) => ({ ...current, title: event.target.value }))} />
+              </label>
+              <label>
+                <span>Minimal item</span>
+                <input type="number" min="2" value={bundleDraft.minimumItems} onChange={(event) => setBundleDraft((current) => ({ ...current, minimumItems: Number(event.target.value) }))} />
+              </label>
+              <label className="full-field">
+                <span>Deskripsi</span>
+                <textarea value={bundleDraft.description} onChange={(event) => setBundleDraft((current) => ({ ...current, description: event.target.value }))} />
+              </label>
+              <label>
+                <span>Model harga</span>
+                <select value={bundleDraft.discountMode} onChange={(event) => setBundleDraft((current) => ({ ...current, discountMode: event.target.value }))}>
+                  <option value="percent">Diskon persen</option>
+                  <option value="tiered">Persen bertingkat</option>
+                  <option value="fixed">Harga akhir tetap</option>
+                </select>
+              </label>
+              {bundleDraft.discountMode === 'fixed' ? (
+                <label>
+                  <span>Harga akhir tetap</span>
+                  <input type="number" min="0" value={bundleDraft.fixedPrice} onChange={(event) => setBundleDraft((current) => ({ ...current, fixedPrice: Number(event.target.value) }))} />
+                </label>
+              ) : (
+                <label>
+                  <span>Diskon dasar (%)</span>
+                  <input type="number" min="0" max="100" value={bundleDraft.discountPercent} onChange={(event) => setBundleDraft((current) => ({ ...current, discountPercent: Number(event.target.value) }))} />
+                </label>
+              )}
+              <label>
+                <span>Minimal subtotal</span>
+                <input type="number" min="0" value={bundleDraft.minimumSubtotal} onChange={(event) => setBundleDraft((current) => ({ ...current, minimumSubtotal: Number(event.target.value) }))} />
+              </label>
+              <label>
+                <span>Maksimal potongan (0 = tanpa batas)</span>
+                <input type="number" min="0" value={bundleDraft.maximumDiscount} onChange={(event) => setBundleDraft((current) => ({ ...current, maximumDiscount: Number(event.target.value) }))} />
+              </label>
+            </div>
+            <div className="bundle-eligibility">
+              <strong>Item yang boleh dipilih</strong>
+              <label><input type="checkbox" checked={bundleDraft.allowClasses} onChange={(event) => setBundleDraft((current) => ({ ...current, allowClasses: event.target.checked }))} /> Kelas</label>
+              <label><input type="checkbox" checked={bundleDraft.allowDigitalProducts} onChange={(event) => setBundleDraft((current) => ({ ...current, allowDigitalProducts: event.target.checked }))} /> Produk digital</label>
+              <label><input type="checkbox" checked={bundleDraft.allowPrompts} onChange={(event) => setBundleDraft((current) => ({ ...current, allowPrompts: event.target.checked }))} /> Prompt</label>
+            </div>
+            {bundleDraft.discountMode === 'tiered' && (
+              <div className="bundle-tier-editor">
+                <strong>Diskon bertingkat</strong>
+                {bundleDraft.tiers.map((tier, index) => (
+                  <div key={index}>
+                    <input type="number" min="2" aria-label="Minimal item tier" value={tier.minimumItems} onChange={(event) => setBundleDraft((current) => ({ ...current, tiers: current.tiers.map((item, itemIndex) => itemIndex === index ? { ...item, minimumItems: Number(event.target.value) } : item) }))} />
+                    <span>item mendapat</span>
+                    <input type="number" min="0" max="100" aria-label="Diskon tier" value={tier.discountPercent} onChange={(event) => setBundleDraft((current) => ({ ...current, tiers: current.tiers.map((item, itemIndex) => itemIndex === index ? { ...item, discountPercent: Number(event.target.value) } : item) }))} />
+                    <span>%</span>
+                    <button type="button" className="icon-button" aria-label="Hapus tier" onClick={() => setBundleDraft((current) => ({ ...current, tiers: current.tiers.filter((_, itemIndex) => itemIndex !== index) }))}><Icon name="x" /></button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-secondary" onClick={() => setBundleDraft((current) => ({ ...current, tiers: [...current.tiers, { minimumItems: Math.max(2, current.tiers.length + 2), discountPercent: 10 }] }))}>Tambah tingkat</button>
+              </div>
+            )}
+            <button className="btn btn-primary" type="submit" disabled={isSavingBundle}>
+              {isSavingBundle ? 'Menyimpan...' : 'Simpan pengaturan bundling'}
+            </button>
+          </form>
         </section>
       )}
 
