@@ -96,7 +96,7 @@ function DetailKelas({
           <Icon name="arrowLeft" />
         </button>
         <div className="public-detail-topbar-actions">
-          <button className="icon-action-button cart-action-button" type="button" onClick={onOpenWishlist} aria-label="Keranjang">
+          <button className="icon-action-button cart-action-button" type="button" onClick={onOpenWishlist} aria-label="Buka daftar tersimpan">
             <Icon name="cart" />
             {wishlistCount > 0 && <span>{wishlistCount}</span>}
           </button>
@@ -295,7 +295,7 @@ function DetailKelas({
       <div className="public-sticky-actions">
         <button className="btn btn-secondary" type="button" onClick={onAddToWishlist}>
           <Icon name="cart" />
-          Keranjang
+          Simpan
         </button>
         <button className="btn btn-primary" type="button" onClick={() => onBuy(course.id)}>
           <Icon name={ctaIcon} />

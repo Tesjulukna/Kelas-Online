@@ -1075,6 +1075,34 @@ function AdminPage({
     setBundleDraft(nextBundling)
     onNotify('Program bundling dihapus.')
   }
+  const moveBundleProgram = async (programId, direction) => {
+    const currentIndex = bundleDraft.programs.findIndex((program) => program.id === programId)
+    const nextIndex = currentIndex + direction
+
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= bundleDraft.programs.length) {
+      return
+    }
+
+    const programs = [...bundleDraft.programs]
+    const currentProgram = programs[currentIndex]
+    programs[currentIndex] = programs[nextIndex]
+    programs[nextIndex] = currentProgram
+    const nextBundling = { ...bundleDraft, programs }
+
+    setIsSavingBundle(true)
+    try {
+      await onWebsiteSettingsChange({
+        ...cleanWebsiteSettings(websiteSettings),
+        bundling: nextBundling,
+      })
+      setBundleDraft(nextBundling)
+      onNotify('Urutan paket pilihan diperbarui.')
+    } catch (error) {
+      onNotify(error.message || 'Urutan bundling belum bisa disimpan.')
+    } finally {
+      setIsSavingBundle(false)
+    }
+  }
 
 
   const handleToggleEarnings = () => {
@@ -7215,13 +7243,17 @@ function AdminPage({
             </div>
           </div>
           <div className="bundle-program-admin-list">
-            {bundleDraft.programs.map((program) => (
+            {bundleDraft.programs.map((program, programIndex) => (
               <article key={program.id}>
                 <span className="bundle-program-admin-thumb">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}</span>
-                <div><small>{program.badge}</small><h3>{program.title}</h3><p>{program.eligibleItems.length} item tersedia - minimal pilih {program.minimumItems}</p></div>
+                <div><small>{program.badge}</small><h3>{program.title}</h3><p>{program.eligibleItems.length} item tersedia - minimal pilih {program.minimumItems}{program.showOnHomepage ? ' • Paket pilihan homepage' : ''}</p></div>
                 <strong>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</strong>
                 <span className={program.active ? 'status active' : 'status'}>{program.active ? 'Aktif' : 'Nonaktif'}</span>
                 <div className="button-row">
+                  <span className="bundle-order-actions">
+                    <button type="button" disabled={programIndex === 0 || isSavingBundle} aria-label={`Naikkan urutan ${program.title}`} title="Naikkan urutan" onClick={() => moveBundleProgram(program.id, -1)}>↑</button>
+                    <button type="button" disabled={programIndex === bundleDraft.programs.length - 1 || isSavingBundle} aria-label={`Turunkan urutan ${program.title}`} title="Turunkan urutan" onClick={() => moveBundleProgram(program.id, 1)}>↓</button>
+                  </span>
                   <button className="btn btn-secondary" type="button" onClick={() => openBundleProgramEditor(program)}>Edit</button>
                   <button className="icon-button danger" type="button" aria-label={`Hapus ${program.title}`} onClick={() => deleteBundleProgram(program.id)}><Icon name="trash" /></button>
                 </div>
@@ -7282,7 +7314,7 @@ function AdminPage({
                   </div>
                   <div className="bundle-program-visibility">
                     <label><input type="checkbox" checked={bundleProgramDraft.active} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, active: event.target.checked }))} /><span><strong>Bundling aktif</strong><small>Dapat digunakan untuk checkout</small></span></label>
-                    <label><input type="checkbox" checked={bundleProgramDraft.showOnHomepage} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, showOnHomepage: event.target.checked }))} /><span><strong>Tampil di homepage</strong><small>Kartu terlihat oleh pengunjung</small></span></label>
+                    <label><input type="checkbox" checked={bundleProgramDraft.showOnHomepage} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, showOnHomepage: event.target.checked }))} /><span><strong>Paket pilihan homepage</strong><small>Muncul di atas pencarian, maksimal 3 penawaran</small></span></label>
                     <label><input type="checkbox" checked={bundleProgramDraft.showOnMember} onChange={(event) => setBundleProgramDraft((current) => ({ ...current, showOnMember: event.target.checked }))} /><span><strong>Tampil di member</strong><small>Kartu terlihat setelah login</small></span></label>
                   </div>
                 </section>

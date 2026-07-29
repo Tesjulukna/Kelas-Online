@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   rating TINYINT NOT NULL DEFAULT 0,
   submitted_at VARCHAR(40) NOT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY submission_member_class_material_unique (member_id, class_id, material_id),
   INDEX submission_member_index (member_id),
   INDEX submission_material_index (material_id),
   INDEX submission_status_index (status)

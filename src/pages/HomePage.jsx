@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import FeaturedBundleSection from '../components/FeaturedBundleSection'
 import Icon from '../components/Icon'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import { withPublicCodes } from '../utils/publicCodes'
@@ -639,18 +640,28 @@ function HomePage({
   const detailProducts = withPublicCodes(digitalProducts.filter((product) => product.status === 'Aktif'))
   const homepageProducts = detailProducts.filter((product) => product.showOnHomepage !== false)
   const detailBundlePrograms = websiteSettings.bundling.programs.filter((program) => program.active)
+  const homepageBundlePrograms = detailBundlePrograms.filter((program) => program.showOnHomepage)
+  const homepagePercentBundleProgram = homepageBundlePrograms.find(
+    (program) => program.priceMode === 'percent',
+  ) || null
+  const homepageFixedBundlePrograms = homepageBundlePrograms
+    .filter((program) => program.priceMode === 'fixed')
+    .slice(0, homepagePercentBundleProgram ? 2 : 3)
+  const getPublicBundleProgramItems = (program) =>
+    (program?.eligibleItems || []).map((eligible) => {
+      if (eligible.type === 'class') {
+        const item = detailClasses.find((course) => course.id === eligible.id)
+        return item ? { ...item, itemType: 'class' } : null
+      }
+
+      const item = detailProducts.find((product) => product.id === eligible.id)
+      return item ? { ...item, itemType: 'digital_product' } : null
+    }).filter(Boolean)
   const selectedBundleDetail = initialDetail?.type === 'bundling'
     ? detailBundlePrograms.find((program) => program.id === initialDetail.id)
     : null
   const selectedBundleItems = selectedBundleDetail
-    ? selectedBundleDetail.eligibleItems.map((eligible) => {
-        if (eligible.type === 'class') {
-          const item = detailClasses.find((course) => course.id === eligible.id)
-          return item ? { ...item, itemType: 'class' } : null
-        }
-        const item = detailProducts.find((product) => product.id === eligible.id)
-        return item ? { ...item, itemType: 'digital_product' } : null
-      }).filter(Boolean)
+    ? getPublicBundleProgramItems(selectedBundleDetail)
     : []
 
   const getItemMockMetrics = (itemId) => {
@@ -1841,6 +1852,19 @@ function HomePage({
           <p className="section-subheading">Temukan tools, course, template, dan source code premium untuk melipatgandakan omset bisnis Anda.</p>
         </div>
 
+        {websiteSettings.bundling.enabled && (
+          <FeaturedBundleSection
+            eyebrow="Paket pilihan"
+            title="Lebih hemat dengan bundling"
+            description="Pilih paket unggulan atau susun sendiri kelas, produk digital, dan prompt yang kamu butuhkan."
+            fixedPrograms={homepageFixedBundlePrograms}
+            percentProgram={homepagePercentBundleProgram}
+            getProgramItems={getPublicBundleProgramItems}
+            onOpenFixed={(program) => openBundleDetail(program.id)}
+            onOpenPercent={(program) => onOpenBundle(program.id)}
+          />
+        )}
+
         {/* Search Bar */}
         <div className="catalog-search-bar">
           <div className="search-input-wrapper">
@@ -1955,25 +1979,6 @@ function HomePage({
           )}
         </div>
       </section>
-
-      {websiteSettings.bundling.enabled && websiteSettings.bundling.programs.some((program) => program.active && program.showOnHomepage) && (
-        <section className="content-section homepage-bundle-section" id="bundles">
-          <div className="section-heading reveal-panel centered">
-            <p className="eyebrow">BUNDLING PILIHAN</p>
-            <h2>Pilih paket, lalu tentukan isinya sendiri</h2>
-            <p className="section-subheading">Gabungkan kelas, produk digital, atau prompt dari pilihan yang sudah disiapkan admin.</p>
-          </div>
-          <div className="homepage-bundle-grid">
-            {websiteSettings.bundling.programs.filter((program) => program.active && program.showOnHomepage).map((program) => (
-              <article className="homepage-bundle-card" key={program.id}>
-                <span className="homepage-bundle-media">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}<small>{program.badge}</small></span>
-                <div><h3>{program.title}</h3><p>{program.description}</p><span>Minimal pilih {program.minimumItems} item</span></div>
-                <footer><strong>{program.priceMode === 'fixed' ? formatRupiah(program.fixedPrice) : `Diskon ${program.discountPercent}%`}</strong><button className={`btn ${program.priceMode === 'fixed' ? 'btn-secondary' : 'btn-primary'}`} type="button" onClick={() => openBundleDetail(program.id)}>Lihat Detail <Icon name="arrowRight" /></button></footer>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
 
       {activeTestimonial && (
         <section className="content-section modern-section homepage-testimonials-section" id="testimonials">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import CertificateTemplateCanvas from '../components/CertificateTemplateCanvas'
 import DashboardShell from '../components/DashboardShell'
+import FeaturedBundleSection from '../components/FeaturedBundleSection'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
 import UploadProgress from '../components/UploadProgress'
@@ -758,6 +759,7 @@ function MemberPage({
   const [taskDraft, setTaskDraft] = useState('')
   const [taskAttachment, setTaskAttachment] = useState(null)
   const [isTaskImageUploading, setIsTaskImageUploading] = useState(false)
+  const [isTaskSubmitting, setIsTaskSubmitting] = useState(false)
   const [taskImageProgress, setTaskImageProgress] = useState({ percent: 0, stage: '' })
   const [editingSubmissionId, setEditingSubmissionId] = useState('')
   const [submittedTasks, setSubmittedTasks] = useState(() => readSubmittedTasks(userId))
@@ -793,6 +795,7 @@ function MemberPage({
   )
   const [paymentExpiryTick, setPaymentExpiryTick] = useState(() => Date.now())
   const handledCheckoutRequestRef = useRef('')
+  const taskSubmissionLockRef = useRef(false)
   const materialViewerRef = useRef(null)
   const discussionListRef = useRef(null)
   const discussionMessageRefs = useRef(new Map())
@@ -1446,6 +1449,15 @@ function MemberPage({
     onMenuChange(menuId)
   }, [onMenuChange, userId])
 
+  const handleOpenFeaturedPercentBundle = (program) => {
+    setSelectedBundleProgramId(program.id)
+    setBundleItemKeys([])
+    setBundleCatalogFilter('all')
+    setBundleSearchQuery('')
+    setIsPercentBundleModalOpen(true)
+    handleDashboardMenuChange('bundles')
+  }
+
   const handleMemberAboutCtaClick = useCallback(() => {
     const targetUrl = safeWebsiteSettings.memberAbout.ctaUrl || '#my-courses'
     const menuMap = {
@@ -1648,6 +1660,10 @@ function MemberPage({
       return
     }
 
+    if (taskSubmissionLockRef.current) {
+      return
+    }
+
     if (isTaskImageUploading) {
       onNotify('Tunggu kompresi dan upload gambar tugas selesai.')
       return
@@ -1662,6 +1678,9 @@ function MemberPage({
       onNotify('Isi link, catatan, atau upload gambar tugas dulu.')
       return
     }
+
+    taskSubmissionLockRef.current = true
+    setIsTaskSubmitting(true)
 
     try {
       const submissionPayload = {
@@ -1704,6 +1723,9 @@ function MemberPage({
       )
     } catch (error) {
       onNotify(error.message || 'Tugas tidak bisa dikirim.')
+    } finally {
+      taskSubmissionLockRef.current = false
+      setIsTaskSubmitting(false)
     }
   }
 
@@ -2294,6 +2316,48 @@ function MemberPage({
     link.remove()
   }
 
+  const renderMemberFeaturedBundles = (isPromptMenu) => {
+    if (!bundleSettings.enabled || digitalProductLibraryView !== 'available') {
+      return null
+    }
+
+    const relevantPrograms = memberBundlePrograms.filter((program) =>
+      getBundleProgramItems(program).some(
+        (item) =>
+          item.itemType === 'digital_product'
+          && (item.productType === 'prompt') === isPromptMenu,
+      ),
+    )
+    const percentProgram = relevantPrograms.find((program) => program.priceMode === 'percent') || null
+    const fixedPrograms = relevantPrograms
+      .filter((program) => program.priceMode === 'fixed')
+      .slice(0, percentProgram ? 2 : 3)
+
+    return (
+      <FeaturedBundleSection
+        eyebrow="Paket pilihan member"
+        title={isPromptMenu ? 'Bundling prompt pilihan' : 'Bundling produk pilihan'}
+        description={
+          isPromptMenu
+            ? 'Gabungkan prompt pilihan dengan item lain dan dapatkan harga yang lebih hemat.'
+            : 'Ambil beberapa produk atau kelas dalam satu paket dengan penawaran khusus.'
+        }
+        fixedPrograms={fixedPrograms}
+        percentProgram={percentProgram}
+        getProgramItems={getBundleProgramItems}
+        onOpenFixed={(program) => {
+          if (onOpenPublicBundleDetail) {
+            onOpenPublicBundleDetail(program)
+            return
+          }
+
+          handleDashboardMenuChange('bundles')
+        }}
+        onOpenPercent={handleOpenFeaturedPercentBundle}
+      />
+    )
+  }
+
   return (
     <DashboardShell
       role="member"
@@ -2705,14 +2769,17 @@ function MemberPage({
                             className="btn btn-primary"
                             type="button"
                             onClick={handleSubmitTask}
-                            disabled={isTaskImageUploading}
+                            disabled={isTaskImageUploading || isTaskSubmitting}
+                            aria-busy={isTaskSubmitting}
                           >
                             <Icon name="message" />
-                            {canReviseActiveSubmission
-                              ? 'Kirim Revisi'
-                              : isEditingActiveSubmission
-                                ? 'Simpan Perubahan'
-                                : 'Kirim Tugas'}
+                            {isTaskSubmitting
+                              ? 'Mengirim...'
+                              : canReviseActiveSubmission
+                                ? 'Kirim Revisi'
+                                : isEditingActiveSubmission
+                                  ? 'Simpan Perubahan'
+                                  : 'Kirim Tugas'}
                           </button>
                         )}
                         {hasNextMaterial && (
@@ -3762,6 +3829,7 @@ function MemberPage({
                       <h2>{isPromptMenu ? 'Prompt' : 'Produk digital'}</h2>
                     </div>
                   </div>
+                  {renderMemberFeaturedBundles(isPromptMenu)}
                   <div className="member-product-library-toolbar">
                     <div className="member-product-library-tabs" role="tablist" aria-label="Status produk member">
                       <button
