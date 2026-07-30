@@ -2,6 +2,7 @@
 
 require __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_tripay.php';
+require_once __DIR__ . '/_paypal.php';
 
 ensure_method(['GET']);
 
@@ -1204,7 +1205,17 @@ function payment_is_revenue_payment(array $payment): bool
 {
     $status = strtolower(clean_text($payment['status'] ?? '', 40));
 
-    if ($status === 'unmapped') {
+    if (in_array($status, [
+        'unmapped',
+        'failed',
+        'expired',
+        'cancelled',
+        'canceled',
+        'declined',
+        'refunded',
+        'reversed',
+        'voided',
+    ], true)) {
         return false;
     }
 
@@ -1451,6 +1462,12 @@ payment_ensure_runtime_schema($pdo);
 payment_repair_derived_snapshot_amounts($pdo);
 
 try {
+    paypal_ensure_schema($pdo);
+} catch (Throwable $error) {
+    // Installer can create PayPal tables when runtime DDL is restricted.
+}
+
+try {
     $expiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
     $query = ($user['role'] ?? '') === 'admin'
         ? $pdo->query('SELECT * FROM tripay_orders ORDER BY created_at DESC LIMIT 2000')
@@ -1505,6 +1522,70 @@ try {
     }
 } catch (Throwable $error) {
     // Continue with other sources.
+}
+
+try {
+    $query = ($user['role'] ?? '') === 'admin'
+        ? $pdo->query('SELECT * FROM paypal_orders ORDER BY created_at DESC LIMIT 2000')
+        : (function () use ($pdo, $user) {
+            $q = $pdo->prepare('SELECT * FROM paypal_orders WHERE member_id = ? ORDER BY created_at DESC LIMIT 500');
+            $q->execute([$user['userId'] ?? '']);
+            return $q;
+        })();
+
+    foreach ($query->fetchAll() as $row) {
+        $payload = payment_order_payload($row);
+        $status = strtolower(clean_text($row['status'] ?? 'created', 40));
+        $pendingStatuses = ['creating', 'created', 'approved', 'pending'];
+        $createdAt = strtotime((string) ($row['created_at'] ?? '')) ?: 0;
+        $expiresAt = $createdAt > 0 ? $createdAt + (3 * 60 * 60) : 0;
+        $isExpired = in_array($status, $pendingStatuses, true)
+            && empty($row['access_granted'])
+            && $expiresAt > 0
+            && $expiresAt <= time();
+
+        if ($isExpired) {
+            $status = 'expired';
+            $row['status'] = 'expired';
+
+            try {
+                $markExpired = $pdo->prepare(
+                    "UPDATE paypal_orders
+                    SET status = ?
+                    WHERE id = ? AND status IN ('creating', 'created', 'approved', 'pending')",
+                );
+                $markExpired->execute(['expired', $row['id']]);
+            } catch (Throwable $error) {
+                // Response can still expose the expired state.
+            }
+        }
+
+        $itemType = clean_text($row['item_type'] ?? 'class', 40);
+        $payments[] = payment_public(array_merge($row, [
+            'id' => 'paypal:' . $row['id'],
+            'source' => 'paypal',
+            'sourceLabel' => 'PayPal',
+            'orderCode' => $row['merchant_ref'] ?: $row['paypal_order_id'],
+            'merchantRef' => $row['merchant_ref'],
+            'reference' => $row['paypal_order_id'],
+            'classId' => $itemType === 'class' ? clean_text($row['item_id'] ?? '', 120) : '',
+            'classTitle' => clean_text($row['item_title'] ?? 'Pembayaran PayPal', 180),
+            'itemType' => $itemType,
+            'productId' => $itemType === 'digital_product' ? clean_text($row['item_id'] ?? '', 120) : '',
+            'productTitle' => $itemType === 'digital_product' ? clean_text($row['item_title'] ?? '', 180) : '',
+            'itemTitle' => clean_text($row['item_title'] ?? 'Pembayaran PayPal', 180),
+            'amount' => (int) ($row['amount_idr'] ?? 0),
+            'paymentMethod' => 'PayPal ' . clean_text($row['currency'] ?? 'USD', 10)
+                . ' ' . number_format((float) ($row['currency_value'] ?? 0), 2, '.', ''),
+            'checkoutUrl' => $row['approval_url'] ?? '',
+            'accessGranted' => !empty($row['access_granted']),
+            'expiresAt' => $expiresAt > 0 ? date(DATE_ATOM, $expiresAt) : '',
+            'expiresAtTimestamp' => $expiresAt,
+            'isExpired' => $isExpired,
+        ]));
+    }
+} catch (Throwable $error) {
+    // Continue with legacy payment sources.
 }
 
 if (($user['role'] ?? '') === 'admin') {

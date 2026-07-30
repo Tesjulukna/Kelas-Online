@@ -45,7 +45,16 @@ return [
     'tripay_callback_url' => config_env('TRIPAY_CALLBACK_URL', 'https://ibnucreative.com/api/tripay-webhook.php'),
     'tripay_return_url' => config_env('TRIPAY_RETURN_URL', 'https://ibnucreative.com/member?menu=my-courses'),
 
-
+    // PayPal Checkout internasional. Secret wajib disimpan di environment hosting.
+    'paypal_client_id' => config_env('PAYPAL_CLIENT_ID'),
+    'paypal_client_secret' => config_env('PAYPAL_CLIENT_SECRET'),
+    'paypal_webhook_id' => config_env('PAYPAL_WEBHOOK_ID'),
+    'paypal_is_production' => filter_var(config_env('PAYPAL_IS_PRODUCTION', 'true'), FILTER_VALIDATE_BOOLEAN),
+    'paypal_currency' => strtoupper(config_env('PAYPAL_CURRENCY', 'USD')),
+    'paypal_idr_per_usd' => (float) config_env('PAYPAL_IDR_PER_USD', '0'),
+    'paypal_brand_name' => config_env('PAYPAL_BRAND_NAME', 'IbnuCreative'),
+    'paypal_return_url' => config_env('PAYPAL_RETURN_URL', 'https://ibnucreative.com/api/paypal-return.php'),
+    'paypal_cancel_url' => config_env('PAYPAL_CANCEL_URL', 'https://ibnucreative.com/?payment=cancelled'),
 
     // Google OAuth untuk hosting biasa seperti Domainesia.
     // Redirect URI di Google Console:

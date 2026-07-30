@@ -37,6 +37,7 @@ const settingsApiPath = '/api/settings'
 const backupApiPath = '/api/backup'
 const tripayPaymentMethodsApiPath = '/api/tripay-payment-methods'
 const tripayCheckoutApiPath = '/api/tripay-checkout'
+const paypalCheckoutApiPath = '/api/paypal-checkout'
 const publicClassCheckoutApiPath = '/api/public-class-checkout'
 const publicProductCheckoutApiPath = '/api/public-product-checkout'
 const publicBundleCheckoutApiPath = '/api/public-bundle-checkout'
@@ -1507,9 +1508,17 @@ function mergeTripayPaymentMethods(settings, paymentMethods) {
     return cleanWebsiteSettings(settings)
   }
 
+  const currentSettings = cleanWebsiteSettings(settings)
+  const paypalMethods = currentSettings.paymentMethods.filter(
+    (method) => method.provider === 'paypal' || method.code === 'PAYPAL',
+  )
+  const syncedTripayMethods = paymentMethods
+    .filter((method) => method.provider !== 'paypal' && method.code !== 'PAYPAL')
+    .map((method) => ({ ...method, provider: 'tripay' }))
+
   return cleanWebsiteSettings({
-    ...settings,
-    paymentMethods,
+    ...currentSettings,
+    paymentMethods: [...syncedTripayMethods, ...paypalMethods],
   })
 }
 
@@ -3141,7 +3150,8 @@ function App() {
       throw new Error('Silakan login member untuk membeli.')
     }
 
-    const data = await requestJson(tripayCheckoutApiPath, {
+    const isPaypal = String(paymentMethod || '').toUpperCase() === 'PAYPAL'
+    const data = await requestJson(isPaypal ? paypalCheckoutApiPath : tripayCheckoutApiPath, {
       method: 'POST',
       body: JSON.stringify({
         classId: options.itemType === 'digital_product' ? '' : item.id,
@@ -3168,7 +3178,7 @@ function App() {
     }
 
     if (!data.checkoutUrl) {
-      throw new Error('Link pembayaran Tripay belum tersedia.')
+      throw new Error('Link pembayaran belum tersedia.')
     }
 
     window.location.assign(data.checkoutUrl)
@@ -3177,9 +3187,13 @@ function App() {
   }
 
   const handlePublicProductCheckout = async (payload) => {
-    const data = await requestJson(publicProductCheckoutApiPath, {
+    const isPaypal = String(payload?.paymentMethod || '').toUpperCase() === 'PAYPAL'
+    const data = await requestJson(isPaypal ? paypalCheckoutApiPath : publicProductCheckoutApiPath, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        productId: payload.productId,
+      }),
     })
 
     if (data.freeAccessGranted || data.accessUrl) {
@@ -3194,9 +3208,13 @@ function App() {
   }
 
   const handlePublicClassCheckout = async (payload) => {
-    const data = await requestJson(publicClassCheckoutApiPath, {
+    const isPaypal = String(payload?.paymentMethod || '').toUpperCase() === 'PAYPAL'
+    const data = await requestJson(isPaypal ? paypalCheckoutApiPath : publicClassCheckoutApiPath, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        classId: payload.classId,
+      }),
     })
 
     showNotice(data.message || 'Checkout kelas berhasil dibuat.')
@@ -3204,7 +3222,8 @@ function App() {
   }
 
   const handlePublicBundleCheckout = async (payload) => {
-    const data = await requestJson(publicBundleCheckoutApiPath, {
+    const isPaypal = String(payload?.paymentMethod || '').toUpperCase() === 'PAYPAL'
+    const data = await requestJson(isPaypal ? paypalCheckoutApiPath : publicBundleCheckoutApiPath, {
       method: 'POST',
       body: JSON.stringify(payload),
     })
@@ -3370,9 +3389,7 @@ function App() {
                     acceptedTerms,
                     acceptedMarketing,
                   })
-              if (data?.checkoutUrl) {
-                window.location.assign(data.checkoutUrl)
-              }
+              return data
             }}
           />
         )}

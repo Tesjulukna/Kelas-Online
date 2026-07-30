@@ -57,6 +57,7 @@ foreach ($channels as $channel) {
         'name' => clean_text($channel['name'] ?? $code, 120),
         'label' => clean_text($channel['name'] ?? $code, 120),
         'brand' => strtolower($code),
+        'provider' => 'tripay',
         'group' => clean_text($channel['group'] ?? '', 80),
         'iconUrl' => clean_asset_url($channel['icon_url'] ?? ($channel['icon'] ?? ''), 1000),
         'logoUrl' => clean_asset_url($channel['icon_url'] ?? ($channel['icon'] ?? ''), 1000),

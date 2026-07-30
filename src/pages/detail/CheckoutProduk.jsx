@@ -1,6 +1,7 @@
 import Icon from '../../components/Icon'
 import { getCheckoutEmailWarning } from '../../utils/emailValidation'
 import { getCheckoutPhoneWarning } from '../../utils/phoneValidation'
+import { getPaypalCurrencyEstimate, isPaypalPaymentMethod } from '../../utils/paymentMethods'
 
 export function PaymentMethodLogo({ method }) {
   if (method.logoUrl) {
@@ -18,6 +19,15 @@ export function PaymentMethodLogo({ method }) {
         <span></span>
         <span></span>
         <span></span>
+      </span>
+    )
+  }
+
+  if (method.brand === 'paypal' || method.provider === 'paypal') {
+    return (
+      <span className="payment-method-logo paypal-logo" aria-label="PayPal">
+        <strong>Pay</strong>
+        <strong>Pal</strong>
       </span>
     )
   }
@@ -95,9 +105,12 @@ function CheckoutProduk({
     : isPromptCheckout
       ? 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima prompt, akses pembelian, atau pesan pemasaran.'
       : 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima produk atau pesan pemasaran.'
-  const selectedMethodLabel =
-    paymentMethods.find((method) => method.code === form.paymentMethod)?.label ||
-    form.paymentMethod
+  const selectedMethod = paymentMethods.find((method) => method.code === form.paymentMethod)
+  const selectedMethodLabel = selectedMethod?.label || form.paymentMethod
+  const paypalEstimate = getPaypalCurrencyEstimate(
+    selectedMethod,
+    paymentTotal || paymentAmount,
+  )
   const customerQuestions = !isClassCheckout && Array.isArray(product.customerQuestions)
     ? product.customerQuestions
     : []
@@ -274,6 +287,12 @@ function CheckoutProduk({
                   }).format(paymentTotal || paymentAmount)}
                 </strong>
               </span>
+              {paypalEstimate && (
+                <span className="payment-breakdown-currency">
+                  <small>Total yang dikirim ke PayPal</small>
+                  <strong>{paypalEstimate.label}</strong>
+                </span>
+              )}
             </div>
             <div className="secure-payment-note">
               <span className="secure-payment-icon" aria-hidden="true">
@@ -283,8 +302,9 @@ function CheckoutProduk({
                 <small>secure</small>
                 <strong>Secure Payment</strong>
                 <p>
-                  Pembayaran diproses melalui kanal resmi Tripay dan dilindungi enkripsi RSA.
-                  Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.
+                  {isPaypalPaymentMethod(selectedMethod)
+                    ? 'PayPal memproses pembayaran internasional dalam USD. Akses aktif otomatis setelah capture pembayaran berhasil.'
+                    : 'Pembayaran diproses melalui gateway resmi yang dipilih dengan koneksi terenkripsi. Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.'}
                 </p>
               </div>
             </div>

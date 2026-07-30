@@ -133,6 +133,16 @@ export const defaultWebsiteSettings = {
     { code: 'ALFAMIDI', label: 'Alfamidi', brand: 'alfamidi', logoUrl: '' },
     { code: 'OVO', label: 'OVO', brand: 'ovo', logoUrl: '' },
     { code: 'SHOPEEPAY', label: 'ShopeePay', brand: 'shopeepay', logoUrl: '' },
+    {
+      code: 'PAYPAL',
+      label: 'PayPal (Internasional)',
+      brand: 'paypal',
+      provider: 'paypal',
+      available: false,
+      currency: 'USD',
+      exchangeRate: 0,
+      logoUrl: '',
+    },
   ],
   benefits: {
     eyebrow: 'Benefit',
@@ -355,7 +365,7 @@ function cleanPaymentMethods(value) {
   const source = Array.isArray(value) && value.length ? value : fallbackMethods
   const seenCodes = new Set()
 
-  return source
+  const methods = source
     .map((item, index) => {
       const fallback = fallbackMethods.find((method) => method.code === item?.code) ??
         fallbackMethods[index] ??
@@ -372,6 +382,13 @@ function cleanPaymentMethods(value) {
         code,
         label: cleanText(item?.label || fallback.label || code, 80),
         brand: cleanText(item?.brand || fallback.brand || code.toLowerCase(), 40),
+        provider:
+          code === 'PAYPAL' || item?.provider === 'paypal'
+            ? 'paypal'
+            : 'tripay',
+        available: code === 'PAYPAL' ? item?.available === true : item?.available !== false,
+        currency: code === 'PAYPAL' ? 'USD' : '',
+        exchangeRate: code === 'PAYPAL' ? Math.max(0, Number(item?.exchangeRate) || 0) : 0,
         logoUrl: cleanUrl(item?.logoUrl || item?.iconUrl || '', 2000),
         feeFlat: Math.max(
           0,
@@ -384,6 +401,23 @@ function cleanPaymentMethods(value) {
       }
     })
     .filter(Boolean)
+
+  if (!seenCodes.has('PAYPAL')) {
+    methods.push({
+      code: 'PAYPAL',
+      label: 'PayPal (Internasional)',
+      brand: 'paypal',
+      provider: 'paypal',
+      available: false,
+      currency: 'USD',
+      exchangeRate: 0,
+      logoUrl: '',
+      feeFlat: 0,
+      feePercent: 0,
+    })
+  }
+
+  return methods
 }
 
 function cleanHomepageNotifications(value = {}) {

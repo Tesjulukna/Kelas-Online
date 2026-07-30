@@ -1512,10 +1512,20 @@ function AdminPage({
   }
   const paymentSearchQuery = paymentSearchTerm.trim().toLowerCase()
   const paidPaymentStatuses = ['paid', 'processed', 'success', 'settlement']
-  const pendingPaymentStatuses = ['pending', 'unpaid', 'waiting', 'callback']
-  const failedPaymentStatuses = ['failed', 'expired', 'cancelled', 'canceled']
+  const pendingPaymentStatuses = ['creating', 'created', 'approved', 'pending', 'unpaid', 'waiting', 'callback']
+  const failedPaymentStatuses = [
+    'failed',
+    'expired',
+    'cancelled',
+    'canceled',
+    'declined',
+    'refunded',
+    'reversed',
+    'voided',
+  ]
   const isPaidPayment = (payment) =>
-    paidPaymentStatuses.includes(String(payment.status).toLowerCase()) || payment.accessGranted
+    paidPaymentStatuses.includes(String(payment.status).toLowerCase()) ||
+    (payment.accessGranted && !failedPaymentStatuses.includes(String(payment.status).toLowerCase()))
   const isPendingPayment = (payment) =>
     pendingPaymentStatuses.includes(String(payment.status).toLowerCase()) && !payment.accessGranted
   const isFailedPayment = (payment) =>
@@ -1548,6 +1558,9 @@ function AdminPage({
   const totalPaidRevenue = paidPayments.reduce((total, payment) => total + payment.amount, 0)
   const tripayRevenue = paidPayments
     .filter((payment) => payment.source === 'tripay')
+    .reduce((total, payment) => total + payment.amount, 0)
+  const paypalRevenue = paidPayments
+    .filter((payment) => payment.source === 'paypal')
     .reduce((total, payment) => total + payment.amount, 0)
   const revenueByDate = paidPayments.reduce((items, payment) => {
     const time = getPaymentTime(payment)
@@ -5969,6 +5982,7 @@ function AdminPage({
             <MetricCard icon="clock" label="Menunggu bayar" value={pendingPayments.length} />
             <MetricCard icon="shield" label="Expired" value={expiredPayments.length} />
             <MetricCard icon="shield" label="Omzet Tripay" value={formatRupiah(tripayRevenue)} />
+            <MetricCard icon="wallet" label="Omzet PayPal" value={formatRupiah(paypalRevenue)} />
           </section>
 
           <section className="panel payment-panel">

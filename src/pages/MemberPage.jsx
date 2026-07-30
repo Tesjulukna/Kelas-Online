@@ -12,6 +12,7 @@ import { downloadCertificatePdf } from '../lib/certificatePdf'
 import { createQrMatrix, getCertificateVerificationUrl } from '../lib/qrCode'
 import { uploadStorageFile } from '../lib/storageUpload'
 import { openLanguagePopup } from '../i18n/language'
+import { getPaypalCurrencyEstimate, isPaypalPaymentMethod } from '../utils/paymentMethods'
 import { withPublicCodes } from '../utils/publicCodes'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
@@ -627,6 +628,15 @@ function PaymentMethodLogo({ method }) {
     )
   }
 
+  if (method.brand === 'paypal' || method.provider === 'paypal') {
+    return (
+      <span className="payment-method-logo paypal-logo" aria-label="PayPal">
+        <strong>Pay</strong>
+        <strong>Pal</strong>
+      </span>
+    )
+  }
+
   if (['alfamart', 'indomaret', 'alfamidi'].includes(method.brand)) {
     return (
       <span className={`payment-method-logo store-logo ${method.brand}`} aria-hidden="true">
@@ -709,7 +719,9 @@ function MemberPage({
   websiteSettings = defaultWebsiteSettings,
 }) {
   const safeWebsiteSettings = cleanWebsiteSettings(websiteSettings)
-  const tripayPaymentMethods = safeWebsiteSettings.paymentMethods
+  const tripayPaymentMethods = safeWebsiteSettings.paymentMethods.filter(
+    (method) => method.available !== false,
+  )
   const memberDashboardMenuItems = memberMenuItems.map((item) =>
     item.id === 'about'
       ? {
@@ -1031,6 +1043,7 @@ function MemberPage({
   const paymentModalAmount = getCheckoutAmount(paymentMethodCourse)
   const paymentModalFee = getPaymentMethodFee(selectedPaymentMethod, paymentModalAmount)
   const paymentModalTotal = paymentModalAmount + paymentModalFee
+  const paypalPaymentEstimate = getPaypalCurrencyEstimate(selectedPaymentMethod, paymentModalTotal)
   const {
     activePaymentsByClass,
     expiredPaymentsByClass,
@@ -1043,12 +1056,16 @@ function MemberPage({
     const nextExpiredPaymentsByProduct = new Map()
 
     payments
-      .filter((payment) => payment.source === 'tripay')
+      .filter((payment) => ['tripay', 'paypal'].includes(payment.source))
       .forEach((payment) => {
+        if (payment.itemType === 'bundle') {
+          return
+        }
+
         const status = String(payment.status || '').toLowerCase()
         const isProductPayment = payment.itemType === 'digital_product' || Boolean(payment.productId)
         const productId = payment.productId || String(payment.classId || '').replace(/^product:/, '')
-        const pendingStatuses = ['pending', 'unpaid', 'waiting', 'callback']
+        const pendingStatuses = ['creating', 'created', 'approved', 'pending', 'unpaid', 'waiting', 'callback']
         const isPendingStatus = pendingStatuses.includes(status)
         const expiresAtTime = parsePaymentTime(payment.expiresAtTimestamp || payment.expiresAt)
         const isExpired =
@@ -2017,14 +2034,14 @@ function MemberPage({
             : data.emailSent
               ? forceNewPayment
                 ? 'Invoice baru dibuat dan instruksi pembayaran dikirim ke email.'
-                : 'Invoice Tripay dibuat dan instruksi pembayaran dikirim ke email.'
+                : 'Invoice pembayaran dibuat dan instruksi dikirim ke email.'
               : forceNewPayment
                 ? 'Invoice baru dibuat. Email belum terkirim, silakan lanjut dari halaman pembayaran.'
-                : 'Invoice Tripay dibuat. Email belum terkirim, silakan lanjut dari halaman pembayaran.',
+                : 'Invoice pembayaran dibuat. Email belum terkirim, silakan lanjut dari halaman pembayaran.',
         )
       }
     } catch (error) {
-      onNotify(error.message || 'Checkout Tripay tidak bisa dibuat.')
+      onNotify(error.message || 'Checkout pembayaran tidak bisa dibuat.')
     } finally {
       setCheckoutClassId('')
     }
@@ -2416,7 +2433,7 @@ function MemberPage({
               >
                 <Icon name="wallet" />
                 <h3>Kelas Tersedia</h3>
-                <p>Pilih kelas baru dan lanjutkan pembayaran Tripay.</p>
+                <p>Pilih kelas baru dan lanjutkan dengan metode pembayaran yang tersedia.</p>
               </button>
               <button
                 className="action-card"
@@ -3497,7 +3514,7 @@ function MemberPage({
           >
             <div className="payment-method-modal-heading">
               <div>
-                <p className="eyebrow">Pembayaran Tripay</p>
+                <p className="eyebrow">Metode pembayaran</p>
                 <h2 id="payment-method-title">
                   {isChangingPaymentMethod ? 'Ganti metode pembayaran' : 'Pilih metode pembayaran'}
                 </h2>
@@ -3554,6 +3571,12 @@ function MemberPage({
                 <small>Total pembayaran</small>
                 <strong>{formatRupiah(paymentModalTotal)}</strong>
               </span>
+              {paypalPaymentEstimate && (
+                <span className="payment-breakdown-currency">
+                  <small>Total yang dikirim ke PayPal</small>
+                  <strong>{paypalPaymentEstimate.label}</strong>
+                </span>
+              )}
             </div>
             <div className="secure-payment-note">
               <span className="secure-payment-icon" aria-hidden="true">
@@ -3563,8 +3586,9 @@ function MemberPage({
                 <small>secure</small>
                 <strong>Secure Payment</strong>
                 <p>
-                  Pembayaran diproses melalui kanal resmi Tripay dan dilindungi enkripsi RSA.
-                  Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.
+                  {isPaypalPaymentMethod(selectedPaymentMethod)
+                    ? 'PayPal memproses pembayaran internasional dalam USD. Akses aktif otomatis setelah capture pembayaran berhasil.'
+                    : 'Pembayaran diproses melalui gateway resmi yang kamu pilih dengan koneksi terenkripsi. Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.'}
                 </p>
               </div>
             </div>

@@ -64,6 +64,7 @@ function commerce_login_url(array $config): string
 function commerce_generated_password(string $email, array $config): string
 {
     $secret = tripay_config_value($config, 'tripay_private_key', 300)
+        ?: clean_text($config['paypal_client_secret'] ?? '', 300)
         ?: clean_text($config['lynk_webhook_secret'] ?? '', 300)
         ?: 'ibnucreative-public-class';
 
@@ -639,4 +640,44 @@ function commerce_grant_class_account_access(PDO $pdo, array $args, array $confi
         'password' => $passwordCreated ? $password : null,
         'loginUrl' => commerce_login_url($config),
     ];
+}
+
+function commerce_member_has_class_access(array $member, string $classId): bool
+{
+    $classIds = clean_allowed_class_ids($member['allowed_class_ids'] ?? null);
+
+    return is_array($classIds) && in_array($classId, $classIds, true);
+}
+
+function commerce_grant_member_class_access(PDO $pdo, string $memberId, string $classId): bool
+{
+    $memberQuery = $pdo->prepare('SELECT * FROM accounts WHERE id = ? AND role = ? LIMIT 1');
+    $memberQuery->execute([$memberId, 'member']);
+    $member = $memberQuery->fetch();
+
+    if (!$member) {
+        send_json(404, ['message' => 'Member pembeli tidak ditemukan.']);
+    }
+
+    if (commerce_member_has_class_access($member, $classId)) {
+        return false;
+    }
+
+    $currentClassIds = clean_allowed_class_ids($member['allowed_class_ids'] ?? null);
+    $currentClassIds = is_array($currentClassIds) ? $currentClassIds : [];
+    $mergedClassIds = array_values(array_unique(array_merge($currentClassIds, [$classId])));
+    $updateMember = $pdo->prepare(
+        'UPDATE accounts SET status = ?, allowed_class_ids = ? WHERE id = ? AND role = ?',
+    );
+    $updateMember->execute([
+        'Aktif',
+        json_encode($mergedClassIds, JSON_UNESCAPED_UNICODE),
+        $memberId,
+        'member',
+    ]);
+
+    $updateClass = $pdo->prepare('UPDATE classes SET students = COALESCE(students, 0) + 1 WHERE id = ?');
+    $updateClass->execute([$classId]);
+
+    return true;
 }

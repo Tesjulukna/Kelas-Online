@@ -891,7 +891,9 @@ function HomePage({
   const selectedClassPrice = selectedClassSalePrice || selectedClassNormalPrice
   const isPublicProductFree = selectedProductPrice <= 0
   const isPublicClassFree = selectedClassPrice <= 0
-  const paymentMethods = websiteSettings.paymentMethods || []
+  const paymentMethods = (websiteSettings.paymentMethods || []).filter(
+    (method) => method.available !== false,
+  )
   const selectedPublicPaymentMethod = paymentMethods.find(
     (method) => method.code === publicCheckoutForm.paymentMethod,
   )

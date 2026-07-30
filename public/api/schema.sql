@@ -238,6 +238,48 @@ CREATE TABLE IF NOT EXISTS tripay_orders (
   INDEX tripay_class_index (class_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS paypal_orders (
+  id VARCHAR(120) PRIMARY KEY,
+  merchant_ref VARCHAR(180) NOT NULL DEFAULT '',
+  paypal_order_id VARCHAR(180) NULL DEFAULT NULL,
+  capture_id VARCHAR(180) NOT NULL DEFAULT '',
+  member_id VARCHAR(120) NOT NULL DEFAULT '',
+  buyer_name VARCHAR(160) NOT NULL DEFAULT '',
+  buyer_email VARCHAR(180) NOT NULL DEFAULT '',
+  buyer_phone VARCHAR(60) NOT NULL DEFAULT '',
+  item_type VARCHAR(40) NOT NULL DEFAULT 'class',
+  item_id VARCHAR(120) NOT NULL DEFAULT '',
+  item_title VARCHAR(180) NOT NULL DEFAULT '',
+  amount_idr INT NOT NULL DEFAULT 0,
+  currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+  currency_value DECIMAL(14,2) NOT NULL DEFAULT 0,
+  exchange_rate DECIMAL(14,4) NOT NULL DEFAULT 0,
+  status VARCHAR(40) NOT NULL DEFAULT 'created',
+  approval_url MEDIUMTEXT,
+  access_granted TINYINT(1) NOT NULL DEFAULT 0,
+  payload MEDIUMTEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY paypal_merchant_ref_unique (merchant_ref),
+  UNIQUE KEY paypal_order_unique (paypal_order_id),
+  INDEX paypal_capture_index (capture_id),
+  INDEX paypal_member_index (member_id),
+  INDEX paypal_item_index (item_type, item_id),
+  INDEX paypal_status_index (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS paypal_webhook_events (
+  id VARCHAR(180) PRIMARY KEY,
+  event_type VARCHAR(120) NOT NULL DEFAULT '',
+  resource_id VARCHAR(180) NOT NULL DEFAULT '',
+  status VARCHAR(40) NOT NULL DEFAULT 'received',
+  payload MEDIUMTEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  processed_at DATETIME NULL,
+  INDEX paypal_webhook_type_index (event_type),
+  INDEX paypal_webhook_resource_index (resource_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS payment_snapshots (
   id VARCHAR(240) PRIMARY KEY,
   source VARCHAR(80) NOT NULL DEFAULT 'legacy_access',

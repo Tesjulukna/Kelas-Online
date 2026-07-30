@@ -3,6 +3,7 @@ import Icon from '../../components/Icon'
 import { PaymentMethodLogo } from './CheckoutProduk'
 import { getCheckoutEmailWarning } from '../../utils/emailValidation'
 import { getCheckoutPhoneWarning, normalizeCheckoutPhone } from '../../utils/phoneValidation'
+import { getPaypalCurrencyEstimate } from '../../utils/paymentMethods'
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', {
@@ -48,6 +49,7 @@ function CheckoutBundle({
   const discount = Math.max(0, subtotal - total)
   const serviceFee = getPaymentMethodFee(selectedPaymentMethod, total)
   const paymentTotal = total + serviceFee
+  const paypalEstimate = getPaypalCurrencyEstimate(selectedPaymentMethod, paymentTotal)
 
   if (!bundle) return null
 
@@ -82,7 +84,7 @@ function CheckoutBundle({
     setIsSubmitting(true)
     setStatus('')
     try {
-      await onCheckout({
+      const data = await onCheckout({
         bundle,
         items,
         paymentMethod,
@@ -92,6 +94,14 @@ function CheckoutBundle({
         acceptedTerms,
         acceptedMarketing,
       })
+
+      if (data?.checkoutUrl) {
+        window.location.assign(data.checkoutUrl)
+        return
+      }
+
+      setStatus(data?.message || 'Checkout bundle berhasil diproses.')
+      setIsSubmitting(false)
     } catch (error) {
       setStatus(error.message || 'Checkout bundle belum bisa dibuat.')
       setIsSubmitting(false)
@@ -152,6 +162,12 @@ function CheckoutBundle({
           <div><span>Harga bundle</span><strong>{formatRupiah(total)}</strong></div>
           <div><span>Biaya layanan</span><strong>{selectedPaymentMethod ? formatRupiah(serviceFee) : 'Pilih metode'}</strong></div>
           <div className="total"><span>Total pembayaran</span><strong>{formatRupiah(paymentTotal)}</strong></div>
+          {paypalEstimate && (
+            <div className="total currency-total">
+              <span>Total yang dikirim ke PayPal</span>
+              <strong>{paypalEstimate.label}</strong>
+            </div>
+          )}
           <div className="bundle-checkout-methods">
             <span>Metode pembayaran</span>
             {selectedPaymentMethod ? (
