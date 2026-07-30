@@ -463,6 +463,13 @@ function paypal_fulfill_order(
                     'password' => null,
                     'loginUrl' => commerce_login_url($config),
                 ];
+
+            if ($memberId !== '' && empty($accountResult['member'])) {
+                $memberQuery = $pdo->prepare('SELECT * FROM accounts WHERE id = ? AND role = ? LIMIT 1');
+                $memberQuery->execute([$memberId, 'member']);
+                $accountResult['member'] = $memberQuery->fetch() ?: null;
+            }
+
             $memberId = clean_text($memberId ?: ($accountResult['member']['id'] ?? ''), 120);
             $accessResult = commerce_grant_digital_product_access($pdo, [
                 'productId' => $productId,
@@ -528,13 +535,14 @@ function paypal_fulfill_order(
 
         if (($emailContext['type'] ?? '') === 'bundle') {
             $accountResult = $emailContext['accountResult'];
-            $emailResult = send_bundle_access_credentials_email([
+            $emailResult = send_paypal_access_email([
                 'buyerName' => $buyerName,
                 'buyerEmail' => $buyerEmail,
+                'itemType' => 'bundle',
+                'itemTitle' => $lockedOrder['item_title'] ?? 'IbnuCreative bundle',
                 'username' => $accountResult['member']['username'] ?? '',
                 'password' => $accountResult['password'] ?? null,
-                'bundleTitle' => $lockedOrder['item_title'] ?? 'Paket Bundling IbnuCreative',
-                'bundleItems' => $emailContext['bundleItems'] ?? [],
+                'items' => $emailContext['bundleItems'] ?? [],
                 'loginUrl' => $accountResult['loginUrl'] ?? commerce_login_url($config),
             ]);
         } elseif (($emailContext['type'] ?? '') === 'digital_product') {
@@ -544,42 +552,29 @@ function paypal_fulfill_order(
                 $lockedOrder['merchant_ref'],
                 clean_text($accessResult['product']['product_type'] ?? ($orderPayload['product_type'] ?? 'digital'), 40),
             );
-            $emailResult = send_digital_product_delivery_email([
+            $emailResult = send_paypal_access_email([
                 'buyerName' => $buyerName,
                 'buyerEmail' => $buyerEmail,
-                'productTitle' => clean_text($accessResult['product']['title'] ?? ($lockedOrder['item_title'] ?? 'Produk digital'), 180),
-                'productType' => clean_text($accessResult['product']['product_type'] ?? ($orderPayload['product_type'] ?? 'digital'), 40),
-                'downloadUrl' => $accessUrl,
+                'itemType' => 'digital_product',
+                'itemTitle' => clean_text($accessResult['product']['title'] ?? ($lockedOrder['item_title'] ?? 'Digital product'), 180),
+                'username' => clean_text($accountResult['member']['username'] ?? '', 120),
+                'password' => $accountResult['password'] ?? null,
+                'loginUrl' => $accountResult['loginUrl'] ?? commerce_login_url($config),
+                'accessUrl' => $accessUrl,
                 'deliveryNote' => clean_text($accessResult['product']['delivery_note'] ?? ($orderPayload['delivery_note'] ?? ''), 1200),
             ]);
-
-            if (!empty($accountResult['enabled'])) {
-                send_product_access_credentials_email([
-                    'buyerName' => $buyerName,
-                    'buyerEmail' => $buyerEmail,
-                    'username' => clean_text($accountResult['member']['username'] ?? '', 120),
-                    'password' => $accountResult['password'],
-                    'productTitle' => clean_text($accessResult['product']['title'] ?? ($lockedOrder['item_title'] ?? 'Produk digital'), 180),
-                    'loginUrl' => $accountResult['loginUrl'],
-                    'accessUrl' => $accessUrl,
-                ]);
-            }
         } elseif (($emailContext['type'] ?? '') === 'class') {
             $accessResult = $emailContext['accessResult'];
-            $emailResult = send_class_access_credentials_email([
+            $emailResult = send_paypal_access_email([
                 'buyerName' => $buyerName,
                 'buyerEmail' => $buyerEmail,
+                'itemType' => 'class',
+                'itemTitle' => clean_text($accessResult['class']['title'] ?? ($lockedOrder['item_title'] ?? 'IbnuCreative class'), 180),
                 'username' => clean_text($accessResult['member']['username'] ?? '', 120),
                 'password' => $accessResult['password'],
-                'classTitle' => clean_text($accessResult['class']['title'] ?? ($lockedOrder['item_title'] ?? 'Kelas IbnuCreative'), 180),
                 'purchaseMessage' => clean_text($accessResult['class']['purchase_message'] ?? '', 2000),
                 'loginUrl' => $accessResult['loginUrl'],
-            ]);
-            send_class_bundle_access_email([
-                'buyerName' => $buyerName,
-                'buyerEmail' => $buyerEmail,
-                'classTitle' => clean_text($accessResult['class']['title'] ?? ($lockedOrder['item_title'] ?? 'Kelas IbnuCreative'), 180),
-                'bundleItems' => $emailContext['bundleItems'] ?? [],
+                'items' => $emailContext['bundleItems'] ?? [],
             ]);
         }
 

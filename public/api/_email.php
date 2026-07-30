@@ -208,6 +208,142 @@ function send_resend_email(array $message): array
     ];
 }
 
+function send_paypal_payment_email(array $order): array
+{
+    $buyerName = clean_text($order['buyerName'] ?? 'Customer', 160) ?: 'Customer';
+    $buyerEmail = clean_email($order['buyerEmail'] ?? '');
+    $itemTitle = clean_text($order['itemTitle'] ?? 'IbnuCreative purchase', 180);
+    $checkoutUrl = clean_asset_url($order['checkoutUrl'] ?? '', 1000);
+    $currency = strtoupper(clean_text($order['currency'] ?? 'USD', 10)) ?: 'USD';
+    $currencyValue = number_format((float) ($order['currencyValue'] ?? 0), 2, '.', ',');
+    $amountIdr = max(0, (int) ($order['amountIdr'] ?? 0));
+    $text = "Hi {$buyerName},\n\n"
+        . "Your PayPal order has been created. Please complete the payment to activate your access.\n\n"
+        . "Item: {$itemTitle}\n"
+        . "PayPal total: {$currency} {$currencyValue}\n"
+        . "Reference price: IDR " . number_format($amountIdr, 0, '.', ',') . "\n\n"
+        . "Complete your payment:\n{$checkoutUrl}\n\n"
+        . "Your account and purchased access will be activated automatically after PayPal confirms the payment.\n\n"
+        . "IbnuCreative Academy";
+    $html = '<div style="box-sizing:border-box;width:100%;margin:0;padding:18px 8px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.65">'
+        . '<div style="box-sizing:border-box;width:100%;max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="padding:22px 18px;background:#003087;color:#ffffff">'
+        . '<p style="margin:0 0 8px;color:#dbeafe;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">PayPal payment</p>'
+        . '<h2 style="margin:0;color:#ffffff;font-size:24px;line-height:1.3">Complete your payment</h2>'
+        . '</div><div style="padding:20px 16px">'
+        . '<p style="margin:0 0 14px">Hi <strong>' . email_escape($buyerName) . '</strong>, your PayPal order is ready. Complete the payment to activate your purchase automatically.</p>'
+        . email_panel('Order summary', email_data_rows([
+            ['label' => 'Item', 'value' => $itemTitle],
+            ['label' => 'PayPal total', 'value' => $currency . ' ' . $currencyValue],
+            ['label' => 'Reference price', 'value' => 'IDR ' . number_format($amountIdr, 0, '.', ',')],
+        ]))
+        . '<div style="margin:16px 0">' . email_button($checkoutUrl, 'Complete PayPal Payment', '#0070ba') . '</div>'
+        . '<p style="margin:14px 0;color:#374151;font-size:14px">Your account and purchased access will be activated automatically after PayPal confirms the payment.</p>'
+        . ($checkoutUrl !== '' ? '<p style="margin:14px 0 0;color:#6b7280;font-size:12px;overflow-wrap:anywhere">If the button does not work, copy this link:<br><a href="' . email_escape($checkoutUrl) . '" style="color:#2563eb;overflow-wrap:anywhere">' . email_escape($checkoutUrl) . '</a></p>' : '')
+        . '<p style="margin:22px 0 0">IbnuCreative Academy</p>'
+        . '</div></div></div>';
+
+    return send_resend_email([
+        'to' => $buyerEmail,
+        'subject' => 'Complete your PayPal payment for ' . $itemTitle,
+        'text' => $text,
+        'html' => $html,
+    ]);
+}
+
+function send_paypal_access_email(array $order): array
+{
+    $buyerName = clean_text($order['buyerName'] ?? 'Customer', 160) ?: 'Customer';
+    $buyerEmail = clean_email($order['buyerEmail'] ?? '');
+    $itemType = clean_text($order['itemType'] ?? 'class', 40);
+    $itemTitle = clean_text($order['itemTitle'] ?? 'IbnuCreative purchase', 180);
+    $username = clean_text($order['username'] ?? '', 120);
+    $passwordText = !empty($order['password'])
+        ? (string) $order['password']
+        : 'Use the password already registered to your account.';
+    $loginUrl = clean_asset_url($order['loginUrl'] ?? '', 1000);
+    $accessUrl = clean_asset_url($order['accessUrl'] ?? '', 1000);
+    $deliveryNote = clean_text($order['deliveryNote'] ?? '', 1200);
+    $purchaseMessage = clean_text($order['purchaseMessage'] ?? '', 2000);
+    $items = is_array($order['items'] ?? null) ? $order['items'] : [];
+    $typeLabel = $itemType === 'bundle'
+        ? 'bundle'
+        : ($itemType === 'digital_product' ? 'digital product' : 'class');
+    $primaryUrl = $accessUrl ?: $loginUrl;
+    $primaryLabel = $accessUrl !== '' ? 'Open Your Purchase' : 'Log In to Your Account';
+    $itemText = '';
+    $itemHtml = '';
+
+    foreach ($items as $index => $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $rawType = clean_text($item['type'] ?? ($item['productType'] ?? ''), 40);
+        $label = $rawType === 'class'
+            ? 'Class'
+            : ($rawType === 'prompt' || clean_text($item['productType'] ?? '', 40) === 'prompt'
+                ? 'Prompt'
+                : 'Digital product');
+        $title = clean_text($item['title'] ?? ($item['productTitle'] ?? ''), 180) ?: $label;
+        $itemUrl = clean_asset_url($item['accessUrl'] ?? '', 1000);
+        $number = $index + 1;
+        $itemText .= "{$number}. [{$label}] {$title}" . ($itemUrl !== '' ? "\n   Access: {$itemUrl}" : '') . "\n";
+        $itemHtml .= '<li style="margin:0 0 9px;color:#374151"><strong>' . email_escape($label) . ':</strong> '
+            . email_escape($title)
+            . ($itemUrl !== '' ? '<br><a href="' . email_escape($itemUrl) . '" style="color:#2563eb">Open item</a>' : '')
+            . '</li>';
+    }
+
+    $accountText = $username !== ''
+        ? "Account email: {$buyerEmail}\nUsername: {$username}\nPassword: {$passwordText}\n"
+        : "Account email: {$buyerEmail}\n";
+    $text = "Hi {$buyerName},\n\n"
+        . "Your PayPal payment has been confirmed and your {$typeLabel} access is now active.\n\n"
+        . "Purchase: {$itemTitle}\n"
+        . ($itemText !== '' ? "\nIncluded access:\n{$itemText}" : '')
+        . "\n{$accountText}"
+        . ($loginUrl !== '' ? "Login: {$loginUrl}\n" : '')
+        . ($accessUrl !== '' ? "Direct access: {$accessUrl}\n" : '')
+        . ($deliveryNote !== '' ? "\nAccess note:\n{$deliveryNote}\n" : '')
+        . ($purchaseMessage !== '' ? "\nImportant message from the instructor:\n{$purchaseMessage}\n" : '')
+        . "\nThank you for learning with IbnuCreative Academy.";
+    $accountRows = [
+        ['label' => 'Account email', 'value' => $buyerEmail],
+    ];
+
+    if ($username !== '') {
+        $accountRows[] = ['label' => 'Username', 'value' => $username];
+        $accountRows[] = ['label' => 'Password', 'value' => $passwordText];
+    }
+
+    $html = '<div style="box-sizing:border-box;width:100%;margin:0;padding:18px 8px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.65">'
+        . '<div style="box-sizing:border-box;width:100%;max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="padding:22px 18px;background:#0f172a;color:#ffffff">'
+        . '<p style="margin:0 0 8px;color:#86efac;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Payment confirmed</p>'
+        . '<h2 style="margin:0;color:#ffffff;font-size:24px;line-height:1.3">Your access is ready</h2>'
+        . '</div><div style="padding:20px 16px">'
+        . '<p style="margin:0 0 14px">Hi <strong>' . email_escape($buyerName) . '</strong>, your PayPal payment has been confirmed and your purchase is now active.</p>'
+        . email_panel('Purchase details', email_data_rows([
+            ['label' => ucfirst($typeLabel), 'value' => $itemTitle],
+        ]))
+        . ($itemHtml !== '' ? email_panel('Included access', '<ul style="margin:0;padding-left:20px">' . $itemHtml . '</ul>') : '')
+        . email_panel('Account details', email_data_rows($accountRows))
+        . ($primaryUrl !== '' ? '<div style="margin:16px 0">' . email_button($primaryUrl, $primaryLabel, '#2563eb') . '</div>' : '')
+        . ($deliveryNote !== '' ? email_panel('Access note', '<p style="margin:0;color:#374151;font-size:14px">' . email_escape_breaks($deliveryNote) . '</p>') : '')
+        . ($purchaseMessage !== '' ? email_panel('Important message from the instructor', '<p style="margin:0;color:#374151;font-size:14px">' . email_escape_breaks($purchaseMessage) . '</p>') : '')
+        . ($primaryUrl !== '' ? '<p style="margin:14px 0 0;color:#6b7280;font-size:12px;overflow-wrap:anywhere">If the button does not work, copy this link:<br><a href="' . email_escape($primaryUrl) . '" style="color:#2563eb;overflow-wrap:anywhere">' . email_escape($primaryUrl) . '</a></p>' : '')
+        . '<p style="margin:22px 0 0">Thank you for learning with IbnuCreative Academy.</p>'
+        . '</div></div></div>';
+
+    return send_resend_email([
+        'to' => $buyerEmail,
+        'subject' => 'Payment confirmed — Your access to ' . $itemTitle . ' is ready',
+        'text' => $text,
+        'html' => $html,
+    ]);
+}
+
 function send_digital_product_delivery_email(array $order): array
 {
     $downloadUrl = clean_asset_url($order['downloadUrl'] ?? '', 1000);

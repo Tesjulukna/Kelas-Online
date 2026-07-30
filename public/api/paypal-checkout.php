@@ -455,13 +455,13 @@ $update->execute([
     $localOrderId,
 ]);
 
-$emailResult = send_tripay_payment_email([
+$emailResult = send_paypal_payment_email([
     'buyerName' => $buyerName,
     'buyerEmail' => $buyerEmail,
     'itemTitle' => clean_text($checkoutItem['title'] ?? 'IbnuCreative', 160),
-    'amount' => $amountIdr,
-    'totalAmount' => $amountIdr,
-    'paymentMethod' => 'PayPal ' . $currency . ' ' . $currencyValue,
+    'amountIdr' => $amountIdr,
+    'currency' => $currency,
+    'currencyValue' => $currencyValue,
     'checkoutUrl' => $approvalUrl,
 ]);
 
