@@ -23786,3 +23786,295 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
     display: none;
   }
 }
+
+/* Member password security and reset flow */
+.profile-member-security {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #dbe5f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.profile-member-security > span,
+.password-security-intro > span,
+.forgot-password-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 13px;
+  color: #2563eb;
+  background: #dbeafe;
+}
+
+.profile-member-security p,
+.password-security-intro p,
+.password-reset-alternative p,
+.forgot-password-modal > p,
+.reset-password-card > p {
+  margin: 3px 0 0;
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.password-security-modal,
+.forgot-password-modal {
+  width: min(520px, calc(100vw - 28px));
+  max-height: min(760px, calc(100vh - 28px));
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid #dbe5f0;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.24);
+}
+
+.password-security-modal {
+  display: grid;
+  gap: 15px;
+}
+
+.password-security-modal > label,
+.forgot-password-modal label,
+.reset-password-card label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.password-security-modal input,
+.forgot-password-modal input,
+.reset-password-card input {
+  width: 100%;
+  min-height: 46px;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+}
+
+.password-security-modal input:focus,
+.forgot-password-modal input:focus,
+.reset-password-card input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.13);
+}
+
+.password-security-intro {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 13px;
+  border-radius: 15px;
+  background: #eff6ff;
+}
+
+.password-security-input {
+  position: relative;
+  display: block;
+}
+
+.password-security-input input {
+  padding-right: 48px;
+}
+
+.password-security-input button {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  color: #64748b;
+  background: transparent;
+  transform: translateY(-50%);
+}
+
+.password-strength {
+  height: 5px;
+  margin-top: -9px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #e2e8f0;
+}
+
+.password-strength span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ef4444, #f59e0b 52%, #22c55e);
+  transition: width 180ms ease;
+}
+
+.password-reset-alternative {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px dashed #bfdbfe;
+  border-radius: 15px;
+  background: #f8fbff;
+}
+
+.password-reset-active {
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #1e40af;
+  background: #dbeafe;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.forgot-password-modal {
+  display: grid;
+  gap: 15px;
+}
+
+.forgot-password-icon {
+  width: 54px;
+  height: 54px;
+  margin: 2px auto;
+  border-radius: 17px;
+}
+
+.forgot-password-status {
+  padding: 11px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  color: #1e3a8a;
+  background: #eff6ff;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.forgot-password-countdown {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 13px;
+  background: #f1f5f9;
+}
+
+.forgot-password-countdown small,
+.forgot-password-countdown span {
+  color: #64748b;
+}
+
+.forgot-password-countdown strong {
+  grid-row: span 2;
+  font-size: 1.3rem;
+  color: #0f172a;
+}
+
+.forgot-password-countdown span {
+  font-size: 0.74rem;
+}
+
+.reset-password-page {
+  min-height: calc(100vh - 72px);
+}
+
+.reset-password-card {
+  position: relative;
+  z-index: 2;
+  width: min(500px, calc(100vw - 28px));
+  margin: auto;
+  padding: 26px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 24px;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 25px 80px rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(18px);
+}
+
+.reset-password-card h1 {
+  margin: 10px 0 6px;
+  font-size: clamp(1.55rem, 5vw, 2.15rem);
+}
+
+.reset-password-card form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.app-shell.public-theme-dark .profile-member-security,
+.app-shell.public-theme-dark .password-security-modal,
+.app-shell.public-theme-dark .forgot-password-modal,
+.app-shell.public-theme-dark .reset-password-card {
+  color: #e5edf8;
+  border-color: #334155;
+  background: #111827;
+}
+
+.app-shell.public-theme-dark .profile-member-security {
+  background: #172033;
+}
+
+.app-shell.public-theme-dark .password-security-intro,
+.app-shell.public-theme-dark .password-reset-alternative,
+.app-shell.public-theme-dark .forgot-password-countdown {
+  border-color: #334155;
+  background: #172033;
+}
+
+.app-shell.public-theme-dark .password-security-modal label,
+.app-shell.public-theme-dark .forgot-password-modal label,
+.app-shell.public-theme-dark .reset-password-card label,
+.app-shell.public-theme-dark .forgot-password-countdown strong {
+  color: #e5edf8;
+}
+
+.app-shell.public-theme-dark .password-security-modal input,
+.app-shell.public-theme-dark .forgot-password-modal input,
+.app-shell.public-theme-dark .reset-password-card input {
+  color: #f8fafc;
+  border-color: #475569;
+  background: #0f172a;
+}
+
+.app-shell.public-theme-dark .forgot-password-status {
+  color: #bfdbfe;
+  border-color: #1e3a8a;
+  background: #172554;
+}
+
+.app-shell.public-theme-dark .password-reset-active {
+  color: #bfdbfe;
+  background: #172554;
+}
+
+@media (max-width: 640px) {
+  .profile-member-security {
+    grid-template-columns: auto 1fr;
+  }
+
+  .profile-member-security .btn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .password-security-modal,
+  .forgot-password-modal,
+  .reset-password-card {
+    padding: 18px 15px;
+    border-radius: 19px;
+  }
+}

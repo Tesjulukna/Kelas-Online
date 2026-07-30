@@ -10,6 +10,7 @@ function LoginPage({
   onPasswordChange,
   onSubmit,
   onGoogleLogin,
+  onForgotPassword,
   isGoogleLoading = false,
 }) {
   const [showPassword, setShowPassword] = useState(false)
@@ -180,6 +181,14 @@ function LoginPage({
                   <Icon name={showPassword ? 'eyeOff' : 'eye'} />
                 </button>
               </div>
+
+              <button
+                className="forgot-password-link"
+                type="button"
+                onClick={onForgotPassword}
+              >
+                Lupa password?
+              </button>
 
               <button className="btn btn-primary full" type="submit">
                 <Icon name="arrowRight" />

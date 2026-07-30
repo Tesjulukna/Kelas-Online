@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from './components/ConfirmDialog'
+import ForgotPasswordModal from './components/ForgotPasswordModal'
 import Icon from './components/Icon'
+import PasswordSecurityModal from './components/PasswordSecurityModal'
 import ProfileEditor from './components/ProfileEditor'
 import ProfileMenu from './components/ProfileMenu'
 import AdminPage from './pages/AdminPage'
@@ -8,6 +10,7 @@ import CertificateVerifyPage from './pages/CertificateVerifyPage'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import MemberPage from './pages/MemberPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import LanguagePopup from './components/LanguagePopup'
 import { adminClasses as adminClassSeed } from './data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from './data/websiteSettings'
@@ -50,6 +53,9 @@ const googleAuthUrlApiPath = '/api/google-auth-url'
 const googleLoginApiPath = '/api/google-login'
 const logoutApiPath = '/api/logout'
 const profileApiPath = '/api/profile'
+const passwordChangeApiPath = '/api/password-change'
+const passwordResetRequestApiPath = '/api/password-reset-request'
+const passwordResetConfirmApiPath = '/api/password-reset-confirm'
 const allowedRoles = ['member', 'admin']
 const pagePaths = {
   home: '/',
@@ -60,8 +66,10 @@ const pagePaths = {
   contact: '/kontak-support',
   privacy: '/kebijakan-privasi',
   terms: '/ketentuan-layanan',
+  resetPassword: '/reset-password',
 }
 const publicInfoPages = ['about', 'contact', 'privacy', 'terms']
+const publicAuthPages = ['resetPassword']
 const notificationSeenKey = 'ibnucreative.notifications.seen.v1'
 const analyticsVisitorKey = 'ibnucreative.analytics.visitor.v1'
 const analyticsSessionKey = 'ibnucreative.analytics.session.v1'
@@ -72,6 +80,10 @@ function getPageFromPath(pathname) {
 
   if (cleanPath === '/login') {
     return 'login'
+  }
+
+  if (cleanPath === '/reset-password') {
+    return 'resetPassword'
   }
 
   if (cleanPath === '/member') {
@@ -146,6 +158,7 @@ function getInitialPage(session) {
     session?.role &&
     page !== session.role &&
     !publicInfoPages.includes(page) &&
+    !publicAuthPages.includes(page) &&
     !getPublicDetailFromPath(window.location.pathname) &&
     !getPublicCertificateIdFromPath(window.location.pathname)
   ) {
@@ -1679,6 +1692,8 @@ function App() {
   const [isWebsiteSettingsLoaded, setIsWebsiteSettingsLoaded] = useState(false)
   const [isDashboardMenuOpen, setIsDashboardMenuOpen] = useState(false)
   const [isProfileEditorOpen, setIsProfileEditorOpen] = useState(false)
+  const [isPasswordSecurityOpen, setIsPasswordSecurityOpen] = useState(false)
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false)
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
   const [isLanguagePopupOpen, setIsLanguagePopupOpen] = useState(false)
   const [notice, setNotice] = useState('')
@@ -1724,6 +1739,7 @@ function App() {
         currentSession?.role &&
         nextPage !== currentSession.role &&
         !publicInfoPages.includes(nextPage) &&
+        !publicAuthPages.includes(nextPage) &&
         !getPublicDetailFromPath(window.location.pathname) &&
         !getPublicCertificateIdFromPath(window.location.pathname)
       ) {
@@ -2572,6 +2588,35 @@ function App() {
       })
   }
 
+  const handleRequestPasswordReset = async (email) => {
+    return requestJson(passwordResetRequestApiPath, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    })
+  }
+
+  const handleChangeMemberPassword = async (payload) => {
+    const data = await requestJson(passwordChangeApiPath, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    showNotice(data.message || 'Password berhasil diganti.')
+    return data
+  }
+
+  const handleConfirmPasswordReset = async (payload) => {
+    const data = await requestJson(passwordResetConfirmApiPath, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    clearSession()
+    setSession(null)
+    setSeenNotificationIds([])
+    return data
+  }
+
   const applyMembersResponse = (data) => {
     const nextMembers = cleanMembers(data.members)
 
@@ -3268,6 +3313,9 @@ function App() {
     ? ''
     : getPublicCertificateIdFromPath(currentPath.split(/[?#]/)[0] || '/')
   const currentRoutePath = currentPath.split(/[?#]/)[0] || '/'
+  const resetPasswordToken = page === 'resetPassword'
+    ? new URLSearchParams(currentPath.split('?')[1]?.split('#')[0] || '').get('token') || ''
+    : ''
   const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|prompt|produk-akses|prompt-akses)\//.test(currentRoutePath)
   const isCheckoutRoute = typeof window !== 'undefined' && /^\/(kelas|produk|prompt)\/[^/]+\/checkout\/?$/.test(currentRoutePath)
   const isPublicCertificatePath = Boolean(publicCertificateId)
@@ -3275,7 +3323,7 @@ function App() {
   const appRoleClass = session?.role ? `role-${session.role}` : 'role-public'
   const appRouteClass = [
     isPublicDetailPath ? 'is-public-detail-route' : '',
-    page === 'login' ? 'is-login-route' : '',
+    page === 'login' || page === 'resetPassword' ? 'is-login-route' : '',
   ].filter(Boolean).join(' ')
   const togglePublicTheme = () => {
     setPublicTheme((current) => {
@@ -3401,7 +3449,15 @@ function App() {
             onPasswordChange={setLoginPassword}
             onSubmit={handleLogin}
             onGoogleLogin={handleGoogleLogin}
+            onForgotPassword={() => setIsForgotPasswordOpen(true)}
             isGoogleLoading={isGoogleLoginLoading}
+          />
+        )}
+        {page === 'resetPassword' && (
+          <ResetPasswordPage
+            token={resetPasswordToken}
+            onSubmit={handleConfirmPasswordReset}
+            onLogin={goToLogin}
           />
         )}
         {publicInfoPages.includes(page) && (
@@ -3462,6 +3518,7 @@ function App() {
               onPasswordChange={setLoginPassword}
               onSubmit={handleLogin}
               onGoogleLogin={handleGoogleLogin}
+              onForgotPassword={() => setIsForgotPasswordOpen(true)}
               isGoogleLoading={isGoogleLoginLoading}
             />
           ))}
@@ -3523,6 +3580,7 @@ function App() {
               onPasswordChange={setLoginPassword}
               onSubmit={handleLogin}
               onGoogleLogin={handleGoogleLogin}
+              onForgotPassword={() => setIsForgotPasswordOpen(true)}
               isGoogleLoading={isGoogleLoginLoading}
             />
           ))}
@@ -3544,7 +3602,27 @@ function App() {
           session={session}
           onClose={() => setIsProfileEditorOpen(false)}
           onSave={handleSaveProfile}
+          onOpenSecurity={() => {
+            setIsProfileEditorOpen(false)
+            setIsPasswordSecurityOpen(true)
+          }}
           onNotify={showNotice}
+        />
+      )}
+      {session?.role === 'member' && isPasswordSecurityOpen && (
+        <PasswordSecurityModal
+          email={session.email}
+          onClose={() => setIsPasswordSecurityOpen(false)}
+          onChangePassword={handleChangeMemberPassword}
+          onRequestReset={handleRequestPasswordReset}
+          onNotify={showNotice}
+        />
+      )}
+      {isForgotPasswordOpen && (
+        <ForgotPasswordModal
+          initialEmail={loginUsername.includes('@') ? loginUsername : ''}
+          onClose={() => setIsForgotPasswordOpen(false)}
+          onRequestReset={handleRequestPasswordReset}
         />
       )}
       {isLogoutConfirmOpen && (

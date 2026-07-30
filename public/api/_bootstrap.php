@@ -1372,6 +1372,9 @@ function current_user(): ?array
 
                 return session_payload_from_account($account, $token);
             }
+
+            // Token yang dikirim tetapi sudah dicabut tidak boleh hidup kembali dari cookie PHP lama.
+            return null;
         } catch (Throwable $error) {
             // If the token table has not been installed yet, fall back to PHP session.
         }

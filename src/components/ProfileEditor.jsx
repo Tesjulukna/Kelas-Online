@@ -5,7 +5,7 @@ import { uploadStorageFile } from '../lib/storageUpload'
 
 const uploadFileApiPath = '/api/upload-file'
 
-function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
+function ProfileEditor({ session, onClose, onSave, onOpenSecurity, onNotify = () => {} }) {
   const [name, setName] = useState(session.name)
   const [email, setEmail] = useState(session.email || '')
   const [currentPassword, setCurrentPassword] = useState('')
@@ -165,6 +165,23 @@ function ProfileEditor({ session, onClose, onSave, onNotify = () => {} }) {
                 autoComplete="new-password"
               />
             </label>
+          </div>
+        )}
+
+        {session.role === 'member' && (
+          <div className="profile-member-security">
+            <span><Icon name="shield" /></span>
+            <div>
+              <strong>Keamanan akun</strong>
+              <p>Ganti password atau kirim link reset aman ke email akunmu.</p>
+            </div>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={onOpenSecurity}
+            >
+              Atur Password
+            </button>
           </div>
         )}
 

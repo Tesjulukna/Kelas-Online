@@ -208,6 +208,72 @@ function send_resend_email(array $message): array
     ];
 }
 
+function send_password_reset_link_email(array $account): array
+{
+    $buyerName = clean_text($account['buyerName'] ?? 'Member', 160) ?: 'Member';
+    $buyerEmail = clean_email($account['buyerEmail'] ?? '');
+    $resetUrl = clean_asset_url($account['resetUrl'] ?? '', 1200);
+    $expiresMinutes = max(5, (int) ($account['expiresMinutes'] ?? 30));
+    $text = "Halo {$buyerName},\n\n"
+        . "Kami menerima permintaan untuk mereset password akun IbnuCreative Anda.\n\n"
+        . "Buat password baru melalui link berikut:\n{$resetUrl}\n\n"
+        . "Link ini hanya bisa digunakan satu kali dan berlaku selama {$expiresMinutes} menit. Selama link masih aktif, sistem tidak akan mengirim link reset baru.\n\n"
+        . "Jika Anda tidak meminta reset password, abaikan email ini. Password akun Anda tidak berubah.\n\n"
+        . "IbnuCreative Academy";
+    $html = '<div style="box-sizing:border-box;width:100%;margin:0;padding:18px 8px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.65">'
+        . '<div style="box-sizing:border-box;width:100%;max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="padding:22px 18px;background:#0f172a;color:#ffffff">'
+        . '<p style="margin:0 0 8px;color:#bfdbfe;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Keamanan akun</p>'
+        . '<h2 style="margin:0;color:#ffffff;font-size:24px;line-height:1.3">Reset password akun Anda</h2>'
+        . '</div><div style="padding:20px 16px">'
+        . '<p style="margin:0 0 14px">Halo <strong>' . email_escape($buyerName) . '</strong>, kami menerima permintaan reset password untuk akun IbnuCreative Anda.</p>'
+        . '<div style="margin:18px 0">' . email_button($resetUrl, 'Buat Password Baru', '#2563eb') . '</div>'
+        . email_panel(
+            'Link aman satu kali',
+            '<p style="margin:0;color:#374151;font-size:14px">Link berlaku selama <strong>' . email_escape((string) $expiresMinutes) . ' menit</strong> dan hanya dapat digunakan satu kali. Sistem tidak akan mengirim link baru selama link ini masih aktif.</p>'
+        )
+        . ($resetUrl !== '' ? '<p style="margin:14px 0 0;color:#6b7280;font-size:12px;overflow-wrap:anywhere">Jika tombol tidak bekerja, salin link ini:<br><a href="' . email_escape($resetUrl) . '" style="color:#2563eb;overflow-wrap:anywhere">' . email_escape($resetUrl) . '</a></p>' : '')
+        . '<p style="margin:18px 0 0;color:#374151;font-size:14px">Jika Anda tidak meminta reset password, abaikan email ini. Password akun tidak akan berubah.</p>'
+        . '<p style="margin:22px 0 0">IbnuCreative Academy</p>'
+        . '</div></div></div>';
+
+    return send_resend_email([
+        'to' => $buyerEmail,
+        'subject' => 'Reset password akun IbnuCreative',
+        'text' => $text,
+        'html' => $html,
+    ]);
+}
+
+function send_password_changed_email(array $account): array
+{
+    $buyerName = clean_text($account['buyerName'] ?? 'Member', 160) ?: 'Member';
+    $buyerEmail = clean_email($account['buyerEmail'] ?? '');
+    $wasReset = !empty($account['wasReset']);
+    $action = $wasReset ? 'direset' : 'diganti';
+    $text = "Halo {$buyerName},\n\n"
+        . "Password akun IbnuCreative Anda berhasil {$action}.\n\n"
+        . "Semua sesi lain telah dikeluarkan untuk melindungi akun Anda. Jika perubahan ini bukan dilakukan oleh Anda, segera hubungi admin IbnuCreative.\n\n"
+        . "IbnuCreative Academy";
+    $html = '<div style="box-sizing:border-box;width:100%;margin:0;padding:18px 8px;background:#f8fafc;font-family:Arial,sans-serif;color:#111827;line-height:1.65">'
+        . '<div style="box-sizing:border-box;width:100%;max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden">'
+        . '<div style="padding:22px 18px;background:#166534;color:#ffffff">'
+        . '<p style="margin:0 0 8px;color:#dcfce7;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Keamanan akun</p>'
+        . '<h2 style="margin:0;color:#ffffff;font-size:24px;line-height:1.3">Password berhasil ' . email_escape($action) . '</h2>'
+        . '</div><div style="padding:20px 16px">'
+        . '<p style="margin:0 0 14px">Halo <strong>' . email_escape($buyerName) . '</strong>, password akun IbnuCreative Anda berhasil ' . email_escape($action) . '.</p>'
+        . '<p style="margin:0;color:#374151;font-size:14px">Semua sesi lain telah dikeluarkan untuk melindungi akun Anda. Jika perubahan ini bukan dilakukan oleh Anda, segera hubungi admin IbnuCreative.</p>'
+        . '<p style="margin:22px 0 0">IbnuCreative Academy</p>'
+        . '</div></div></div>';
+
+    return send_resend_email([
+        'to' => $buyerEmail,
+        'subject' => 'Password akun IbnuCreative berhasil ' . $action,
+        'text' => $text,
+        'html' => $html,
+    ]);
+}
+
 function send_paypal_payment_email(array $order): array
 {
     $buyerName = clean_text($order['buyerName'] ?? 'Customer', 160) ?: 'Customer';

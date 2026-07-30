@@ -177,6 +177,25 @@ $statements = [
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX login_attempt_block_index (blocked_until)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    "CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        account_id VARCHAR(120) PRIMARY KEY,
+        token_hash CHAR(64) NULL DEFAULT NULL,
+        requested_email VARCHAR(180) NOT NULL DEFAULT '',
+        expires_at DATETIME NULL,
+        used_at DATETIME NULL,
+        email_sent_at DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY password_reset_token_unique (token_hash),
+        INDEX password_reset_expiry_index (expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+    "CREATE TABLE IF NOT EXISTS password_reset_rate_limits (
+        rate_key CHAR(64) PRIMARY KEY,
+        attempts INT NOT NULL DEFAULT 0,
+        window_started_at DATETIME NOT NULL,
+        last_attempt_at DATETIME NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
     "CREATE TABLE IF NOT EXISTS submissions (
         id VARCHAR(120) PRIMARY KEY,
         member_id VARCHAR(120) NOT NULL,

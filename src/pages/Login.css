@@ -871,3 +871,29 @@
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(51, 65, 85, 0.12);
 }
+
+.forgot-password-link {
+  display: block;
+  width: max-content;
+  margin: -8px 0 14px auto;
+  padding: 3px 0;
+  border: 0;
+  color: #93c5fd;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.forgot-password-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.app-shell.public-theme-light.is-login-route .forgot-password-link {
+  color: #2563eb;
+}
+
+.app-shell.public-theme-light.is-login-route .forgot-password-link:hover {
+  color: #1d4ed8;
+}
