@@ -24384,13 +24384,7 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   }
 }
 
-/* Course-aware support tickets and assignment question context */
-.support-context-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
+/* Course-aware support tickets and assignment instruction context */
 .support-new-ticket-form select {
   width: 100%;
   min-height: 42px;
@@ -24400,11 +24394,6 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   color: var(--color-heading);
   background: #ffffff;
   font: inherit;
-}
-
-.support-new-ticket-form select:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
 }
 
 .support-access-empty {
@@ -24436,7 +24425,7 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   max-width: 100%;
 }
 
-.submission-material-questions {
+.submission-task-instruction {
   display: grid;
   gap: 10px;
   min-width: 0;
@@ -24446,14 +24435,14 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   background: #eff6ff;
 }
 
-.submission-material-questions-heading {
+.submission-task-instruction-heading {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 9px;
 }
 
-.submission-material-questions-heading > span {
+.submission-task-instruction-heading > span {
   display: grid;
   place-items: center;
   width: 34px;
@@ -24463,91 +24452,35 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   background: #dbeafe;
 }
 
-.submission-material-questions-heading > span .icon {
+.submission-task-instruction-heading > span .icon {
   width: 17px;
   height: 17px;
 }
 
-.submission-material-questions-heading div {
+.submission-task-instruction-heading div {
   min-width: 0;
 }
 
-.submission-material-questions-heading small {
+.submission-task-instruction-heading small {
   color: #64748b;
   font-size: 0.68rem;
   font-weight: 750;
   text-transform: uppercase;
 }
 
-.submission-material-questions-heading h3 {
+.submission-task-instruction-heading h3 {
   margin: 1px 0 0;
   color: #0f172a;
   font-size: 0.94rem;
 }
 
-.submission-material-questions-heading mark {
-  min-width: 28px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  color: #1d4ed8;
-  background: #dbeafe;
-  font-size: 0.75rem;
-  font-weight: 800;
-  text-align: center;
-}
-
-.submission-question-list {
-  display: grid;
-  gap: 8px;
-  max-height: 220px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
-
-.submission-question-list article {
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid #dbeafe;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.submission-question-list article > div {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.submission-question-list strong,
-.submission-question-list p,
-.submission-question-list small {
-  min-width: 0;
+.submission-task-instruction > p {
   margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.submission-question-list strong {
-  color: #0f172a;
-  font-size: 0.82rem;
-}
-
-.submission-question-list p {
   color: #334155;
-  font-size: 0.8rem;
-  line-height: 1.45;
-}
-
-.submission-question-list small,
-.submission-question-empty {
-  color: #64748b;
-  font-size: 0.72rem;
-}
-
-.submission-question-empty {
-  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .app-shell.role-member.public-theme-dark .support-new-ticket-form select {
@@ -24561,19 +24494,11 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 }
 
 @media (max-width: 600px) {
-  .support-context-fields {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .support-new-ticket-form select {
     font-size: 16px;
   }
 
-  .submission-material-questions {
+  .submission-task-instruction {
     padding: 10px;
-  }
-
-  .submission-question-list {
-    max-height: 180px;
   }
 }

@@ -778,7 +778,6 @@ function MemberPage({
   const [courseProgress, setCourseProgress] = useState(() => readCourseProgress(userId))
   const [supportMessage, setSupportMessage] = useState('')
   const [supportClassId, setSupportClassId] = useState('')
-  const [supportMaterialId, setSupportMaterialId] = useState('')
   const [supportSubject, setSupportSubject] = useState('')
   const [supportDraft, setSupportDraft] = useState('')
   const [supportReplyDrafts, setSupportReplyDrafts] = useState({})
@@ -2146,11 +2145,6 @@ function MemberPage({
     : ''
   const selectedSupportClassId = validSupportClassId || (courses.length === 1 ? courses[0].id : '')
   const selectedSupportCourse = courses.find((course) => course.id === selectedSupportClassId)
-  const selectedSupportMaterialId = (selectedSupportCourse?.materials ?? []).some(
-    (material) => material.id === supportMaterialId,
-  )
-    ? supportMaterialId
-    : ''
 
   const handleSendSupport = async (event) => {
     event?.preventDefault()
@@ -2168,12 +2162,10 @@ function MemberPage({
     try {
       await onCreateSupportTicket({
         classId: selectedSupportCourse.id,
-        materialId: selectedSupportMaterialId,
         subject: supportSubject.trim() || 'Pertanyaan belajar',
         message: supportDraft.trim(),
       })
       setSupportClassId(courses.length === 1 ? courses[0].id : '')
-      setSupportMaterialId('')
       setSupportSubject('')
       setSupportDraft('')
       setSupportMessage('Tiket bantuan Anda berhasil dibuat.')
@@ -4448,37 +4440,19 @@ function MemberPage({
           </div>
           {courses.length ? (
           <form className="ticket-form support-new-ticket-form" onSubmit={handleSendSupport}>
-            <div className="support-context-fields">
-              <label>
-                Kelas yang ditanyakan
-                <select
-                  value={selectedSupportClassId}
-                  onChange={(event) => {
-                    setSupportClassId(event.target.value)
-                    setSupportMaterialId('')
-                  }}
-                  required
-                >
-                  {courses.length > 1 && <option value="">Pilih kelas yang Anda ikuti</option>}
-                  {courses.map((course) => (
-                    <option value={course.id} key={course.id}>{course.title}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Materi terkait
-                <select
-                  value={selectedSupportMaterialId}
-                  onChange={(event) => setSupportMaterialId(event.target.value)}
-                  disabled={!selectedSupportCourse}
-                >
-                  <option value="">Umum tentang kelas</option>
-                  {(selectedSupportCourse?.materials ?? []).map((material) => (
-                    <option value={material.id} key={material.id}>{material.title}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            <label>
+              Kelas yang ditanyakan
+              <select
+                value={selectedSupportClassId}
+                onChange={(event) => setSupportClassId(event.target.value)}
+                required
+              >
+                {courses.length > 1 && <option value="">Pilih kelas yang Anda ikuti</option>}
+                {courses.map((course) => (
+                  <option value={course.id} key={course.id}>{course.title}</option>
+                ))}
+              </select>
+            </label>
             <label>
               Subjek
               <input
@@ -4524,7 +4498,6 @@ function MemberPage({
                     <span className="ticket-class-context">
                       <Icon name="bookOpen" />
                       {ticket.classTitle || 'Kelas lama tidak tercatat'}
-                      {ticket.materialTitle ? ` | ${ticket.materialTitle}` : ''}
                     </span>
                   </span>
                   <mark>{ticket.status}</mark>

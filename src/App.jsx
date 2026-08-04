@@ -973,8 +973,6 @@ function cleanSupportTickets(value) {
       memberName: cleanText(item.memberName || 'Member'),
       classId: cleanText(item.classId || ''),
       classTitle: cleanLongText(item.classTitle || '', 180),
-      materialId: cleanText(item.materialId || ''),
-      materialTitle: cleanLongText(item.materialTitle || '', 180),
       subject: cleanLongText(item.subject || 'Bantuan mentor', 120),
       message: cleanLongText(item.message, 600),
       status: cleanText(item.status || 'Menunggu'),
@@ -2917,7 +2915,7 @@ function App() {
     return applyDigitalProductsResponse(data)
   }
 
-  const handleCreateSupportTicket = async ({ message, subject, classId, materialId }) => {
+  const handleCreateSupportTicket = async ({ message, subject, classId }) => {
     if (!session) {
       throw new Error('Silakan login ulang untuk mengirim bantuan.')
     }
@@ -2928,7 +2926,6 @@ function App() {
         memberId: session.userId,
         memberName: session.name,
         classId,
-        materialId,
         subject,
         message,
       }),

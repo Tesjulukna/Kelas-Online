@@ -13,8 +13,6 @@ function ensure_support_context_columns(PDO $pdo): void
         'replies' => 'MEDIUMTEXT NULL AFTER answer',
         'class_id' => "VARCHAR(120) NOT NULL DEFAULT '' AFTER member_name",
         'class_title' => "VARCHAR(180) NOT NULL DEFAULT '' AFTER class_id",
-        'material_id' => "VARCHAR(120) NOT NULL DEFAULT '' AFTER class_title",
-        'material_title' => "VARCHAR(180) NOT NULL DEFAULT '' AFTER material_id",
     ];
 
     foreach ($columns as $column => $definition) {
@@ -135,8 +133,6 @@ function map_support_tickets(array $tickets): array
             'memberName' => $ticket['member_name'],
             'classId' => $ticket['class_id'] ?? '',
             'classTitle' => $ticket['class_title'] ?? '',
-            'materialId' => $ticket['material_id'] ?? '',
-            'materialTitle' => $ticket['material_title'] ?? '',
             'subject' => $ticket['subject'],
             'message' => $ticket['message'],
             'status' => $ticket['status'],
@@ -170,7 +166,6 @@ if ($method === 'POST') {
     $user = require_user();
     $message = clean_text($payload['message'] ?? '', 600);
     $classId = clean_text($payload['classId'] ?? '', 120);
-    $materialId = clean_text($payload['materialId'] ?? '', 120);
 
     if ($message === '') {
         send_json(400, ['message' => 'Pertanyaan bantuan wajib diisi.']);
@@ -192,26 +187,10 @@ if ($method === 'POST') {
         send_json(404, ['message' => 'Kelas yang dipilih tidak tersedia.']);
     }
 
-    $materialTitle = '';
-
-    if ($materialId !== '') {
-        $materialQuery = $pdo->prepare(
-            'SELECT id, title FROM materials WHERE id = ? AND class_id = ? LIMIT 1',
-        );
-        $materialQuery->execute([$materialId, $classId]);
-        $materialRow = $materialQuery->fetch();
-
-        if (!$materialRow) {
-            send_json(400, ['message' => 'Materi tidak sesuai dengan kelas yang dipilih.']);
-        }
-
-        $materialTitle = clean_text($materialRow['title'] ?? '', 180);
-    }
-
     $insert = $pdo->prepare(
         'INSERT INTO support_tickets
-        (id, member_id, member_name, class_id, class_title, material_id, material_title, subject, message, status, priority, answer, replies, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (id, member_id, member_name, class_id, class_title, subject, message, status, priority, answer, replies, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     );
     $ticketId = make_id('ticket');
     $createdAt = date(DATE_ATOM);
@@ -229,8 +208,6 @@ if ($method === 'POST') {
         $user['name'] ?? 'Member',
         $classId,
         clean_text($classRow['title'] ?? 'Kelas', 180),
-        $materialId,
-        $materialTitle,
         clean_text($payload['subject'] ?? 'Bantuan mentor', 120),
         $message,
         'Menunggu',
