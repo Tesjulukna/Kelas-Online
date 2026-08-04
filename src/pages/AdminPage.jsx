@@ -656,6 +656,10 @@ function createEmptySupportForm() {
   return {
     id: '',
     memberName: '',
+    classId: '',
+    classTitle: '',
+    materialId: '',
+    materialTitle: '',
     subject: '',
     message: '',
     status: 'Menunggu',
@@ -1785,6 +1789,13 @@ function AdminPage({
       ]),
     ).entries(),
   ].filter(([classId]) => classId)
+  const viewingSubmissionQuestions = viewingSubmission
+    ? supportTickets.filter((ticket) =>
+        ticket.memberId === viewingSubmission.memberId &&
+        ticket.classId === viewingSubmission.classId &&
+        ticket.materialId === viewingSubmission.materialId,
+      )
+    : []
   const memberAccessibleClasses = selectedSubmissionMember
     ? getMemberAccessibleClasses(selectedSubmissionMember, classes)
     : []
@@ -3642,6 +3653,10 @@ function AdminPage({
     setSupportForm({
       id: ticket.id,
       memberName: ticket.memberName,
+      classId: ticket.classId ?? '',
+      classTitle: ticket.classTitle ?? '',
+      materialId: ticket.materialId ?? '',
+      materialTitle: ticket.materialTitle ?? '',
       subject: ticket.subject,
       message: ticket.message,
       status: ticket.status === 'Menunggu' ? 'Dibalas' : ticket.status,
@@ -7204,6 +7219,11 @@ function AdminPage({
               <div className="table-row" role="row" key={ticket.id}>
                 <span className="support-message" data-label="Pertanyaan" role="cell">
                   <strong>{ticket.subject}</strong>
+                  <span className="ticket-class-context">
+                    <Icon name="bookOpen" />
+                    {ticket.classTitle || 'Kelas lama tidak tercatat'}
+                    {ticket.materialTitle ? ` | ${ticket.materialTitle}` : ''}
+                  </span>
                   <small>{ticket.message}</small>
                   {(ticket.replies ?? []).at(-1)?.message && (
                     <small>Pesan terakhir: {(ticket.replies ?? []).at(-1).message}</small>
@@ -7622,6 +7642,11 @@ function AdminPage({
             </div>
             <div className="support-ticket-preview">
               <strong>{supportForm.memberName}</strong>
+              <span className="ticket-class-context">
+                <Icon name="bookOpen" />
+                {supportForm.classTitle || 'Kelas lama tidak tercatat'}
+                {supportForm.materialTitle ? ` | ${supportForm.materialTitle}` : ' | Umum tentang kelas'}
+              </span>
               <span>{supportForm.subject}</span>
               <p>{supportForm.message}</p>
             </div>
@@ -7904,6 +7929,34 @@ function AdminPage({
                 </a>
               )}
             </div>
+            <section className="submission-material-questions" aria-labelledby="submission-questions-title">
+              <div className="submission-material-questions-heading">
+                <span><Icon name="message" /></span>
+                <div>
+                  <small>Bantuan pada materi ini</small>
+                  <h3 id="submission-questions-title">Pertanyaan member</h3>
+                </div>
+                <mark>{viewingSubmissionQuestions.length}</mark>
+              </div>
+              {viewingSubmissionQuestions.length ? (
+                <div className="submission-question-list">
+                  {viewingSubmissionQuestions.map((ticket) => (
+                    <article key={ticket.id}>
+                      <div>
+                        <strong>{ticket.subject}</strong>
+                        <mark>{ticket.status}</mark>
+                      </div>
+                      <p>{ticket.message}</p>
+                      {(ticket.replies ?? []).length > 1 && (
+                        <small>Balasan terakhir: {(ticket.replies ?? []).at(-1)?.message}</small>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="submission-question-empty">Belum ada pertanyaan bantuan dari member pada materi ini.</p>
+              )}
+            </section>
             <label>
               Feedback mentor
               <textarea

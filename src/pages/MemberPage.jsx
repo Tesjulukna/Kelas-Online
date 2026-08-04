@@ -777,6 +777,8 @@ function MemberPage({
   const [submittedTasks, setSubmittedTasks] = useState(() => readSubmittedTasks(userId))
   const [courseProgress, setCourseProgress] = useState(() => readCourseProgress(userId))
   const [supportMessage, setSupportMessage] = useState('')
+  const [supportClassId, setSupportClassId] = useState('')
+  const [supportMaterialId, setSupportMaterialId] = useState('')
   const [supportSubject, setSupportSubject] = useState('')
   const [supportDraft, setSupportDraft] = useState('')
   const [supportReplyDrafts, setSupportReplyDrafts] = useState({})
@@ -2139,7 +2141,25 @@ function MemberPage({
     onCheckoutClassRequestHandled,
   ])
 
-  const handleSendSupport = async () => {
+  const validSupportClassId = courses.some((course) => course.id === supportClassId)
+    ? supportClassId
+    : ''
+  const selectedSupportClassId = validSupportClassId || (courses.length === 1 ? courses[0].id : '')
+  const selectedSupportCourse = courses.find((course) => course.id === selectedSupportClassId)
+  const selectedSupportMaterialId = (selectedSupportCourse?.materials ?? []).some(
+    (material) => material.id === supportMaterialId,
+  )
+    ? supportMaterialId
+    : ''
+
+  const handleSendSupport = async (event) => {
+    event?.preventDefault()
+
+    if (!selectedSupportCourse) {
+      onNotify('Pilih kelas yang ingin ditanyakan terlebih dahulu.')
+      return
+    }
+
     if (!supportDraft.trim()) {
       onNotify('Tulis pertanyaan dulu sebelum dikirim.')
       return
@@ -2147,9 +2167,13 @@ function MemberPage({
 
     try {
       await onCreateSupportTicket({
+        classId: selectedSupportCourse.id,
+        materialId: selectedSupportMaterialId,
         subject: supportSubject.trim() || 'Pertanyaan belajar',
         message: supportDraft.trim(),
       })
+      setSupportClassId(courses.length === 1 ? courses[0].id : '')
+      setSupportMaterialId('')
       setSupportSubject('')
       setSupportDraft('')
       setSupportMessage('Tiket bantuan Anda berhasil dibuat.')
@@ -4422,7 +4446,39 @@ function MemberPage({
               <h2>Tiket bantuan</h2>
             </div>
           </div>
-          <div className="ticket-form support-new-ticket-form">
+          {courses.length ? (
+          <form className="ticket-form support-new-ticket-form" onSubmit={handleSendSupport}>
+            <div className="support-context-fields">
+              <label>
+                Kelas yang ditanyakan
+                <select
+                  value={selectedSupportClassId}
+                  onChange={(event) => {
+                    setSupportClassId(event.target.value)
+                    setSupportMaterialId('')
+                  }}
+                  required
+                >
+                  {courses.length > 1 && <option value="">Pilih kelas yang Anda ikuti</option>}
+                  {courses.map((course) => (
+                    <option value={course.id} key={course.id}>{course.title}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Materi terkait
+                <select
+                  value={selectedSupportMaterialId}
+                  onChange={(event) => setSupportMaterialId(event.target.value)}
+                  disabled={!selectedSupportCourse}
+                >
+                  <option value="">Umum tentang kelas</option>
+                  {(selectedSupportCourse?.materials ?? []).map((material) => (
+                    <option value={material.id} key={material.id}>{material.title}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <label>
               Subjek
               <input
@@ -4441,11 +4497,18 @@ function MemberPage({
                 rows="5"
               ></textarea>
             </label>
-            <button className="btn btn-primary" type="button" onClick={handleSendSupport}>
+            <button className="btn btn-primary" type="submit">
               <Icon name="message" />
               Buat Tiket
             </button>
-          </div>
+          </form>
+          ) : (
+            <article className="empty-state support-access-empty">
+              <Icon name="bookOpen" />
+              <h3>Bantuan khusus peserta kelas</h3>
+              <p>Anda dapat membuat tiket bantuan setelah bergabung ke minimal satu kelas.</p>
+            </article>
+          )}
           {supportMessage && <p className="action-feedback">{supportMessage}</p>}
           <div className="support-replies ticket-list">
             <div>
@@ -4458,6 +4521,11 @@ function MemberPage({
                   <span>
                     <small>Tiket #{ticket.id.slice(-6).toUpperCase()}</small>
                     <strong>{ticket.subject}</strong>
+                    <span className="ticket-class-context">
+                      <Icon name="bookOpen" />
+                      {ticket.classTitle || 'Kelas lama tidak tercatat'}
+                      {ticket.materialTitle ? ` | ${ticket.materialTitle}` : ''}
+                    </span>
                   </span>
                   <mark>{ticket.status}</mark>
                 </div>

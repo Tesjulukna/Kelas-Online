@@ -108,6 +108,10 @@ $statements = [
         id VARCHAR(120) PRIMARY KEY,
         member_id VARCHAR(120) NOT NULL DEFAULT '',
         member_name VARCHAR(120) NOT NULL DEFAULT 'Member',
+        class_id VARCHAR(120) NOT NULL DEFAULT '',
+        class_title VARCHAR(180) NOT NULL DEFAULT '',
+        material_id VARCHAR(120) NOT NULL DEFAULT '',
+        material_title VARCHAR(180) NOT NULL DEFAULT '',
         subject VARCHAR(160) NOT NULL DEFAULT 'Bantuan mentor',
         message TEXT NOT NULL,
         status VARCHAR(40) NOT NULL DEFAULT 'Menunggu',
@@ -581,6 +585,10 @@ ensure_column_definition($pdo, 'materials', 'task_prompt LONGTEXT NULL');
 ensure_column_definition($pdo, 'material_assets', 'prompt LONGTEXT NULL');
 ensure_column_definition($pdo, 'material_assets', 'instruction LONGTEXT NULL');
 ensure_column($pdo, 'support_tickets', 'replies', 'MEDIUMTEXT NULL AFTER answer');
+ensure_column($pdo, 'support_tickets', 'class_id', "VARCHAR(120) NOT NULL DEFAULT '' AFTER member_name");
+ensure_column($pdo, 'support_tickets', 'class_title', "VARCHAR(180) NOT NULL DEFAULT '' AFTER class_id");
+ensure_column($pdo, 'support_tickets', 'material_id', "VARCHAR(120) NOT NULL DEFAULT '' AFTER class_title");
+ensure_column($pdo, 'support_tickets', 'material_title', "VARCHAR(180) NOT NULL DEFAULT '' AFTER material_id");
 ensure_column($pdo, 'submissions', 'attachment_url', "VARCHAR(240) NOT NULL DEFAULT '' AFTER answer");
 ensure_column($pdo, 'submissions', 'attachment_name', "VARCHAR(180) NOT NULL DEFAULT '' AFTER attachment_url");
 ensure_column($pdo, 'submissions', 'rating', 'TINYINT NOT NULL DEFAULT 0 AFTER feedback');

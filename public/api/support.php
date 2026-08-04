@@ -7,21 +7,45 @@ ensure_method(['GET', 'POST', 'PUT', 'DELETE']);
 $pdo = db();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-function ensure_support_replies_column(PDO $pdo): void
+function ensure_support_context_columns(PDO $pdo): void
 {
-    try {
-        $query = $pdo->prepare('SHOW COLUMNS FROM support_tickets LIKE ?');
-        $query->execute(['replies']);
+    $columns = [
+        'replies' => 'MEDIUMTEXT NULL AFTER answer',
+        'class_id' => "VARCHAR(120) NOT NULL DEFAULT '' AFTER member_name",
+        'class_title' => "VARCHAR(180) NOT NULL DEFAULT '' AFTER class_id",
+        'material_id' => "VARCHAR(120) NOT NULL DEFAULT '' AFTER class_title",
+        'material_title' => "VARCHAR(180) NOT NULL DEFAULT '' AFTER material_id",
+    ];
 
-        if (!$query->fetch()) {
-            $pdo->exec('ALTER TABLE support_tickets ADD replies MEDIUMTEXT NULL AFTER answer');
+    foreach ($columns as $column => $definition) {
+        try {
+            $query = $pdo->prepare('SHOW COLUMNS FROM support_tickets LIKE ?');
+            $query->execute([$column]);
+
+            if (!$query->fetch()) {
+                $pdo->exec("ALTER TABLE support_tickets ADD `$column` $definition");
+            }
+        } catch (Throwable $error) {
+            // Keep older installs readable; installer can add the columns explicitly.
         }
-    } catch (Throwable $error) {
-        // Keep older installs readable; installer can add the column explicitly.
     }
 }
 
-ensure_support_replies_column($pdo);
+ensure_support_context_columns($pdo);
+
+function support_member_class_ids(PDO $pdo, array $user): array
+{
+    $query = $pdo->prepare('SELECT allowed_class_ids FROM accounts WHERE id = ? AND role = ? LIMIT 1');
+    $query->execute([$user['userId'] ?? '', 'member']);
+    $account = $query->fetch();
+    $ids = clean_allowed_class_ids($account['allowed_class_ids'] ?? null);
+
+    if (!is_array($ids)) {
+        $ids = clean_allowed_class_ids($user['allowedClassIds'] ?? null);
+    }
+
+    return is_array($ids) ? $ids : [];
+}
 
 function clean_reply_message($value): string
 {
@@ -109,6 +133,10 @@ function map_support_tickets(array $tickets): array
             'id' => $ticket['id'],
             'memberId' => $ticket['member_id'],
             'memberName' => $ticket['member_name'],
+            'classId' => $ticket['class_id'] ?? '',
+            'classTitle' => $ticket['class_title'] ?? '',
+            'materialId' => $ticket['material_id'] ?? '',
+            'materialTitle' => $ticket['material_title'] ?? '',
             'subject' => $ticket['subject'],
             'message' => $ticket['message'],
             'status' => $ticket['status'],
@@ -141,15 +169,49 @@ $payload = read_json_body();
 if ($method === 'POST') {
     $user = require_user();
     $message = clean_text($payload['message'] ?? '', 600);
+    $classId = clean_text($payload['classId'] ?? '', 120);
+    $materialId = clean_text($payload['materialId'] ?? '', 120);
 
     if ($message === '') {
         send_json(400, ['message' => 'Pertanyaan bantuan wajib diisi.']);
     }
 
+    if (($user['role'] ?? '') !== 'member') {
+        send_json(403, ['message' => 'Tiket bantuan hanya dapat dibuat oleh member kelas.']);
+    }
+
+    if ($classId === '' || !in_array($classId, support_member_class_ids($pdo, $user), true)) {
+        send_json(403, ['message' => 'Pilih kelas yang sudah Anda ikuti.']);
+    }
+
+    $classQuery = $pdo->prepare('SELECT id, title FROM classes WHERE id = ? AND status = ? LIMIT 1');
+    $classQuery->execute([$classId, 'Aktif']);
+    $classRow = $classQuery->fetch();
+
+    if (!$classRow) {
+        send_json(404, ['message' => 'Kelas yang dipilih tidak tersedia.']);
+    }
+
+    $materialTitle = '';
+
+    if ($materialId !== '') {
+        $materialQuery = $pdo->prepare(
+            'SELECT id, title FROM materials WHERE id = ? AND class_id = ? LIMIT 1',
+        );
+        $materialQuery->execute([$materialId, $classId]);
+        $materialRow = $materialQuery->fetch();
+
+        if (!$materialRow) {
+            send_json(400, ['message' => 'Materi tidak sesuai dengan kelas yang dipilih.']);
+        }
+
+        $materialTitle = clean_text($materialRow['title'] ?? '', 180);
+    }
+
     $insert = $pdo->prepare(
         'INSERT INTO support_tickets
-        (id, member_id, member_name, subject, message, status, priority, answer, replies, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (id, member_id, member_name, class_id, class_title, material_id, material_title, subject, message, status, priority, answer, replies, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     );
     $ticketId = make_id('ticket');
     $createdAt = date(DATE_ATOM);
@@ -165,6 +227,10 @@ if ($method === 'POST') {
         $ticketId,
         $user['userId'] ?? '',
         $user['name'] ?? 'Member',
+        $classId,
+        clean_text($classRow['title'] ?? 'Kelas', 180),
+        $materialId,
+        $materialTitle,
         clean_text($payload['subject'] ?? 'Bantuan mentor', 120),
         $message,
         'Menunggu',
