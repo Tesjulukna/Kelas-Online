@@ -7596,12 +7596,18 @@ function AdminPage({
         </div>
       )}
       {isSupportModalOpen && (
-        <div className="modal-backdrop" role="presentation">
-          <form className="crud-editor support-editor" onSubmit={handleSubmitSupport}>
-            <div className="modal-heading">
+        <div className="modal-backdrop support-chat-backdrop" role="presentation">
+          <form
+            className="crud-editor support-editor"
+            onSubmit={handleSubmitSupport}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-support-chat-title"
+          >
+            <div className="modal-heading support-chat-header">
               <div>
                 <p className="eyebrow">Bantuan mentor</p>
-                <h2>Balas pertanyaan</h2>
+                <h2 id="admin-support-chat-title">Balas pertanyaan</h2>
               </div>
               <button
                 type="button"
@@ -7619,7 +7625,7 @@ function AdminPage({
               <span>{supportForm.subject}</span>
               <p>{supportForm.message}</p>
             </div>
-            <div className="ticket-thread admin-thread">
+            <div className="ticket-thread admin-thread" aria-live="polite">
               {supportForm.replies.map((reply) => (
                 <div
                   className={
@@ -7634,8 +7640,8 @@ function AdminPage({
                 </div>
               ))}
             </div>
-            <div className="crud-form modal-form">
-              <label>
+            <div className="crud-form modal-form support-chat-composer">
+              <label className="support-chat-status">
                 Status
                 <select
                   name="status"
@@ -7647,7 +7653,7 @@ function AdminPage({
                   <option>Selesai</option>
                 </select>
               </label>
-              <label className="full-field">
+              <label className="full-field support-chat-reply-field">
                 Balasan mentor
                 <textarea
                   name="replyDraft"
@@ -7658,7 +7664,7 @@ function AdminPage({
                 ></textarea>
               </label>
             </div>
-            <div className="modal-actions">
+            <div className="modal-actions support-chat-actions">
               <button
                 className="btn btn-secondary"
                 type="button"

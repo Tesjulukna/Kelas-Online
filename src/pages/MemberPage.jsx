@@ -4422,7 +4422,7 @@ function MemberPage({
               <h2>Tiket bantuan</h2>
             </div>
           </div>
-          <div className="ticket-form">
+          <div className="ticket-form support-new-ticket-form">
             <label>
               Subjek
               <input
@@ -4461,7 +4461,7 @@ function MemberPage({
                   </span>
                   <mark>{ticket.status}</mark>
                 </div>
-                <div className="ticket-thread">
+                <div className="ticket-thread member-ticket-thread">
                   {(ticket.replies ?? []).map((reply) => (
                     <div
                       className={
@@ -4479,7 +4479,7 @@ function MemberPage({
                 {ticket.status === 'Selesai' ? (
                   <small>Tiket sudah selesai.</small>
                 ) : (
-                  <div className="ticket-inline-reply">
+                  <div className="ticket-inline-reply member-ticket-composer">
                     <textarea
                       value={supportReplyDrafts[ticket.id] ?? ''}
                       onChange={(event) =>
