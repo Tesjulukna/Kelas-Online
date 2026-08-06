@@ -7,40 +7,9 @@ ensure_method(['GET', 'PUT']);
 $pdo = db();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-function settings_with_public_gateway_config(array $settings): array
-{
-    $config = api_config();
-    $paypalAvailable =
-        paypal_configured_value($config['paypal_client_id'] ?? '')
-        && paypal_configured_value($config['paypal_client_secret'] ?? '')
-        && paypal_configured_value($config['paypal_webhook_id'] ?? '')
-        && (float) ($config['paypal_idr_per_usd'] ?? 0) > 0;
-
-    foreach (($settings['paymentMethods'] ?? []) as $index => $paymentMethod) {
-        if (($paymentMethod['code'] ?? '') !== 'PAYPAL') {
-            continue;
-        }
-
-        $settings['paymentMethods'][$index]['provider'] = 'paypal';
-        $settings['paymentMethods'][$index]['available'] = $paypalAvailable;
-        $settings['paymentMethods'][$index]['currency'] = 'USD';
-        $settings['paymentMethods'][$index]['exchangeRate'] = max(
-            0,
-            (float) ($config['paypal_idr_per_usd'] ?? 0),
-        );
-    }
-
-    return $settings;
-}
-
-function paypal_configured_value($value): bool
-{
-    return trim((string) $value) !== '';
-}
-
 if ($method === 'GET') {
     send_json(200, [
-        'settings' => settings_with_public_gateway_config(fetch_website_settings($pdo)),
+        'settings' => fetch_website_settings($pdo),
         'updatedAt' => updated_at($pdo),
     ]);
 }
@@ -64,6 +33,6 @@ try {
 }
 
 send_json(200, [
-    'settings' => settings_with_public_gateway_config($savedSettings),
+    'settings' => $savedSettings,
     'updatedAt' => updated_at($pdo),
 ]);

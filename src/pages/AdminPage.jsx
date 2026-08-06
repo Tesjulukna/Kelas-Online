@@ -1561,9 +1561,6 @@ function AdminPage({
   const tripayRevenue = paidPayments
     .filter((payment) => payment.source === 'tripay')
     .reduce((total, payment) => total + payment.amount, 0)
-  const paypalRevenue = paidPayments
-    .filter((payment) => payment.source === 'paypal')
-    .reduce((total, payment) => total + payment.amount, 0)
   const revenueByDate = paidPayments.reduce((items, payment) => {
     const time = getPaymentTime(payment)
 
@@ -5991,7 +5988,6 @@ function AdminPage({
             <MetricCard icon="clock" label="Menunggu bayar" value={pendingPayments.length} />
             <MetricCard icon="shield" label="Expired" value={expiredPayments.length} />
             <MetricCard icon="shield" label="Omzet Tripay" value={formatRupiah(tripayRevenue)} />
-            <MetricCard icon="wallet" label="Omzet PayPal" value={formatRupiah(paypalRevenue)} />
           </section>
 
           <section className="panel payment-panel">

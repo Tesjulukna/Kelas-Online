@@ -66,35 +66,3 @@ Jika env ini dikosongkan, website otomatis memakai domain request saat ini denga
 ## Deploy InfinityFree Legacy
 
 Ikuti panduan di [DEPLOY_INFINITYFREE.md](./DEPLOY_INFINITYFREE.md).
-
-### PayPal Live (backend PHP)
-
-Checkout PayPal memakai Orders API v2 dan mengubah harga rupiah menjadi USD di server. Simpan
-credential berikut sebagai environment variable hosting, jangan di source code:
-
-```bash
-PAYPAL_CLIENT_ID=client-id-live
-PAYPAL_CLIENT_SECRET=client-secret-live
-PAYPAL_WEBHOOK_ID=webhook-id-live
-PAYPAL_IS_PRODUCTION=true
-PAYPAL_CURRENCY=USD
-PAYPAL_IDR_PER_USD=16500
-PAYPAL_BRAND_NAME=IbnuCreative
-PAYPAL_RETURN_URL=https://domain-anda.com/api/paypal-return.php
-PAYPAL_CANCEL_URL=https://domain-anda.com/?payment=cancelled
-```
-
-Daftarkan listener Live `https://domain-anda.com/api/paypal-webhook.php` pada REST App yang sama.
-Event yang direkomendasikan:
-
-- `CHECKOUT.ORDER.APPROVED`
-- `PAYMENT.CAPTURE.COMPLETED`
-- `PAYMENT.CAPTURE.PENDING`
-- `PAYMENT.CAPTURE.DECLINED` atau `PAYMENT.CAPTURE.DENIED` jika tersedia
-- `PAYMENT.CAPTURE.REFUNDED`
-- `PAYMENT.CAPTURE.REVERSED`
-- `CHECKOUT.PAYMENT-APPROVAL.REVERSED` jika tersedia
-
-PayPal baru muncul di pilihan pembayaran setelah Client ID, Client Secret, Webhook ID, dan kurs
-rupiah per USD semuanya tersedia. Jalankan installer database saat deploy; endpoint PayPal juga
-akan mencoba membuat tabelnya otomatis bila user database memiliki izin DDL.

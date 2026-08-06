@@ -684,7 +684,6 @@ function default_website_settings(): array
             ['code' => 'ALFAMIDI', 'label' => 'Alfamidi', 'brand' => 'alfamidi', 'logoUrl' => ''],
             ['code' => 'OVO', 'label' => 'OVO', 'brand' => 'ovo', 'logoUrl' => ''],
             ['code' => 'SHOPEEPAY', 'label' => 'ShopeePay', 'brand' => 'shopeepay', 'logoUrl' => ''],
-            ['code' => 'PAYPAL', 'label' => 'PayPal (Internasional)', 'brand' => 'paypal', 'provider' => 'paypal', 'available' => false, 'currency' => 'USD', 'exchangeRate' => 0, 'logoUrl' => ''],
         ],
         'benefits' => [
             'eyebrow' => 'Benefit',
@@ -784,7 +783,13 @@ function clean_payment_methods($value, array $fallbackMethods): array
         $fallback = $fallbackMethods[$index] ?? $fallbackMethods[0];
         $code = strtoupper(clean_text($item['code'] ?? $fallback['code'], 40));
 
-        if ($code === '' || in_array($code, $seenCodes, true)) {
+        if (
+            $code === ''
+            || in_array($code, $seenCodes, true)
+            || $code === 'PAYPAL'
+            || strtolower((string) ($item['provider'] ?? '')) === 'paypal'
+            || strtolower((string) ($item['brand'] ?? '')) === 'paypal'
+        ) {
             continue;
         }
 
@@ -798,35 +803,18 @@ function clean_payment_methods($value, array $fallbackMethods): array
             'code' => $code,
             'label' => clean_text($item['label'] ?? $item['name'] ?? $fallback['label'] ?? $code, 80),
             'brand' => clean_text($item['brand'] ?? $fallback['brand'] ?? strtolower($code), 40),
-            'provider' => $code === 'PAYPAL' || ($item['provider'] ?? '') === 'paypal'
-                ? 'paypal'
-                : 'tripay',
-            'available' => $code === 'PAYPAL'
-                ? !empty($item['available'])
-                : ($item['available'] ?? true) !== false,
-            'currency' => $code === 'PAYPAL' ? 'USD' : '',
-            'exchangeRate' => $code === 'PAYPAL'
-                ? max(0, (float) ($item['exchangeRate'] ?? 0))
-                : 0,
+            'provider' => 'tripay',
+            'available' => ($item['available'] ?? true) !== false,
+            'currency' => '',
+            'exchangeRate' => 0,
             'logoUrl' => clean_asset_url($item['logoUrl'] ?? $item['iconUrl'] ?? ''),
             'feeFlat' => $feeFlat,
             'feePercent' => $feePercent,
         ];
     }
 
-    if (!in_array('PAYPAL', $seenCodes, true)) {
-        $methods[] = [
-            'code' => 'PAYPAL',
-            'label' => 'PayPal (Internasional)',
-            'brand' => 'paypal',
-            'provider' => 'paypal',
-            'available' => false,
-            'currency' => 'USD',
-            'exchangeRate' => 0,
-            'logoUrl' => '',
-            'feeFlat' => 0,
-            'feePercent' => 0,
-        ];
+    if (!$methods && $source !== $fallbackMethods) {
+        return clean_payment_methods($fallbackMethods, $fallbackMethods);
     }
 
     return $methods;

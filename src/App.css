@@ -12047,29 +12047,6 @@ img {
   object-fit: contain;
 }
 
-.payment-method-logo.paypal-logo {
-  display: inline-flex;
-  gap: 0;
-  width: 72px;
-  padding: 0 8px;
-  border: 1px solid #dbeafe;
-  color: #003087;
-  background: #ffffff;
-  font-size: 0.78rem;
-  font-style: italic;
-  letter-spacing: -0.05em;
-  box-shadow: 0 5px 14px rgb(0 48 135 / 8%);
-}
-
-.payment-method-logo.paypal-logo strong:last-child {
-  color: #0070e0;
-}
-
-.app-shell.public-theme-dark .payment-method-logo.paypal-logo {
-  border-color: rgb(96 165 250 / 25%);
-  background: #f8fafc;
-}
-
 .payment-method-name {
   display: block;
   width: 100%;
@@ -12125,27 +12102,6 @@ img {
 .payment-breakdown-total strong {
   color: #1d4ed8;
   font-size: 1.08rem;
-}
-
-.payment-breakdown-currency {
-  padding-top: 9px;
-  border-top: 1px dashed #bfdbfe;
-  color: #1e40af;
-}
-
-.payment-breakdown-currency strong,
-.bundle-checkout-layout aside .currency-total strong {
-  color: #003087;
-}
-
-.app-shell.public-theme-dark .payment-breakdown-currency {
-  border-top-color: rgb(96 165 250 / 28%);
-  color: #93c5fd;
-}
-
-.app-shell.public-theme-dark .payment-breakdown-currency strong,
-.app-shell.public-theme-dark .bundle-checkout-layout aside .currency-total strong {
-  color: #60a5fa;
 }
 
 .secure-payment-note {

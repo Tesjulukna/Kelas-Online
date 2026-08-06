@@ -133,16 +133,6 @@ export const defaultWebsiteSettings = {
     { code: 'ALFAMIDI', label: 'Alfamidi', brand: 'alfamidi', logoUrl: '' },
     { code: 'OVO', label: 'OVO', brand: 'ovo', logoUrl: '' },
     { code: 'SHOPEEPAY', label: 'ShopeePay', brand: 'shopeepay', logoUrl: '' },
-    {
-      code: 'PAYPAL',
-      label: 'PayPal (Internasional)',
-      brand: 'paypal',
-      provider: 'paypal',
-      available: false,
-      currency: 'USD',
-      exchangeRate: 0,
-      logoUrl: '',
-    },
   ],
   benefits: {
     eyebrow: 'Benefit',
@@ -372,7 +362,13 @@ function cleanPaymentMethods(value) {
         fallbackMethods[0]
       const code = cleanText(item?.code || fallback.code, 40).toUpperCase()
 
-      if (!code || seenCodes.has(code)) {
+      if (
+        !code ||
+        seenCodes.has(code) ||
+        code === 'PAYPAL' ||
+        String(item?.provider || '').toLowerCase() === 'paypal' ||
+        String(item?.brand || '').toLowerCase() === 'paypal'
+      ) {
         return null
       }
 
@@ -382,13 +378,10 @@ function cleanPaymentMethods(value) {
         code,
         label: cleanText(item?.label || fallback.label || code, 80),
         brand: cleanText(item?.brand || fallback.brand || code.toLowerCase(), 40),
-        provider:
-          code === 'PAYPAL' || item?.provider === 'paypal'
-            ? 'paypal'
-            : 'tripay',
-        available: code === 'PAYPAL' ? item?.available === true : item?.available !== false,
-        currency: code === 'PAYPAL' ? 'USD' : '',
-        exchangeRate: code === 'PAYPAL' ? Math.max(0, Number(item?.exchangeRate) || 0) : 0,
+        provider: 'tripay',
+        available: item?.available !== false,
+        currency: '',
+        exchangeRate: 0,
         logoUrl: cleanUrl(item?.logoUrl || item?.iconUrl || '', 2000),
         feeFlat: Math.max(
           0,
@@ -402,22 +395,9 @@ function cleanPaymentMethods(value) {
     })
     .filter(Boolean)
 
-  if (!seenCodes.has('PAYPAL')) {
-    methods.push({
-      code: 'PAYPAL',
-      label: 'PayPal (Internasional)',
-      brand: 'paypal',
-      provider: 'paypal',
-      available: false,
-      currency: 'USD',
-      exchangeRate: 0,
-      logoUrl: '',
-      feeFlat: 0,
-      feePercent: 0,
-    })
-  }
-
-  return methods
+  return methods.length || source === fallbackMethods
+    ? methods
+    : cleanPaymentMethods(fallbackMethods)
 }
 
 function cleanHomepageNotifications(value = {}) {

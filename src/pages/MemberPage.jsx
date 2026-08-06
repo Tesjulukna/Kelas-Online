@@ -12,7 +12,6 @@ import { downloadCertificatePdf } from '../lib/certificatePdf'
 import { createQrMatrix, getCertificateVerificationUrl } from '../lib/qrCode'
 import { uploadStorageFile } from '../lib/storageUpload'
 import { openLanguagePopup } from '../i18n/language'
-import { getPaypalCurrencyEstimate, isPaypalPaymentMethod } from '../utils/paymentMethods'
 import { withPublicCodes } from '../utils/publicCodes'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
@@ -628,15 +627,6 @@ function PaymentMethodLogo({ method }) {
     )
   }
 
-  if (method.brand === 'paypal' || method.provider === 'paypal') {
-    return (
-      <span className="payment-method-logo paypal-logo" aria-label="PayPal">
-        <strong>Pay</strong>
-        <strong>Pal</strong>
-      </span>
-    )
-  }
-
   if (['alfamart', 'indomaret', 'alfamidi'].includes(method.brand)) {
     return (
       <span className={`payment-method-logo store-logo ${method.brand}`} aria-hidden="true">
@@ -1044,7 +1034,6 @@ function MemberPage({
   const paymentModalAmount = getCheckoutAmount(paymentMethodCourse)
   const paymentModalFee = getPaymentMethodFee(selectedPaymentMethod, paymentModalAmount)
   const paymentModalTotal = paymentModalAmount + paymentModalFee
-  const paypalPaymentEstimate = getPaypalCurrencyEstimate(selectedPaymentMethod, paymentModalTotal)
   const {
     activePaymentsByClass,
     expiredPaymentsByClass,
@@ -1057,7 +1046,7 @@ function MemberPage({
     const nextExpiredPaymentsByProduct = new Map()
 
     payments
-      .filter((payment) => ['tripay', 'paypal'].includes(payment.source))
+      .filter((payment) => payment.source === 'tripay')
       .forEach((payment) => {
         if (payment.itemType === 'bundle') {
           return
@@ -3587,12 +3576,6 @@ function MemberPage({
                 <small>Total pembayaran</small>
                 <strong>{formatRupiah(paymentModalTotal)}</strong>
               </span>
-              {paypalPaymentEstimate && (
-                <span className="payment-breakdown-currency">
-                  <small>Total yang dikirim ke PayPal</small>
-                  <strong>{paypalPaymentEstimate.label}</strong>
-                </span>
-              )}
             </div>
             <div className="secure-payment-note">
               <span className="secure-payment-icon" aria-hidden="true">
@@ -3602,9 +3585,8 @@ function MemberPage({
                 <small>secure</small>
                 <strong>Secure Payment</strong>
                 <p>
-                  {isPaypalPaymentMethod(selectedPaymentMethod)
-                    ? 'PayPal memproses pembayaran internasional dalam USD. Akses aktif otomatis setelah capture pembayaran berhasil.'
-                    : 'Pembayaran diproses melalui gateway resmi yang kamu pilih dengan koneksi terenkripsi. Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.'}
+                  Pembayaran diproses melalui gateway resmi yang kamu pilih dengan koneksi terenkripsi.
+                  Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.
                 </p>
               </div>
             </div>
