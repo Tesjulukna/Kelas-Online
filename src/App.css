@@ -23111,6 +23111,15 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .bundle-checkout-page > header button,.bundle-checkout-page > header span { display: flex; align-items: center; gap: 8px; }
 .bundle-checkout-page > header button { padding: 9px 12px; border: 1px solid #e2e8f0; border-radius: 11px; color: #475569; background: #fff; cursor: pointer; }
 .bundle-checkout-page > header span { color: #059669; font-weight: 800; }
+.bundle-checkout-owned-state { display: grid; justify-items: center; gap: 10px; padding: clamp(34px,7vw,72px) 22px; border: 1px solid #d1fae5; border-radius: 22px; background: #fff; box-shadow: 0 14px 38px rgb(15 23 42 / 7%); text-align: center; }
+.bundle-checkout-owned-state > span { display: grid; place-items: center; width: 68px; height: 68px; margin-bottom: 4px; border-radius: 20px; color: #047857; background: #d1fae5; }
+.bundle-checkout-owned-state > span .icon { width: 34px; height: 34px; }
+.bundle-checkout-owned-state h1,.bundle-checkout-owned-state p { margin: 0; }
+.bundle-checkout-owned-state h1 { color: #172033; font-size: clamp(1.55rem,4vw,2.25rem); }
+.bundle-checkout-owned-state > p:not(.eyebrow) { max-width: 570px; color: #64748b; line-height: 1.65; }
+.bundle-checkout-owned-state > p strong { color: #334155; }
+.bundle-checkout-owned-state > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 10px; }
+.bundle-checkout-owned-state a { text-decoration: none; }
 .bundle-checkout-layout { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 18px; align-items: start; }
 .bundle-checkout-layout > main,.bundle-checkout-layout > aside { border: 1px solid #e2e8f0; border-radius: 20px; background: #fff; box-shadow: 0 14px 38px rgb(15 23 42 / 7%); }
 .bundle-checkout-layout > main { padding: 22px; }
@@ -23128,6 +23137,8 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .bundle-checkout-customer h2,.bundle-checkout-customer p { margin: 0; }
 .bundle-checkout-customer h2 { color: #172033; font-size: 1rem; }
 .bundle-checkout-customer > p { color: #64748b; font-size: .74rem; }
+.bundle-checkout-customer > .bundle-checkout-owned-note { display: flex; align-items: flex-start; gap: 7px; padding: 9px 10px; border-radius: 9px; color: #1e40af; background: #eff6ff; line-height: 1.45; }
+.bundle-checkout-owned-note .icon,.bundle-checkout-price-note .icon { flex: 0 0 auto; width: 14px; height: 14px; margin-top: 1px; }
 .bundle-checkout-customer > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; }
 .bundle-checkout-customer.compact > div { grid-template-columns: minmax(220px,360px); }
 .bundle-checkout-customer label { display: grid; gap: 6px; color: #334155; font-size: .72rem; font-weight: 800; }
@@ -23162,8 +23173,12 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .bundle-checkout-methods button small { color: #64748b; font-size: .64rem; text-transform: none; }
 .bundle-checkout-terms { display: grid; grid-template-columns: 17px minmax(0,1fr); gap: 8px; align-items: start; color: #64748b; font-size: .72rem; line-height: 1.4; cursor: pointer; }
 .bundle-checkout-status { margin: 0; padding: 9px; border-radius: 9px; color: #b45309; background: #fffbeb; font-size: .72rem; }
+.bundle-checkout-price-note { display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 9px 10px; border-radius: 9px; color: #1e40af; background: #eff6ff; font-size: .7rem; line-height: 1.45; }
 .bundle-checkout-layout aside > .btn { width: 100%; justify-content: center; }
 .app-shell.public-theme-dark .bundle-checkout-page > header button,.app-shell.public-theme-dark .bundle-checkout-layout > main,.app-shell.public-theme-dark .bundle-checkout-layout > aside,.app-shell.public-theme-dark .bundle-checkout-items article { border-color: rgb(148 163 184 / 20%); background: #101b2e; }
+.app-shell.public-theme-dark .bundle-checkout-owned-state { border-color: rgb(52 211 153 / 24%); background: #101b2e; box-shadow: 0 16px 42px rgb(0 0 0 / 24%); }
+.app-shell.public-theme-dark .bundle-checkout-owned-state h1,.app-shell.public-theme-dark .bundle-checkout-owned-state > p strong { color: #f8fafc; }
+.app-shell.public-theme-dark .bundle-checkout-owned-state > p:not(.eyebrow) { color: #94a3b8; }
 .app-shell.public-theme-dark .bundle-checkout-title,.app-shell.public-theme-dark .bundle-checkout-methods,.app-shell.public-theme-dark .bundle-checkout-layout aside .total { border-color: rgb(148 163 184 / 18%); }
 .app-shell.public-theme-dark .bundle-checkout-title h1,.app-shell.public-theme-dark .bundle-checkout-items article > div strong,.app-shell.public-theme-dark .bundle-checkout-layout aside h2,.app-shell.public-theme-dark .bundle-checkout-layout aside > div strong,.app-shell.public-theme-dark .bundle-checkout-methods > span { color: #f8fafc; }
 .app-shell.public-theme-dark .bundle-checkout-layout aside .discount strong { color: #6ee7b7; }
@@ -23172,6 +23187,7 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .app-shell.public-theme-dark .bundle-checkout-methods button.active { border-color: #38bdf8; color: #7dd3fc; background: #132b4d; }
 .app-shell.public-theme-dark .bundle-checkout-status { color: #fcd34d; background: rgb(120 53 15 / 32%); }
 .app-shell.public-theme-dark .bundle-checkout-account,.app-shell.public-theme-dark .bundle-checkout-customer,.app-shell.public-theme-dark .bundle-selected-payment { border-color: rgb(96 165 250 / 24%); background: #17263d; }
+.app-shell.public-theme-dark .bundle-checkout-customer > .bundle-checkout-owned-note,.app-shell.public-theme-dark .bundle-checkout-price-note { color: #bfdbfe; background: rgb(30 64 175 / 24%); }
 .app-shell.public-theme-dark .bundle-checkout-account strong,.app-shell.public-theme-dark .bundle-checkout-customer h2,.app-shell.public-theme-dark .bundle-checkout-customer label { color: #f8fafc; }
 .app-shell.public-theme-dark .bundle-checkout-customer input { border-color: rgb(148 163 184 / 24%); color: #f8fafc; background: #101b2e; }
 

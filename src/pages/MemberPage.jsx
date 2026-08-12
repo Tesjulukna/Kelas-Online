@@ -5,12 +5,14 @@ import FeaturedBundleSection from '../components/FeaturedBundleSection'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
 import UploadProgress from '../components/UploadProgress'
+import VoucherCodeField from '../components/VoucherCodeField'
 import { memberMenuItems } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import { createCertificateData } from '../lib/certificateTemplate'
 import { downloadCertificatePdf } from '../lib/certificatePdf'
 import { createQrMatrix, getCertificateVerificationUrl } from '../lib/qrCode'
 import { uploadStorageFile } from '../lib/storageUpload'
+import { normalizeVoucherCode, validateVoucher } from '../lib/vouchers'
 import { openLanguagePopup } from '../i18n/language'
 import { withPublicCodes } from '../utils/publicCodes'
 
@@ -668,6 +670,7 @@ function getPaymentMethodFee(method, amount) {
 function MemberPage({
   userId = '',
   loginName,
+  email = '',
   avatar,
   sessionToken = '',
   classes = [],
@@ -790,6 +793,11 @@ function MemberPage({
   const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('')
   const [isPaymentTermsAccepted, setIsPaymentTermsAccepted] = useState(false)
   const [isChangingPaymentMethod, setIsChangingPaymentMethod] = useState(false)
+  const [paymentVoucherCode, setPaymentVoucherCode] = useState('')
+  const [paymentVoucherResult, setPaymentVoucherResult] = useState(null)
+  const [paymentVoucherStatus, setPaymentVoucherStatus] = useState('')
+  const [isPaymentVoucherLoading, setIsPaymentVoucherLoading] = useState(false)
+  const paymentVoucherRequestRef = useRef(0)
   const [certificateNameDrafts, setCertificateNameDrafts] = useState({})
   const [certificateChangeDrafts, setCertificateChangeDrafts] = useState({})
   const [selectedCertificateId, setSelectedCertificateId] = useState('')
@@ -1032,8 +1040,17 @@ function MemberPage({
     (method) => method.code === selectedPaymentMethodCode,
   )
   const paymentModalAmount = getCheckoutAmount(paymentMethodCourse)
-  const paymentModalFee = getPaymentMethodFee(selectedPaymentMethod, paymentModalAmount)
-  const paymentModalTotal = paymentModalAmount + paymentModalFee
+  const paymentModalVoucherDiscount = paymentVoucherResult?.valid
+    ? Math.max(0, Math.round(Number(paymentVoucherResult.discountAmount) || 0))
+    : 0
+  const paymentModalPayableAmount = paymentVoucherResult?.valid
+    ? Math.max(0, Math.round(Number(paymentVoucherResult.finalAmount) || 0))
+    : paymentModalAmount
+  const isPaymentVoucherFree = paymentVoucherResult?.valid === true && paymentModalPayableAmount === 0
+  const paymentModalFee = isPaymentVoucherFree
+    ? 0
+    : getPaymentMethodFee(selectedPaymentMethod, paymentModalPayableAmount)
+  const paymentModalTotal = paymentModalPayableAmount + paymentModalFee
   const {
     activePaymentsByClass,
     expiredPaymentsByClass,
@@ -1981,7 +1998,19 @@ function MemberPage({
     return false
   }, [digitalProductAccessByProduct, onNotify, paidDigitalProductOrdersByProduct])
 
-  const handleStartCheckout = useCallback(async (item, paymentMethod = '', { forceNewPayment = false, itemType = 'class' } = {}) => {
+  const resetPaymentVoucher = useCallback(() => {
+    paymentVoucherRequestRef.current += 1
+    setPaymentVoucherCode('')
+    setPaymentVoucherResult(null)
+    setPaymentVoucherStatus('')
+    setIsPaymentVoucherLoading(false)
+  }, [])
+
+  const handleStartCheckout = useCallback(async (
+    item,
+    paymentMethod = '',
+    { forceNewPayment = false, itemType = 'class', voucherCode = '' } = {},
+  ) => {
     const price = getCheckoutAmount({ ...item, itemType })
     const productMenu = itemType === 'digital_product' && item.productType === 'prompt'
       ? 'prompts'
@@ -1993,27 +2022,36 @@ function MemberPage({
       const data = await onCreateTripayCheckout(item, price ? paymentMethod : '', {
         forceNewPayment,
         itemType,
+        voucherCode: normalizeVoucherCode(voucherCode),
       })
 
       if (data.freeAccessGranted) {
-        onNotify(itemType === 'digital_product'
-          ? 'Produk digital gratis sudah aktif.'
-          : 'Akses kelas gratis sudah aktif. Silakan buka Kelas Saya.')
+        onNotify(itemType === 'bundle'
+          ? 'Paket bundling berhasil diaktifkan. Isi paket tersedia di Kelas Saya dan Produk Digital.'
+          : itemType === 'digital_product'
+            ? 'Produk digital gratis sudah aktif.'
+            : 'Akses kelas gratis sudah aktif. Silakan buka Kelas Saya.')
         if (itemType === 'digital_product' && openDigitalProductAccessPage(item, data)) {
           return
         }
-        handleDashboardMenuChange(itemType === 'digital_product' ? productMenu : 'my-courses')
+        handleDashboardMenuChange(itemType === 'bundle'
+          ? 'overview'
+          : itemType === 'digital_product' ? productMenu : 'my-courses')
         return
       }
 
       if (data.alreadyHasAccess) {
-        onNotify(itemType === 'digital_product'
-          ? 'Produk digital sudah dimiliki.'
-          : 'Akses kelas sudah aktif. Silakan buka Kelas Saya.')
+        onNotify(itemType === 'bundle'
+          ? 'Isi paket bundling ini sudah tersedia di akun Anda.'
+          : itemType === 'digital_product'
+            ? 'Produk digital sudah dimiliki.'
+            : 'Akses kelas sudah aktif. Silakan buka Kelas Saya.')
         if (itemType === 'digital_product' && openDigitalProductAccessPage(item, data)) {
           return
         }
-        handleDashboardMenuChange(itemType === 'digital_product' ? productMenu : 'my-courses')
+        handleDashboardMenuChange(itemType === 'bundle'
+          ? 'overview'
+          : itemType === 'digital_product' ? productMenu : 'my-courses')
         return
       }
 
@@ -2062,7 +2100,54 @@ function MemberPage({
     setSelectedPaymentMethodCode('')
     setIsPaymentTermsAccepted(false)
     setIsChangingPaymentMethod(forceNewPayment)
-  }, [activePaymentsByClass, activePaymentsByProduct, handleStartCheckout])
+    resetPaymentVoucher()
+  }, [activePaymentsByClass, activePaymentsByProduct, handleStartCheckout, onNotify, resetPaymentVoucher])
+
+  const changePaymentVoucherCode = (value) => {
+    setPaymentVoucherCode(value)
+    setPaymentVoucherResult(null)
+    setPaymentVoucherStatus('')
+  }
+
+  const applyPaymentVoucher = async () => {
+    if (!paymentMethodCourse) return
+
+    const normalizedCode = normalizeVoucherCode(paymentVoucherCode)
+    const itemType = paymentMethodCourse.itemType || 'class'
+
+    setIsPaymentVoucherLoading(true)
+    setPaymentVoucherStatus('')
+    const requestId = paymentVoucherRequestRef.current + 1
+    paymentVoucherRequestRef.current = requestId
+
+    try {
+      const result = await validateVoucher({
+        code: normalizedCode,
+        itemType,
+        itemId: paymentMethodCourse.id,
+        bundleProgramId: itemType === 'bundle' ? paymentMethodCourse.bundleProgramId : '',
+        bundleItems: itemType === 'bundle' ? paymentMethodCourse.bundleItems : [],
+        buyerEmail: email,
+        sessionToken,
+      })
+
+      if (paymentVoucherRequestRef.current !== requestId) return
+
+      setPaymentVoucherCode(normalizedCode)
+      setPaymentVoucherResult(result.valid ? result : null)
+      setPaymentVoucherStatus(result.message || (result.valid
+        ? 'Voucher berhasil digunakan.'
+        : 'Voucher tidak berlaku untuk pembelian ini.'))
+    } catch (error) {
+      if (paymentVoucherRequestRef.current !== requestId) return
+      setPaymentVoucherResult(null)
+      setPaymentVoucherStatus(error.message || 'Voucher belum bisa diperiksa.')
+    } finally {
+      if (paymentVoucherRequestRef.current === requestId) {
+        setIsPaymentVoucherLoading(false)
+      }
+    }
+  }
 
   const dismissExpiredPaymentNotice = (paymentId) => {
     const nextDismissed = [...new Set([...dismissedExpiredPayments, paymentId])]
@@ -2076,7 +2161,7 @@ function MemberPage({
       return
     }
 
-    if (!selectedPaymentMethod) {
+    if (!selectedPaymentMethod && !isPaymentVoucherFree) {
       onNotify('Pilih metode pembayaran dulu.')
       return
     }
@@ -2088,14 +2173,20 @@ function MemberPage({
 
     const item = paymentMethodCourse
     const itemType = paymentMethodCourse.itemType || 'class'
+    const appliedVoucherCode = paymentVoucherResult?.valid
+      ? normalizeVoucherCode(paymentVoucherResult?.voucher?.code || paymentVoucherCode)
+      : ''
+    const selectedMethodCode = isPaymentVoucherFree ? '' : selectedPaymentMethod.code
 
     setPaymentMethodCourse(null)
     setSelectedPaymentMethodCode('')
     setIsPaymentTermsAccepted(false)
     setIsChangingPaymentMethod(false)
-    handleStartCheckout(item, selectedPaymentMethod.code, {
+    resetPaymentVoucher()
+    handleStartCheckout(item, selectedMethodCode, {
       forceNewPayment: isChangingPaymentMethod,
       itemType,
+      voucherCode: appliedVoucherCode,
     })
   }
 
@@ -3262,11 +3353,17 @@ function MemberPage({
                   {fixedBundlePrograms.map((program) => {
                     const packageItems = getBundleProgramItems(program)
                     const purchasableItems = packageItems.filter((item) => !item.owned)
+                    const remainingSubtotal = purchasableItems.reduce((total, item) => total + getCheckoutAmount(item), 0)
+                    const rawPackageDiscount = Math.max(0, remainingSubtotal - Math.max(0, Number(program.fixedPrice) || 0))
+                    const packageDiscount = program.maximumDiscount > 0
+                      ? Math.min(rawPackageDiscount, program.maximumDiscount)
+                      : rawPackageDiscount
+                    const remainingPackageTotal = Math.max(0, remainingSubtotal - packageDiscount)
                     return (
                       <article key={program.id}>
                         <span className="member-fixed-package-image">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}<small>{program.badge}</small></span>
                         <div><h3>{program.title}</h3><p>{program.description}</p><div className="fixed-package-items">{packageItems.slice(0, 4).map((item) => <span key={item.key}><Icon name={item.itemType === 'class' ? 'bookOpen' : item.productType === 'prompt' ? 'spark' : 'download'} /> {item.title}{item.owned ? ' (dimiliki)' : ''}</span>)}</div></div>
-                        <footer><span><small>Harga paket</small><strong>{formatRupiah(program.fixedPrice)}</strong></span><div className="button-row"><button className="btn btn-secondary" type="button" onClick={() => onOpenPublicBundleDetail?.(program)}>Detail</button><button className="btn btn-primary" type="button" disabled={!purchasableItems.length} onClick={() => openPaymentMethodPopup({ id: `fixed-${program.id}`, title: program.title, price: program.fixedPrice, itemType: 'bundle', bundleProgramId: program.id, bundleItems: purchasableItems.map((item) => ({ type: item.itemType, id: item.id })) }, { itemType: 'bundle' })}>{purchasableItems.length ? 'Beli paket' : 'Sudah dimiliki'} <Icon name="arrowRight" /></button></div></footer>
+                        <footer><span><small>{purchasableItems.length < packageItems.length ? 'Harga item tersisa' : 'Harga paket'}</small><strong>{formatRupiah(remainingPackageTotal)}</strong></span><div className="button-row"><button className="btn btn-secondary" type="button" onClick={() => onOpenPublicBundleDetail?.(program)}>Detail</button><button className="btn btn-primary" type="button" disabled={!purchasableItems.length} onClick={() => openPaymentMethodPopup({ id: `fixed-${program.id}`, title: program.title, price: remainingPackageTotal, itemType: 'bundle', bundleProgramId: program.id, bundleItems: purchasableItems.map((item) => ({ type: item.itemType, id: item.id })) }, { itemType: 'bundle' })}>{purchasableItems.length ? 'Beli paket' : 'Sudah dimiliki'} <Icon name="arrowRight" /></button></div></footer>
                       </article>
                     )
                   })}
@@ -3519,9 +3616,13 @@ function MemberPage({
           >
             <div className="payment-method-modal-heading">
               <div>
-                <p className="eyebrow">Metode pembayaran</p>
+                <p className="eyebrow">Checkout</p>
                 <h2 id="payment-method-title">
-                  {isChangingPaymentMethod ? 'Ganti metode pembayaran' : 'Pilih metode pembayaran'}
+                  {isPaymentVoucherFree
+                    ? 'Voucher menanggung pembayaran'
+                    : isChangingPaymentMethod
+                      ? 'Ganti metode pembayaran'
+                      : 'Pilih metode pembayaran'}
                 </h2>
                 <p>{paymentMethodCourse.title}</p>
               </div>
@@ -3534,29 +3635,44 @@ function MemberPage({
                   setSelectedPaymentMethodCode('')
                   setIsPaymentTermsAccepted(false)
                   setIsChangingPaymentMethod(false)
+                  resetPaymentVoucher()
                 }}
               >
                 <Icon name="x" />
               </button>
             </div>
-            <div className="payment-method-grid" aria-label="Daftar metode pembayaran">
-              {tripayPaymentMethods.map((method) => (
-                <button
-                  className={`payment-method-option ${
-                    selectedPaymentMethodCode === method.code ? 'selected' : ''
-                  }`}
-                  type="button"
-                  key={method.code}
-                  title={method.label}
-                  aria-label={method.label}
-                  aria-pressed={selectedPaymentMethodCode === method.code}
-                  onClick={() => setSelectedPaymentMethodCode(method.code)}
-                >
-                  <PaymentMethodLogo method={method} />
-                  <span className="payment-method-name">{method.label || method.code}</span>
-                </button>
-              ))}
-            </div>
+            <VoucherCodeField
+              id="member-payment-voucher"
+              code={paymentVoucherCode}
+              result={paymentVoucherResult}
+              status={paymentVoucherStatus}
+              isLoading={isPaymentVoucherLoading}
+              onCodeChange={changePaymentVoucherCode}
+              onApply={applyPaymentVoucher}
+              onRemove={resetPaymentVoucher}
+            />
+            {!isPaymentVoucherFree ? (
+              <div className="payment-method-grid" aria-label="Daftar metode pembayaran">
+                {tripayPaymentMethods.map((method) => (
+                  <button
+                    className={`payment-method-option ${
+                      selectedPaymentMethodCode === method.code ? 'selected' : ''
+                    }`}
+                    type="button"
+                    key={method.code}
+                    title={method.label}
+                    aria-label={method.label}
+                    aria-pressed={selectedPaymentMethodCode === method.code}
+                    onClick={() => setSelectedPaymentMethodCode(method.code)}
+                  >
+                    <PaymentMethodLogo method={method} />
+                    <span className="payment-method-name">{method.label || method.code}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="payment-method-note">Tidak perlu memilih metode pembayaran. Akses akan diproses setelah pesanan dikonfirmasi.</p>
+            )}
             {isChangingPaymentMethod && (
               <p className="payment-method-note">
                 Invoice lama tetap bisa dibayar sampai kedaluwarsa. Jika memakai metode baru,
@@ -3565,9 +3681,15 @@ function MemberPage({
             )}
             <div className="payment-breakdown" aria-live="polite">
               <span>
-                <small>{paymentMethodCourse.itemType === 'digital_product' ? 'Harga produk' : 'Harga kelas'}</small>
+                <small>{paymentMethodCourse.itemType === 'bundle' ? 'Harga bundling' : paymentMethodCourse.itemType === 'digital_product' ? 'Harga produk' : 'Harga kelas'}</small>
                 <strong>{formatRupiah(paymentModalAmount)}</strong>
               </span>
+              {paymentVoucherResult?.valid && paymentModalVoucherDiscount > 0 && (
+                <span className="voucher-payment-discount">
+                  <small>Potongan voucher</small>
+                  <strong>-{formatRupiah(paymentModalVoucherDiscount)}</strong>
+                </span>
+              )}
               <span>
                 <small>Biaya layanan</small>
                 <strong>{paymentModalFee ? formatRupiah(paymentModalFee) : 'Gratis'}</strong>
@@ -3577,7 +3699,7 @@ function MemberPage({
                 <strong>{formatRupiah(paymentModalTotal)}</strong>
               </span>
             </div>
-            <div className="secure-payment-note">
+            {!isPaymentVoucherFree && <div className="secure-payment-note">
               <span className="secure-payment-icon" aria-hidden="true">
                 <Icon name="lock" />
               </span>
@@ -3589,7 +3711,7 @@ function MemberPage({
                   Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.
                 </p>
               </div>
-            </div>
+            </div>}
             <label className="payment-terms-check">
               <input
                 type="checkbox"
@@ -3609,6 +3731,7 @@ function MemberPage({
                   setSelectedPaymentMethodCode('')
                   setIsPaymentTermsAccepted(false)
                   setIsChangingPaymentMethod(false)
+                  resetPaymentVoucher()
                 }}
               >
                 Batal
@@ -3616,11 +3739,11 @@ function MemberPage({
               <button
                 className="btn btn-primary"
                 type="button"
-                disabled={!selectedPaymentMethodCode || !isPaymentTermsAccepted}
+                disabled={isPaymentVoucherLoading || (!selectedPaymentMethodCode && !isPaymentVoucherFree) || !isPaymentTermsAccepted}
                 onClick={handleCreateSelectedPayment}
               >
                 <Icon name="bookOpen" />
-                Buat Pembayaran
+                {isPaymentVoucherFree ? 'Selesaikan Pesanan' : 'Buat Pembayaran'}
               </button>
             </div>
           </section>

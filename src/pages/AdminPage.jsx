@@ -4,6 +4,7 @@ import CertificateTemplateEditor from '../components/CertificateTemplateEditor'
 import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
+import VoucherAdminPanel from '../components/VoucherAdminPanel'
 import WebsiteSettingsPanel from '../components/WebsiteSettingsPanel'
 import { adminMenuItems } from '../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
@@ -1608,6 +1609,7 @@ function AdminPage({
         payment.orderCode,
         payment.reference,
         payment.merchantRef,
+        payment.voucherCode,
       ]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(paymentSearchQuery))
@@ -6112,7 +6114,18 @@ function AdminPage({
                       {payment.itemTitle || payment.productTitle || payment.classTitle}
                     </span>
                     <span data-label="Nominal" role="cell">
-                      <strong>{payment.amount ? formatRupiah(payment.amount) : '-'}</strong>
+                      <span className="payment-member-cell">
+                        <strong>
+                          {payment.amount || payment.voucherDiscount
+                            ? formatRupiah(payment.amount)
+                            : '-'}
+                        </strong>
+                        {payment.voucherDiscount > 0 && (
+                          <small>
+                            Voucher {payment.voucherCode || '-'} · hemat {formatRupiah(payment.voucherDiscount)}
+                          </small>
+                        )}
+                      </span>
                     </span>
                     <span data-label="Status" role="cell">
                       <mark className={`payment-status ${statusType}`}>
@@ -7361,6 +7374,16 @@ function AdminPage({
             </div>
           )}
         </section>
+      )}
+
+      {activeMenu === 'vouchers' && (
+        <VoucherAdminPanel
+          sessionToken={sessionToken}
+          classes={classes}
+          digitalProducts={digitalProducts}
+          bundlePrograms={cleanWebsiteSettings(websiteSettings).bundling.programs}
+          onNotify={onNotify}
+        />
       )}
 
       {activeMenu === 'website-settings' && (

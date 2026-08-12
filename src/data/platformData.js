@@ -102,6 +102,7 @@ export const adminMenuItems = [
   { id: 'digital-products', label: 'Produk Digital', icon: 'download' },
   { id: 'prompts', label: 'Prompt', icon: 'spark' },
   { id: 'bundles', label: 'Atur Bundling', icon: 'bundle' },
+  { id: 'vouchers', label: 'Voucher & Promo', icon: 'voucher' },
   { id: 'students', label: 'Peserta', icon: 'users' },
   { id: 'payments', label: 'Pembayaran', icon: 'wallet' },
   { id: 'submissions', label: 'Tugas Member', icon: 'message' },

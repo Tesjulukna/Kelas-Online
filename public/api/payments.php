@@ -3,12 +3,14 @@
 require __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_tripay.php';
 require_once __DIR__ . '/_paypal.php';
+require_once __DIR__ . '/_vouchers.php';
 
 ensure_method(['GET']);
 
 $user = require_user();
 $pdo = db();
 $config = api_config();
+voucher_ensure_schema($pdo);
 
 function payment_order_payload(array $row): array
 {
@@ -714,6 +716,9 @@ function payment_sync_pending_tripay_order(PDO $pdo, array $config, array $row, 
             WHERE id = ? AND status IN ('pending', 'unpaid', 'waiting', 'callback')",
         );
         $update->execute(['expired', $encodedPayload, $row['id']]);
+        if (payment_remote_expired_status($remoteStatus) && (!empty($payload['voucher']) || (int) ($payload['voucher_discount'] ?? 0) > 0)) {
+            voucher_release($pdo, clean_text($row['merchant_ref'] ?? '', 180), 'tripay_expired');
+        }
     } catch (Throwable $error) {
         // The response can still mark the order expired even if DB update is blocked.
     }
@@ -1165,6 +1170,9 @@ function payment_public(array $row): array
         'classTitle' => $classTitle,
         'itemTitle' => $itemTitle,
         'amount' => (int) ($row['amount'] ?? 0),
+        'subtotalBeforeVoucher' => (int) ($row['subtotalBeforeVoucher'] ?? ($row['subtotal_before_voucher'] ?? ($row['amount'] ?? 0))),
+        'voucherDiscount' => (int) ($row['voucherDiscount'] ?? ($row['voucher_discount'] ?? 0)),
+        'voucherCode' => voucher_clean_code($row['voucherCode'] ?? ($row['voucher_code'] ?? '')),
         'status' => clean_text($row['status'] ?? 'pending', 40),
         'paymentMethod' => clean_text($row['paymentMethod'] ?? ($row['payment_method'] ?? ($row['sourceLabel'] ?? '-')), 120),
         'checkoutUrl' => clean_asset_url($row['checkoutUrl'] ?? ($row['checkout_url'] ?? ''), 1000),
@@ -1486,7 +1494,10 @@ try {
             $status = strtolower(clean_text($row['status'] ?? $status, 40));
         }
 
-        $isProduct = clean_text($payload['order_type'] ?? '', 60) === 'digital_product';
+        $orderType = clean_text($payload['order_type'] ?? '', 60);
+        $isProduct = $orderType === 'digital_product';
+        $isBundle = $orderType === 'bundle';
+        $voucherPayload = is_array($payload['voucher'] ?? null) ? $payload['voucher'] : [];
         $expiresAt = payment_tripay_expires_at($row, $payload, $expiredMinutes);
         $isExpired = payment_is_pending_status($status)
             && empty($row['access_granted'])
@@ -1510,10 +1521,13 @@ try {
             'source' => 'tripay',
             'sourceLabel' => 'Tripay',
             'orderCode' => $row['merchant_ref'] ?: $row['reference'],
-            'itemType' => $isProduct ? 'digital_product' : 'class',
+            'itemType' => $isBundle ? 'bundle' : ($isProduct ? 'digital_product' : 'class'),
             'productId' => $isProduct ? clean_text($payload['product_id'] ?? '', 120) : '',
             'productTitle' => $isProduct ? clean_text($payload['product_title'] ?? $row['class_title'], 180) : '',
             'paymentMethod' => clean_text($payload['payment_name'] ?? $payload['payment_method'] ?? 'Tripay', 120),
+            'subtotalBeforeVoucher' => (int) ($payload['subtotal_before_voucher'] ?? ($row['amount'] ?? 0)),
+            'voucherDiscount' => (int) ($payload['voucher_discount'] ?? ($voucherPayload['discountAmount'] ?? 0)),
+            'voucherCode' => voucher_clean_code($voucherPayload['code'] ?? ''),
             'accessGranted' => !empty($row['access_granted']),
             'expiresAt' => $expiresAt > 0 ? date(DATE_ATOM, $expiresAt) : '',
             'expiresAtTimestamp' => $expiresAt,

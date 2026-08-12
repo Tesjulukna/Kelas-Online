@@ -1,4 +1,5 @@
 import Icon from '../../components/Icon'
+import VoucherCodeField from '../../components/VoucherCodeField'
 import { getCheckoutEmailWarning } from '../../utils/emailValidation'
 import { getCheckoutPhoneWarning } from '../../utils/phoneValidation'
 
@@ -62,6 +63,12 @@ function CheckoutProduk({
   paymentAmount = 0,
   paymentFee = 0,
   paymentTotal = 0,
+  voucherEnabled = false,
+  voucherCode = '',
+  voucherResult = null,
+  voucherLoading = false,
+  isSubmitting = false,
+  voucherStatus = '',
   priceLabel,
   status,
   emailWarning = '',
@@ -71,6 +78,9 @@ function CheckoutProduk({
   onAnswerChange,
   onPaymentPickerToggle,
   onPaymentMethodSelect,
+  onVoucherCodeChange = null,
+  onVoucherApply = null,
+  onVoucherRemove = null,
   onShare,
   onSubmit,
 }) {
@@ -80,15 +90,26 @@ function CheckoutProduk({
 
   const isClassCheckout = itemType === 'class'
   const isPromptCheckout = !isClassCheckout && product.productType === 'prompt'
+  const hasAppliedVoucher = voucherResult?.valid === true
+  const voucherDiscount = hasAppliedVoucher
+    ? Math.max(0, Math.round(Number(voucherResult?.discountAmount) || 0))
+    : 0
+  const voucherFinalAmount = hasAppliedVoucher
+    ? Math.max(0, Math.round(Number(voucherResult?.finalAmount) || 0))
+    : Math.max(0, Math.round(Number(paymentAmount) || 0))
+  const isVoucherFree = !isFree && hasAppliedVoucher && voucherFinalAmount === 0
+  const isEffectiveFree = isFree || isVoucherFree
   const checkoutTitle = isClassCheckout ? 'Checkout kelas' : isPromptCheckout ? 'Checkout prompt' : 'Checkout produk'
-  const freeNote = isClassCheckout
-    ? 'Kelas ini gratis. Isi data peserta, lalu daftar tanpa memilih metode pembayaran.'
-    : isPromptCheckout
-      ? 'Prompt ini gratis. Isi data penerima, lalu ambil prompt tanpa memilih metode pembayaran.'
-      : 'Produk ini gratis. Isi data penerima, lalu ambil produk tanpa memilih metode pembayaran.'
+  const freeNote = isVoucherFree
+    ? 'Voucher menanggung seluruh harga. Selesaikan pesanan tanpa memilih metode pembayaran.'
+    : isClassCheckout
+      ? 'Kelas ini gratis. Isi data peserta, lalu daftar tanpa memilih metode pembayaran.'
+      : isPromptCheckout
+        ? 'Prompt ini gratis. Isi data penerima, lalu ambil prompt tanpa memilih metode pembayaran.'
+        : 'Produk ini gratis. Isi data penerima, lalu ambil produk tanpa memilih metode pembayaran.'
   const priceLabelTitle = isClassCheckout ? 'Harga kelas' : isPromptCheckout ? 'Harga prompt' : 'Harga produk'
-  const submitLabel = isFree
-    ? (isClassCheckout ? 'Daftar Kelas' : isPromptCheckout ? 'Ambil Prompt' : 'Ambil Produk')
+  const submitLabel = isEffectiveFree
+    ? (isVoucherFree ? 'Selesaikan Pesanan' : isClassCheckout ? 'Daftar Kelas' : isPromptCheckout ? 'Ambil Prompt' : 'Ambil Produk')
     : 'Buat Pembayaran'
   const marketingConsentText = isClassCheckout
     ? 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima akses kelas, invoice, atau pesan pembelajaran dan pemasaran.'
@@ -107,6 +128,10 @@ function CheckoutProduk({
     ? emailWarning || getCheckoutEmailWarning(form.buyerEmail)
     : ''
   const visiblePhoneWarning = phoneWarning || getCheckoutPhoneWarning(form.buyerPhone)
+  const canUseVoucher = !isFree && (voucherEnabled || typeof onVoucherApply === 'function')
+  const displayedPaymentTotal = hasAppliedVoucher
+    ? voucherFinalAmount + (isVoucherFree ? 0 : Math.max(0, Math.round(Number(paymentFee) || 0)))
+    : paymentTotal || paymentAmount
 
   return (
     <section className="public-detail-page public-checkout-page">
@@ -210,7 +235,28 @@ function CheckoutProduk({
             ))}
           </div>
         )}
-        {!isFree ? (
+        {canUseVoucher && (
+          <>
+            {hasAppliedVoucher && (
+              <input
+                type="hidden"
+                name="voucherCode"
+                value={voucherResult?.voucher?.code || voucherCode}
+              />
+            )}
+            <VoucherCodeField
+              id={`${itemType}-${product.id}-voucher`}
+              code={voucherCode}
+              result={voucherResult}
+              status={voucherStatus}
+              isLoading={voucherLoading}
+              onCodeChange={onVoucherCodeChange || (() => {})}
+              onApply={onVoucherApply || (() => {})}
+              onRemove={onVoucherRemove || (() => {})}
+            />
+          </>
+        )}
+        {!isEffectiveFree ? (
           <>
             <button
               className="btn btn-secondary public-payment-picker-toggle"
@@ -244,18 +290,32 @@ function CheckoutProduk({
         ) : (
           <p className="public-checkout-free-note">{freeNote}</p>
         )}
-        {!isFree && form.paymentMethod && (
+        {!isFree && (form.paymentMethod || hasAppliedVoucher) && (
           <>
-            <p className="public-checkout-status">Metode dipilih: {selectedMethodLabel}</p>
+            {form.paymentMethod && (
+              <p className="public-checkout-status">Metode dipilih: {selectedMethodLabel}</p>
+            )}
             <div className="payment-breakdown public-checkout-breakdown" aria-live="polite">
               <span>
                 <small>{priceLabelTitle}</small>
                 <strong>{priceLabel}</strong>
               </span>
+              {hasAppliedVoucher && voucherDiscount > 0 && (
+                <span className="voucher-payment-discount">
+                  <small>Potongan voucher</small>
+                  <strong>-{new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    maximumFractionDigits: 0,
+                  }).format(voucherDiscount)}</strong>
+                </span>
+              )}
               <span>
                 <small>Biaya layanan</small>
                 <strong>
-                  {paymentFee
+                  {!isVoucherFree && !form.paymentMethod
+                    ? 'Pilih metode'
+                    : !isVoucherFree && paymentFee
                     ? new Intl.NumberFormat('id-ID', {
                         style: 'currency',
                         currency: 'IDR',
@@ -271,11 +331,11 @@ function CheckoutProduk({
                     style: 'currency',
                     currency: 'IDR',
                     maximumFractionDigits: 0,
-                  }).format(paymentTotal || paymentAmount)}
+                  }).format(displayedPaymentTotal)}
                 </strong>
               </span>
             </div>
-            <div className="secure-payment-note">
+            {!isVoucherFree && <div className="secure-payment-note">
               <span className="secure-payment-icon" aria-hidden="true">
                 <Icon name="lock" />
               </span>
@@ -287,7 +347,7 @@ function CheckoutProduk({
                   Mitra pembayaran berada dalam ekosistem yang diawasi oleh Otoritas Jasa Keuangan (OJK) Republik Indonesia.
                 </p>
               </div>
-            </div>
+            </div>}
           </>
         )}
         <label className="public-checkout-check">
@@ -313,14 +373,16 @@ function CheckoutProduk({
           className="btn btn-primary public-checkout-button"
           type="submit"
           disabled={
-            (!isFree && !form.paymentMethod) ||
+            voucherLoading ||
+            isSubmitting ||
+            (!isEffectiveFree && !form.paymentMethod) ||
             !form.acceptedTerms ||
             !form.acceptedMarketing ||
             (isMemberCheckout && (!memberEmail || memberEmail === '-')) ||
             (memberNeedsPhone && !form.buyerPhone)
           }
         >
-          {submitLabel}
+          {isSubmitting ? 'Memproses pesanan...' : submitLabel}
           <Icon name="arrowRight" />
         </button>
       </form>

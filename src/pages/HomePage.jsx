@@ -11,6 +11,7 @@ import CheckoutBundle from './detail/CheckoutBundle'
 import ProductAccessPage from './detail/ProductAccessPage'
 import { getCheckoutEmailWarning } from '../utils/emailValidation'
 import { getCheckoutPhoneWarning, normalizeCheckoutPhone } from '../utils/phoneValidation'
+import { normalizeVoucherCode, validateVoucher } from '../lib/vouchers'
 
 const TESTIMONIAL_AUTO_DELAY_MS = 5200
 const TESTIMONIAL_MANUAL_PAUSE_MS = 20000
@@ -225,6 +226,7 @@ function HomePage({
   isClassesLoaded = true,
   isProductsLoaded = true,
   checkoutCustomer = null,
+  sessionToken = '',
   classes = [],
   digitalProducts = [],
   testimonials = [],
@@ -264,6 +266,13 @@ function HomePage({
     customAnswers: {},
   })
   const [publicCheckoutStatus, setPublicCheckoutStatus] = useState('')
+  const [isPublicCheckoutSubmitting, setIsPublicCheckoutSubmitting] = useState(false)
+  const publicCheckoutSubmittingRef = useRef(false)
+  const [publicVoucherCode, setPublicVoucherCode] = useState('')
+  const [publicVoucherResult, setPublicVoucherResult] = useState(null)
+  const [publicVoucherStatus, setPublicVoucherStatus] = useState('')
+  const [isPublicVoucherLoading, setIsPublicVoucherLoading] = useState(false)
+  const publicVoucherRequestRef = useRef(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('Semua')
 
@@ -897,9 +906,13 @@ function HomePage({
   const selectedPublicPaymentMethod = paymentMethods.find(
     (method) => method.code === publicCheckoutForm.paymentMethod,
   )
-  const publicCheckoutAmount = checkoutClass ? selectedClassPrice : selectedProductPrice
+  const publicCheckoutBaseAmount = checkoutClass ? selectedClassPrice : selectedProductPrice
+  const publicCheckoutAmount = publicVoucherResult?.valid === true
+    ? Math.max(0, Math.round(Number(publicVoucherResult.finalAmount) || 0))
+    : publicCheckoutBaseAmount
   const publicCheckoutFee = getPaymentMethodFee(selectedPublicPaymentMethod, publicCheckoutAmount)
   const publicCheckoutTotal = publicCheckoutAmount + publicCheckoutFee
+  const isPublicVoucherFree = publicVoucherResult?.valid === true && publicCheckoutAmount <= 0
   const initialDetailType = initialDetail?.type || ''
   const initialDetailId = initialDetail?.id || ''
   const initialDetailAction = initialDetail?.action || ''
@@ -972,6 +985,18 @@ function HomePage({
 
     return () => window.clearTimeout(timer)
   }, [initialDetailAction, initialDetailId, initialDetailType])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      publicVoucherRequestRef.current += 1
+      setPublicVoucherCode('')
+      setPublicVoucherResult(null)
+      setPublicVoucherStatus('')
+      setIsPublicVoucherLoading(false)
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [checkoutClassId, checkoutProductId])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1401,6 +1426,74 @@ function HomePage({
       ...current,
       [name]: type === 'checkbox' ? checked : value,
     }))
+
+    if (name === 'buyerEmail' && (publicVoucherResult || isPublicVoucherLoading)) {
+      publicVoucherRequestRef.current += 1
+      setPublicVoucherResult(null)
+      setIsPublicVoucherLoading(false)
+      setPublicVoucherStatus('Email berubah. Gunakan kembali kode voucher untuk memvalidasinya.')
+    }
+  }
+
+  const applyPublicVoucher = async () => {
+    const activeItem = checkoutClass || activeCheckoutProduct
+    const buyerEmail = isMemberCheckout
+      ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
+      : publicCheckoutForm.buyerEmail
+    const emailWarning = getCheckoutEmailWarning(buyerEmail)
+
+    if (!activeItem) return
+
+    if (!String(buyerEmail || '').trim() || emailWarning) {
+      setPublicVoucherStatus(emailWarning || 'Isi email terlebih dahulu untuk memeriksa voucher.')
+      return
+    }
+
+    setIsPublicVoucherLoading(true)
+    setPublicVoucherStatus('')
+    const requestId = publicVoucherRequestRef.current + 1
+    publicVoucherRequestRef.current = requestId
+
+    try {
+      const result = await validateVoucher({
+        code: publicVoucherCode,
+        itemType: checkoutClass ? 'class' : 'digital_product',
+        itemId: activeItem.id,
+        buyerEmail,
+        sessionToken,
+      })
+
+      if (publicVoucherRequestRef.current !== requestId) return
+
+      if (!result.valid) {
+        throw new Error(result.message || 'Voucher tidak dapat digunakan untuk item ini.')
+      }
+
+      setPublicVoucherCode(normalizeVoucherCode(result.voucher?.code || publicVoucherCode))
+      setPublicVoucherResult(result)
+      setPublicVoucherStatus(result.message || 'Voucher berhasil digunakan.')
+
+      if (result.finalAmount <= 0) {
+        setPublicCheckoutForm((current) => ({ ...current, paymentMethod: '' }))
+        setIsPaymentPickerOpen(false)
+      }
+    } catch (error) {
+      if (publicVoucherRequestRef.current !== requestId) return
+      setPublicVoucherResult(null)
+      setPublicVoucherStatus(error.message || 'Voucher belum bisa diperiksa.')
+    } finally {
+      if (publicVoucherRequestRef.current === requestId) {
+        setIsPublicVoucherLoading(false)
+      }
+    }
+  }
+
+  const removePublicVoucher = () => {
+    publicVoucherRequestRef.current += 1
+    setPublicVoucherCode('')
+    setPublicVoucherResult(null)
+    setPublicVoucherStatus('')
+    setIsPublicVoucherLoading(false)
   }
 
   const handlePublicCheckoutAnswerChange = (questionId, value) => {
@@ -1416,7 +1509,7 @@ function HomePage({
   const submitPublicClassCheckout = async (event) => {
     event.preventDefault()
 
-    if (!checkoutClass) {
+    if (!checkoutClass || publicCheckoutSubmittingRef.current) {
       return
     }
 
@@ -1439,7 +1532,11 @@ function HomePage({
       return
     }
 
-    setPublicCheckoutStatus(isPublicClassFree ? 'Memproses pendaftaran kelas gratis...' : 'Membuat invoice kelas...')
+    const isFreeCheckout = isPublicClassFree || isPublicVoucherFree
+
+    publicCheckoutSubmittingRef.current = true
+    setIsPublicCheckoutSubmitting(true)
+    setPublicCheckoutStatus(isFreeCheckout ? 'Mengaktifkan akses kelas...' : 'Membuat invoice kelas...')
 
     try {
       const data = await onPublicClassCheckout({
@@ -1452,7 +1549,10 @@ function HomePage({
           ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
           : publicCheckoutForm.buyerEmail,
         buyerPhone: normalizeCheckoutPhone(buyerPhone),
-        paymentMethod: isPublicClassFree ? '' : publicCheckoutForm.paymentMethod,
+        paymentMethod: isFreeCheckout ? '' : publicCheckoutForm.paymentMethod,
+        voucherCode: publicVoucherResult?.valid
+          ? normalizeVoucherCode(publicVoucherResult.voucher?.code || publicVoucherCode)
+          : '',
       })
 
       if (data?.checkoutUrl) {
@@ -1464,13 +1564,16 @@ function HomePage({
       }
     } catch (error) {
       setPublicCheckoutStatus(error.message || 'Checkout kelas belum bisa dibuat.')
+    } finally {
+      publicCheckoutSubmittingRef.current = false
+      setIsPublicCheckoutSubmitting(false)
     }
   }
 
   const submitPublicProductCheckout = async (event) => {
     event.preventDefault()
 
-    if (!activeCheckoutProduct) {
+    if (!activeCheckoutProduct || publicCheckoutSubmittingRef.current) {
       return
     }
 
@@ -1498,7 +1601,11 @@ function HomePage({
       return
     }
 
-    setPublicCheckoutStatus(isPublicProductFree ? 'Memproses produk gratis...' : 'Membuat invoice...')
+    const isFreeCheckout = isPublicProductFree || isPublicVoucherFree
+
+    publicCheckoutSubmittingRef.current = true
+    setIsPublicCheckoutSubmitting(true)
+    setPublicCheckoutStatus(isFreeCheckout ? 'Mengaktifkan akses produk...' : 'Membuat invoice...')
 
     try {
       const data = await onPublicProductCheckout({
@@ -1511,7 +1618,10 @@ function HomePage({
           ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
           : publicCheckoutForm.buyerEmail,
         buyerPhone: normalizeCheckoutPhone(buyerPhone),
-        paymentMethod: isPublicProductFree ? '' : publicCheckoutForm.paymentMethod,
+        paymentMethod: isFreeCheckout ? '' : publicCheckoutForm.paymentMethod,
+        voucherCode: publicVoucherResult?.valid
+          ? normalizeVoucherCode(publicVoucherResult.voucher?.code || publicVoucherCode)
+          : '',
       })
 
       if (data?.checkoutUrl) {
@@ -1523,6 +1633,9 @@ function HomePage({
       }
     } catch (error) {
       setPublicCheckoutStatus(error.message || 'Checkout produk belum bisa dibuat.')
+    } finally {
+      publicCheckoutSubmittingRef.current = false
+      setIsPublicCheckoutSubmitting(false)
     }
   }
 
@@ -1657,6 +1770,7 @@ function HomePage({
           items={selectedBundleItems}
           paymentMethods={paymentMethods}
           checkoutCustomer={checkoutCustomer}
+          sessionToken={sessionToken}
           onBack={() => backToBundleDetail(selectedBundleDetail.id)}
           onCheckout={onCheckoutBundle}
         />
@@ -1699,6 +1813,12 @@ function HomePage({
           paymentAmount={selectedClassPrice}
           paymentFee={publicCheckoutFee}
           paymentTotal={publicCheckoutTotal}
+          voucherEnabled={selectedClassPrice > 0}
+          voucherCode={publicVoucherCode}
+          voucherResult={publicVoucherResult}
+          voucherLoading={isPublicVoucherLoading}
+          isSubmitting={isPublicCheckoutSubmitting}
+          voucherStatus={publicVoucherStatus}
           priceLabel={selectedClassPrice ? formatRupiah(selectedClassPrice) : 'Gratis'}
           status={publicCheckoutStatus}
           emailWarning={publicCheckoutEmailWarning}
@@ -1708,6 +1828,12 @@ function HomePage({
           onAnswerChange={handlePublicCheckoutAnswerChange}
           onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
           onPaymentMethodSelect={selectPublicPaymentMethod}
+          onVoucherCodeChange={(value) => {
+            setPublicVoucherCode(normalizeVoucherCode(value))
+            setPublicVoucherStatus('')
+          }}
+          onVoucherApply={applyPublicVoucher}
+          onVoucherRemove={removePublicVoucher}
           onShare={shareItem}
           onSubmit={submitPublicClassCheckout}
         />
@@ -1808,6 +1934,12 @@ function HomePage({
           paymentAmount={selectedProductPrice}
           paymentFee={publicCheckoutFee}
           paymentTotal={publicCheckoutTotal}
+          voucherEnabled={selectedProductPrice > 0}
+          voucherCode={publicVoucherCode}
+          voucherResult={publicVoucherResult}
+          voucherLoading={isPublicVoucherLoading}
+          isSubmitting={isPublicCheckoutSubmitting}
+          voucherStatus={publicVoucherStatus}
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}
           status={publicCheckoutStatus}
           emailWarning={publicCheckoutEmailWarning}
@@ -1817,6 +1949,12 @@ function HomePage({
           onAnswerChange={handlePublicCheckoutAnswerChange}
           onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
           onPaymentMethodSelect={selectPublicPaymentMethod}
+          onVoucherCodeChange={(value) => {
+            setPublicVoucherCode(normalizeVoucherCode(value))
+            setPublicVoucherStatus('')
+          }}
+          onVoucherApply={applyPublicVoucher}
+          onVoucherRemove={removePublicVoucher}
           onShare={shareItem}
           onSubmit={submitPublicProductCheckout}
         />

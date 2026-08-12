@@ -6,6 +6,7 @@ require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_tripay.php';
 require __DIR__ . '/_email.php';
 require __DIR__ . '/_commerce.php';
+require __DIR__ . '/_vouchers.php';
 
 ensure_method(['POST']);
 
@@ -17,6 +18,8 @@ $classId = clean_text($payload['classId'] ?? '', 120);
 $productId = clean_text($payload['productId'] ?? '', 120);
 $requestedBundleItems = is_array($payload['bundleItems'] ?? null) ? $payload['bundleItems'] : [];
 $bundleProgramId = clean_text($payload['bundleProgramId'] ?? '', 120);
+$voucherCode = voucher_clean_code($payload['voucherCode'] ?? $payload['code'] ?? '');
+$requestedBuyerPhone = clean_phone($payload['buyerPhone'] ?? '');
 $checkoutType = $requestedBundleItems ? 'bundle' : ($productId !== '' ? 'digital_product' : 'class');
 
 if ($classId === '' && $productId === '' && !$requestedBundleItems) {
@@ -178,9 +181,231 @@ if ($checkoutType === 'class' && tripay_has_class_access($member, $classId)) {
     ]);
 }
 
+$buyerEmail = clean_email($member['email'] ?? ($user['email'] ?? ''));
+$buyerPhone = $requestedBuyerPhone ?: clean_phone($member['phone'] ?? '');
+
 $amount = $checkoutType === 'digital_product'
     ? commerce_product_effective_price($checkoutItem)
     : commerce_class_effective_price($checkoutItem);
+$subtotalBeforeVoucher = $amount;
+$voucherCalculation = null;
+$voucherContext = null;
+
+if ($voucherCode !== '') {
+    try {
+        $voucherRequest = [
+            'itemType' => $checkoutType,
+            'itemId' => $checkoutType === 'digital_product'
+                ? $productId
+                : ($checkoutType === 'class' ? $classId : ''),
+            'classId' => $classId,
+            'productId' => $productId,
+            'bundleProgramId' => $bundleProgramId,
+            'bundleItems' => $requestedBundleItems,
+            'buyerEmail' => $buyerEmail,
+        ];
+        $voucherContext = voucher_context_from_request($pdo, $voucherRequest, $user);
+        $voucherCalculation = voucher_calculate($pdo, $voucherCode, $voucherContext, true);
+        $subtotalBeforeVoucher = (int) $voucherCalculation['subtotal'];
+        $amount = (int) $voucherCalculation['finalAmount'];
+    } catch (VoucherException $error) {
+        send_json($error->apiStatus(), [
+            'message' => $error->getMessage(),
+            'code' => $error->errorCode(),
+        ]);
+    }
+}
+
+if ($amount <= 0 && $voucherCalculation) {
+    try {
+        $freeOrderRef = 'FREE-VOUCHER-' . time() . strtoupper(bin2hex(random_bytes(3)));
+    } catch (Throwable $error) {
+        $freeOrderRef = 'FREE-VOUCHER-' . time() . strtoupper(substr(md5(uniqid('', true)), 0, 6));
+    }
+
+    try {
+        $reservation = voucher_reserve(
+            $pdo,
+            $voucherCode,
+            $voucherContext,
+            $freeOrderRef,
+            time() + 900,
+        );
+    } catch (VoucherException $error) {
+        send_json($error->apiStatus(), [
+            'message' => $error->getMessage(),
+            'code' => $error->errorCode(),
+        ]);
+    }
+    $response = [
+        'ok' => true,
+        'freeAccessGranted' => true,
+        'voucherApplied' => true,
+        'voucher' => voucher_snapshot($reservation),
+        'merchantRef' => $freeOrderRef,
+    ];
+    $emailResult = ['sent' => false, 'message' => 'Email akses belum diproses.'];
+
+    try {
+        $pdo->beginTransaction();
+        $accessGranted = true;
+
+        if ($checkoutType === 'bundle') {
+            $grantedCount = 0;
+            $bundleItems = is_array($checkoutItem['bundle_items'] ?? null)
+                ? $checkoutItem['bundle_items']
+                : [];
+
+            foreach ($bundleItems as $bundleItem) {
+                $itemType = clean_text($bundleItem['type'] ?? '', 40);
+                $itemId = clean_text($bundleItem['id'] ?? '', 120);
+                if ($itemId === '') continue;
+
+                if ($itemType === 'class') {
+                    if (tripay_grant_class_access($pdo, $member['id'], $itemId)) $grantedCount++;
+                    $classQuery = $pdo->prepare('SELECT * FROM classes WHERE id = ? LIMIT 1');
+                    $classQuery->execute([$itemId]);
+                    $class = $classQuery->fetch() ?: [];
+                    commerce_grant_class_bundled_products($pdo, [
+                        'class' => $class,
+                        'memberId' => $member['id'],
+                        'buyerName' => $member['name'] ?? 'Member',
+                        'buyerEmail' => $buyerEmail,
+                    ]);
+                    continue;
+                }
+
+                if ($itemType === 'digital_product') {
+                    $result = commerce_grant_digital_product_access($pdo, [
+                        'productId' => $itemId,
+                        'memberId' => $member['id'],
+                        'buyerEmail' => $buyerEmail,
+                        'buyerName' => $member['name'] ?? 'Member',
+                        'source' => 'voucher-bundle',
+                        'orderId' => $freeOrderRef . '-' . $itemId,
+                        'enforceStockAtGrant' => true,
+                    ]);
+                    if (!empty($result['granted'])) $grantedCount++;
+                }
+            }
+
+            $response['bundleAccessCount'] = count($bundleItems);
+            $response['grantedCount'] = $grantedCount;
+            $response['message'] = 'Voucher berhasil digunakan dan seluruh akses bundling sudah aktif.';
+        } elseif ($checkoutType === 'digital_product') {
+            $accessResult = commerce_grant_digital_product_access($pdo, [
+                'productId' => $checkoutItem['id'],
+                'memberId' => $member['id'],
+                'buyerEmail' => $buyerEmail,
+                'buyerName' => $member['name'] ?? 'Member',
+                'source' => 'voucher-free',
+                'orderId' => $freeOrderRef,
+                'enforceStockAtGrant' => true,
+            ]);
+            $response['accessOrderId'] = $accessResult['access']['order_id'] ?? $freeOrderRef;
+            $response['accessUrl'] = commerce_public_product_access_url(
+                $response['accessOrderId'],
+                clean_text($checkoutItem['product_type'] ?? 'digital', 40),
+            );
+            $response['alreadyHasAccess'] = empty($accessResult['granted']);
+            $response['message'] = 'Voucher berhasil digunakan dan akses produk sudah aktif.';
+        } else {
+            $classAccessGranted = tripay_grant_class_access($pdo, $member['id'], $checkoutItem['id']);
+            $bundledItems = commerce_grant_class_bundled_products($pdo, [
+                'class' => $checkoutItem,
+                'memberId' => $member['id'],
+                'buyerName' => $member['name'] ?? 'Member',
+                'buyerEmail' => $buyerEmail,
+            ]);
+            $response['alreadyHasAccess'] = !$classAccessGranted;
+            $response['bundleAccessCount'] = count($bundledItems);
+            $response['message'] = 'Voucher berhasil digunakan dan akses kelas sudah aktif.';
+        }
+
+        $orderPayload = [
+            'order_type' => $checkoutType,
+            'free_voucher_checkout' => true,
+            'product_type' => $checkoutType === 'digital_product' ? clean_text($checkoutItem['product_type'] ?? 'digital', 40) : '',
+            'product_id' => $checkoutType === 'digital_product' ? $checkoutItem['id'] : '',
+            'product_title' => $checkoutType === 'digital_product' ? $checkoutItem['title'] : '',
+            'bundle_items' => $checkoutType === 'bundle' ? ($checkoutItem['bundle_items'] ?? []) : [],
+            'bundle_subtotal' => $checkoutType === 'bundle' ? ($checkoutItem['bundle_subtotal'] ?? 0) : 0,
+            'bundle_discount' => $checkoutType === 'bundle' ? ($checkoutItem['bundle_discount'] ?? 0) : 0,
+            'bundle_program_id' => $checkoutType === 'bundle' ? ($checkoutItem['bundle_program_id'] ?? '') : '',
+            'buyer_phone' => $buyerPhone,
+            'payment_method' => 'VOUCHER',
+            'payment_name' => 'Voucher 100%',
+            'subtotal_before_voucher' => $subtotalBeforeVoucher,
+            'voucher_discount' => (int) $voucherCalculation['discountAmount'],
+            'voucher' => voucher_snapshot($reservation),
+        ];
+        $insert = $pdo->prepare(
+            'INSERT INTO tripay_orders
+            (id, merchant_ref, reference, member_id, buyer_name, buyer_email, class_id, class_title, amount, status, checkout_url, access_granted, payload)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $insert->execute([
+            make_id('tripay'),
+            $freeOrderRef,
+            '',
+            $member['id'],
+            clean_text($member['name'] ?? ($user['name'] ?? 'Member'), 160),
+            $buyerEmail,
+            $checkoutType === 'digital_product'
+                ? 'product:' . $checkoutItem['id']
+                : ($checkoutType === 'bundle' ? 'bundle:' . $freeOrderRef : $checkoutItem['id']),
+            $checkoutItem['title'],
+            0,
+            'processed',
+            '',
+            $accessGranted ? 1 : 0,
+            json_encode($orderPayload, JSON_UNESCAPED_UNICODE),
+        ]);
+        if (!voucher_mark_used($pdo, $freeOrderRef)) {
+            throw new RuntimeException('Reservasi voucher tidak dapat diselesaikan.');
+        }
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        voucher_release($pdo, $freeOrderRef, 'free_access_failed');
+        send_json(500, ['message' => 'Voucher valid, tetapi akses belum bisa diaktifkan. Silakan coba lagi.']);
+    }
+
+    if ($checkoutType === 'bundle') {
+        $emailResult = send_bundle_access_credentials_email([
+            'buyerName' => $member['name'] ?? 'Member',
+            'buyerEmail' => $buyerEmail,
+            'username' => $member['username'] ?? '',
+            'password' => null,
+            'bundleTitle' => $checkoutItem['title'] ?? 'Paket Bundling IbnuCreative',
+            'bundleItems' => $checkoutItem['bundle_items'] ?? [],
+            'loginUrl' => commerce_login_url($config),
+        ]);
+    } elseif ($checkoutType === 'digital_product') {
+        $emailResult = send_digital_product_delivery_email([
+            'buyerName' => $member['name'] ?? 'Member',
+            'buyerEmail' => $buyerEmail,
+            'productTitle' => $checkoutItem['title'] ?? 'Produk digital',
+            'productType' => clean_text($checkoutItem['product_type'] ?? 'digital', 40),
+            'downloadUrl' => $response['accessUrl'] ?? '',
+            'deliveryNote' => $checkoutItem['delivery_note'] ?? '',
+        ]);
+    } else {
+        $emailResult = send_class_access_credentials_email([
+            'buyerName' => $member['name'] ?? 'Member',
+            'buyerEmail' => $buyerEmail,
+            'username' => $member['username'] ?? '',
+            'password' => null,
+            'classTitle' => $checkoutItem['title'] ?? 'Kelas IbnuCreative',
+            'purchaseMessage' => $checkoutItem['purchase_message'] ?? '',
+            'loginUrl' => commerce_login_url($config),
+        ]);
+    }
+
+    $response['emailSent'] = $emailResult['sent'] ?? false;
+    $response['emailError'] = !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? '');
+    send_json(200, $response);
+}
 
 if ($amount <= 0) {
     if ($checkoutType === 'bundle') {
@@ -244,8 +469,6 @@ if ($amount <= 0) {
     ]);
 }
 
-$buyerEmail = clean_email($member['email'] ?? ($user['email'] ?? ''));
-
 if ($buyerEmail === '') {
     send_json(422, ['message' => 'Email member wajib diisi sebelum checkout Tripay.']);
 }
@@ -264,8 +487,44 @@ $method = strtoupper(clean_text($payload['paymentMethod'] ?? '', 40));
 $method = $method ?: (tripay_config_value($config, 'tripay_default_method', 40) ?: 'QRIS');
 $callbackUrl = clean_external_url($config['tripay_callback_url'] ?? '') ?: tripay_absolute_url('/api/tripay-webhook.php');
 $returnUrl = clean_external_url($config['tripay_return_url'] ?? '') ?: tripay_absolute_url('/member?menu=my-courses');
-$expiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
-$customerPhone = tripay_config_value($config, 'tripay_default_customer_phone', 30) ?: '081234567890';
+$configuredExpiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
+$expiredMinutes = $voucherCode !== '' ? min($configuredExpiredMinutes, 60) : $configuredExpiredMinutes;
+$customerPhone = tripay_customer_phone($buyerPhone);
+$customerPhone = $customerPhone ?: (tripay_config_value($config, 'tripay_default_customer_phone', 30) ?: '081234567890');
+$checkoutExpiresAt = time() + ($expiredMinutes * 60);
+$reservationExpiresAt = $checkoutExpiresAt + 300;
+$voucherReservation = null;
+$voucherData = null;
+$voucherReservationSettled = true;
+
+if ($voucherCalculation) {
+    try {
+        $voucherReservation = voucher_reserve(
+            $pdo,
+            $voucherCode,
+            $voucherContext,
+            $merchantRef,
+            $reservationExpiresAt,
+        );
+        $voucherData = voucher_snapshot($voucherReservation);
+        $subtotalBeforeVoucher = (int) $voucherReservation['subtotal'];
+        $amount = (int) $voucherReservation['finalAmount'];
+        $voucherReservationSettled = false;
+        register_shutdown_function(static function () use ($pdo, $merchantRef, &$voucherReservationSettled): void {
+            if ($voucherReservationSettled) return;
+            try {
+                voucher_release($pdo, $merchantRef, 'checkout_not_created');
+            } catch (Throwable $error) {
+                // Reservasi kedaluwarsa tetap dibersihkan oleh inti voucher.
+            }
+        });
+    } catch (VoucherException $error) {
+        send_json($error->apiStatus(), [
+            'message' => $error->getMessage(),
+            'code' => $error->errorCode(),
+        ]);
+    }
+}
 
 if ($callbackUrl === '' || $returnUrl === '') {
     send_json(500, ['message' => 'URL callback/return Tripay belum bisa dibuat.']);
@@ -290,7 +549,7 @@ $checkoutPayload = [
     'return_url' => $checkoutType === 'digital_product'
         ? commerce_public_product_access_url($merchantRef, clean_text($checkoutItem['product_type'] ?? 'digital', 40))
         : $returnUrl,
-    'expired_time' => time() + ($expiredMinutes * 60),
+    'expired_time' => $checkoutExpiresAt,
     'signature' => tripay_checkout_signature($merchantCode, $merchantRef, $amount, $privateKey),
 ];
 
@@ -337,11 +596,19 @@ $insert->execute([
         'delivery_note' => $checkoutType === 'digital_product' ? ($checkoutItem['delivery_note'] ?? '') : '',
         'payment_method' => $method,
         'payment_name' => $method,
+        'buyer_phone' => $buyerPhone,
+        'subtotal_before_voucher' => $subtotalBeforeVoucher,
+        'voucher_discount' => $voucherReservation ? (int) $voucherReservation['discountAmount'] : 0,
+        'voucher' => $voucherData,
         'expired_time' => $checkoutPayload['expired_time'],
         'data' => $tripayData,
         'response' => $tripayResponse['data'],
     ], JSON_UNESCAPED_UNICODE),
 ]);
+
+if ($voucherReservation) {
+    $voucherReservationSettled = true;
+}
 
 $emailResult = send_tripay_payment_email([
     'buyerName' => clean_text($member['name'] ?? ($user['name'] ?? 'Member'), 160),
@@ -351,6 +618,9 @@ $emailResult = send_tripay_payment_email([
     'totalAmount' => $amount,
     'paymentMethod' => $method,
     'checkoutUrl' => $checkoutUrl,
+    'subtotal' => $subtotalBeforeVoucher,
+    'discountAmount' => $voucherReservation ? (int) $voucherReservation['discountAmount'] : 0,
+    'voucher' => $voucherData,
 ]);
 
 send_json(200, [
@@ -359,6 +629,11 @@ send_json(200, [
     'merchantRef' => $merchantRef,
     'reference' => $reference,
     'paymentMethod' => $method,
+    'voucherApplied' => (bool) $voucherReservation,
+    'voucher' => $voucherData,
+    'subtotal' => $subtotalBeforeVoucher,
+    'discountAmount' => $voucherReservation ? (int) $voucherReservation['discountAmount'] : 0,
+    'finalAmount' => $amount,
     'emailSent' => $emailResult['sent'] ?? false,
     'emailError' => !empty($emailResult['sent']) ? '' : ($emailResult['message'] ?? ''),
     'message' => 'Checkout Tripay berhasil dibuat.',

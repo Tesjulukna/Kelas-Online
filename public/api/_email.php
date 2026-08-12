@@ -603,9 +603,22 @@ function send_tripay_payment_email(array $order): array
 {
     $checkoutUrl = clean_asset_url($order['checkoutUrl'] ?? '', 1000);
     $total = (int) ($order['totalAmount'] ?? $order['amount'] ?? 0);
+    $subtotal = (int) ($order['subtotal'] ?? $total);
+    $discount = max(0, (int) ($order['discountAmount'] ?? 0));
+    $voucher = is_array($order['voucher'] ?? null) ? $order['voucher'] : [];
+    $voucherCode = substr(preg_replace('/[^A-Z0-9_-]/', '', strtoupper(trim((string) ($voucher['code'] ?? '')))) ?? '', 0, 60);
+    $voucherText = $discount > 0
+        ? "Subtotal: Rp " . number_format($subtotal, 0, ',', '.') . "\n"
+            . "Voucher" . ($voucherCode !== '' ? " ({$voucherCode})" : '') . ": -Rp " . number_format($discount, 0, ',', '.') . "\n"
+        : '';
+    $voucherHtml = $discount > 0
+        ? '<p style="margin-bottom:4px"><strong>Subtotal:</strong> Rp ' . email_escape(number_format($subtotal, 0, ',', '.')) . '</p>'
+            . '<p style="margin-top:4px"><strong>Voucher' . ($voucherCode !== '' ? ' (' . email_escape($voucherCode) . ')' : '') . ':</strong> -Rp ' . email_escape(number_format($discount, 0, ',', '.')) . '</p>'
+        : '';
     $text = "Halo {$order['buyerName']},\n\n"
         . "Invoice pembayaran Anda sudah dibuat.\n\n"
         . "Item: {$order['itemTitle']}\n"
+        . $voucherText
         . "Total pembayaran: Rp " . number_format($total, 0, ',', '.') . "\n"
         . "Metode pembayaran: {$order['paymentMethod']}\n\n"
         . "Selesaikan pembayaran di link berikut:\n{$checkoutUrl}\n\n"
@@ -615,6 +628,7 @@ function send_tripay_payment_email(array $order): array
         . '<p>Halo ' . email_escape($order['buyerName'] ?? 'Member') . ',</p>'
         . '<p>Invoice pembayaran Anda sudah dibuat. Silakan selesaikan pembayaran agar akses aktif otomatis.</p>'
         . '<p><strong>Item:</strong> ' . email_escape($order['itemTitle'] ?? 'IbnuCreative') . '</p>'
+        . $voucherHtml
         . '<p><strong>Total pembayaran:</strong> Rp ' . email_escape(number_format($total, 0, ',', '.')) . '</p>'
         . '<p><strong>Metode pembayaran:</strong> ' . email_escape($order['paymentMethod'] ?? '-') . '</p>'
         . '<p><a href="' . email_escape($checkoutUrl) . '" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700">Selesaikan Pembayaran</a></p>'

@@ -143,6 +143,36 @@ function commerce_decrement_product_stock(PDO $pdo, string $productId): void
     $update->execute([$id]);
 }
 
+function commerce_find_digital_product_access(PDO $pdo, string $productId, string $memberId, string $buyerEmail): ?array
+{
+    if ($memberId !== '' && $buyerEmail !== '') {
+        $query = $pdo->prepare(
+            'SELECT * FROM digital_product_access
+            WHERE product_id = ? AND status = ? AND (member_id = ? OR buyer_email = ?)
+            LIMIT 1',
+        );
+        $query->execute([$productId, 'active', $memberId, $buyerEmail]);
+    } elseif ($memberId !== '') {
+        $query = $pdo->prepare(
+            'SELECT * FROM digital_product_access
+            WHERE product_id = ? AND status = ? AND member_id = ?
+            LIMIT 1',
+        );
+        $query->execute([$productId, 'active', $memberId]);
+    } elseif ($buyerEmail !== '') {
+        $query = $pdo->prepare(
+            'SELECT * FROM digital_product_access
+            WHERE product_id = ? AND status = ? AND buyer_email = ?
+            LIMIT 1',
+        );
+        $query->execute([$productId, 'active', $buyerEmail]);
+    } else {
+        return null;
+    }
+
+    return $query->fetch() ?: null;
+}
+
 function commerce_grant_digital_product_access(PDO $pdo, array $args): array
 {
     $productId = clean_text($args['productId'] ?? '', 120);
@@ -164,14 +194,8 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
         $existing = $query->fetch();
     }
 
-    if (!$existing && empty($product['allow_repeat_purchase']) && ($memberId !== '' || $buyerEmail !== '')) {
-        $query = $pdo->prepare(
-            'SELECT * FROM digital_product_access
-            WHERE product_id = ? AND status = ? AND (member_id = ? OR buyer_email = ?)
-            LIMIT 1',
-        );
-        $query->execute([$productId, 'active', $memberId, $buyerEmail]);
-        $existing = $query->fetch();
+    if (!$existing && empty($product['allow_repeat_purchase'])) {
+        $existing = commerce_find_digital_product_access($pdo, $productId, $memberId, $buyerEmail);
     }
 
     if ($existing) {
@@ -197,6 +221,43 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
             'access' => $existing,
             'product' => $product,
         ];
+    }
+
+    if (!empty($args['enforceStockAtGrant'])) {
+        if (!$pdo->inTransaction()) {
+            throw new RuntimeException('Pemeriksaan stok final harus dijalankan di dalam transaksi.');
+        }
+        $stockQuery = $pdo->prepare('SELECT * FROM digital_products WHERE id = ? LIMIT 1 FOR UPDATE');
+        $stockQuery->execute([$productId]);
+        $product = $stockQuery->fetch() ?: $product;
+
+        if (empty($product['allow_repeat_purchase'])) {
+            $lockedExisting = commerce_find_digital_product_access($pdo, $productId, $memberId, $buyerEmail);
+
+            if ($lockedExisting) {
+                if ($memberId !== '' && empty($lockedExisting['member_id'])) {
+                    $update = $pdo->prepare(
+                        'UPDATE digital_product_access
+                        SET member_id = ?, buyer_name = ?
+                        WHERE id = ?',
+                    );
+                    $update->execute([
+                        $memberId,
+                        clean_text($args['buyerName'] ?? ($lockedExisting['buyer_name'] ?? 'Pelanggan'), 160),
+                        $lockedExisting['id'],
+                    ]);
+                    $lockedExisting['member_id'] = $memberId;
+                }
+
+                return [
+                    'granted' => false,
+                    'access' => $lockedExisting,
+                    'product' => $product,
+                ];
+            }
+        }
+
+        commerce_assert_product_stock_available($product);
     }
 
     $accessId = make_id('access');

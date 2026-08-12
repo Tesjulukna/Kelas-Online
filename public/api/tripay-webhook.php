@@ -6,6 +6,7 @@ require __DIR__ . '/_bootstrap.php';
 require __DIR__ . '/_tripay.php';
 require __DIR__ . '/_email.php';
 require __DIR__ . '/_commerce.php';
+require __DIR__ . '/_vouchers.php';
 
 ensure_method(['POST']);
 
@@ -20,6 +21,19 @@ if (!is_array($payload)) {
 
 tripay_assert_config($config);
 tripay_ensure_schema($pdo);
+voucher_ensure_schema($pdo);
+
+function tripay_order_uses_voucher(array $orderPayload): bool
+{
+    return !empty($orderPayload['voucher'])
+        || (int) ($orderPayload['voucher_discount'] ?? 0) > 0;
+}
+
+function tripay_finalize_order_voucher(PDO $pdo, array $orderPayload, string $orderRef): bool
+{
+    if (!tripay_order_uses_voucher($orderPayload)) return true;
+    return voucher_mark_used($pdo, $orderRef);
+}
 
 $privateKey = tripay_config_value($config, 'tripay_private_key', 300);
 $signature = clean_text($_SERVER['HTTP_X_CALLBACK_SIGNATURE'] ?? '', 300);
@@ -75,15 +89,25 @@ if (!$order) {
 }
 
 if (!tripay_is_paid($data)) {
+    $orderPayload = commerce_json($order['payload'] ?? '{}');
+    $mergedPayload = array_merge($orderPayload, [
+        'callback_status' => $status,
+        'callback' => $payload,
+    ]);
     $update = $pdo->prepare(
-        'UPDATE tripay_orders SET reference = ?, status = ?, payload = ? WHERE id = ?',
+        "UPDATE tripay_orders SET reference = ?, status = ?, payload = ?
+         WHERE id = ? AND status NOT IN ('processed', 'paid', 'processing')",
     );
     $update->execute([
         $reference ?: ($order['reference'] ?? ''),
         $status,
-        $rawBody,
+        json_encode($mergedPayload, JSON_UNESCAPED_UNICODE),
         $order['id'],
     ]);
+
+    if ($update->rowCount() > 0 && in_array($status, ['expired', 'failed', 'cancelled', 'canceled', 'void', 'voided', 'closed'], true)) {
+        voucher_release($pdo, $order['merchant_ref'] ?? $merchantRef, 'tripay_' . $status);
+    }
 
     send_json(200, [
         'ok' => true,
@@ -103,7 +127,28 @@ if ($paidAmount > 0 && $paidAmount < (int) ($order['amount'] ?? 0)) {
     send_json(422, ['message' => 'Nominal pembayaran Tripay lebih kecil dari harga order.']);
 }
 
+try {
+    $pdo->beginTransaction();
+    $lockedOrderQuery = $pdo->prepare('SELECT * FROM tripay_orders WHERE id = ? LIMIT 1 FOR UPDATE');
+    $lockedOrderQuery->execute([$order['id']]);
+    $order = $lockedOrderQuery->fetch();
+    if (!$order) {
+        $pdo->rollBack();
+        send_json(200, ['ok' => true, 'ignored' => true, 'message' => 'Order sudah tidak tersedia.']);
+    }
+} catch (Throwable $error) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    send_json(500, ['message' => 'Order pembayaran belum dapat dikunci untuk diproses.']);
+}
+
+$orderPayload = commerce_json($order['payload'] ?? '{}');
+
 if (in_array($order['status'] ?? '', ['processed', 'paid'], true)) {
+    if (!tripay_finalize_order_voucher($pdo, $orderPayload, $order['merchant_ref'] ?? $merchantRef)) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        send_json(500, ['message' => 'Pembayaran sudah diproses, tetapi status voucher belum dapat diselesaikan.']);
+    }
+    $pdo->commit();
     send_json(200, [
         'ok' => true,
         'duplicate' => true,
@@ -111,7 +156,6 @@ if (in_array($order['status'] ?? '', ['processed', 'paid'], true)) {
     ]);
 }
 
-$orderPayload = commerce_json($order['payload'] ?? '{}');
 $isDigitalProductOrder = clean_text($orderPayload['order_type'] ?? '', 60) === 'digital_product';
 $isPublicClassOrder = clean_text($orderPayload['order_type'] ?? '', 60) === 'public_class';
 $isBundleOrder = clean_text($orderPayload['order_type'] ?? '', 60) === 'bundle';
@@ -164,6 +208,11 @@ if ($isBundleOrder) {
         json_encode(array_merge($orderPayload, ['callback' => $payload]), JSON_UNESCAPED_UNICODE),
         $order['id'],
     ]);
+    if (!tripay_finalize_order_voucher($pdo, $orderPayload, $order['merchant_ref'] ?? $merchantRef)) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        send_json(500, ['message' => 'Akses bundling aktif, tetapi status voucher belum dapat diselesaikan.']);
+    }
+    $pdo->commit();
     $emailResult = send_bundle_access_credentials_email([
         'buyerName' => $order['buyer_name'] ?? 'Peserta IbnuCreative',
         'buyerEmail' => $order['buyer_email'] ?? '',
@@ -225,6 +274,11 @@ if ($isDigitalProductOrder) {
         json_encode(array_merge($orderPayload, ['callback' => $payload]), JSON_UNESCAPED_UNICODE),
         $order['id'],
     ]);
+    if (!tripay_finalize_order_voucher($pdo, $orderPayload, $order['merchant_ref'] ?? $merchantRef)) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        send_json(500, ['message' => 'Akses produk aktif, tetapi status voucher belum dapat diselesaikan.']);
+    }
+    $pdo->commit();
 
     $accessUrl = !empty($orderPayload['public_checkout'])
         ? commerce_public_product_access_url(
@@ -296,6 +350,11 @@ if ($isPublicClassOrder) {
         json_encode(array_merge($orderPayload, ['callback' => $payload]), JSON_UNESCAPED_UNICODE),
         $order['id'],
     ]);
+    if (!tripay_finalize_order_voucher($pdo, $orderPayload, $order['merchant_ref'] ?? $merchantRef)) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        send_json(500, ['message' => 'Akses kelas aktif, tetapi status voucher belum dapat diselesaikan.']);
+    }
+    $pdo->commit();
 
     $emailResult = send_class_access_credentials_email([
         'buyerName' => clean_text($order['buyer_name'] ?? 'Peserta IbnuCreative', 160),
@@ -369,9 +428,14 @@ $update->execute([
     $reference ?: ($order['reference'] ?? ''),
     'processed',
     $accessGranted ? 1 : 0,
-    $rawBody,
+    json_encode(array_merge($orderPayload, ['callback' => $payload]), JSON_UNESCAPED_UNICODE),
     $order['id'],
 ]);
+if (!tripay_finalize_order_voucher($pdo, $orderPayload, $order['merchant_ref'] ?? $merchantRef)) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    send_json(500, ['message' => 'Akses kelas aktif, tetapi status voucher belum dapat diselesaikan.']);
+}
+$pdo->commit();
 $bundleEmailResult = send_class_bundle_access_email([
     'buyerName' => $bundleBuyerName,
     'buyerEmail' => $memberEmail,

@@ -16,6 +16,7 @@ import { adminClasses as adminClassSeed } from './data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from './data/websiteSettings'
 import { useNativeLanguage } from './i18n/NativeLanguageContext'
 import { localizeCollection } from './i18n/language'
+import { normalizeVoucherCode } from './lib/vouchers'
 import { convertYoutubeLinesToEmbeds } from './utils/richDescription'
 import './App.css'
 
@@ -189,6 +190,7 @@ function getDashboardMenuFromUrl(role) {
         'digital-products',
         'prompts',
         'bundles',
+        'vouchers',
         'students',
         'payments',
         'submissions',
@@ -1228,6 +1230,9 @@ function cleanPayments(value) {
       classTitle: cleanLongText(item.classTitle || 'Kelas', 180),
       itemTitle: cleanLongText(item.itemTitle || item.productTitle || item.classTitle || 'Kelas', 180),
       amount: Math.max(0, Math.round(Number(item.amount) || 0)),
+      subtotalBeforeVoucher: Math.max(0, Math.round(Number(item.subtotalBeforeVoucher) || 0)),
+      voucherDiscount: Math.max(0, Math.round(Number(item.voucherDiscount) || 0)),
+      voucherCode: normalizeVoucherCode(item.voucherCode || ''),
       status: cleanText(item.status || 'pending'),
       paymentMethod: cleanText(item.paymentMethod || item.sourceLabel || '-'),
       checkoutUrl: cleanLongText(item.checkoutUrl || '', 1000),
@@ -3198,6 +3203,8 @@ function App() {
         bundleProgramId: options.itemType === 'bundle' ? item.bundleProgramId : '',
         memberId: session.userId,
         paymentMethod,
+        voucherCode: cleanText(options.voucherCode || '', 64).toUpperCase(),
+        buyerPhone: cleanText(options.buyerPhone || '', 40),
         forceNewPayment: options.forceNewPayment === true,
       }),
     })
@@ -3247,6 +3254,17 @@ function App() {
       body: JSON.stringify(payload),
     })
 
+    if ((data.freeAccessGranted || data.alreadyHasAccess) && session?.role === 'member') {
+      const [nextMembers, productData] = await Promise.all([
+        fetchStoredMembers(),
+        fetchStoredDigitalProducts(session),
+      ])
+      setMembers(nextMembers)
+      setDigitalProducts(productData.digitalProducts)
+      setDigitalProductAccess(productData.digitalProductAccess)
+      announcePeopleSync()
+    }
+
     showNotice(data.message || 'Checkout kelas berhasil dibuat.')
     return data
   }
@@ -3256,6 +3274,17 @@ function App() {
       method: 'POST',
       body: JSON.stringify(payload),
     })
+
+    if ((data.freeAccessGranted || data.alreadyHasAccess) && session?.role === 'member') {
+      const [nextMembers, productData] = await Promise.all([
+        fetchStoredMembers(),
+        fetchStoredDigitalProducts(session),
+      ])
+      setMembers(nextMembers)
+      setDigitalProducts(productData.digitalProducts)
+      setDigitalProductAccess(productData.digitalProductAccess)
+      announcePeopleSync()
+    }
 
     showNotice(data.message || 'Checkout bundling berhasil dibuat.')
     return data
@@ -3275,6 +3304,11 @@ function App() {
         name: currentMember?.name || session.name || 'Member',
         email: currentMember?.email || session.email || '',
         phone: currentMember?.phone || '',
+        allowedClassIds: Array.isArray(currentMemberAccess) ? currentMemberAccess : [],
+        ownedProductIds: digitalProductAccess
+          .filter((access) => String(access.status || 'active').toLowerCase() === 'active')
+          .map((access) => access.productId)
+          .filter(Boolean),
       }
     : null
   const localizedClasses = useMemo(
@@ -3373,6 +3407,7 @@ function App() {
             isClassesLoaded={isClassesLoaded}
             isProductsLoaded={isPublicProductsLoaded}
             checkoutCustomer={checkoutCustomer}
+            sessionToken={session?.token || ''}
             classes={localizedClasses}
             digitalProducts={localizedDigitalProducts}
             testimonials={testimonials}
@@ -3400,6 +3435,7 @@ function App() {
               buyerPhone,
               acceptedTerms,
               acceptedMarketing,
+              voucherCode,
             }) => {
               const bundleItems = items.map((item) => ({ type: item.itemType, id: item.id }))
               const data = session?.role === 'member'
@@ -3410,7 +3446,7 @@ function App() {
                     itemType: 'bundle',
                     bundleProgramId: bundle.id,
                     bundleItems,
-                  }, paymentMethod, { itemType: 'bundle' })
+                  }, paymentMethod, { itemType: 'bundle', voucherCode, buyerPhone })
                 : await handlePublicBundleCheckout({
                     bundleProgramId: bundle.id,
                     bundleItems,
@@ -3418,6 +3454,7 @@ function App() {
                     buyerEmail,
                     buyerPhone,
                     paymentMethod,
+                    voucherCode,
                     acceptedTerms,
                     acceptedMarketing,
                   })
@@ -3453,6 +3490,7 @@ function App() {
               key={session.userId}
               userId={session.userId}
               loginName={session.name}
+              email={currentMember?.email || session.email || ''}
               avatar={session.avatar}
               sessionToken={session.token}
               classes={localizedMemberClasses}

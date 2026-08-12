@@ -1,6 +1,7 @@
 <?php
 
 require __DIR__ . '/_bootstrap.php';
+require_once __DIR__ . '/_vouchers.php';
 
 ensure_method(['GET', 'POST']);
 require_user('admin');
@@ -8,6 +9,7 @@ require_user('admin');
 $pdo = db();
 
 ensure_site_settings_table($pdo);
+voucher_ensure_schema($pdo);
 
 function backup_tables(): array
 {
@@ -22,6 +24,8 @@ function backup_tables(): array
         'member_progress',
         'lynk_orders',
         'tripay_orders',
+        'vouchers',
+        'voucher_redemptions',
         'paypal_orders',
         'paypal_webhook_events',
         'payment_snapshots',
@@ -113,7 +117,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     header('Content-Disposition: attachment; filename="' . $fileName . '"');
     echo json_encode([
         'type' => 'ibnucreative-full-backup',
-        'version' => 1,
+        'version' => 2,
         'exportedAt' => date(DATE_ATOM),
         'websiteSettings' => fetch_website_settings($pdo),
         'tables' => $tables,
@@ -136,6 +140,8 @@ $deleteOrder = [
     'support_tickets',
     'class_discussions',
     'member_progress',
+    'voucher_redemptions',
+    'vouchers',
     'tripay_orders',
     'paypal_webhook_events',
     'paypal_orders',
@@ -161,6 +167,8 @@ $insertOrder = [
     'class_discussions',
     'submissions',
     'member_progress',
+    'vouchers',
+    'voucher_redemptions',
     'lynk_orders',
     'tripay_orders',
     'paypal_orders',
@@ -181,6 +189,9 @@ try {
     $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
 
     foreach ($deleteOrder as $table) {
+        if (in_array($table, ['vouchers', 'voucher_redemptions'], true) && !array_key_exists($table, $tables)) {
+            continue;
+        }
         if (table_exists($pdo, $table)) {
             $pdo->exec("DELETE FROM `$table`");
         }
