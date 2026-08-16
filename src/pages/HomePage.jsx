@@ -1829,7 +1829,7 @@ function HomePage({
           onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
           onPaymentMethodSelect={selectPublicPaymentMethod}
           onVoucherCodeChange={(value) => {
-            setPublicVoucherCode(normalizeVoucherCode(value))
+            setPublicVoucherCode(value)
             setPublicVoucherStatus('')
           }}
           onVoucherApply={applyPublicVoucher}
@@ -1950,7 +1950,7 @@ function HomePage({
           onPaymentPickerToggle={() => setIsPaymentPickerOpen((current) => !current)}
           onPaymentMethodSelect={selectPublicPaymentMethod}
           onVoucherCodeChange={(value) => {
-            setPublicVoucherCode(normalizeVoucherCode(value))
+            setPublicVoucherCode(value)
             setPublicVoucherStatus('')
           }}
           onVoucherApply={applyPublicVoucher}

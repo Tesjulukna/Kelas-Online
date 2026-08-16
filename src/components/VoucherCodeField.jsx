@@ -65,6 +65,9 @@ function VoucherCodeField({
           onChange={(event) => onCodeChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Masukkan kode voucher"
+          maxLength={64}
+          inputMode="text"
+          autoCapitalize="characters"
           autoComplete="off"
           spellCheck="false"
           disabled={isLoading || disabled}
@@ -83,4 +86,3 @@ function VoucherCodeField({
 }
 
 export default VoucherCodeField
-
