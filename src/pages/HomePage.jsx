@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import FeaturedBundleSection from '../components/FeaturedBundleSection'
 import Icon from '../components/Icon'
+import PublicBreadcrumb from '../components/PublicBreadcrumb'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../data/websiteSettings'
 import { withPublicCodes } from '../utils/publicCodes'
 import CheckoutProduk from './detail/CheckoutProduk'
@@ -1926,6 +1927,8 @@ function HomePage({
           onBuy={openClassCheckout}
           onAddToWishlist={() => addWishlistItem(selectedClass, 'kelas')}
           onOpenWishlist={openWishlist}
+          onNavigateHome={() => onCatalogPage('home')}
+          onNavigateCatalog={() => onCatalogPage('classes')}
           onShare={shareItem}
           settings={websiteSettings}
         />
@@ -1982,6 +1985,8 @@ function HomePage({
           onBuy={openProductCheckout}
           onOpenAccess={openProductAccess}
           onOpenWishlist={openWishlist}
+          onNavigateHome={() => onCatalogPage('home')}
+          onNavigateCatalog={() => onCatalogPage(selectedProduct.productType === 'prompt' ? 'prompts' : 'products')}
           onShare={shareItem}
           onReviewLike={onDigitalProductReviewLike}
         />
@@ -2056,6 +2061,14 @@ function HomePage({
   return (
     <>
       <section className={`content-section modern-section catalog-section ${catalogPage !== 'home' ? 'catalog-page-section' : ''}`} id="catalog">
+        {catalogPage !== 'home' && catalogSections[0] && (
+          <PublicBreadcrumb
+            items={[
+              { label: 'Beranda', onClick: () => onCatalogPage('home') },
+              { label: catalogSections[0].category, current: true },
+            ]}
+          />
+        )}
         <div className="section-heading reveal-panel centered">
           <p className="eyebrow">{catalogPage === 'home' ? 'JELAJAHI KATALOG' : catalogSections[0]?.eyebrow}</p>
           <h2>{catalogPage === 'home' ? 'Pilihan untuk setiap kebutuhan kreatif' : catalogSections[0]?.title.replace('Semua', 'Katalog')}</h2>

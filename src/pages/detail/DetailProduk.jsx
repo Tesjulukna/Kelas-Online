@@ -1,5 +1,6 @@
 import { memo, useEffect, useState } from 'react'
 import Icon from '../../components/Icon'
+import PublicBreadcrumb from '../../components/PublicBreadcrumb'
 import './Detail.css'
 import { openLanguagePopup } from '../../i18n/language'
 
@@ -163,6 +164,8 @@ function DetailProduk({
   onBuy,
   onOpenAccess,
   onOpenWishlist,
+  onNavigateCatalog = () => {},
+  onNavigateHome = () => {},
   onReviewLike = async () => {},
   onShare,
   isOwned = false,
@@ -303,6 +306,14 @@ function DetailProduk({
           </button>
         </div>
       </div>
+
+      <PublicBreadcrumb
+        items={[
+          { label: 'Beranda', onClick: onNavigateHome },
+          { label: isPrompt ? 'Prompt' : 'Produk', onClick: onNavigateCatalog },
+          { label: product.title, current: true },
+        ]}
+      />
 
       <article className="public-detail-hero public-product-detail">
         <div className={`public-detail-image ${product.thumbnail ? 'has-image' : ''}`}>

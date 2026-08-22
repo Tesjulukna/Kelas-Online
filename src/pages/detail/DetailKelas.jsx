@@ -1,5 +1,6 @@
 import { memo, useState } from 'react'
 import Icon from '../../components/Icon'
+import PublicBreadcrumb from '../../components/PublicBreadcrumb'
 import { benefits } from '../../data/platformData'
 import { cleanWebsiteSettings, defaultWebsiteSettings } from '../../data/websiteSettings'
 import { openLanguagePopup } from '../../i18n/language'
@@ -45,6 +46,8 @@ function DetailKelas({
   onBack,
   onBuy,
   onOpenWishlist,
+  onNavigateCatalog = () => {},
+  onNavigateHome = () => {},
   onShare,
   settings = defaultWebsiteSettings,
 }) {
@@ -110,6 +113,14 @@ function DetailKelas({
           </button>
         </div>
       </div>
+
+      <PublicBreadcrumb
+        items={[
+          { label: 'Beranda', onClick: onNavigateHome },
+          { label: 'Kelas', onClick: onNavigateCatalog },
+          { label: course.title, current: true },
+        ]}
+      />
 
       <article className="public-detail-hero public-course-detail">
         <div className={`public-detail-image ${course.thumbnail ? 'has-image' : ''}`}>
