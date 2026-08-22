@@ -3436,6 +3436,7 @@ function App() {
         {(page === 'home' || publicCatalogPages.includes(page)) && !publicCertificateId && (
           <HomePage
             catalogPage={page}
+            onCatalogPage={goToPublicCatalogPage}
             isLoggedIn={Boolean(session)}
             onLogin={goToDashboard}
             onExplore={goToHomeSection}
@@ -4043,6 +4044,17 @@ function Header({
           : `site-header public-header public-site-header ${activePage === 'login' ? 'login-header' : 'home-header'}`
       }
     >
+      {!session && (
+        <button
+          className="public-menu-toggle"
+          type="button"
+          aria-expanded={isPublicMenuOpen}
+          aria-label={isPublicMenuOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
+          onClick={() => setIsPublicMenuOpen((current) => !current)}
+        >
+          <Icon name={isPublicMenuOpen ? 'x' : 'menu'} />
+        </button>
+      )}
       {showDashboardMenu && (
         <button
           className="dashboard-header-toggle"
@@ -4121,15 +4133,6 @@ function Header({
             >
               <Icon name="logIn" />
               <span>{safeSettings.header.loginLabel}</span>
-            </button>
-            <button
-              className="public-menu-toggle"
-              type="button"
-              aria-expanded={isPublicMenuOpen}
-              aria-label="Buka menu navigasi"
-              onClick={() => setIsPublicMenuOpen((current) => !current)}
-            >
-              <Icon name={isPublicMenuOpen ? 'x' : 'menu'} />
             </button>
           </div>
 

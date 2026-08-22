@@ -55,9 +55,9 @@ function FeaturedBundleSection({
             <article className="homepage-bundle-card featured-bundle-card" key={program.id}>
               <span className="homepage-bundle-media">
                 {program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}
-                <small>{program.badge || 'Paket hemat'}</small>
               </span>
               <div>
+                <small className="featured-bundle-badge">{program.badge || 'Paket hemat'}</small>
                 <h3>{program.title}</h3>
                 <p>{program.description || 'Paket pilihan dengan isi dan harga khusus.'}</p>
                 <span>{items.length} item dalam satu paket</span>
@@ -84,9 +84,9 @@ function FeaturedBundleSection({
           <article className="homepage-bundle-card featured-bundle-card is-custom">
             <span className="homepage-bundle-media">
               <Icon name="spark" />
-              <small>{percentProgram.badge || `Diskon ${percentProgram.discountPercent}%`}</small>
             </span>
             <div>
+              <small className="featured-bundle-badge">{percentProgram.badge || `Diskon ${percentProgram.discountPercent}%`}</small>
               <h3>Buat Bundlingmu Sendiri</h3>
               <p>Pilih kelas, produk digital, atau prompt yang kamu mau. Potongan dihitung otomatis.</p>
               <span>Minimal pilih {percentProgram.minimumItems} item</span>

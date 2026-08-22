@@ -262,6 +262,7 @@ function getCompactSlideIndicators(total, activeIndex, maxVisible = 7) {
 
 function HomePage({
   catalogPage = 'home',
+  onCatalogPage = () => {},
   onPublicClassCheckout = async () => {},
   onPublicProductCheckout = async () => {},
   publicProductAccessApiPath = '/api/public-product-access',
@@ -2108,7 +2109,15 @@ function HomePage({
                     <h3>{section.title}</h3>
                     <p>{section.description}</p>
                   </div>
-                  <span>{sectionItems.length} tersedia</span>
+                  <aside className="catalog-category-actions">
+                    <span>{sectionItems.length} tersedia</span>
+                    {catalogPage === 'home' && (
+                      <button type="button" onClick={() => onCatalogPage(section.page)}>
+                        Lihat semua {section.category === 'Produk Digital' ? 'produk' : section.category.toLowerCase()}
+                        <Icon name="arrowRight" />
+                      </button>
+                    )}
+                  </aside>
                 </header>
                 <div className="catalog-grid">
                   {sectionItems.map((item, index) => (
