@@ -164,7 +164,6 @@ function DetailProduk({
   onBuy,
   onOpenAccess,
   onOpenWishlist,
-  onNavigateCatalog = () => {},
   onNavigateHome = () => {},
   onReviewLike = async () => {},
   onShare,
@@ -310,8 +309,7 @@ function DetailProduk({
       <PublicBreadcrumb
         items={[
           { label: 'Beranda', onClick: onNavigateHome },
-          { label: isPrompt ? 'Prompt' : 'Produk', onClick: onNavigateCatalog },
-          { label: product.title, current: true },
+          { label: isPrompt ? 'Prompt' : 'Produk', current: true },
         ]}
       />
 
