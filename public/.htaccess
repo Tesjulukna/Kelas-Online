@@ -4,6 +4,9 @@ DirectoryIndex index.php index.html
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
+  RewriteRule ^robots\.txt$ robots.php [L]
+  RewriteRule ^sitemap\.xml$ sitemap.php [L]
+
   RewriteCond %{DOCUMENT_ROOT}/api/$1.php -f
   RewriteRule ^api/([^/.]+)$ api/$1.php [L,QSA]
 

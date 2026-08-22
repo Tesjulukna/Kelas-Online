@@ -72,9 +72,16 @@ function FeaturedBundleSection({
                   )}
                   <strong>{packagePrice > 0 ? formatRupiah(packagePrice) : 'Gratis'}</strong>
                 </span>
-                <button className="btn btn-secondary" type="button" onClick={() => onOpenFixed(program)}>
+                <a
+                  className="btn btn-secondary"
+                  href={`/bundling/${encodeURIComponent(program.id)}`}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    onOpenFixed(program)
+                  }}
+                >
                   Lihat Paket <Icon name="arrowRight" />
-                </button>
+                </a>
               </footer>
             </article>
           )
