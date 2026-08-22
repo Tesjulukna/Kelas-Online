@@ -20628,9 +20628,14 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   color: #60a5fa;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .site-header.public-site-header {
+    display: grid;
     grid-template-columns: 36px minmax(0, 1fr) auto !important;
+    grid-template-rows: auto;
+    align-items: center;
+    flex-direction: initial;
+    gap: 10px;
     min-height: 64px;
     padding: 10px 16px;
   }
@@ -20658,7 +20663,14 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
     grid-row: 1;
   }
 
+  .site-header.public-site-header .site-nav {
+    display: none;
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
   .site-header.public-site-header .site-nav.open {
+    display: flex;
     position: absolute;
     top: calc(100% + 8px);
     right: 12px;

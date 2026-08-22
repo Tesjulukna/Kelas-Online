@@ -515,7 +515,7 @@ function DetailProduk({
       <div className={`public-sticky-actions ${isOwned ? 'is-owned-access' : ''}`}>
         {!isOwned && (
           <button className="btn btn-secondary" type="button" onClick={onAddToWishlist}>
-            <Icon name="cart" />
+            <Icon name="bookmark" />
             Simpan
           </button>
         )}

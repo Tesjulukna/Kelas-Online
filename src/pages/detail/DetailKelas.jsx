@@ -294,7 +294,7 @@ function DetailKelas({
 
       <div className="public-sticky-actions">
         <button className="btn btn-secondary" type="button" onClick={onAddToWishlist}>
-          <Icon name="cart" />
+          <Icon name="bookmark" />
           Simpan
         </button>
         <button className="btn btn-primary" type="button" onClick={() => onBuy(course.id)}>
