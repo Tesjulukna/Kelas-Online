@@ -6,7 +6,6 @@ import { PaymentMethodLogo } from './CheckoutProduk'
 import { getCheckoutEmailWarning } from '../../utils/emailValidation'
 import {
   getCheckoutPhoneWarning,
-  getTripayPhoneWarning,
   normalizeCheckoutPhone,
   normalizeTripayPhone,
 } from '../../utils/phoneValidation'
@@ -172,9 +171,7 @@ function CheckoutBundle({
 
   const submitCheckout = async () => {
     const emailWarning = getCheckoutEmailWarning(buyerEmail)
-    const phoneWarning = isMemberCheckout
-      ? getTripayPhoneWarning(buyerPhone)
-      : getCheckoutPhoneWarning(buyerPhone)
+    const phoneWarning = isMemberCheckout ? '' : getCheckoutPhoneWarning(buyerPhone)
 
     if (!String(buyerName || '').trim()) {
       setStatus('Nama pembeli wajib diisi.')
@@ -184,8 +181,8 @@ function CheckoutBundle({
       setStatus(emailWarning || 'Email wajib diisi agar invoice dan akun bisa dikirim.')
       return
     }
-    if (!String(buyerPhone || '').trim() || phoneWarning) {
-      setStatus(phoneWarning || 'Nomor HP wajib diisi untuk membuat pembayaran.')
+    if (phoneWarning) {
+      setStatus(phoneWarning)
       return
     }
     if (!paymentMethod && !isVoucherFree) {
@@ -264,14 +261,9 @@ function CheckoutBundle({
               <div>
                 <label>Nama<input value={buyerName} onChange={(event) => setBuyerName(event.target.value)} required /></label>
                 <label>Email<input type="email" value={buyerEmail} onChange={(event) => changeBuyerEmail(event.target.value)} required /></label>
-                <label>Nomor HP<input type="tel" inputMode="tel" placeholder="+628123456789" value={buyerPhone} onChange={(event) => setBuyerPhone(event.target.value)} required /></label>
+                <label>Nomor HP (opsional)<input type="tel" inputMode="tel" placeholder="+628123456789 atau +14155552671" value={buyerPhone} onChange={(event) => setBuyerPhone(event.target.value)} /></label>
               </div>
               <p className="bundle-checkout-owned-note"><Icon name="shield" /> Jika email sudah terdaftar, item yang telah dimiliki otomatis tidak ditagihkan dan harga akhir akan disesuaikan.</p>
-            </div>
-          )}
-          {isMemberCheckout && (!buyerPhone || getTripayPhoneWarning(buyerPhone)) && (
-            <div className="bundle-checkout-customer compact">
-              <div><label>Nomor HP untuk invoice<input type="tel" inputMode="tel" placeholder="+628123456789" value={buyerPhone} onChange={(event) => setBuyerPhone(event.target.value)} required /></label></div>
             </div>
           )}
           <div className="bundle-checkout-items">
@@ -329,7 +321,7 @@ function CheckoutBundle({
           </label>
           <label className="bundle-checkout-terms">
             <input type="checkbox" checked={acceptedMarketing} onChange={(event) => setAcceptedMarketing(event.target.checked)} />
-            <span>Saya setuju email dan nomor telepon digunakan untuk invoice, akses bundling, dan informasi layanan.</span>
+            <span>Saya setuju email dan, jika diisi, nomor telepon digunakan untuk invoice, akses bundling, dan informasi layanan.</span>
           </label>
           {status && <p className="bundle-checkout-status">{status}</p>}
           <button className="btn btn-primary" type="button" disabled={isSubmitting || isVoucherLoading} onClick={submitCheckout}>

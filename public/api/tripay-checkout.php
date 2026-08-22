@@ -185,12 +185,6 @@ $buyerEmail = clean_email($member['email'] ?? ($user['email'] ?? ''));
 $buyerPhone = $requestedBuyerPhone ?: clean_phone($member['phone'] ?? '');
 $normalizedBuyerPhone = tripay_customer_phone($buyerPhone);
 
-if ($buyerPhone !== '' && $normalizedBuyerPhone === '') {
-    send_json(422, [
-        'message' => 'Nomor HP member belum valid untuk pembayaran. Gunakan nomor Indonesia aktif, contoh 081234567890 atau +6281234567890.',
-    ]);
-}
-
 $amount = $checkoutType === 'digital_product'
     ? commerce_product_effective_price($checkoutItem)
     : commerce_class_effective_price($checkoutItem);
@@ -496,8 +490,6 @@ $callbackUrl = clean_external_url($config['tripay_callback_url'] ?? '') ?: tripa
 $returnUrl = clean_external_url($config['tripay_return_url'] ?? '') ?: tripay_absolute_url('/member?menu=my-courses');
 $configuredExpiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);
 $expiredMinutes = $voucherCode !== '' ? min($configuredExpiredMinutes, 60) : $configuredExpiredMinutes;
-$configuredCustomerPhone = tripay_customer_phone(tripay_config_value($config, 'tripay_default_customer_phone', 30));
-$customerPhone = $normalizedBuyerPhone ?: ($configuredCustomerPhone ?: '081234567890');
 $checkoutExpiresAt = time() + ($expiredMinutes * 60);
 $reservationExpiresAt = $checkoutExpiresAt + 300;
 $voucherReservation = null;
@@ -543,7 +535,6 @@ $checkoutPayload = [
     'amount' => $amount,
     'customer_name' => clean_text($member['name'] ?? ($user['name'] ?? 'Member'), 120),
     'customer_email' => $buyerEmail,
-    'customer_phone' => $customerPhone,
     'order_items' => [
         [
             'sku' => clean_text(($checkoutItem['tripay_product_key'] ?? '') ?: $checkoutItem['id'], 80),
@@ -559,6 +550,10 @@ $checkoutPayload = [
     'expired_time' => $checkoutExpiresAt,
     'signature' => tripay_checkout_signature($merchantCode, $merchantRef, $amount, $privateKey),
 ];
+
+if ($normalizedBuyerPhone !== '') {
+    $checkoutPayload['customer_phone'] = $normalizedBuyerPhone;
+}
 
 $tripayResponse = tripay_post_transaction($config, $checkoutPayload);
 $tripayData = is_array($tripayResponse['data']['data'] ?? null)

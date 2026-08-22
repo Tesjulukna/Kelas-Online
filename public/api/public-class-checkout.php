@@ -35,8 +35,8 @@ if ($buyerPhoneWarning !== '') {
     send_json(422, ['message' => $buyerPhoneWarning]);
 }
 
-if ($buyerName === '' || $buyerEmail === '' || $buyerPhone === '') {
-    send_json(422, ['message' => 'Nama, email, dan nomor HP wajib diisi.']);
+if ($buyerName === '' || $buyerEmail === '') {
+    send_json(422, ['message' => 'Nama dan email wajib diisi.']);
 }
 
 if (!$acceptedTerms || !$acceptedMarketing) {

@@ -13,7 +13,7 @@ test('nomor Indonesia dinormalisasi ke format 08 yang diterima Tripay', () => {
   assert.equal(normalizeTripayPhone('081234567890'), '081234567890')
 })
 
-test('nomor yang tidak sesuai format Tripay ditolak sebelum checkout', () => {
+test('nomor luar Indonesia tidak dipaksakan masuk ke payload Tripay', () => {
   assert.equal(normalizeTripayPhone('+14155552671'), '')
   assert.match(getTripayPhoneWarning('+14155552671'), /nomor HP Indonesia/i)
   assert.match(getTripayPhoneWarning('0812345'), /nomor HP Indonesia/i)

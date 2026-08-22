@@ -112,10 +112,10 @@ function CheckoutProduk({
     ? (isVoucherFree ? 'Selesaikan Pesanan' : isClassCheckout ? 'Daftar Kelas' : isPromptCheckout ? 'Ambil Prompt' : 'Ambil Produk')
     : 'Buat Pembayaran'
   const marketingConsentText = isClassCheckout
-    ? 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima akses kelas, invoice, atau pesan pembelajaran dan pemasaran.'
+    ? 'Saya setuju alamat email dan, jika diisi, nomor telepon digunakan untuk menerima akses kelas, invoice, atau pesan pembelajaran dan pemasaran.'
     : isPromptCheckout
-      ? 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima prompt, akses pembelian, atau pesan pemasaran.'
-      : 'Saya setuju alamat email dan nomor telepon digunakan untuk menerima produk atau pesan pemasaran.'
+      ? 'Saya setuju alamat email dan, jika diisi, nomor telepon digunakan untuk menerima prompt, akses pembelian, atau pesan pemasaran.'
+      : 'Saya setuju alamat email dan, jika diisi, nomor telepon digunakan untuk menerima produk atau pesan pemasaran.'
   const selectedMethodLabel =
     paymentMethods.find((method) => method.code === form.paymentMethod)?.label ||
     form.paymentMethod
@@ -178,7 +178,7 @@ function CheckoutProduk({
               )}
             </label>
             <label>
-              Nomor HP
+              Nomor HP (opsional)
               <input
                 name="buyerPhone"
                 type="tel"
@@ -188,12 +188,11 @@ function CheckoutProduk({
                 value={form.buyerPhone}
                 onChange={onChange}
                 aria-invalid={Boolean(visiblePhoneWarning)}
-                required
               />
               {visiblePhoneWarning ? (
                 <small className="checkout-field-warning">{visiblePhoneWarning}</small>
               ) : (
-                <small className="checkout-field-hint">Nomor luar negeri: awali dengan +kode negara.</small>
+                <small className="checkout-field-hint">Boleh dikosongkan. Nomor luar negeri: awali dengan +kode negara.</small>
               )}
             </label>
           </div>

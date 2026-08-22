@@ -13,7 +13,6 @@ import ProductAccessPage from './detail/ProductAccessPage'
 import { getCheckoutEmailWarning } from '../utils/emailValidation'
 import {
   getCheckoutPhoneWarning,
-  getTripayPhoneWarning,
   normalizeCheckoutPhone,
   normalizeTripayPhone,
 } from '../utils/phoneValidation'
@@ -999,16 +998,15 @@ function HomePage({
   const wishlistCount = wishlistItems.length
   const isMemberCheckout = checkoutCustomer?.isMember === true
   const memberCheckoutPhone = checkoutCustomer?.phone || ''
-  const memberCheckoutPhoneWarning = getTripayPhoneWarning(memberCheckoutPhone)
-  const memberNeedsCheckoutPhone = isMemberCheckout && (!memberCheckoutPhone || Boolean(memberCheckoutPhoneWarning))
-  const effectiveCheckoutPhone = isMemberCheckout && !memberNeedsCheckoutPhone
+  const memberNeedsCheckoutPhone = false
+  const effectiveCheckoutPhone = isMemberCheckout
     ? memberCheckoutPhone
     : publicCheckoutForm.buyerPhone
   const publicCheckoutEmailWarning = isMemberCheckout
     ? getCheckoutEmailWarning(checkoutCustomer?.email || publicCheckoutForm.buyerEmail)
     : getCheckoutEmailWarning(publicCheckoutForm.buyerEmail)
   const publicCheckoutPhoneWarning = isMemberCheckout
-    ? getTripayPhoneWarning(effectiveCheckoutPhone)
+    ? ''
     : getCheckoutPhoneWarning(effectiveCheckoutPhone)
 
   useEffect(() => {
@@ -1596,21 +1594,17 @@ function HomePage({
     const buyerEmail = isMemberCheckout
       ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
       : publicCheckoutForm.buyerEmail
-    const buyerPhone = isMemberCheckout && !memberNeedsCheckoutPhone
-      ? memberCheckoutPhone
-      : publicCheckoutForm.buyerPhone
+    const buyerPhone = isMemberCheckout ? memberCheckoutPhone : publicCheckoutForm.buyerPhone
     const emailWarning = getCheckoutEmailWarning(buyerEmail)
-    const phoneWarning = isMemberCheckout
-      ? getTripayPhoneWarning(buyerPhone)
-      : getCheckoutPhoneWarning(buyerPhone)
+    const phoneWarning = isMemberCheckout ? '' : getCheckoutPhoneWarning(buyerPhone)
 
     if (!String(buyerEmail || '').trim() || emailWarning) {
       setPublicCheckoutStatus(emailWarning || 'Email wajib diisi agar invoice dan akun bisa dikirim.')
       return
     }
 
-    if (!String(buyerPhone || '').trim() || phoneWarning) {
-      setPublicCheckoutStatus(phoneWarning || 'Nomor HP wajib diisi agar invoice dan akses bisa diproses.')
+    if (phoneWarning) {
+      setPublicCheckoutStatus(phoneWarning)
       return
     }
 
@@ -1664,21 +1658,17 @@ function HomePage({
     const buyerEmail = isMemberCheckout
       ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
       : publicCheckoutForm.buyerEmail
-    const buyerPhone = isMemberCheckout && !memberNeedsCheckoutPhone
-      ? memberCheckoutPhone
-      : publicCheckoutForm.buyerPhone
+    const buyerPhone = isMemberCheckout ? memberCheckoutPhone : publicCheckoutForm.buyerPhone
     const emailWarning = getCheckoutEmailWarning(buyerEmail)
-    const phoneWarning = isMemberCheckout
-      ? getTripayPhoneWarning(buyerPhone)
-      : getCheckoutPhoneWarning(buyerPhone)
+    const phoneWarning = isMemberCheckout ? '' : getCheckoutPhoneWarning(buyerPhone)
 
     if (!String(buyerEmail || '').trim() || emailWarning) {
       setPublicCheckoutStatus(emailWarning || 'Email wajib diisi agar invoice dan akses produk bisa dikirim.')
       return
     }
 
-    if (!String(buyerPhone || '').trim() || phoneWarning) {
-      setPublicCheckoutStatus(phoneWarning || 'Nomor HP wajib diisi agar invoice dan akses bisa diproses.')
+    if (phoneWarning) {
+      setPublicCheckoutStatus(phoneWarning)
       return
     }
 
