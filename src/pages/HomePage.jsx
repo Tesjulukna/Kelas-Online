@@ -11,7 +11,12 @@ import DetailBundle from './detail/DetailBundle'
 import CheckoutBundle from './detail/CheckoutBundle'
 import ProductAccessPage from './detail/ProductAccessPage'
 import { getCheckoutEmailWarning } from '../utils/emailValidation'
-import { getCheckoutPhoneWarning, normalizeCheckoutPhone } from '../utils/phoneValidation'
+import {
+  getCheckoutPhoneWarning,
+  getTripayPhoneWarning,
+  normalizeCheckoutPhone,
+  normalizeTripayPhone,
+} from '../utils/phoneValidation'
 import { normalizeVoucherCode, validateVoucher } from '../lib/vouchers'
 
 const TESTIMONIAL_AUTO_DELAY_MS = 5200
@@ -994,7 +999,7 @@ function HomePage({
   const wishlistCount = wishlistItems.length
   const isMemberCheckout = checkoutCustomer?.isMember === true
   const memberCheckoutPhone = checkoutCustomer?.phone || ''
-  const memberCheckoutPhoneWarning = getCheckoutPhoneWarning(memberCheckoutPhone)
+  const memberCheckoutPhoneWarning = getTripayPhoneWarning(memberCheckoutPhone)
   const memberNeedsCheckoutPhone = isMemberCheckout && (!memberCheckoutPhone || Boolean(memberCheckoutPhoneWarning))
   const effectiveCheckoutPhone = isMemberCheckout && !memberNeedsCheckoutPhone
     ? memberCheckoutPhone
@@ -1002,7 +1007,9 @@ function HomePage({
   const publicCheckoutEmailWarning = isMemberCheckout
     ? getCheckoutEmailWarning(checkoutCustomer?.email || publicCheckoutForm.buyerEmail)
     : getCheckoutEmailWarning(publicCheckoutForm.buyerEmail)
-  const publicCheckoutPhoneWarning = getCheckoutPhoneWarning(effectiveCheckoutPhone)
+  const publicCheckoutPhoneWarning = isMemberCheckout
+    ? getTripayPhoneWarning(effectiveCheckoutPhone)
+    : getCheckoutPhoneWarning(effectiveCheckoutPhone)
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1593,7 +1600,9 @@ function HomePage({
       ? memberCheckoutPhone
       : publicCheckoutForm.buyerPhone
     const emailWarning = getCheckoutEmailWarning(buyerEmail)
-    const phoneWarning = getCheckoutPhoneWarning(buyerPhone)
+    const phoneWarning = isMemberCheckout
+      ? getTripayPhoneWarning(buyerPhone)
+      : getCheckoutPhoneWarning(buyerPhone)
 
     if (!String(buyerEmail || '').trim() || emailWarning) {
       setPublicCheckoutStatus(emailWarning || 'Email wajib diisi agar invoice dan akun bisa dikirim.')
@@ -1621,7 +1630,9 @@ function HomePage({
         buyerEmail: isMemberCheckout
           ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
           : publicCheckoutForm.buyerEmail,
-        buyerPhone: normalizeCheckoutPhone(buyerPhone),
+        buyerPhone: isMemberCheckout
+          ? normalizeTripayPhone(buyerPhone)
+          : normalizeCheckoutPhone(buyerPhone),
         paymentMethod: isFreeCheckout ? '' : publicCheckoutForm.paymentMethod,
         voucherCode: publicVoucherResult?.valid
           ? normalizeVoucherCode(publicVoucherResult.voucher?.code || publicVoucherCode)
@@ -1657,7 +1668,9 @@ function HomePage({
       ? memberCheckoutPhone
       : publicCheckoutForm.buyerPhone
     const emailWarning = getCheckoutEmailWarning(buyerEmail)
-    const phoneWarning = getCheckoutPhoneWarning(buyerPhone)
+    const phoneWarning = isMemberCheckout
+      ? getTripayPhoneWarning(buyerPhone)
+      : getCheckoutPhoneWarning(buyerPhone)
 
     if (!String(buyerEmail || '').trim() || emailWarning) {
       setPublicCheckoutStatus(emailWarning || 'Email wajib diisi agar invoice dan akses produk bisa dikirim.')
@@ -1690,7 +1703,9 @@ function HomePage({
         buyerEmail: isMemberCheckout
           ? checkoutCustomer?.email || publicCheckoutForm.buyerEmail
           : publicCheckoutForm.buyerEmail,
-        buyerPhone: normalizeCheckoutPhone(buyerPhone),
+        buyerPhone: isMemberCheckout
+          ? normalizeTripayPhone(buyerPhone)
+          : normalizeCheckoutPhone(buyerPhone),
         paymentMethod: isFreeCheckout ? '' : publicCheckoutForm.paymentMethod,
         voucherCode: publicVoucherResult?.valid
           ? normalizeVoucherCode(publicVoucherResult.voucher?.code || publicVoucherCode)

@@ -78,17 +78,20 @@ function tripay_customer_phone(string $phone): string
     $normalizedPhone = clean_phone($phone);
     $digits = preg_replace('/\D/', '', $normalizedPhone) ?? '';
 
-    if (strpos($normalizedPhone, '+62') === 0) {
+    if (strpos($normalizedPhone, '+62') === 0 && strpos($digits, '628') === 0) {
         $digits = '0' . substr($digits, 2);
     } elseif (strpos($normalizedPhone, '+') === 0) {
         return '';
-    } elseif (strpos($digits, '62') === 0) {
+    } elseif (strpos($digits, '628') === 0) {
         $digits = '0' . substr($digits, 2);
-    } elseif (strpos($digits, '0') !== 0) {
+    } elseif (strpos($digits, '8') === 0) {
+        $digits = '0' . $digits;
+    } elseif (strpos($digits, '08') !== 0) {
         return '';
     }
 
-    return preg_match('/^0[0-9]{7,14}$/', $digits) ? $digits : '';
+    // Tripay documents customer_phone using the Indonesian mobile format 08xxxxxxxxxx.
+    return preg_match('/^08[0-9]{8,11}$/', $digits) ? $digits : '';
 }
 
 function tripay_assert_config(array $config): void

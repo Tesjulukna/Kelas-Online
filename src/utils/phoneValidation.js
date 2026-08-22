@@ -40,3 +40,40 @@ export function getCheckoutPhoneWarning(value) {
 
   return ''
 }
+
+export function normalizeTripayPhone(value) {
+  const normalizedPhone = normalizeCheckoutPhone(value)
+  const digits = normalizedPhone.replace(/\D/g, '')
+
+  if (normalizedPhone.startsWith('+62') && digits.startsWith('628')) {
+    return `0${digits.slice(2)}`
+  }
+
+  if (normalizedPhone.startsWith('+')) {
+    return ''
+  }
+
+  if (digits.startsWith('628')) {
+    return `0${digits.slice(2)}`
+  }
+
+  if (digits.startsWith('8')) {
+    return `0${digits}`
+  }
+
+  return digits.startsWith('08') ? digits : ''
+}
+
+export function getTripayPhoneWarning(value) {
+  const genericWarning = getCheckoutPhoneWarning(value)
+
+  if (!String(value || '').trim() || genericWarning) {
+    return genericWarning
+  }
+
+  if (!/^08[0-9]{8,11}$/.test(normalizeTripayPhone(value))) {
+    return 'Gunakan nomor HP Indonesia aktif, contoh 081234567890 atau +6281234567890.'
+  }
+
+  return ''
+}

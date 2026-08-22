@@ -4,7 +4,12 @@ import VoucherCodeField from '../../components/VoucherCodeField'
 import { normalizeVoucherCode, resolveVoucherCheckoutPricing, validateVoucher } from '../../lib/vouchers'
 import { PaymentMethodLogo } from './CheckoutProduk'
 import { getCheckoutEmailWarning } from '../../utils/emailValidation'
-import { getCheckoutPhoneWarning, normalizeCheckoutPhone } from '../../utils/phoneValidation'
+import {
+  getCheckoutPhoneWarning,
+  getTripayPhoneWarning,
+  normalizeCheckoutPhone,
+  normalizeTripayPhone,
+} from '../../utils/phoneValidation'
 
 function formatRupiah(value) {
   return new Intl.NumberFormat('id-ID', {
@@ -167,7 +172,9 @@ function CheckoutBundle({
 
   const submitCheckout = async () => {
     const emailWarning = getCheckoutEmailWarning(buyerEmail)
-    const phoneWarning = getCheckoutPhoneWarning(buyerPhone)
+    const phoneWarning = isMemberCheckout
+      ? getTripayPhoneWarning(buyerPhone)
+      : getCheckoutPhoneWarning(buyerPhone)
 
     if (!String(buyerName || '').trim()) {
       setStatus('Nama pembeli wajib diisi.')
@@ -206,7 +213,9 @@ function CheckoutBundle({
         paymentMethod: isVoucherFree ? '' : paymentMethod,
         buyerName: String(buyerName).trim(),
         buyerEmail: String(buyerEmail).trim(),
-        buyerPhone: normalizeCheckoutPhone(buyerPhone),
+        buyerPhone: isMemberCheckout
+          ? normalizeTripayPhone(buyerPhone)
+          : normalizeCheckoutPhone(buyerPhone),
         acceptedTerms,
         acceptedMarketing,
         voucherCode: voucherResult?.valid
@@ -260,7 +269,7 @@ function CheckoutBundle({
               <p className="bundle-checkout-owned-note"><Icon name="shield" /> Jika email sudah terdaftar, item yang telah dimiliki otomatis tidak ditagihkan dan harga akhir akan disesuaikan.</p>
             </div>
           )}
-          {isMemberCheckout && (!buyerPhone || getCheckoutPhoneWarning(buyerPhone)) && (
+          {isMemberCheckout && (!buyerPhone || getTripayPhoneWarning(buyerPhone)) && (
             <div className="bundle-checkout-customer compact">
               <div><label>Nomor HP untuk invoice<input type="tel" inputMode="tel" placeholder="+628123456789" value={buyerPhone} onChange={(event) => setBuyerPhone(event.target.value)} required /></label></div>
             </div>
