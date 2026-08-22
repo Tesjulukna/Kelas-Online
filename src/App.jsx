@@ -59,6 +59,9 @@ const passwordResetConfirmApiPath = '/api/password-reset-confirm'
 const allowedRoles = ['member', 'admin']
 const pagePaths = {
   home: '/',
+  classes: '/kelas',
+  products: '/produk',
+  prompts: '/prompt',
   login: '/login',
   member: '/member',
   admin: '/admin',
@@ -69,6 +72,7 @@ const pagePaths = {
   resetPassword: '/reset-password',
 }
 const publicInfoPages = ['about', 'contact', 'privacy', 'terms']
+const publicCatalogPages = ['classes', 'products', 'prompts']
 const publicAuthPages = ['resetPassword']
 const notificationSeenKey = 'ibnucreative.notifications.seen.v1'
 const analyticsVisitorKey = 'ibnucreative.analytics.visitor.v1'
@@ -80,6 +84,18 @@ function getPageFromPath(pathname) {
 
   if (cleanPath === '/login') {
     return 'login'
+  }
+
+  if (cleanPath === '/kelas') {
+    return 'classes'
+  }
+
+  if (cleanPath === '/produk') {
+    return 'products'
+  }
+
+  if (cleanPath === '/prompt') {
+    return 'prompts'
   }
 
   if (cleanPath === '/reset-password') {
@@ -158,6 +174,7 @@ function getInitialPage(session) {
     session?.role &&
     page !== session.role &&
     !publicInfoPages.includes(page) &&
+    !publicCatalogPages.includes(page) &&
     !publicAuthPages.includes(page) &&
     !getPublicDetailFromPath(window.location.pathname) &&
     !getPublicCertificateIdFromPath(window.location.pathname)
@@ -1737,6 +1754,7 @@ function App() {
         currentSession?.role &&
         nextPage !== currentSession.role &&
         !publicInfoPages.includes(nextPage) &&
+        !publicCatalogPages.includes(nextPage) &&
         !publicAuthPages.includes(nextPage) &&
         !getPublicDetailFromPath(window.location.pathname) &&
         !getPublicCertificateIdFromPath(window.location.pathname)
@@ -2214,6 +2232,17 @@ function App() {
   const goToLogin = () => {
     setActiveSection('home')
     navigateToPage('login')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const goToPublicCatalogPage = (nextPage) => {
+    if (!publicCatalogPages.includes(nextPage)) {
+      goToHomeSection('home')
+      return
+    }
+
+    setActiveSection(nextPage)
+    navigateToPage(nextPage)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -3346,7 +3375,7 @@ function App() {
   const isPublicDetailPath = typeof window !== 'undefined' && /^\/(kelas|produk|prompt|produk-akses|prompt-akses)\//.test(currentRoutePath)
   const isCheckoutRoute = typeof window !== 'undefined' && /^\/(kelas|produk|prompt)\/[^/]+\/checkout\/?$/.test(currentRoutePath)
   const isPublicCertificatePath = Boolean(publicCertificateId)
-  const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || (page === 'home' && !publicDetailTarget))
+  const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || publicCatalogPages.includes(page) || (page === 'home' && !publicDetailTarget))
   const appRoleClass = session?.role ? `role-${session.role}` : 'role-public'
   const appRouteClass = [
     isPublicDetailPath ? 'is-public-detail-route' : '',
@@ -3381,12 +3410,12 @@ function App() {
       )}
       <Header
         activePage={page}
-        activeSection={activeSection}
         session={session}
         settings={websiteSettings}
         showDashboardMenu={Boolean(session && page === session.role)}
         onToggleDashboardMenu={() => setIsDashboardMenuOpen(true)}
         onHomeSection={goToHomeSection}
+        onPublicCatalogPage={goToPublicCatalogPage}
         onLogin={goToLogin}
         onEditProfile={() => setIsProfileEditorOpen(true)}
         onLogout={requestLogout}
@@ -3404,8 +3433,9 @@ function App() {
             settings={websiteSettings}
           />
         )}
-        {page === 'home' && !publicCertificateId && (
+        {(page === 'home' || publicCatalogPages.includes(page)) && !publicCertificateId && (
           <HomePage
+            catalogPage={page}
             isLoggedIn={Boolean(session)}
             onLogin={goToDashboard}
             onExplore={goToHomeSection}
@@ -3971,12 +4001,12 @@ function buildNotifications(session, supportTickets, submissions) {
 
 function Header({
   activePage,
-  activeSection,
   session,
   settings,
   showDashboardMenu,
   onToggleDashboardMenu,
   onHomeSection,
+  onPublicCatalogPage = () => {},
   onLogin,
   onEditProfile,
   onLogout,
@@ -3989,10 +4019,20 @@ function Header({
   const [isPublicMenuOpen, setIsPublicMenuOpen] = useState(false)
   const safeSettings = cleanWebsiteSettings(settings)
   const isDarkTheme = publicTheme === 'dark'
+  const publicNavItems = [
+    { id: 'home', label: 'Beranda', page: 'home' },
+    { id: 'classes', label: 'Kelas', page: 'classes' },
+    { id: 'products', label: 'Produk', page: 'products' },
+    { id: 'prompts', label: 'Prompt', page: 'prompts' },
+  ]
 
   const handlePublicNavClick = (sectionId) => {
     setIsPublicMenuOpen(false)
-    onHomeSection(sectionId)
+    if (sectionId === 'home') {
+      onHomeSection('home')
+    } else {
+      onPublicCatalogPage(sectionId)
+    }
   }
 
   return (
@@ -4072,6 +4112,17 @@ function Header({
               </span>
             </button>
             <button
+              className={activePage === 'login' ? 'header-login-button active' : 'header-login-button'}
+              type="button"
+              onClick={() => {
+                setIsPublicMenuOpen(false)
+                onLogin()
+              }}
+            >
+              <Icon name="logIn" />
+              <span>{safeSettings.header.loginLabel}</span>
+            </button>
+            <button
               className="public-menu-toggle"
               type="button"
               aria-expanded={isPublicMenuOpen}
@@ -4086,31 +4137,20 @@ function Header({
             className={isPublicMenuOpen ? 'site-nav open' : 'site-nav'}
             aria-label="Navigasi utama"
           >
-            {safeSettings.header.navItems.map((item) => (
+            {publicNavItems.map((item) => (
               <button
                 key={item.id}
                 className={
-                  activePage === 'home' && activeSection === item.sectionId
+                  activePage === item.page
                     ? 'nav-link active'
                     : 'nav-link'
                 }
                 type="button"
-                onClick={() => handlePublicNavClick(item.sectionId)}
+                onClick={() => handlePublicNavClick(item.page)}
               >
                 {item.label}
               </button>
             ))}
-            <button
-              className={activePage === 'login' ? 'nav-link nav-login-button active' : 'nav-link nav-login-button'}
-              type="button"
-              onClick={() => {
-                setIsPublicMenuOpen(false)
-                onLogin()
-              }}
-            >
-              <Icon name="logIn" />
-              <span>{safeSettings.header.loginLabel}</span>
-            </button>
           </nav>
         </>
       )}

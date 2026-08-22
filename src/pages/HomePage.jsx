@@ -51,6 +51,48 @@ function CatalogCardMedia({ item }) {
   )
 }
 
+function CatalogItemCard({ item, index, onOpen }) {
+  return (
+    <article
+      className={`catalog-card animated-card card-type-${item.type} ${item.highlighted ? 'highlighted' : ''}`}
+      style={{ '--card-delay': `${index * 0.08}s` }}
+    >
+      <CatalogCardMedia item={item} />
+      <div className="card-content">
+        <div className="card-rating-row">
+          <span className="rating-stars">
+            <svg className="star-icon-filled" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fbbc05" stroke="#fbbc05" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            {item.rating}
+          </span>
+          <span className="sales-count">{item.sales} {item.type === 'kelas' ? 'peserta' : 'terjual'}</span>
+        </div>
+        {item.type !== 'kelas' && (
+          <span className={`catalog-stock-badge ${item.isSoldOut ? 'is-sold-out' : ''}`}>{item.stockLabel}</span>
+        )}
+        <h3 className="card-title">{item.title}</h3>
+        <p className="card-desc">{item.description}</p>
+        <div className="card-footer-info">
+          <span className="info-label">
+            <Icon name={item.type === 'kelas' ? 'user' : item.type === 'prompt' ? 'spark' : 'download'} />
+            {item.type === 'kelas' ? `${item.sales} peserta` : item.fileName}
+          </span>
+        </div>
+      </div>
+      <div className="card-price-action">
+        <div className="price-box">
+          {item.originalPrice && <span className="original-price">{item.originalPrice}</span>}
+          <span className="current-price">{item.price}</span>
+        </div>
+        <button className="btn btn-primary card-action-btn" type="button" onClick={() => onOpen(item)}>
+          Detail <Icon name="arrowRight" />
+        </button>
+      </div>
+    </article>
+  )
+}
+
 function formatRupiah(value) {
   const amount = Math.max(0, Math.round(Number(value) || 0))
 
@@ -219,6 +261,7 @@ function getCompactSlideIndicators(total, activeIndex, maxVisible = 7) {
 }
 
 function HomePage({
+  catalogPage = 'home',
   onPublicClassCheckout = async () => {},
   onPublicProductCheckout = async () => {},
   publicProductAccessApiPath = '/api/public-product-access',
@@ -274,7 +317,6 @@ function HomePage({
   const [isPublicVoucherLoading, setIsPublicVoucherLoading] = useState(false)
   const publicVoucherRequestRef = useRef(0)
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeCategory, setActiveCategory] = useState('Semua')
 
   const [activeNotification, setActiveNotification] = useState(null)
   const [showNotification, setShowNotification] = useState(false)
@@ -767,16 +809,39 @@ function HomePage({
     })
   ].sort((first, second) => Number(second.highlighted) - Number(first.highlighted))
 
-  const filteredCatalogItems = catalogItems.filter((item) => {
+  const searchedCatalogItems = catalogItems.filter((item) => {
     const matchesSearch =
       (item.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.description || '').toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesCategory =
-      activeCategory === 'Semua' || item.category === activeCategory
-
-    return matchesSearch && matchesCategory
+    return matchesSearch
   })
+  const catalogSections = [
+    {
+      id: 'courses',
+      page: 'classes',
+      category: 'Kelas',
+      eyebrow: 'KELAS ONLINE',
+      title: 'Semua Kelas',
+      description: 'Pelajari skill kreatif melalui materi terstruktur, praktik, tugas, dan arahan mentor.',
+    },
+    {
+      id: 'products',
+      page: 'products',
+      category: 'Produk Digital',
+      eyebrow: 'ASET DIGITAL',
+      title: 'Semua Produk Digital',
+      description: 'Temukan template, ebook, source code, dan aset siap pakai untuk pekerjaan maupun bisnis.',
+    },
+    {
+      id: 'prompts',
+      page: 'prompts',
+      category: 'Prompt',
+      eyebrow: 'PROMPT PREMIUM',
+      title: 'Semua Prompt',
+      description: 'Koleksi prompt siap salin untuk mempercepat produksi konten dan pekerjaan kreatif.',
+    },
+  ].filter((section) => catalogPage === 'home' || section.page === catalogPage)
 
   const selectedClass = detailClasses.find((course) => course.id === selectedClassId || course.publicCode === selectedClassId)
   const checkoutClass = detailClasses.find((course) => course.id === checkoutClassId || course.publicCode === checkoutClassId)
@@ -1983,16 +2048,18 @@ function HomePage({
 
   return (
     <>
-      <div id="courses" style={{ scrollMarginTop: '80px' }}></div>
-      <div id="products" style={{ scrollMarginTop: '80px' }}></div>
-      <section className="content-section modern-section catalog-section" id="catalog">
+      <section className={`content-section modern-section catalog-section ${catalogPage !== 'home' ? 'catalog-page-section' : ''}`} id="catalog">
         <div className="section-heading reveal-panel centered">
-          <p className="eyebrow">ASET DIGITAL & KELAS PREMIUM</p>
-          <h2>Katalog Produk Pilihan</h2>
-          <p className="section-subheading">Temukan tools, course, template, dan source code premium untuk melipatgandakan omset bisnis Anda.</p>
+          <p className="eyebrow">{catalogPage === 'home' ? 'JELAJAHI KATALOG' : catalogSections[0]?.eyebrow}</p>
+          <h2>{catalogPage === 'home' ? 'Pilihan untuk setiap kebutuhan kreatif' : catalogSections[0]?.title.replace('Semua', 'Katalog')}</h2>
+          <p className="section-subheading">
+            {catalogPage === 'home'
+              ? 'Kelas, produk digital, dan prompt kini ditampilkan dalam kategori terpisah agar lebih mudah dijelajahi.'
+              : catalogSections[0]?.description}
+          </p>
         </div>
 
-        {websiteSettings.bundling.enabled && (
+        {catalogPage === 'home' && websiteSettings.bundling.enabled && (
           <FeaturedBundleSection
             eyebrow="Paket pilihan"
             title="Lebih hemat dengan bundling"
@@ -2014,7 +2081,7 @@ function HomePage({
             </svg>
             <input
               type="text"
-              placeholder="Cari aset digital, kelas, ebook..."
+              placeholder={catalogPage === 'home' ? 'Cari kelas, produk digital, atau prompt...' : `Cari ${catalogSections[0]?.title.toLowerCase() || 'katalog'}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -2029,98 +2096,44 @@ function HomePage({
           </div>
         </div>
 
-        {/* Category Tabs */}
-        <div className="category-tabs-track">
-          {['Semua', 'Kelas', 'Produk Digital', 'Prompt'].map((cat) => {
-            const count = cat === 'Semua'
-              ? catalogItems.length
-              : catalogItems.filter(item => item.category === cat).length
+        <div className="catalog-section-list">
+          {catalogSections.map((section) => {
+            const sectionItems = searchedCatalogItems.filter((item) => item.category === section.category)
+
             return (
-              <button
-                key={cat}
-                className={`category-tab-btn ${activeCategory === cat ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveCategory(cat)
-                  const catalogElement = document.getElementById('catalog')
-                  if (catalogElement) {
-                    catalogElement.scrollIntoView({ behavior: 'smooth' })
-                  }
-                }}
-              >
-                {cat}
-                <span className="tab-count">{count}</span>
-              </button>
+              <section className="catalog-category-section" id={section.id} key={section.id}>
+                <header className="catalog-category-heading">
+                  <div>
+                    <p className="eyebrow">{section.eyebrow}</p>
+                    <h3>{section.title}</h3>
+                    <p>{section.description}</p>
+                  </div>
+                  <span>{sectionItems.length} tersedia</span>
+                </header>
+                <div className="catalog-grid">
+                  {sectionItems.map((item, index) => (
+                    <CatalogItemCard
+                      item={item}
+                      index={index}
+                      key={`${item.type}-${item.id}`}
+                      onOpen={(selectedItem) => selectedItem.type === 'kelas' ? openClassDetail(selectedItem.id) : openProductDetail(selectedItem.id)}
+                    />
+                  ))}
+                  {!sectionItems.length && (
+                    <div className="catalog-empty-state">
+                      <Icon name="search" />
+                      <h3>{section.title} belum ditemukan</h3>
+                      <p>Coba gunakan kata kunci pencarian lain.</p>
+                    </div>
+                  )}
+                </div>
+              </section>
             )
           })}
         </div>
-
-        {/* Catalog Grid */}
-        <div className="catalog-grid">
-          {filteredCatalogItems.map((item, index) => (
-            <article
-              className={`catalog-card animated-card card-type-${item.type} ${item.highlighted ? 'highlighted' : ''}`}
-              key={`${item.type}-${item.id}`}
-              style={{ '--card-delay': `${index * 0.08}s` }}
-            >
-              <CatalogCardMedia item={item} />
-              <div className="card-content">
-                <div className="card-rating-row">
-                  <span className="rating-stars">
-                    <svg className="star-icon-filled" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fbbc05" stroke="#fbbc05" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }}>
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                    {item.rating}
-                  </span>
-                  <span className="sales-count">
-                    {item.sales} {item.type === 'kelas' ? 'peserta' : 'terjual'}
-                  </span>
-                </div>
-                {item.type !== 'kelas' && (
-                  <span className={`catalog-stock-badge ${item.isSoldOut ? 'is-sold-out' : ''}`}>
-                    {item.stockLabel}
-                  </span>
-                )}
-                <h3 className="card-title">{item.title}</h3>
-                <p className="card-desc">{item.description}</p>
-                <div className="card-footer-info">
-                  <span className="info-label">
-                    <Icon name={item.type === 'kelas' ? 'user' : item.type === 'prompt' ? 'spark' : 'download'} />
-                    {item.type === 'kelas' ? `${item.sales} peserta` : item.fileName}
-                  </span>
-                </div>
-              </div>
-              <div className="card-price-action">
-                <div className="price-box">
-                  {item.originalPrice && (
-                    <span className="original-price">{item.originalPrice}</span>
-                  )}
-                  <span className="current-price">{item.price}</span>
-                </div>
-                <button
-                  className="btn btn-primary card-action-btn"
-                  type="button"
-                  onClick={() => item.type === 'kelas' ? openClassDetail(item.id) : openProductDetail(item.id)}
-                >
-                  Detail
-                  <Icon name="arrowRight" />
-                </button>
-              </div>
-            </article>
-          ))}
-          {filteredCatalogItems.length === 0 && (
-            <div className="catalog-empty-state">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="48" height="48" style={{ marginBottom: '16px', opacity: 0.5 }}>
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              <h3>Produk Tidak Ditemukan</h3>
-              <p>Coba gunakan kata kunci pencarian lain atau pilih kategori yang berbeda.</p>
-            </div>
-          )}
-        </div>
       </section>
 
-      {activeTestimonial && (
+      {catalogPage === 'home' && activeTestimonial && (
         <section className="content-section modern-section homepage-testimonials-section" id="testimonials">
           <div className="section-heading reveal-panel">
             <p className="eyebrow">Testimoni peserta</p>

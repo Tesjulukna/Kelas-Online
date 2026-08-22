@@ -32,8 +32,8 @@ export const defaultWebsiteSettings = {
     navItems: [
       { id: 'home', label: 'Beranda', sectionId: 'home' },
       { id: 'courses', label: 'Kelas', sectionId: 'courses' },
-      { id: 'benefits', label: 'Benefit', sectionId: 'benefits' },
-      { id: 'schedule', label: 'Jadwal', sectionId: 'schedule' },
+      { id: 'products', label: 'Produk', sectionId: 'products' },
+      { id: 'prompts', label: 'Prompt', sectionId: 'prompts' },
     ],
   },
   hero: {
