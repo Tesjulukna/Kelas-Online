@@ -102,9 +102,19 @@
 }
 
 .app-shell.public-theme-dark .catalog-section {
-  background:
-    radial-gradient(circle at 18% 0%, rgba(79, 140, 255, 0.14), transparent 32%),
-    transparent;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell.public-theme-dark .content-section {
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.app-shell.public-theme-dark .catalog-section::before {
+  display: none;
 }
 
 .app-shell.public-theme-dark .catalog-search-bar .search-input-wrapper input {
