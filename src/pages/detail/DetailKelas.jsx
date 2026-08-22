@@ -46,6 +46,7 @@ function DetailKelas({
   onBack,
   onBuy,
   onOpenWishlist,
+  onNavigateCatalog = () => {},
   onNavigateHome = () => {},
   onShare,
   settings = defaultWebsiteSettings,
@@ -116,7 +117,7 @@ function DetailKelas({
       <PublicBreadcrumb
         items={[
           { label: 'Beranda', onClick: onNavigateHome },
-          { label: 'Kelas', current: true },
+          { label: 'Kelas', current: false, onClick: onNavigateCatalog },
         ]}
       />
 

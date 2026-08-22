@@ -1,4 +1,5 @@
 import Icon from './Icon'
+import { resolveBreadcrumbItemState } from '../utils/breadcrumb'
 
 function PublicBreadcrumb({ items = [] }) {
   const visibleItems = items.filter((item) => item?.label)
@@ -11,15 +12,19 @@ function PublicBreadcrumb({ items = [] }) {
     <nav className="public-breadcrumb" aria-label="Breadcrumb">
       <ol>
         {visibleItems.map((item, index) => {
-          const isCurrent = index === visibleItems.length - 1 || item.current
+          const { isCurrent, isClickable } = resolveBreadcrumbItemState(
+            item,
+            index,
+            visibleItems.length,
+          )
 
           return (
             <li key={`${item.label}-${index}`}>
               {index > 0 && <Icon name="arrowRight" />}
-              {isCurrent || typeof item.onClick !== 'function' ? (
-                <span aria-current={isCurrent ? 'page' : undefined}>{item.label}</span>
-              ) : (
+              {isClickable ? (
                 <button type="button" onClick={item.onClick}>{item.label}</button>
+              ) : (
+                <span aria-current={isCurrent ? 'page' : undefined}>{item.label}</span>
               )}
             </li>
           )
