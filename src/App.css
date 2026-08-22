@@ -20247,6 +20247,36 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   transform: translate(-50%, -50%) scale(0.86) rotate(18deg) !important;
 }
 
+/* Keep every header's controls aligned to a stable content width at any browser zoom. */
+.app-shell > .site-header,
+.app-shell > .site-header.public-site-header,
+.app-shell > .site-header.public-header,
+.app-shell > .site-header.dashboard-header {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding-right: max(16px, calc((100vw - 1180px) / 2)) !important;
+  padding-left: max(16px, calc((100vw - 1180px) / 2)) !important;
+}
+
+.app-shell > .site-header > *,
+.app-shell > .site-header .brand,
+.app-shell > .site-header .site-nav,
+.app-shell > .site-header .header-actions,
+.app-shell > .site-header .public-header-actions {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .app-shell > .site-header,
+  .app-shell > .site-header.public-site-header,
+  .app-shell > .site-header.public-header,
+  .app-shell > .site-header.dashboard-header {
+    padding-right: 12px !important;
+    padding-left: 12px !important;
+  }
+}
+
 /* Public header, theme control, and checkout payment picker polish. */
 .site-header.public-site-header {
   box-sizing: border-box;
