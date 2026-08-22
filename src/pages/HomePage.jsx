@@ -54,8 +54,6 @@ function CatalogCardMedia({ item }) {
 }
 
 function CatalogItemCard({ item, index, onOpen }) {
-  const detailHref = `/${item.type === 'kelas' ? 'kelas' : item.type === 'prompt' ? 'prompt' : 'produk'}/${encodeURIComponent(item.publicCode || item.id)}`
-
   return (
     <article
       className={`catalog-card animated-card card-type-${item.type} ${item.highlighted ? 'highlighted' : ''}`}
@@ -89,16 +87,9 @@ function CatalogItemCard({ item, index, onOpen }) {
           {item.originalPrice && <span className="original-price">{item.originalPrice}</span>}
           <span className="current-price">{item.price}</span>
         </div>
-        <a
-          className="btn btn-primary card-action-btn"
-          href={detailHref}
-          onClick={(event) => {
-            event.preventDefault()
-            onOpen(item)
-          }}
-        >
+        <button className="btn btn-primary card-action-btn" type="button" onClick={() => onOpen(item)}>
           Detail <Icon name="arrowRight" />
-        </a>
+        </button>
       </div>
     </article>
   )
@@ -2149,16 +2140,10 @@ function HomePage({
                   <aside className="catalog-category-actions">
                     <span>{sectionItems.length} tersedia</span>
                     {catalogPage === 'home' && (
-                      <a
-                        href={`/${section.page === 'classes' ? 'kelas' : section.page === 'products' ? 'produk' : 'prompt'}`}
-                        onClick={(event) => {
-                          event.preventDefault()
-                          onCatalogPage(section.page)
-                        }}
-                      >
+                      <button type="button" onClick={() => onCatalogPage(section.page)}>
                         Lihat semua {section.category === 'Produk Digital' ? 'produk' : section.category.toLowerCase()}
                         <Icon name="arrowRight" />
-                      </a>
+                      </button>
                     )}
                   </aside>
                 </header>

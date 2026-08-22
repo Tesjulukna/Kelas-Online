@@ -4074,18 +4074,15 @@ function Header({
           <span>{safeSettings.siteName}</span>
         </div>
       ) : (
-        <a
+        <button
           className="brand"
-          href="/"
-          onClick={(event) => {
-            event.preventDefault()
-            onHomeSection('home')
-          }}
+          type="button"
+          onClick={() => onHomeSection('home')}
           aria-label={`${safeSettings.siteTitle} beranda`}
         >
           <BrandMark settings={safeSettings} />
           <span>{safeSettings.siteName}</span>
-        </a>
+        </button>
       )}
 
       {session ? (
@@ -4146,21 +4143,18 @@ function Header({
             aria-label="Navigasi utama"
           >
             {publicNavItems.map((item) => (
-              <a
+              <button
                 key={item.id}
                 className={
                   activePage === item.page
                     ? 'nav-link active'
                     : 'nav-link'
                 }
-                href={item.page === 'home' ? '/' : `/${item.page === 'classes' ? 'kelas' : item.page === 'products' ? 'produk' : 'prompt'}`}
-                onClick={(event) => {
-                  event.preventDefault()
-                  handlePublicNavClick(item.page)
-                }}
+                type="button"
+                onClick={() => handlePublicNavClick(item.page)}
               >
                 {item.label}
-              </a>
+              </button>
             ))}
           </nav>
         </>
