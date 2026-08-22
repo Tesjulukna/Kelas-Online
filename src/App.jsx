@@ -2198,6 +2198,7 @@ function App() {
     const nextUrl = `${path}${hash}`
 
     setPage(nextPage)
+    setCurrentPath(nextUrl)
 
     if (window.location.pathname + window.location.hash !== nextUrl) {
       window.history[replace ? 'replaceState' : 'pushState']({}, '', nextUrl)

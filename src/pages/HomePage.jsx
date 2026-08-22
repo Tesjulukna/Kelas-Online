@@ -1869,7 +1869,7 @@ function HomePage({
     })
   }
 
-  if (checkoutClass) {
+  if (checkoutClass && isClassDetailPath && initialDetailAction === 'checkout') {
     return (
       <>
         <CheckoutProduk
@@ -1915,7 +1915,7 @@ function HomePage({
     )
   }
 
-  if (selectedClass) {
+  if (selectedClass && isClassDetailPath && initialDetailAction !== 'checkout') {
     return (
       <>
         <DetailKelas
@@ -1950,7 +1950,7 @@ function HomePage({
     })
   }
 
-  if (accessOrderCode) {
+  if (accessOrderCode && (initialDetailType === 'produk-akses' || initialDetailType === 'prompt-akses')) {
     return (
       <>
         <ProductAccessPage
@@ -1966,7 +1966,7 @@ function HomePage({
     )
   }
 
-  if (selectedProduct) {
+  if (selectedProduct && isProductDetailPath && initialDetailAction !== 'checkout') {
     return (
       <>
         <DetailProduk
@@ -1991,7 +1991,7 @@ function HomePage({
     )
   }
 
-  if (checkoutProduct) {
+  if (checkoutProduct && isProductDetailPath && initialDetailAction === 'checkout') {
     return (
       <>
         <CheckoutProduk

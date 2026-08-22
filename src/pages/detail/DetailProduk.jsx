@@ -289,7 +289,7 @@ function DetailProduk({
         <div className="public-detail-topbar-actions">
           {!isOwned && (
             <button className="icon-action-button cart-action-button" type="button" onClick={onOpenWishlist} aria-label="Buka daftar tersimpan">
-              <Icon name="cart" />
+              <Icon name="bookmark" />
               {wishlistCount > 0 && <span>{wishlistCount}</span>}
             </button>
           )}
