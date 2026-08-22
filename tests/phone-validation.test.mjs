@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   getTripayPhoneWarning,
   normalizeTripayPhone,
+  requiresTripayCustomerPhone,
 } from '../src/utils/phoneValidation.js'
 
 test('nomor Indonesia dinormalisasi ke format 08 yang diterima Tripay', () => {
@@ -11,6 +12,14 @@ test('nomor Indonesia dinormalisasi ke format 08 yang diterima Tripay', () => {
   assert.equal(normalizeTripayPhone('6281234567890'), '081234567890')
   assert.equal(normalizeTripayPhone('81234567890'), '081234567890')
   assert.equal(normalizeTripayPhone('081234567890'), '081234567890')
+})
+
+test('nomor HP hanya diwajibkan untuk channel e-wallet Tripay', () => {
+  assert.equal(requiresTripayCustomerPhone('DANA'), true)
+  assert.equal(requiresTripayCustomerPhone('ovo'), true)
+  assert.equal(requiresTripayCustomerPhone('SHOPEEPAY'), true)
+  assert.equal(requiresTripayCustomerPhone('QRIS'), false)
+  assert.equal(requiresTripayCustomerPhone('BRIVA'), false)
 })
 
 test('nomor luar Indonesia tidak dipaksakan masuk ke payload Tripay', () => {

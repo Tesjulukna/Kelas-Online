@@ -3533,6 +3533,7 @@ function App() {
               userId={session.userId}
               loginName={session.name}
               email={currentMember?.email || session.email || ''}
+              phone={currentMember?.phone || ''}
               avatar={session.avatar}
               sessionToken={session.token}
               classes={localizedMemberClasses}

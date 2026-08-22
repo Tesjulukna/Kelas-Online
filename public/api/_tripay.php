@@ -94,6 +94,11 @@ function tripay_customer_phone(string $phone): string
     return preg_match('/^08[0-9]{8,11}$/', $digits) ? $digits : '';
 }
 
+function tripay_method_requires_customer_phone(string $method): bool
+{
+    return in_array(strtoupper(trim($method)), ['DANA', 'OVO', 'SHOPEEPAY', 'LINKAJA', 'ASTRAPAY'], true);
+}
+
 function tripay_assert_config(array $config): void
 {
     if (

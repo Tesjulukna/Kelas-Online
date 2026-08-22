@@ -15,6 +15,11 @@ import { uploadStorageFile } from '../lib/storageUpload'
 import { normalizeVoucherCode, validateVoucher } from '../lib/vouchers'
 import { openLanguagePopup } from '../i18n/language'
 import { withPublicCodes } from '../utils/publicCodes'
+import {
+  getTripayPhoneWarning,
+  normalizeTripayPhone,
+  requiresTripayCustomerPhone,
+} from '../utils/phoneValidation'
 
 const taskStorageKey = 'ibnucreative.memberTasks.v1'
 const courseProgressStorageKey = 'ibnucreative.memberCourseProgress.v1'
@@ -671,6 +676,7 @@ function MemberPage({
   userId = '',
   loginName,
   email = '',
+  phone = '',
   avatar,
   sessionToken = '',
   classes = [],
@@ -791,6 +797,7 @@ function MemberPage({
   const [checkoutClassId, setCheckoutClassId] = useState('')
   const [paymentMethodCourse, setPaymentMethodCourse] = useState(null)
   const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('')
+  const [paymentCustomerPhone, setPaymentCustomerPhone] = useState(phone)
   const [isPaymentTermsAccepted, setIsPaymentTermsAccepted] = useState(false)
   const [isChangingPaymentMethod, setIsChangingPaymentMethod] = useState(false)
   const [paymentVoucherCode, setPaymentVoucherCode] = useState('')
@@ -1039,6 +1046,10 @@ function MemberPage({
   const selectedPaymentMethod = tripayPaymentMethods.find(
     (method) => method.code === selectedPaymentMethodCode,
   )
+  const selectedMethodNeedsPhone = requiresTripayCustomerPhone(selectedPaymentMethodCode)
+  const selectedMethodPhoneWarning = selectedMethodNeedsPhone
+    ? getTripayPhoneWarning(paymentCustomerPhone)
+    : ''
   const paymentModalAmount = getCheckoutAmount(paymentMethodCourse)
   const paymentModalVoucherDiscount = paymentVoucherResult?.valid
     ? Math.max(0, Math.round(Number(paymentVoucherResult.discountAmount) || 0))
@@ -2009,7 +2020,7 @@ function MemberPage({
   const handleStartCheckout = useCallback(async (
     item,
     paymentMethod = '',
-    { forceNewPayment = false, itemType = 'class', voucherCode = '' } = {},
+    { forceNewPayment = false, itemType = 'class', voucherCode = '', buyerPhone = '' } = {},
   ) => {
     const price = getCheckoutAmount({ ...item, itemType })
     const productMenu = itemType === 'digital_product' && item.productType === 'prompt'
@@ -2023,6 +2034,7 @@ function MemberPage({
         forceNewPayment,
         itemType,
         voucherCode: normalizeVoucherCode(voucherCode),
+        buyerPhone,
       })
 
       if (data.freeAccessGranted) {
@@ -2098,10 +2110,11 @@ function MemberPage({
 
     setPaymentMethodCourse({ ...item, itemType })
     setSelectedPaymentMethodCode('')
+    setPaymentCustomerPhone(phone)
     setIsPaymentTermsAccepted(false)
     setIsChangingPaymentMethod(forceNewPayment)
     resetPaymentVoucher()
-  }, [activePaymentsByClass, activePaymentsByProduct, handleStartCheckout, onNotify, resetPaymentVoucher])
+  }, [activePaymentsByClass, activePaymentsByProduct, handleStartCheckout, onNotify, phone, resetPaymentVoucher])
 
   const changePaymentVoucherCode = (value) => {
     setPaymentVoucherCode(value)
@@ -2171,6 +2184,11 @@ function MemberPage({
       return
     }
 
+    if (selectedMethodNeedsPhone && (!paymentCustomerPhone.trim() || selectedMethodPhoneWarning)) {
+      onNotify(selectedMethodPhoneWarning || 'Nomor HP Indonesia yang terhubung ke e-wallet wajib diisi.')
+      return
+    }
+
     const item = paymentMethodCourse
     const itemType = paymentMethodCourse.itemType || 'class'
     const appliedVoucherCode = paymentVoucherResult?.valid
@@ -2187,6 +2205,7 @@ function MemberPage({
       forceNewPayment: isChangingPaymentMethod,
       itemType,
       voucherCode: appliedVoucherCode,
+      buyerPhone: selectedMethodNeedsPhone ? normalizeTripayPhone(paymentCustomerPhone) : '',
     })
   }
 
@@ -3673,6 +3692,23 @@ function MemberPage({
             ) : (
               <p className="payment-method-note">Tidak perlu memilih metode pembayaran. Akses akan diproses setelah pesanan dikonfirmasi.</p>
             )}
+            {!isPaymentVoucherFree && selectedMethodNeedsPhone && (
+              <label className="payment-customer-phone">
+                Nomor HP yang terhubung ke {selectedPaymentMethod?.label || 'e-wallet'}
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="081234567890"
+                  value={paymentCustomerPhone}
+                  onChange={(event) => setPaymentCustomerPhone(event.target.value)}
+                  aria-invalid={Boolean(selectedMethodPhoneWarning)}
+                />
+                <small className={selectedMethodPhoneWarning ? 'checkout-field-warning' : 'checkout-field-hint'}>
+                  {selectedMethodPhoneWarning || 'Gunakan nomor Indonesia aktif yang terdaftar pada akun e-wallet.'}
+                </small>
+              </label>
+            )}
             {isChangingPaymentMethod && (
               <p className="payment-method-note">
                 Invoice lama tetap bisa dibayar sampai kedaluwarsa. Jika memakai metode baru,
@@ -3739,7 +3775,7 @@ function MemberPage({
               <button
                 className="btn btn-primary"
                 type="button"
-                disabled={isPaymentVoucherLoading || (!selectedPaymentMethodCode && !isPaymentVoucherFree) || !isPaymentTermsAccepted}
+                disabled={isPaymentVoucherLoading || (!selectedPaymentMethodCode && !isPaymentVoucherFree) || !isPaymentTermsAccepted || (selectedMethodNeedsPhone && (!paymentCustomerPhone.trim() || Boolean(selectedMethodPhoneWarning)))}
                 onClick={handleCreateSelectedPayment}
               >
                 <Icon name="bookOpen" />

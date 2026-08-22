@@ -1,4 +1,9 @@
 const PHONE_FORMAT_PATTERN = /^\+?[0-9().\-\s]+$/
+const TRIPAY_PHONE_REQUIRED_METHODS = new Set(['DANA', 'OVO', 'SHOPEEPAY', 'LINKAJA', 'ASTRAPAY'])
+
+export function requiresTripayCustomerPhone(methodCode) {
+  return TRIPAY_PHONE_REQUIRED_METHODS.has(String(methodCode || '').trim().toUpperCase())
+}
 
 export function normalizeCheckoutPhone(value) {
   const phone = String(value || '').trim()

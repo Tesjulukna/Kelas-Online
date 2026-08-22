@@ -383,6 +383,9 @@ $callbackUrl = clean_external_url($config['tripay_callback_url'] ?? '')
     ?: tripay_absolute_url('/api/tripay-webhook.php');
 $returnUrl = commerce_login_url($config);
 $tripayCustomerPhone = tripay_customer_phone($buyerPhone);
+if (tripay_method_requires_customer_phone($paymentMethod) && $tripayCustomerPhone === '') {
+    send_json(422, ['message' => 'Metode e-wallet ini membutuhkan nomor HP Indonesia yang terhubung ke akun pembayaran.']);
+}
 $checkoutPayload = [
     'method' => $paymentMethod,
     'merchant_ref' => $merchantRef,

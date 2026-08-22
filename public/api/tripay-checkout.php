@@ -486,6 +486,10 @@ $merchantCode = tripay_config_value($config, 'tripay_merchant_code', 80);
 $privateKey = tripay_config_value($config, 'tripay_private_key', 300);
 $method = strtoupper(clean_text($payload['paymentMethod'] ?? '', 40));
 $method = $method ?: (tripay_config_value($config, 'tripay_default_method', 40) ?: 'QRIS');
+$normalizedBuyerPhone = tripay_customer_phone($buyerPhone);
+if (tripay_method_requires_customer_phone($method) && $normalizedBuyerPhone === '') {
+    send_json(422, ['message' => 'Metode e-wallet ini membutuhkan nomor HP Indonesia yang terhubung ke akun DANA, OVO, atau ShopeePay.']);
+}
 $callbackUrl = clean_external_url($config['tripay_callback_url'] ?? '') ?: tripay_absolute_url('/api/tripay-webhook.php');
 $returnUrl = clean_external_url($config['tripay_return_url'] ?? '') ?: tripay_absolute_url('/member?menu=my-courses');
 $configuredExpiredMinutes = clean_number($config['tripay_expired_minutes'] ?? 1440, 5, 10080);

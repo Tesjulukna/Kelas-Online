@@ -265,6 +265,9 @@ $callbackUrl = clean_external_url($config['tripay_callback_url'] ?? '') ?: tripa
 $productType = clean_text($product['product_type'] ?? 'digital', 40);
 $returnUrl = commerce_public_product_access_url($merchantRef, $productType) ?: (clean_external_url($config['tripay_return_url'] ?? '') ?: tripay_absolute_url('/'));
 $tripayCustomerPhone = tripay_customer_phone($buyerPhone);
+if (tripay_method_requires_customer_phone($paymentMethod) && $tripayCustomerPhone === '') {
+    send_json(422, ['message' => 'Metode e-wallet ini membutuhkan nomor HP Indonesia yang terhubung ke akun pembayaran.']);
+}
 
 $checkoutPayload = [
     'method' => $paymentMethod,
