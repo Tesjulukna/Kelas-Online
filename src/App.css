@@ -20247,6 +20247,205 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   transform: translate(-50%, -50%) scale(0.86) rotate(18deg) !important;
 }
 
+/* Public header, theme control, and checkout payment picker polish. */
+.site-header.public-site-header {
+  padding-inline: clamp(16px, 4vw, 52px);
+  background: color-mix(in srgb, #ffffff 91%, transparent);
+  box-shadow: 0 1px 0 rgba(148, 163, 184, 0.08);
+}
+
+.app-shell.public-theme-dark .site-header.public-site-header {
+  background: color-mix(in srgb, #0b1424 92%, transparent);
+}
+
+.site-header.public-site-header .site-nav {
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.site-header.public-site-header .nav-link {
+  min-height: 42px;
+  padding-inline: 15px;
+  border-radius: 10px;
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.site-header.public-site-header .nav-link:hover {
+  transform: translateY(-1px);
+}
+
+.site-header.public-site-header .nav-login-button,
+.site-header.public-site-header .nav-login-button.active {
+  min-width: 104px;
+  margin-left: 6px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.24);
+}
+
+.site-header.public-site-header .nav-login-button:hover {
+  color: #ffffff;
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.32);
+}
+
+.public-theme-toggle,
+.public-theme-toggle.is-dark {
+  width: 36px !important;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.public-theme-toggle:hover,
+.public-theme-toggle.is-dark:hover {
+  background: rgba(37, 99, 235, 0.09);
+}
+
+.theme-toggle-thumb,
+.public-theme-toggle.is-dark .theme-toggle-thumb {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.public-selected-payment {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 14px;
+  background: #f5f9ff;
+}
+
+.public-selected-payment-copy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.public-selected-payment-copy small {
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.public-selected-payment-copy strong {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-heading);
+}
+
+.public-selected-payment-copy .payment-method-logo {
+  width: 50px;
+  height: 31px;
+}
+
+.public-selected-payment > button {
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  border: 0;
+  border-radius: 9px;
+  color: #1d4ed8;
+  background: #dbeafe;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.bundle-payment-modal .public-payment-method-grid {
+  margin: 0;
+}
+
+.app-shell.public-theme-dark .public-selected-payment {
+  border-color: rgba(96, 165, 250, 0.26);
+  background: #17263d;
+}
+
+.app-shell.public-theme-dark .public-selected-payment > button {
+  color: #bfdbfe;
+  background: rgba(37, 99, 235, 0.24);
+}
+
+@media (max-width: 900px) {
+  .site-header.public-site-header {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    min-height: 64px;
+    padding: 10px 16px;
+  }
+
+  .site-header.public-site-header .brand {
+    min-width: 0;
+  }
+
+  .site-header.public-site-header .brand > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .site-header.public-site-header .public-header-actions {
+    display: inline-flex;
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .site-header.public-site-header .site-nav.open {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 12px;
+    left: 12px;
+    z-index: 90;
+    gap: 4px;
+    padding: 10px;
+    border: 1px solid rgba(203, 213, 225, 0.86);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 22px 48px rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(18px);
+  }
+
+  .app-shell.public-theme-dark .site-header.public-site-header .site-nav.open {
+    border-color: rgba(148, 163, 184, 0.2);
+    background: rgba(15, 25, 43, 0.98);
+  }
+
+  .site-header.public-site-header .nav-link {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  .site-header.public-site-header .nav-login-button,
+  .site-header.public-site-header .nav-login-button.active {
+    justify-content: center;
+    margin: 6px 0 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .public-selected-payment {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .public-selected-payment > button {
+    width: 100%;
+  }
+
+  .bundle-payment-modal > .public-payment-method-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 14px;
+  }
+}
+
 /* Detail content width guard: keep videos, reviews, accordions, and action bars aligned with the description card. */
 .public-detail-page .public-video-section,
 .public-detail-page .public-detail-section,

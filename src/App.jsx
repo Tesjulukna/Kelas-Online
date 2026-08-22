@@ -4101,7 +4101,7 @@ function Header({
               </button>
             ))}
             <button
-              className={activePage === 'login' ? 'nav-link active' : 'nav-link'}
+              className={activePage === 'login' ? 'nav-link nav-login-button active' : 'nav-link nav-login-button'}
               type="button"
               onClick={() => {
                 setIsPublicMenuOpen(false)
@@ -4109,7 +4109,7 @@ function Header({
               }}
             >
               <Icon name="logIn" />
-              {safeSettings.header.loginLabel}
+              <span>{safeSettings.header.loginLabel}</span>
             </button>
           </nav>
         </>

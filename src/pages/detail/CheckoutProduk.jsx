@@ -258,32 +258,65 @@ function CheckoutProduk({
         )}
         {!isEffectiveFree ? (
           <>
-            <button
-              className="btn btn-secondary public-payment-picker-toggle"
-              type="button"
-              onClick={onPaymentPickerToggle}
-            >
-              Pilih Metode Pembayaran
-              <Icon name="wallet" />
-            </button>
+            {form.paymentMethod ? (
+              <div className="public-selected-payment">
+                <span className="public-selected-payment-copy">
+                  <small>Metode pembayaran</small>
+                  <strong>
+                    <PaymentMethodLogo method={paymentMethods.find((method) => method.code === form.paymentMethod) || { brand: '', label: selectedMethodLabel }} />
+                    {selectedMethodLabel}
+                  </strong>
+                </span>
+                <button type="button" onClick={onPaymentPickerToggle}>Ganti metode</button>
+              </div>
+            ) : (
+              <button
+                className="btn btn-secondary public-payment-picker-toggle"
+                type="button"
+                onClick={onPaymentPickerToggle}
+              >
+                Pilih Metode Pembayaran
+                <Icon name="wallet" />
+              </button>
+            )}
             {isPaymentPickerOpen && (
-              <div className="payment-method-grid public-payment-method-grid" aria-label="Daftar metode pembayaran">
-                {paymentMethods.map((method) => (
-                  <button
-                    className={`payment-method-option ${
-                      form.paymentMethod === method.code ? 'selected' : ''
-                    }`}
-                    key={method.code}
-                    type="button"
-                    title={method.label}
-                    aria-label={method.label}
-                    aria-pressed={form.paymentMethod === method.code}
-                    onClick={() => onPaymentMethodSelect(method.code)}
-                  >
-                    <PaymentMethodLogo method={method} />
-                    <span className="payment-method-name">{method.label || method.code}</span>
-                  </button>
-                ))}
+              <div
+                className="bundle-payment-modal-backdrop"
+                role="presentation"
+                onMouseDown={(event) => {
+                  if (event.target === event.currentTarget) onPaymentPickerToggle()
+                }}
+              >
+                <div className="bundle-payment-modal" role="dialog" aria-modal="true" aria-labelledby="public-payment-method-title">
+                  <header>
+                    <div>
+                      <small>PEMBAYARAN</small>
+                      <h2 id="public-payment-method-title">Pilih metode pembayaran</h2>
+                      <p>Pilih satu metode. Popup akan tertutup otomatis setelah dipilih.</p>
+                    </div>
+                    <button type="button" aria-label="Tutup pilihan pembayaran" onClick={onPaymentPickerToggle}><Icon name="x" /></button>
+                  </header>
+                  <div className="payment-method-grid public-payment-method-grid" aria-label="Daftar metode pembayaran">
+                    {paymentMethods.map((method) => (
+                      <button
+                        className={`payment-method-option ${form.paymentMethod === method.code ? 'selected' : ''}`}
+                        key={method.code}
+                        type="button"
+                        title={method.label}
+                        aria-label={method.label}
+                        aria-pressed={form.paymentMethod === method.code}
+                        onClick={() => {
+                          onPaymentMethodSelect(method.code)
+                          onPaymentPickerToggle()
+                        }}
+                      >
+                        <PaymentMethodLogo method={method} />
+                        <span className="payment-method-name">{method.label || method.code}</span>
+                      </button>
+                    ))}
+                    {!paymentMethods.length && <p className="payment-method-note">Metode pembayaran belum tersedia.</p>}
+                  </div>
+                </div>
               </div>
             )}
           </>
@@ -292,9 +325,6 @@ function CheckoutProduk({
         )}
         {!isFree && (form.paymentMethod || hasAppliedVoucher) && (
           <>
-            {form.paymentMethod && (
-              <p className="public-checkout-status">Metode dipilih: {selectedMethodLabel}</p>
-            )}
             <div className="payment-breakdown public-checkout-breakdown" aria-live="polite">
               <span>
                 <small>{priceLabelTitle}</small>
