@@ -2543,9 +2543,12 @@ function App() {
     navigateToDashboardMenu(session.role, notification.menuId)
   }
 
-  const handleSaveProfile = ({ name, avatar, email, currentPassword, password }) => {
+  const handleSaveProfile = (
+    { name, avatar, email, currentPassword, password },
+    { closeEditor = true, successMessage = 'Profil berhasil diperbarui.' } = {},
+  ) => {
     if (!session) {
-      return
+      return Promise.resolve(null)
     }
     const nextSession = {
       ...session,
@@ -2554,7 +2557,7 @@ function App() {
       avatar: cleanAvatar(avatar),
     }
 
-    requestJson(profileApiPath, {
+    return requestJson(profileApiPath, {
       method: 'PUT',
       body: JSON.stringify({
         userId: session.userId,
@@ -2577,12 +2580,18 @@ function App() {
 
         saveSession(savedSession)
         setSession(savedSession)
-        setIsProfileEditorOpen(false)
+        if (closeEditor) {
+          setIsProfileEditorOpen(false)
+        }
         announcePeopleSync()
-        showNotice('Profil berhasil diperbarui.')
+        showNotice(successMessage)
+
+        return savedSession
       })
       .catch((error) => {
         showNotice(error.message || 'Profil tidak bisa disimpan.')
+
+        return null
       })
   }
 

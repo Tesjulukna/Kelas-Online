@@ -42,7 +42,23 @@ function ProfileEditor({ session, onClose, onSave, onOpenSecurity, onNotify = ()
       })
 
       setAvatar(data.url)
-      onNotify('Foto profil berhasil diupload.')
+      const savedSession = await onSave(
+        {
+          name: session.name,
+          avatar: data.url,
+          email: session.email || '',
+          currentPassword: '',
+          password: '',
+        },
+        {
+          closeEditor: false,
+          successMessage: 'Foto profil berhasil diupload dan disimpan ke akun.',
+        },
+      )
+
+      if (!savedSession) {
+        setAvatar(session.avatar || '')
+      }
     } catch (error) {
       onNotify(error.message || 'Foto profil tidak bisa diupload.')
     } finally {
