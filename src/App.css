@@ -5614,6 +5614,15 @@ img {
   scrollbar-width: thin;
 }
 
+@media (min-width: 761px) {
+  .course-room-grid > .material-sidebar {
+    position: sticky;
+    top: 88px;
+    max-height: calc(100dvh - 108px);
+    overscroll-behavior: contain;
+  }
+}
+
 .material-list-heading {
   grid-column: 1 / -1;
 }
