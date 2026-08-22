@@ -16,6 +16,7 @@ import { normalizeVoucherCode, validateVoucher } from '../lib/vouchers'
 const TESTIMONIAL_AUTO_DELAY_MS = 5200
 const TESTIMONIAL_MANUAL_PAUSE_MS = 20000
 const TESTIMONIAL_SWIPE_THRESHOLD_PX = 45
+const HOME_CATALOG_BATCH_SIZE = 8
 
 function CatalogCardMedia({ item }) {
   const [isSquare, setIsSquare] = useState(false)
@@ -318,6 +319,11 @@ function HomePage({
   const [isPublicVoucherLoading, setIsPublicVoucherLoading] = useState(false)
   const publicVoucherRequestRef = useRef(0)
   const [searchQuery, setSearchQuery] = useState('')
+  const [visibleCatalogCounts, setVisibleCatalogCounts] = useState({
+    courses: HOME_CATALOG_BATCH_SIZE,
+    products: HOME_CATALOG_BATCH_SIZE,
+    prompts: HOME_CATALOG_BATCH_SIZE,
+  })
 
   const [activeNotification, setActiveNotification] = useState(null)
   const [showNotification, setShowNotification] = useState(false)
@@ -2100,6 +2106,11 @@ function HomePage({
         <div className="catalog-section-list">
           {catalogSections.map((section) => {
             const sectionItems = searchedCatalogItems.filter((item) => item.category === section.category)
+            const visibleCount = catalogPage === 'home'
+              ? visibleCatalogCounts[section.id] || HOME_CATALOG_BATCH_SIZE
+              : sectionItems.length
+            const visibleSectionItems = sectionItems.slice(0, visibleCount)
+            const remainingItems = Math.max(0, sectionItems.length - visibleSectionItems.length)
 
             return (
               <section className="catalog-category-section" id={section.id} key={section.id}>
@@ -2120,7 +2131,7 @@ function HomePage({
                   </aside>
                 </header>
                 <div className="catalog-grid">
-                  {sectionItems.map((item, index) => (
+                  {visibleSectionItems.map((item, index) => (
                     <CatalogItemCard
                       item={item}
                       index={index}
@@ -2136,6 +2147,21 @@ function HomePage({
                     </div>
                   )}
                 </div>
+                {catalogPage === 'home' && remainingItems > 0 && (
+                  <div className="catalog-load-more">
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCatalogCounts((current) => ({
+                        ...current,
+                        [section.id]: (current[section.id] || HOME_CATALOG_BATCH_SIZE) + HOME_CATALOG_BATCH_SIZE,
+                      }))}
+                    >
+                      Muat {Math.min(HOME_CATALOG_BATCH_SIZE, remainingItems)} lainnya
+                      <Icon name="plus" />
+                    </button>
+                    <small>{visibleSectionItems.length} dari {sectionItems.length} ditampilkan</small>
+                  </div>
+                )}
               </section>
             )
           })}
