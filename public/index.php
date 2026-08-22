@@ -180,6 +180,32 @@ function meta_build_payload(): array
                     $type = 'product';
                 }
             }
+
+            if ($route === 'bundling') {
+                $programs = is_array($settings['bundling']['programs'] ?? null)
+                    ? $settings['bundling']['programs']
+                    : [];
+                $bundle = null;
+
+                foreach ($programs as $program) {
+                    if (($program['id'] ?? '') === $publicId && !empty($program['active'])) {
+                        $bundle = $program;
+                        break;
+                    }
+                }
+
+                if ($bundle) {
+                    $title = ($bundle['title'] ?? 'Paket Bundling') . ' - ' . $siteName;
+                    $description = meta_plain_text($bundle['description'] ?? '', 180);
+
+                    if ($description === '') {
+                        $description = 'Dapatkan paket bundling ' . ($bundle['title'] ?? 'pilihan') . ' dari ' . $siteName . '.';
+                    }
+
+                    $image = $bundle['thumbnail'] ?? $image;
+                    $type = 'product';
+                }
+            }
         } catch (Throwable $error) {
             // Keep default homepage metadata if detail data cannot be loaded.
         }

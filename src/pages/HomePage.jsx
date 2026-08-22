@@ -1857,6 +1857,10 @@ function HomePage({
           onBack={closePublicDetail}
           onChoose={openBundleCheckout}
           onCustomChoose={onOpenBundle}
+          onShare={(bundle) => shareItem(
+            bundle.title,
+            bundle.description || `Lihat paket bundling ${bundle.title} di Ibnu Creative.`,
+          )}
         />
         {activityToast}
       </>

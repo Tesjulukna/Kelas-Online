@@ -3378,6 +3378,7 @@ function App() {
   const isPublicCertificatePath = Boolean(publicCertificateId)
   const shouldShowSiteFooter = !isPublicDetailPath && !isPublicCertificatePath && (publicInfoPages.includes(page) || publicCatalogPages.includes(page) || (page === 'home' && !publicDetailTarget))
   const appRoleClass = session?.role ? `role-${session.role}` : 'role-public'
+  const effectivePublicTheme = session?.role === 'admin' ? 'light' : publicTheme
   const appRouteClass = [
     isPublicDetailPath ? 'is-public-detail-route' : '',
     page === 'login' || page === 'resetPassword' ? 'is-login-route' : '',
@@ -3397,8 +3398,8 @@ function App() {
   }
 
   return (
-    <div className={`app-shell ${appRoleClass} ${appRouteClass} public-theme-${publicTheme}`}>
-      {themeAnimation && (
+    <div className={`app-shell ${appRoleClass} ${appRouteClass} public-theme-${effectivePublicTheme}`}>
+      {themeAnimation && session?.role !== 'admin' && (
         <div
           className={`theme-transition-scene ${themeAnimation === 'dark' ? 'is-night' : 'is-day'}`}
           aria-hidden="true"
@@ -3423,7 +3424,7 @@ function App() {
         notifications={notifications}
         unreadNotificationCount={unreadNotificationCount}
         onOpenNotification={openNotificationTarget}
-        publicTheme={publicTheme}
+        publicTheme={effectivePublicTheme}
         onTogglePublicTheme={togglePublicTheme}
       />
       <main>

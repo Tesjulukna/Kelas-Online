@@ -8,7 +8,7 @@ function formatRupiah(value) {
   }).format(Math.max(0, Math.round(Number(value) || 0)))
 }
 
-function DetailBundle({ bundle, items = [], onBack, onChoose, onCustomChoose }) {
+function DetailBundle({ bundle, items = [], onBack, onChoose, onCustomChoose, onShare }) {
   if (!bundle) return null
 
   const isFixed = bundle.priceMode === 'fixed'
@@ -17,7 +17,12 @@ function DetailBundle({ bundle, items = [], onBack, onChoose, onCustomChoose }) 
     <section className="bundle-detail-page">
       <header className="bundle-detail-topbar">
         <button type="button" onClick={onBack}><Icon name="arrowLeft" /> Kembali</button>
-        <span><Icon name="bundle" /> Detail Bundling</span>
+        <div className="bundle-detail-topbar-actions">
+          <span><Icon name="bundle" /> Detail Bundling</span>
+          <button type="button" onClick={() => onShare?.(bundle)} aria-label={`Bagikan ${bundle.title}`}>
+            <Icon name="share" /> Bagikan
+          </button>
+        </div>
       </header>
 
       <div className="bundle-detail-hero">
