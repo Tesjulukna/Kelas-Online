@@ -130,12 +130,9 @@ function meta_build_payload(): array
     $segments = array_values(array_filter(explode('/', trim($path, '/'))));
     $title = $siteTitle;
     $description = $siteDescription;
-    $image = $settings['brandLogo'] ?? '';
+    // Favicon is only for browsers. Social crawlers need a public raster image.
+    $image = '/og-default.png';
     $type = 'website';
-
-    if ($image === '' && !empty($settings['hero']['backgroundImage'])) {
-        $image = $settings['hero']['backgroundImage'];
-    }
 
     if (isset($pdo) && $pdo instanceof PDO && count($segments) >= 2) {
         $route = strtolower($segments[0]);
@@ -215,14 +212,16 @@ function meta_build_payload(): array
         $description = 'Platform kelas online dan produk digital dari ' . $siteName . '.';
     }
 
-    if ($image === '') {
-        $image = '/og-default.png';
-    }
+    $image = meta_absolute_url($image);
+    $usesDefaultImage = preg_match('#/og-default\\.png(?:$|[?#])#i', $image) === 1;
 
     return [
         'title' => meta_plain_text($title, 120) ?: $siteName,
         'description' => meta_plain_text($description, 220),
-        'image' => meta_absolute_url($image),
+        'image' => $image,
+        'imageType' => $usesDefaultImage ? 'image/png' : '',
+        'imageWidth' => $usesDefaultImage ? '1717' : '',
+        'imageHeight' => $usesDefaultImage ? '916' : '',
         'url' => meta_origin() . ($_SERVER['REQUEST_URI'] ?? '/'),
         'siteName' => $siteName,
         'type' => $type,
@@ -250,11 +249,16 @@ $metaTags = implode("\n    ", [
     '<meta property="og:description" content="' . meta_escape($meta['description']) . '" />',
     '<meta property="og:image" content="' . meta_escape($meta['image']) . '" />',
     '<meta property="og:image:secure_url" content="' . meta_escape($meta['image']) . '" />',
+    $meta['imageType'] !== '' ? '<meta property="og:image:type" content="' . meta_escape($meta['imageType']) . '" />' : '',
+    $meta['imageWidth'] !== '' ? '<meta property="og:image:width" content="' . meta_escape($meta['imageWidth']) . '" />' : '',
+    $meta['imageHeight'] !== '' ? '<meta property="og:image:height" content="' . meta_escape($meta['imageHeight']) . '" />' : '',
+    '<meta property="og:image:alt" content="' . meta_escape($meta['title']) . '" />',
     '<meta property="og:url" content="' . meta_escape($meta['url']) . '" />',
     '<meta name="twitter:card" content="summary_large_image" />',
     '<meta name="twitter:title" content="' . meta_escape($meta['title']) . '" />',
     '<meta name="twitter:description" content="' . meta_escape($meta['description']) . '" />',
     '<meta name="twitter:image" content="' . meta_escape($meta['image']) . '" />',
+    '<meta name="twitter:image:alt" content="' . meta_escape($meta['title']) . '" />',
 ]);
 
 $html = preg_replace('/<title>.*?<\/title>/is', '<title>' . meta_escape($meta['title']) . '</title>', $html, 1) ?? $html;
