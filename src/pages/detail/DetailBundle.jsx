@@ -33,7 +33,7 @@ function DetailBundle({ bundle, items = [], onBack, onChoose, onCustomChoose, on
         <div className="bundle-detail-copy">
           <p className="eyebrow">{isFixed ? 'PAKET HARGA TETAP' : 'BUNDLING CUSTOM'}</p>
           <h1>{bundle.title}</h1>
-          <p>{bundle.description}</p>
+          <p className="bundle-detail-description">{bundle.description}</p>
           <div className="bundle-detail-price">
             <span>
               <small>{isFixed ? 'Harga paket' : 'Potongan bundling'}</small>

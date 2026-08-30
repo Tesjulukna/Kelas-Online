@@ -29,6 +29,8 @@ function FeaturedBundleSection({
     return null
   }
 
+  const hasMultiplePackages = fixedPrograms.length + (percentProgram ? 1 : 0) > 1
+
   return (
     <section className="catalog-featured-bundles" aria-label={title}>
       <header className="catalog-featured-heading">
@@ -42,6 +44,13 @@ function FeaturedBundleSection({
           Unggulan
         </span>
       </header>
+
+      {hasMultiplePackages && (
+        <p className="bundle-swipe-hint" aria-hidden="true">
+          <span>Geser untuk lihat paket lainnya</span>
+          <Icon name="arrowRight" />
+        </p>
+      )}
 
       <div className="homepage-bundle-grid catalog-featured-bundle-grid">
         {fixedPrograms.map((program) => {
