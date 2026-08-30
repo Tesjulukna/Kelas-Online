@@ -3361,6 +3361,17 @@ function MemberPage({
             <article className="empty-state"><Icon name="wallet" /><h3>Bundling sedang tidak aktif</h3><p>Admin akan mengaktifkannya kembali saat tersedia.</p></article>
           ) : (
             <>
+            {percentBundlePrograms.length > 0 && <div className="bundle-type-heading"><span><Icon name="spark" /></span><div><h3>Bundling custom dengan diskon persen</h3><p>Pilih sendiri item yang kamu mau. Total dan potongan dihitung otomatis.</p></div></div>}
+            <div className="bundle-program-picker">
+              {percentBundlePrograms.map((program) => (
+                <button type="button" key={program.id} className={selectedBundleProgram?.id === program.id ? 'active' : ''} onClick={() => { setSelectedBundleProgramId(program.id); setBundleItemKeys([]); setIsPercentBundleModalOpen(true) }}>
+                  <span>{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}</span>
+                  <p><small>Bundling custom</small><strong>Diskon {program.discountPercent}%</strong><em>Tentukan Pilihanmu</em></p>
+                  <Icon name="arrowRight" />
+                </button>
+              ))}
+              {!memberBundlePrograms.length && <div className="bundle-program-empty"><Icon name="wallet" /><h3>Belum ada bundling aktif</h3><p>Program bundling dari admin akan muncul di sini.</p></div>}
+            </div>
             {fixedBundlePrograms.length > 0 && (
               <section className="member-fixed-packages">
                 <div className="bundle-type-heading"><span><Icon name="wallet" /></span><div><h3>Paket harga tetap</h3><p>Isi dan harga paket sudah ditentukan admin. Tinggal pilih lalu bayar.</p></div></div>
@@ -3373,8 +3384,8 @@ function MemberPage({
                     const packagePrice = Math.max(0, Math.round(Number(program.fixedPrice) || 0))
                     return (
                       <article key={program.id}>
-                        <span className="member-fixed-package-image">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}<small>{program.badge}</small></span>
-                        <div><h3>{program.title}</h3><p>{program.description}</p><div className="fixed-package-items">{packageItems.slice(0, 4).map((item) => <span key={item.key}><Icon name={item.itemType === 'class' ? 'bookOpen' : item.productType === 'prompt' ? 'spark' : 'download'} /> {item.title}{item.owned ? ' (dimiliki)' : ''}</span>)}</div></div>
+                        <span className="member-fixed-package-image">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}</span>
+                        <div><small className="member-fixed-package-badge">{program.badge}</small><h3>{program.title}</h3><p>{program.description}</p><div className="fixed-package-items">{packageItems.slice(0, 4).map((item) => <span key={item.key}><Icon name={item.itemType === 'class' ? 'bookOpen' : item.productType === 'prompt' ? 'spark' : 'download'} /> {item.title}{item.owned ? ' (dimiliki)' : ''}</span>)}</div></div>
                         <footer><span><small>Harga paket</small><strong>{formatRupiah(packagePrice)}</strong></span><div className="button-row"><button className="btn btn-secondary" type="button" onClick={() => onOpenPublicBundleDetail?.(program)}>Detail</button><button className="btn btn-primary" type="button" disabled={!purchasableItems.length} onClick={() => openPaymentMethodPopup({ id: `fixed-${program.id}`, title: program.title, price: packagePrice, itemType: 'bundle', bundleProgramId: program.id, bundleItems: purchasableItems.map((item) => ({ type: item.itemType, id: item.id })) }, { itemType: 'bundle' })}>{purchasableItems.length ? 'Beli paket' : 'Sudah dimiliki'} <Icon name="arrowRight" /></button></div></footer>
                       </article>
                     )
@@ -3382,17 +3393,6 @@ function MemberPage({
                 </div>
               </section>
             )}
-            {percentBundlePrograms.length > 0 && <div className="bundle-type-heading"><span><Icon name="spark" /></span><div><h3>Bundling custom dengan diskon persen</h3><p>Pilih sendiri item yang kamu mau. Total dan potongan dihitung otomatis.</p></div></div>}
-            <div className="bundle-program-picker">
-              {percentBundlePrograms.map((program) => (
-                <button type="button" key={program.id} className={selectedBundleProgram?.id === program.id ? 'active' : ''} onClick={() => { setSelectedBundleProgramId(program.id); setBundleItemKeys([]); setIsPercentBundleModalOpen(true) }}>
-                  <span>{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}</span>
-                  <p><small>Bundling custom</small><strong>Diskon {program.discountPercent}%</strong><em>Tentukan Pilihanmu</em></p>
-                  <Icon name="arrowRight" />
-                </button>
-              ))}
-              {!memberBundlePrograms.length && <div className="bundle-program-empty"><Icon name="wallet" /><h3>Belum ada bundling aktif</h3><p>Program bundling dari admin akan muncul di sini.</p></div>}
-            </div>
             {selectedBundleProgram && isPercentBundleModalOpen && <div className="member-bundle-modal-backdrop" role="presentation">
             <section className="member-bundle-picker-modal" role="dialog" aria-modal="true" aria-label="Tentukan pilihan bundling">
               <header><div><p className="eyebrow">Bundling diskon {bundlePercent}%</p><h2>Tentukan Pilihanmu</h2><span>Pilih minimal {bundleMinimumItems} item. Total dihitung otomatis.</span></div><button type="button" aria-label="Tutup pilihan bundling" onClick={() => setIsPercentBundleModalOpen(false)}><Icon name="x" /></button></header>

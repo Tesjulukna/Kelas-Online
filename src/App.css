@@ -23900,9 +23900,9 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
 .member-fixed-package-grid > article { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 19px; background: #fff; box-shadow: 0 12px 30px rgb(15 23 42 / 7%); }
 .member-fixed-package-image { position: relative; display: grid; place-items: center; width: 100%; height: auto; aspect-ratio: 16 / 9; color: #2563eb; background: linear-gradient(135deg,#dbeafe,#ecfeff); }
 .member-fixed-package-image img { width: 100%; height: 100%; object-fit: cover; }
-.member-fixed-package-image > small { position: absolute; left: 12px; top: 12px; padding: 5px 8px; border-radius: 8px; color: #1e3a8a; background: rgb(255 255 255 / 92%); font-weight: 800; }
 .member-fixed-package-grid article > div { padding: 15px; }
 .member-fixed-package-grid h3,.member-fixed-package-grid p { margin: 0; }
+.member-fixed-package-badge { display: inline-flex; width: fit-content; margin-bottom: 7px; padding: 4px 8px; border-radius: 7px; color: #1e3a8a; background: #dbeafe; font-size: .68rem; font-weight: 800; line-height: 1.2; }
 .member-fixed-package-grid article > div > p { margin-top: 5px; color: #64748b; font-size: .8rem; }
 .fixed-package-items { display: grid; gap: 5px; margin-top: 12px; }
 .fixed-package-items span { display: flex; align-items: center; gap: 6px; overflow: hidden; color: #475569; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
