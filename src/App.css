@@ -19734,6 +19734,41 @@ img {
   box-shadow: none !important;
 }
 
+.app-shell.role-member.public-theme-dark .task-answer-field {
+  border-color: rgba(96, 165, 250, 0.32);
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.24), rgba(8, 17, 31, 0.82));
+}
+
+.app-shell.role-member.public-theme-dark .task-answer-field > header > span {
+  color: #dbeafe;
+  background: #1d4ed8;
+}
+
+.app-shell.role-member.public-theme-dark .task-answer-field > header strong,
+.app-shell.role-member.public-theme-dark .task-answer-field label > span {
+  color: #dbeafe;
+}
+
+.app-shell.role-member.public-theme-dark .task-answer-field > header small {
+  color: #a9c5e8;
+}
+
+.app-shell.role-member.public-theme-dark .task-answer-field textarea {
+  color: #eef6ff;
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(8, 17, 31, 0.86);
+  box-shadow: 0 0 0 3px rgb(30 64 175 / 24%);
+}
+
+.app-shell.role-member.public-theme-dark .task-answer-field textarea:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 4px rgb(96 165 250 / 18%);
+}
+
+.app-shell.role-member.public-theme-dark .task-answer-field > p {
+  color: #93c5fd;
+}
+
 .app-shell.role-member.public-theme-dark .available-payment-action .btn-secondary:hover,
 .app-shell.role-member.public-theme-dark .digital-product-card .member-class-button.btn-secondary:hover,
 .app-shell.role-member.public-theme-dark .member-class-button.btn-secondary:hover,
