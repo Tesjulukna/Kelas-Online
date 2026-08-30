@@ -191,17 +191,19 @@ if ($subtotal < clean_number($bundleRules['minimumSubtotal'] ?? 0, 0, 1000000000
 }
 
 $discountMode = clean_text($bundleProgram['priceMode'] ?? 'fixed', 20);
+$isFixedPackage = $discountMode === 'fixed';
+$fixedPackagePrice = clean_number($bundleProgram['fixedPrice'] ?? 0, 0, 1000000000);
 $discountPercent = clean_number($bundleProgram['discountPercent'] ?? 0, 0, 100);
-$discount = $discountMode === 'fixed'
-    ? max(0, $subtotal - clean_number($bundleProgram['fixedPrice'] ?? 0, 0, 1000000000))
+$discount = $isFixedPackage
+    ? max(0, $subtotal - $fixedPackagePrice)
     : (int) round($subtotal * $discountPercent / 100);
 $maximumDiscount = clean_number($bundleProgram['maximumDiscount'] ?? 0, 0, 1000000000);
 
-if ($maximumDiscount > 0) {
+if (!$isFixedPackage && $maximumDiscount > 0) {
     $discount = min($discount, $maximumDiscount);
 }
 
-$amount = max(0, $subtotal - $discount);
+$amount = $isFixedPackage ? $fixedPackagePrice : max(0, $subtotal - $discount);
 $subtotalBeforeVoucher = $amount;
 $bundleTitle = clean_text($bundleProgram['title'] ?? 'Paket Bundling', 180);
 

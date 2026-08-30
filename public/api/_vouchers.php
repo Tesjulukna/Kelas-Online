@@ -438,14 +438,16 @@ function voucher_context_from_request(PDO $pdo, array $input, ?array $currentUse
     $minimum = ($program['priceMode'] ?? '') === 'fixed' ? 1 : clean_number($program['minimumItems'] ?? 1, 1, 50);
     if (count($items) < $minimum) throw new VoucherException('Item bundling yang memenuhi syarat belum cukup.', 'voucher_bundle_items_invalid');
     if ($subtotal < clean_number($rules['minimumSubtotal'] ?? 0, 0, 1000000000)) throw new VoucherException('Subtotal bundling belum memenuhi batas minimal.', 'voucher_bundle_minimum_not_met');
-    $bundleDiscount = ($program['priceMode'] ?? '') === 'fixed'
-        ? max(0, $subtotal - clean_number($program['fixedPrice'] ?? 0, 0, 1000000000))
+    $isFixedPackage = ($program['priceMode'] ?? '') === 'fixed';
+    $fixedPackagePrice = clean_number($program['fixedPrice'] ?? 0, 0, 1000000000);
+    $bundleDiscount = $isFixedPackage
+        ? max(0, $subtotal - $fixedPackagePrice)
         : (int) round($subtotal * clean_number($program['discountPercent'] ?? 0, 0, 100) / 100);
     $maximum = clean_number($program['maximumDiscount'] ?? 0, 0, 1000000000);
-    if ($maximum > 0) $bundleDiscount = min($bundleDiscount, $maximum);
+    if (!$isFixedPackage && $maximum > 0) $bundleDiscount = min($bundleDiscount, $maximum);
     return [
         'orderType' => 'bundle', 'targetType' => 'bundles', 'primaryId' => $bundleProgramId,
-        'subtotal' => max(0, $subtotal - $bundleDiscount), 'originalSubtotal' => $originalSubtotal,
+        'subtotal' => $isFixedPackage ? $fixedPackagePrice : max(0, $subtotal - $bundleDiscount), 'originalSubtotal' => $originalSubtotal,
         'hasSale' => $hasSale, 'hasBundleDiscount' => $bundleDiscount > 0,
         'bundleSubtotal' => $subtotal, 'bundleDiscount' => $bundleDiscount,
         'memberId' => $memberId, 'buyerEmail' => $buyerEmail, 'items' => $items,

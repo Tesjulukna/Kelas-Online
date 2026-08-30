@@ -3368,17 +3368,14 @@ function MemberPage({
                   {fixedBundlePrograms.map((program) => {
                     const packageItems = getBundleProgramItems(program)
                     const purchasableItems = packageItems.filter((item) => !item.owned)
-                    const remainingSubtotal = purchasableItems.reduce((total, item) => total + getCheckoutAmount(item), 0)
-                    const rawPackageDiscount = Math.max(0, remainingSubtotal - Math.max(0, Number(program.fixedPrice) || 0))
-                    const packageDiscount = program.maximumDiscount > 0
-                      ? Math.min(rawPackageDiscount, program.maximumDiscount)
-                      : rawPackageDiscount
-                    const remainingPackageTotal = Math.max(0, remainingSubtotal - packageDiscount)
+                    // Harga paket tetap adalah nominal final yang ditentukan admin.
+                    // Jangan dihitung ulang dari harga item/promo agar kartu dan checkout konsisten.
+                    const packagePrice = Math.max(0, Math.round(Number(program.fixedPrice) || 0))
                     return (
                       <article key={program.id}>
                         <span className="member-fixed-package-image">{program.thumbnail ? <img src={program.thumbnail} alt="" /> : <Icon name="wallet" />}<small>{program.badge}</small></span>
                         <div><h3>{program.title}</h3><p>{program.description}</p><div className="fixed-package-items">{packageItems.slice(0, 4).map((item) => <span key={item.key}><Icon name={item.itemType === 'class' ? 'bookOpen' : item.productType === 'prompt' ? 'spark' : 'download'} /> {item.title}{item.owned ? ' (dimiliki)' : ''}</span>)}</div></div>
-                        <footer><span><small>{purchasableItems.length < packageItems.length ? 'Harga item tersisa' : 'Harga paket'}</small><strong>{formatRupiah(remainingPackageTotal)}</strong></span><div className="button-row"><button className="btn btn-secondary" type="button" onClick={() => onOpenPublicBundleDetail?.(program)}>Detail</button><button className="btn btn-primary" type="button" disabled={!purchasableItems.length} onClick={() => openPaymentMethodPopup({ id: `fixed-${program.id}`, title: program.title, price: remainingPackageTotal, itemType: 'bundle', bundleProgramId: program.id, bundleItems: purchasableItems.map((item) => ({ type: item.itemType, id: item.id })) }, { itemType: 'bundle' })}>{purchasableItems.length ? 'Beli paket' : 'Sudah dimiliki'} <Icon name="arrowRight" /></button></div></footer>
+                        <footer><span><small>Harga paket</small><strong>{formatRupiah(packagePrice)}</strong></span><div className="button-row"><button className="btn btn-secondary" type="button" onClick={() => onOpenPublicBundleDetail?.(program)}>Detail</button><button className="btn btn-primary" type="button" disabled={!purchasableItems.length} onClick={() => openPaymentMethodPopup({ id: `fixed-${program.id}`, title: program.title, price: packagePrice, itemType: 'bundle', bundleProgramId: program.id, bundleItems: purchasableItems.map((item) => ({ type: item.itemType, id: item.id })) }, { itemType: 'bundle' })}>{purchasableItems.length ? 'Beli paket' : 'Sudah dimiliki'} <Icon name="arrowRight" /></button></div></footer>
                       </article>
                     )
                   })}

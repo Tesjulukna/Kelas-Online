@@ -103,16 +103,18 @@ if ($checkoutType === 'bundle') {
         send_json(422, ['message' => 'Subtotal bundling belum memenuhi batas minimal.']);
     }
     $discountMode = clean_text($bundleProgram['priceMode'] ?? 'fixed', 20);
+    $isFixedPackage = $discountMode === 'fixed';
+    $fixedPackagePrice = clean_number($bundleProgram['fixedPrice'] ?? 0, 0, 1000000000);
     $discountPercent = clean_number($bundleProgram['discountPercent'] ?? 0, 0, 100);
-    $discount = $discountMode === 'fixed'
-        ? max(0, $subtotal - clean_number($bundleProgram['fixedPrice'] ?? 0, 0, 1000000000))
+    $discount = $isFixedPackage
+        ? max(0, $subtotal - $fixedPackagePrice)
         : (int) round($subtotal * $discountPercent / 100);
     $maximumDiscount = clean_number($bundleProgram['maximumDiscount'] ?? 0, 0, 1000000000);
-    if ($maximumDiscount > 0) $discount = min($discount, $maximumDiscount);
+    if (!$isFixedPackage && $maximumDiscount > 0) $discount = min($discount, $maximumDiscount);
     $checkoutItem = [
         'id' => 'custom-bundle',
         'title' => clean_text($bundleProgram['title'] ?? 'Custom Bundling', 180),
-        'price' => max(0, $subtotal - $discount),
+        'price' => $isFixedPackage ? $fixedPackagePrice : max(0, $subtotal - $discount),
         'sale_price' => 0,
         'bundle_items' => $bundleItems,
         'bundle_subtotal' => $subtotal,
