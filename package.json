@@ -9,6 +9,7 @@
     "dev:full": "node scripts/dev-full.mjs",
     "api": "node server.mjs",
     "build": "vite build && node scripts/copy-security-files.mjs",
+    "generate:favicons": "node scripts/generate-favicon-raster.mjs",
     "test": "node --test tests/*.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview"

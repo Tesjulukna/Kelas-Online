@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url'
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const files = [
   ['public/.htaccess', 'dist/.htaccess'],
+  ['public/favicon-32.png', 'dist/favicon-32.png'],
+  ['public/favicon.ico', 'dist/favicon.ico'],
+  ['public/apple-touch-icon.png', 'dist/apple-touch-icon.png'],
 ]
 
 await Promise.all(
