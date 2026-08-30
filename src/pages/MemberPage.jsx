@@ -4,6 +4,7 @@ import DashboardShell from '../components/DashboardShell'
 import FeaturedBundleSection from '../components/FeaturedBundleSection'
 import Icon from '../components/Icon'
 import MetricCard from '../components/MetricCard'
+import TaskAnswerField from '../components/TaskAnswerField'
 import UploadProgress from '../components/UploadProgress'
 import VoucherCodeField from '../components/VoucherCodeField'
 import { memberMenuItems } from '../data/platformData'
@@ -2832,15 +2833,10 @@ function MemberPage({
                               <mark>{activeServerSubmission.status}</mark>
                             </div>
                           )}
-                          <label>
-                          Link atau catatan tugas
-                          <textarea
+                          <TaskAnswerField
                             value={taskDraft}
                             onChange={(event) => setTaskDraft(event.target.value)}
-                            placeholder="Tempel link Google Drive, YouTube, Instagram, atau tulis catatan tugas..."
-                            rows="4"
-                          ></textarea>
-                          </label>
+                          />
                           {isTaskImageAllowed && (
                           <div className="task-upload-box">
                             <label className="upload-control">
