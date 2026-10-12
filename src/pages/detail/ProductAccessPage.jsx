@@ -175,6 +175,12 @@ function ProductAccessPage({
                     <pre>{delivery.accountCredentials.password}</pre>
                     <button className="btn btn-secondary" type="button" onClick={() => handleCopyPrompt(delivery.accountCredentials.password, 'Password')}>Salin Password</button>
                     {copyStatus && <small role="status">{copyStatus}</small>}
+                    {delivery.accountCredentials.productUrl && (
+                      <a className="btn btn-primary" href={delivery.accountCredentials.productUrl} target="_blank" rel="noreferrer">
+                        {delivery.accountCredentials.fileName || 'Buka Link Produk'}
+                        <Icon name="arrowRight" />
+                      </a>
+                    )}
                   </>
                 ) : (
                   <>

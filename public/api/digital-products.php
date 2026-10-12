@@ -61,8 +61,6 @@ try {
             $product['itemQuantity'] = (int) $countQuery->fetchColumn();
             $product['allowRepeatPurchase'] = true;
             $product['autoCreateMember'] = true;
-            $product['fileUrl'] = '';
-            $product['platformType'] = 'account';
         } elseif ($hasInventory) {
             throw new InvalidArgumentException('Produk dengan stok akun tidak dapat diubah menjadi jenis produk lain.');
         }

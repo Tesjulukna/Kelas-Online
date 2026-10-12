@@ -417,7 +417,7 @@ function send_digital_product_delivery_email(array $order): array
     $credentials = $isAccount && is_array($order['accountCredentials'] ?? null) ? $order['accountCredentials'] : null;
     // Account emails are sent only by the durable stock delivery queue.
     if ($isAccount && !$credentials) {
-        $orderId = rawurldecode(basename(parse_url($downloadUrl, PHP_URL_PATH) ?: ''));
+        $orderId = $order['accessOrderId'] ?? rawurldecode(basename(parse_url($downloadUrl, PHP_URL_PATH) ?: ''));
         if ($orderId !== '' && function_exists('account_stock_dispatch') && !db()->inTransaction()) {
             return account_stock_dispatch(db(), $orderId);
         }
@@ -429,6 +429,7 @@ function send_digital_product_delivery_email(array $order): array
         . "{$itemLabel}: {$order['productTitle']}\n"
         . ($downloadUrl ? "Link akses: {$downloadUrl}\n" : '')
         . ($credentials ? "Email/username: {$credentials['username']}\nPassword: {$credentials['password']}\n" : '')
+        . (!empty($credentials['productUrl']) ? "Link produk: {$credentials['productUrl']}\n" . (!empty($credentials['fileName']) ? "Nama file: {$credentials['fileName']}\n" : '') : '')
         . ($deliveryNote ? "Catatan akses:\n{$deliveryNote}\n" : '')
         . "\nSimpan email ini untuk mengakses produk Anda kembali.\n\nIbnuCreative Academy";
     $button = $downloadUrl
@@ -441,6 +442,7 @@ function send_digital_product_delivery_email(array $order): array
         . '<p><strong>' . email_escape($itemLabel) . ':</strong> ' . email_escape($order['productTitle'] ?? $itemLabel) . '</p>'
         . $button
         . ($credentials ? '<p><strong>Email/username:</strong><br>' . email_escape($credentials['username']) . '</p><p><strong>Password:</strong><br><span style="white-space:pre-wrap">' . email_escape($credentials['password']) . '</span></p>' : '')
+        . (!empty($credentials['productUrl']) ? '<p><strong>Link produk:</strong><br><a href="' . email_escape($credentials['productUrl']) . '">' . email_escape($credentials['fileName'] ?: $credentials['productUrl']) . '</a></p>' : '')
         . ($downloadUrl ? '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($downloadUrl) . '">' . email_escape($downloadUrl) . '</a></p>' : '')
         . ($deliveryNote ? '<p><strong>Catatan akses:</strong><br>' . email_escape_breaks($deliveryNote) . '</p>' : '')
         . '<p>IbnuCreative Academy</p>'

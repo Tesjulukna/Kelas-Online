@@ -46,6 +46,9 @@ $pdo->exec('CREATE TABLE digital_products (id TEXT PRIMARY KEY, product_type TEX
 $pdo->exec('CREATE TABLE digital_product_access (id TEXT PRIMARY KEY, product_id TEXT, product_title TEXT, member_id TEXT, buyer_name TEXT, buyer_email TEXT, source TEXT, order_id TEXT, status TEXT, download_url TEXT)');
 account_stock_ensure_schema($pdo);
 $pdo->exec("INSERT INTO digital_products VALUES ('accounts', 'account', 'Produk Akun', 1, 0, '')");
+$pdo->exec('ALTER TABLE digital_products ADD file_url TEXT');
+$pdo->exec('ALTER TABLE digital_products ADD file_name TEXT');
+$pdo->exec("UPDATE digital_products SET file_url = 'https://example.test/link-produk', file_name = 'Panduan akun'");
 $source = ['product_id' => 'accounts', 'spreadsheet_id' => 'spreadsheet-test-id', 'sheet_tab' => "Stok O'Brien"];
 $query = $pdo->prepare('INSERT INTO account_product_sources (product_id, spreadsheet_id, sheet_tab) VALUES (?, ?, ?)');
 $query->execute(array_values($source));
@@ -127,6 +130,8 @@ account_stock_dispatch($pdo, 'paid-order-1', $send, $sheetUnavailable);
 account_stock_dispatch($pdo, 'paid-order-1', $send, $sheetUnavailable);
 check(count($messages) === 2, 'Email sukses tidak boleh dikirim kembali.');
 check($messages[0] === $messages[1] && $messages[0]['accountCredentials']['password'] === $sheet[1][2], 'Retry harus mengirim akun dan payload yang sama.');
+check($messages[0]['accountCredentials']['productUrl'] === 'https://example.test/link-produk' && $messages[0]['accountCredentials']['fileName'] === 'Panduan akun', 'Link produk dan nama file harus ikut bersama akun dalam email.');
+check(account_stock_delivery($pdo, 'paid-order-1', 'accounts', $owner)['productUrl'] === 'https://example.test/link-produk', 'Link produk tersedia bersama kredensial di halaman akses pembeli.');
 check($pdo->query("SELECT status FROM product_account_stock WHERE order_id = 'paid-order-1'")->fetchColumn() === 'sold', 'Google offline tidak boleh membatalkan penjualan.');
 $pdo->exec("CREATE TRIGGER fail_access BEFORE INSERT ON digital_product_access BEGIN SELECT RAISE(ABORT, 'test access insert failure'); END");
 rejects(fn() => commerce_grant_digital_product_access($pdo, array_merge($args, ['orderId' => 'broken-order'])), 'Gagal membuat akses harus menggagalkan penjualan.');

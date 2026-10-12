@@ -387,6 +387,7 @@ if ($amount <= 0 && $voucherCalculation) {
         ]);
     } elseif ($checkoutType === 'digital_product') {
         $emailResult = send_digital_product_delivery_email([
+            'accessOrderId' => $response['accessOrderId'] ?? '',
             'buyerName' => $member['name'] ?? 'Member',
             'buyerEmail' => $buyerEmail,
             'productTitle' => $checkoutItem['title'] ?? 'Produk digital',
@@ -426,6 +427,7 @@ if ($amount <= 0) {
             'orderId' => $orderCode,
         ]);
         send_digital_product_delivery_email([
+            'accessOrderId' => $accessResult['access']['order_id'] ?? $orderCode,
             'buyerName' => $member['name'] ?? 'Member',
             'buyerEmail' => $member['email'] ?? '',
             'productTitle' => $checkoutItem['title'] ?? 'Produk digital',

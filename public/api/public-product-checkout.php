@@ -72,6 +72,7 @@ if ($amount <= 0 && $voucherCode === '') {
     $productType = clean_text($product['product_type'] ?? 'digital', 40);
     $accessUrl = commerce_public_product_access_url($accessResult['access']['order_id'] ?? $freeOrderId, $productType);
     $emailResult = send_digital_product_delivery_email([
+        'accessOrderId' => $accessResult['access']['order_id'] ?? '',
         'buyerName' => $buyerName,
         'buyerEmail' => $buyerEmail,
         'productTitle' => $product['title'] ?? 'Produk digital',
@@ -210,6 +211,7 @@ if ($voucherCalculation && $amount <= 0) {
     $productType = clean_text($product['product_type'] ?? 'digital', 40);
     $accessUrl = commerce_public_product_access_url($accessResult['access']['order_id'] ?? $merchantRef, $productType);
     $emailResult = send_digital_product_delivery_email([
+        'accessOrderId' => $accessResult['access']['order_id'] ?? '',
         'buyerName' => $buyerName,
         'buyerEmail' => $buyerEmail,
         'productTitle' => $product['title'] ?? 'Produk digital',

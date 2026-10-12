@@ -47,7 +47,7 @@ Impor [template CSV](public/templates/account-stock.csv) ke tab pilihan. Kolom A
 1. Admin → Produk Digital → Tambah Produk → **Produk Akun**.
 2. Tempel link Spreadsheet. Saat fokus berpindah dari kolom, tab otomatis dideteksi. Tombol **Deteksi Tab Spreadsheet** dapat dipakai untuk mencoba ulang.
 3. Pilih tab stok dari daftar. Jika hanya ada satu tab data, tab tersebut otomatis dipilih.
-4. Isi judul, thumbnail, harga, dan catatan penggunaan. Simpan produk: website mengimpor stok setelah produk tersimpan.
+4. Isi judul, thumbnail, harga, dan catatan penggunaan. Bagian **Platform** juga dapat diisi link produk dan nama file; link tersebut disertakan bersama akun di email dan halaman akses pembeli. Simpan produk: website mengimpor stok setelah produk tersimpan.
 5. Untuk menambah atau memperbarui stok, edit Sheet, lalu buka Edit Produk → **Sinkronkan Stok Tersimpan**. Sinkronisasi memakai sumber terakhir yang sudah disimpan.
 
 Jumlah stok dihitung dari akun yang dapat dipesan. Akun ditahan saat invoice dibuat agar tidak dipesan pembeli lain. Pembayaran sukses mengubahnya menjadi terjual; gagal/kedaluwarsa mengembalikannya ke stok. Sinkronisasi tidak akan mengaktifkan kembali akun yang sudah terjual, meskipun status di Sheet dikembalikan ke `available`.

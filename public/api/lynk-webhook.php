@@ -1643,6 +1643,7 @@ foreach ($productIds as $productId) {
         );
 
         $productEmailResults[] = send_digital_product_delivery_email([
+            'accessOrderId' => $accessResult['access']['order_id'] ?? '',
             'buyerName' => $buyerName ?: 'Pembeli Lynk.id',
             'buyerEmail' => $buyerEmail,
             'productTitle' => $accessResult['product']['title'] ?? 'Produk digital',

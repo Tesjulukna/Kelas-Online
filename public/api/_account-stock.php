@@ -317,9 +317,11 @@ function account_stock_assign(PDO $pdo, string $productId, string $orderId, stri
         $row = $query->fetch();
     }
     if (!$row || !in_array($row['status'], ['available', 'reserved'], true)) throw new RuntimeException('Stok akun belum tersedia untuk pesanan ini. Tambahkan stok lalu proses ulang pembayaran.');
-    account_stock_decrypt($row['credentials']); // Fail before committing if the server key is wrong.
-    $update = $pdo->prepare("UPDATE product_account_stock SET status = 'sold', order_id = ?, buyer_email = ?, product_title = ?, delivery_note = ?, delivery_url = ?, sold_at = CURRENT_TIMESTAMP, reserved_until = NULL WHERE id = ?");
-    $update->execute([$orderId, $buyerEmail, $product['title'], $product['delivery_note'] ?? '', commerce_public_product_access_url($orderId, 'account'), $row['id']]);
+    $credentials = account_stock_decrypt($row['credentials']);
+    $credentials['productUrl'] = clean_asset_url($product['file_url'] ?? '', 1000);
+    $credentials['fileName'] = (string) ($product['file_name'] ?? '');
+    $update = $pdo->prepare("UPDATE product_account_stock SET status = 'sold', order_id = ?, buyer_email = ?, product_title = ?, delivery_note = ?, delivery_url = ?, credentials = ?, sold_at = CURRENT_TIMESTAMP, reserved_until = NULL WHERE id = ?");
+    $update->execute([$orderId, $buyerEmail, $product['title'], $product['delivery_note'] ?? '', commerce_public_product_access_url($orderId, 'account'), account_stock_encrypt($credentials), $row['id']]);
     account_stock_refresh_count($pdo, $productId);
     return array_merge($row, ['status' => 'sold', 'order_id' => $orderId, 'buyer_email' => $buyerEmail]);
 }

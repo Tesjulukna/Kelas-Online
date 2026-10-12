@@ -2402,7 +2402,6 @@ function AdminPage({
       payload.itemQuantityEnabled = true
       payload.allowRepeatPurchase = true
       payload.autoCreateMember = true
-      payload.fileUrl = ''
     }
 
     if (payload.productType === 'prompt' && !payload.promptItems.length) {
@@ -4836,12 +4835,13 @@ function AdminPage({
                     </div>
                   )}
 
-                  {isAccountBuilder ? (
+                  {isAccountBuilder && (
                     <AccountStockFields key={editingDigitalProductId || 'new-account'} form={digitalProductForm}
                       productId={editingDigitalProductId} onDetect={onDetectAccountSheets} onSync={onSyncAccountStock}
                       onBusyChange={setIsAccountSheetBusy}
                       onChange={(patch) => setDigitalProductForm((current) => ({ ...current, ...patch }))} />
-                  ) : <div className="digital-platform-box">
+                  )}
+                  <div className="digital-platform-box">
                     <div className="digital-builder-card-heading compact">
                       <h3>Platform</h3>
                       <small>Tempat file atau akses produk disimpan.</small>
@@ -4873,7 +4873,7 @@ function AdminPage({
                       onChange={handleDigitalProductFormChange}
                       placeholder="Nama file, contoh: template-canva.zip"
                     />
-                  </div>}
+                  </div>
                 </section>
 
                 <section className="digital-builder-card">
