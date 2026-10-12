@@ -271,6 +271,7 @@ function HomePage({
   onCatalogPage = () => {},
   onPublicClassCheckout = async () => {},
   onPublicProductCheckout = async () => {},
+  onMemberDetailAction = () => {},
   publicProductAccessApiPath = '/api/public-product-access',
   initialDetail = null,
   isClassesLoaded = true,
@@ -1401,6 +1402,10 @@ function HomePage({
 
   const openClassCheckout = (classId) => {
     const course = detailClasses.find((item) => item.id === classId || item.publicCode === classId)
+    if (isMemberCheckout && course) {
+      onMemberDetailAction(course, 'class')
+      return
+    }
 
     setCheckoutClassId(classId)
     setSelectedClassId('')
@@ -1441,6 +1446,10 @@ function HomePage({
 
   const openProductCheckout = (productId) => {
     const product = detailProducts.find((item) => item.id === productId || item.publicCode === productId)
+    if (isMemberCheckout && product) {
+      onMemberDetailAction(product, 'digital_product')
+      return
+    }
     const detailPath = product?.productType === 'prompt' ? 'prompt' : 'produk'
 
     setCheckoutProductId(productId)
@@ -1458,6 +1467,10 @@ function HomePage({
   }
 
   const openProductAccess = (product) => {
+    if (isMemberCheckout) {
+      onMemberDetailAction(product, 'digital_product')
+      return
+    }
     const access = findActiveProductAccess(product)
     const orderCode = access?.orderId || ''
 
@@ -1929,6 +1942,7 @@ function HomePage({
     return (
       <>
         <DetailKelas
+          hideBreadcrumb={isMemberCheckout}
           course={selectedClass}
           testimonials={testimonials}
           wishlistCount={wishlistCount}
@@ -1982,6 +1996,7 @@ function HomePage({
     return (
       <>
         <DetailProduk
+          hideBreadcrumb={isMemberCheckout}
           key={`${selectedProduct.id}:${JSON.stringify(selectedProduct.reviews || [])}`}
           product={selectedProduct}
           priceLabel={selectedProductPrice ? formatRupiah(selectedProductPrice) : 'Gratis'}

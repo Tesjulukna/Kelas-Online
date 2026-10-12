@@ -5039,7 +5039,7 @@ function injectHeadMeta(html, meta) {
 }
 
 export async function renderPublicDetailPage(request, response, { type, code }) {
-  const itemType = type === 'kelas' ? 'kelas' : 'produk'
+  const itemType = ['kelas', 'produk', 'prompt'].includes(type) ? type : 'produk'
   const cleanCode = cleanText(code || '', 20)
   const publicPath = `/${itemType}/${encodeURIComponent(cleanCode)}`
   const rows = itemType === 'kelas'
@@ -5067,7 +5067,7 @@ export async function renderPublicDetailPage(request, response, { type, code }) 
   const html = injectHeadMeta(await readAppHtml(), {
     title: cleanText(item.title || (itemType === 'kelas' ? 'Detail kelas' : 'Detail produk'), 160),
     description: cleanText(description, 220),
-    image: absolutePublicUrl(request, item.thumbnail || ''),
+    image: absolutePublicUrl(request, item.thumbnail || '') || absoluteRequestUrl(request, '/og-default.png'),
     url: absoluteRequestUrl(request, publicPath),
   })
 

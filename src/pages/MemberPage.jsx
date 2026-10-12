@@ -694,6 +694,8 @@ function MemberPage({
   certificateTemplates = [],
   payments = [],
   checkoutClassRequestId = '',
+  detailActionRequest = null,
+  onDetailActionHandled = () => {},
   activeMenu,
   onMenuChange,
   isMenuOpen,
@@ -2088,7 +2090,7 @@ function MemberPage({
     }
   }, [handleDashboardMenuChange, onCreateTripayCheckout, onNotify, openDigitalProductAccessPage])
 
-  const openPaymentMethodPopup = useCallback((item, { forceNewPayment = false, itemType = 'class' } = {}) => {
+  const openPaymentMethodPopup = useCallback((item, { forceNewPayment = false, itemType = 'class', showPicker = false } = {}) => {
     const price = getCheckoutAmount({ ...item, itemType })
     const pendingPayment = itemType === 'digital_product'
       ? activePaymentsByProduct.get(item.id)
@@ -2104,7 +2106,7 @@ function MemberPage({
       return
     }
 
-    if (pendingPayment?.checkoutUrl && !forceNewPayment) {
+    if (pendingPayment?.checkoutUrl && !forceNewPayment && !showPicker) {
       window.location.assign(pendingPayment.checkoutUrl)
       return
     }
@@ -2116,6 +2118,27 @@ function MemberPage({
     setIsChangingPaymentMethod(forceNewPayment)
     resetPaymentVoucher()
   }, [activePaymentsByClass, activePaymentsByProduct, handleStartCheckout, onNotify, phone, resetPaymentVoucher])
+
+  useEffect(() => {
+    if (!detailActionRequest) return
+
+    const { itemId, itemType } = detailActionRequest
+    const item = (itemType === 'class' ? allClasses : digitalProducts)
+      .find((candidate) => candidate.id === itemId && candidate.status === 'Aktif')
+    if (!item) return
+
+    const timer = window.setTimeout(() => {
+      onDetailActionHandled()
+      if (itemType === 'digital_product' && ownedDigitalProductIds.has(item.id) && item.allowRepeatPurchase !== true) {
+        openDigitalProductAccessPage(item)
+        return
+      }
+      openPaymentMethodPopup(item, { itemType, showPicker: true })
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [detailActionRequest, allClasses, digitalProducts, ownedDigitalProductIds,
+    openDigitalProductAccessPage, openPaymentMethodPopup, onDetailActionHandled])
 
   const changePaymentVoucherCode = (value) => {
     setPaymentVoucherCode(value)

@@ -65,7 +65,7 @@ function getRoute(request) {
   const cleanPublicPath = url.pathname.replace(/\/+$/, '') || '/'
   const [, publicType, publicCode] = cleanPublicPath.split('/')
 
-  if ((publicType === 'kelas' || publicType === 'produk') && publicCode) {
+  if (['kelas', 'produk', 'prompt'].includes(publicType) && publicCode) {
     url.searchParams.set('type', publicType)
     url.searchParams.set('code', publicCode)
     return { route: 'public-page', url }

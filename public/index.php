@@ -159,7 +159,7 @@ function meta_build_payload(): array
                 }
             }
 
-            if ($route === 'produk') {
+            if ($route === 'produk' || $route === 'prompt') {
                 ensure_digital_products_schema($pdo);
                 $productResponse = fetch_digital_products($pdo, null);
                 $products = meta_with_public_codes($productResponse['digitalProducts'] ?? []);
@@ -173,7 +173,7 @@ function meta_build_payload(): array
                         $description = 'Dapatkan produk digital ' . ($product['title'] ?? 'premium') . ' dari ' . $siteName . '. ' . meta_item_price_text($product) . '.';
                     }
 
-                    $image = $product['thumbnail'] ?? $image;
+                    $image = trim((string) ($product['thumbnail'] ?? '')) ?: $image;
                     $type = 'product';
                 }
             }

@@ -133,6 +133,14 @@
       "destination": "/api/public-page?type=produk&code=:code"
     },
     {
+      "source": "/prompt/:code/checkout",
+      "destination": "/api/public-page?type=prompt&code=:code"
+    },
+    {
+      "source": "/prompt/:code",
+      "destination": "/api/public-page?type=prompt&code=:code"
+    },
+    {
       "source": "/produk-akses/:code",
       "destination": "/index.html"
     },

@@ -42,6 +42,7 @@ function DetailKelas({
   course,
   testimonials = [],
   wishlistCount = 0,
+  hideBreadcrumb = false,
   onAddToWishlist,
   onBack,
   onBuy,
@@ -114,12 +115,12 @@ function DetailKelas({
         </div>
       </div>
 
-      <PublicBreadcrumb
+      {!hideBreadcrumb && <PublicBreadcrumb
         items={[
           { label: 'Beranda', onClick: onNavigateHome },
           { label: 'Kelas', current: false, onClick: onNavigateCatalog },
         ]}
-      />
+      />}
 
       <article className="public-detail-hero public-course-detail">
         <div className={`public-detail-image ${course.thumbnail ? 'has-image' : ''}`}>

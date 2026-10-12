@@ -1713,6 +1713,7 @@ function App() {
   const [isLanguagePopupOpen, setIsLanguagePopupOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [memberFocusTarget, setMemberFocusTarget] = useState(null)
+  const [memberDetailAction, setMemberDetailAction] = useState(null)
   const [pendingCheckoutClassId, setPendingCheckoutClassId] = useState(() => {
     if (typeof window === 'undefined') {
       return ''
@@ -3444,6 +3445,12 @@ function App() {
             onExplore={goToHomeSection}
             onPublicClassCheckout={handlePublicClassCheckout}
             onPublicProductCheckout={handlePublicProductCheckout}
+            onMemberDetailAction={(item, itemType) => {
+              setMemberDetailAction({ itemId: item.id, itemType, requestId: Date.now() })
+              navigateToDashboardMenu('member', itemType === 'class'
+                ? 'available-classes'
+                : item.productType === 'prompt' ? 'prompts' : 'digital-products')
+            }}
             publicProductAccessApiPath={publicProductAccessApiPath}
             initialDetail={publicDetailTarget}
             isClassesLoaded={isClassesLoaded}
@@ -3551,6 +3558,8 @@ function App() {
               payments={payments}
               focusTarget={memberFocusTarget}
               checkoutClassRequestId={pendingCheckoutClassId}
+              detailActionRequest={memberDetailAction}
+              onDetailActionHandled={() => setMemberDetailAction(null)}
               websiteSettings={websiteSettings}
               activeMenu={activeMemberMenu}
               onMenuChange={(menuId) => navigateToDashboardMenu('member', menuId)}

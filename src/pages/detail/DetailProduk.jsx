@@ -159,6 +159,7 @@ function DetailProduk({
   priceLabel,
   salesCount = 0,
   wishlistCount = 0,
+  hideBreadcrumb = false,
   onAddToWishlist,
   onBack,
   onBuy,
@@ -307,7 +308,7 @@ function DetailProduk({
         </div>
       </div>
 
-      <PublicBreadcrumb
+      {!hideBreadcrumb && <PublicBreadcrumb
         items={[
           { label: 'Beranda', onClick: onNavigateHome },
           {
@@ -316,7 +317,7 @@ function DetailProduk({
             onClick: onNavigateCatalog,
           },
         ]}
-      />
+      />}
 
       <article className="public-detail-hero public-product-detail">
         <div className={`public-detail-image ${product.thumbnail ? 'has-image' : ''}`}>
