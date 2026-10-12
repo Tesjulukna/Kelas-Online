@@ -293,6 +293,11 @@ if ($tripayCustomerPhone !== '') {
     $checkoutPayload['customer_phone'] = $tripayCustomerPhone;
 }
 
+try {
+    $finishAccountReservation = account_stock_prepare_invoice($pdo, $product, $merchantRef, $checkoutPayload['expired_time']);
+} catch (Throwable $error) {
+    send_json(409, ['message' => $error->getMessage()]);
+}
 $tripayResponse = tripay_post_transaction($config, $checkoutPayload);
 $tripayData = is_array($tripayResponse['data']['data'] ?? null)
     ? $tripayResponse['data']['data']
@@ -345,6 +350,7 @@ $insert->execute([
     ], JSON_UNESCAPED_UNICODE),
 ]);
 
+$finishAccountReservation();
 if ($voucherCalculation) {
     $voucherReservationSettled = true;
 }

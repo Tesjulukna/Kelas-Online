@@ -824,7 +824,10 @@ function cleanDigitalProducts(value) {
     .filter((item) => item?.id && item?.title)
     .map((item) => ({
       id: cleanText(item.id),
-      productType: cleanText(item.productType || 'digital') === 'prompt' ? 'prompt' : 'digital',
+      productType: ['digital', 'prompt', 'account'].includes(item.productType) ? item.productType : 'digital',
+      accountSpreadsheetId: cleanLongText(item.accountSpreadsheetId || '', 180),
+      accountSheetTab: cleanLongText(item.accountSheetTab || '', 100),
+      accountStockSyncedAt: cleanText(item.accountStockSyncedAt || ''),
       title: cleanLongText(item.title, 160),
       titleEn: cleanLongText(item.titleEn || '', 160),
       description: cleanRichHtml(item.description || ''),
@@ -3618,6 +3621,16 @@ function App() {
               websiteSettings={websiteSettings}
               onClassesChange={handleClassesChange}
               onDigitalProductsChange={handleDigitalProductsChange}
+              onDetectAccountSheets={async (spreadsheet) => requestJson('/api/account-stock', {
+                method: 'POST', body: JSON.stringify({ action: 'tabs', spreadsheet }),
+              })}
+              onSyncAccountStock={async (productId) => {
+                const data = await requestJson('/api/account-stock', {
+                  method: 'POST', body: JSON.stringify({ action: 'sync', productId }),
+                })
+                applyDigitalProductsResponse(data)
+                return data
+              }}
               onWebsiteSettingsChange={handleWebsiteSettingsChange}
               onSyncTripayPaymentMethods={handleSyncTripayPaymentMethods}
               onDownloadBackup={handleDownloadBackup}

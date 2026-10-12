@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import ConfirmDialog from '../components/ConfirmDialog'
+import AccountStockFields from '../components/AccountStockFields'
 import CertificateTemplateEditor from '../components/CertificateTemplateEditor'
 import DashboardShell from '../components/DashboardShell'
 import Icon from '../components/Icon'
@@ -544,6 +545,9 @@ function createEmptyDigitalProductForm() {
   return {
     id: '',
     productType: 'digital',
+    accountSpreadsheetId: '',
+    accountSheetTab: '',
+    accountStockSyncedAt: '',
     title: '',
     titleEn: '',
     description: '',
@@ -948,6 +952,8 @@ function AdminPage({
   websiteSettings,
   onClassesChange,
   onDigitalProductsChange = async () => { },
+  onDetectAccountSheets = async () => { throw new Error('Koneksi Google Sheets belum tersedia.') },
+  onSyncAccountStock = async () => { throw new Error('Sinkronisasi stok akun belum tersedia.') },
   onWebsiteSettingsChange = async () => { },
   onSyncTripayPaymentMethods = async () => [],
   onDownloadBackup = async () => { },
@@ -1148,17 +1154,19 @@ function AdminPage({
   const [memberActivityFilter, setMemberActivityFilter] = useState('all')
   const [isMemberFilterOpen, setIsMemberFilterOpen] = useState(false)
   const isPromptBuilder = digitalProductForm.productType === 'prompt'
+  const isAccountBuilder = digitalProductForm.productType === 'account'
+  const [isAccountSheetBusy, setIsAccountSheetBusy] = useState(false)
   const digitalOnlyProducts = digitalProducts.filter((product) => product.productType !== 'prompt')
   const promptProducts = digitalProducts.filter((product) => product.productType === 'prompt')
   const memberDigitalProducts = digitalOnlyProducts.filter(
-    (product) => product.status === 'Aktif' && product.showOnMember !== false,
+    (product) => product.productType !== 'account' && product.status === 'Aktif' && product.showOnMember !== false,
   )
   const memberPromptProducts = promptProducts.filter(
     (product) => product.status === 'Aktif' && product.showOnMember !== false,
   )
   const bundleEditorAllItems = [
     ...classes.filter((item) => item.status === 'Aktif').map((item) => ({ ...item, type: 'class', kind: 'Kelas' })),
-    ...digitalProducts.filter((item) => item.status === 'Aktif').map((item) => ({ ...item, type: 'digital_product', kind: item.productType === 'prompt' ? 'Prompt' : 'Produk digital' })),
+    ...digitalProducts.filter((item) => item.status === 'Aktif' && item.productType !== 'account').map((item) => ({ ...item, type: 'digital_product', kind: item.productType === 'prompt' ? 'Prompt' : 'Produk digital' })),
   ]
   const bundleEditorCatalog = bundleEditorAllItems.filter((item) => {
     const query = bundleItemSearch.trim().toLowerCase()
@@ -1960,6 +1968,7 @@ function AdminPage({
   }
 
   const resetDigitalProductForm = () => {
+    setIsAccountSheetBusy(false)
     setDigitalProductForm(createEmptyDigitalProductForm())
     setEditingDigitalProductId(null)
     setIsDigitalReviewManagerOpen(false)
@@ -2320,6 +2329,7 @@ function AdminPage({
 
   const handleSubmitDigitalProduct = async (event) => {
     event.preventDefault()
+    if (isAccountSheetBusy) return
 
     const payload = {
       ...digitalProductForm,
@@ -2327,7 +2337,7 @@ function AdminPage({
         editingDigitalProductId ||
         digitalProductForm.id ||
         `${digitalProductForm.productType === 'prompt' ? 'prompt' : 'digital-product'}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      productType: digitalProductForm.productType === 'prompt' ? 'prompt' : 'digital',
+      productType: ['digital', 'prompt', 'account'].includes(digitalProductForm.productType) ? digitalProductForm.productType : 'digital',
       title: digitalProductForm.title.trim(),
       titleEn: digitalProductForm.titleEn.trim(),
       price: Math.max(0, Math.round(Number(digitalProductForm.price) || 0)),
@@ -2384,6 +2394,17 @@ function AdminPage({
       return
     }
 
+    if (payload.productType === 'account') {
+      if (!payload.accountSpreadsheetId || !payload.accountSheetTab) {
+        onNotify('Tempel link Spreadsheet, deteksi tab, lalu pilih tab stok akun.')
+        return
+      }
+      payload.itemQuantityEnabled = true
+      payload.allowRepeatPurchase = true
+      payload.autoCreateMember = true
+      payload.fileUrl = ''
+    }
+
     if (payload.productType === 'prompt' && !payload.promptItems.length) {
       onNotify('Minimal satu isi prompt wajib diisi sebelum prompt dijual.')
       return
@@ -2395,6 +2416,7 @@ function AdminPage({
     }
 
     try {
+      setIsAccountSheetBusy(true)
       await onDigitalProductsChange((current) => {
         const existing = current.some((item) => item.id === payload.id)
 
@@ -2402,6 +2424,17 @@ function AdminPage({
           ? current.map((item) => (item.id === payload.id ? payload : item))
           : [payload, ...current]
       })
+      if (payload.productType === 'account') {
+        try {
+          const result = await onSyncAccountStock(payload.id)
+          onNotify(result.message || 'Produk akun disimpan dan stok tersinkron.')
+        } catch (error) {
+          onNotify(`Produk akun sudah disimpan. ${error.message || 'Stok belum tersinkron; buka Edit untuk mencoba kembali.'}`)
+        }
+        resetDigitalProductForm()
+        setIsDigitalProductBuilderOpen(false)
+        return
+      }
       resetDigitalProductForm()
       setIsDigitalProductBuilderOpen(false)
       onNotify(editingDigitalProductId
@@ -2409,13 +2442,19 @@ function AdminPage({
         : (digitalProductForm.productType === 'prompt' ? 'Prompt ditambahkan.' : 'Produk digital ditambahkan.'))
     } catch (error) {
       onNotify(error.message || 'Produk digital tidak bisa disimpan.')
+    } finally {
+      setIsAccountSheetBusy(false)
     }
   }
 
   const handleEditDigitalProduct = (product) => {
+    setIsAccountSheetBusy(false)
     setDigitalProductForm({
       id: product.id,
-      productType: product.productType === 'prompt' ? 'prompt' : 'digital',
+      productType: ['digital', 'prompt', 'account'].includes(product.productType) ? product.productType : 'digital',
+      accountSpreadsheetId: product.accountSpreadsheetId || '',
+      accountSheetTab: product.accountSheetTab || '',
+      accountStockSyncedAt: product.accountStockSyncedAt || '',
       title: product.title,
       titleEn: product.titleEn || '',
       description: descriptionHtmlToEditorText(product.description || ''),
@@ -4538,7 +4577,7 @@ function AdminPage({
                 <button className="btn btn-secondary" type="button" onClick={closeDigitalProductBuilder}>
                   Cancel
                 </button>
-                <button className="btn btn-primary" type="submit">
+                <button className="btn btn-primary" type="submit" disabled={isAccountSheetBusy}>
                   <Icon name={isPromptBuilder ? 'spark' : 'download'} />
                   {editingDigitalProductId
                     ? (isPromptBuilder ? 'Simpan Prompt' : 'Save Digital')
@@ -4553,6 +4592,20 @@ function AdminPage({
                   <div className="digital-builder-card-heading">
                     <h3>Details</h3>
                   </div>
+
+                  {!isPromptBuilder && (
+                    <label>
+                      Jenis produk
+                      <select value={digitalProductForm.productType} disabled={isAccountSheetBusy}
+                        onChange={(event) => setDigitalProductForm((current) => ({ ...current, productType: event.target.value,
+                          itemQuantityEnabled: event.target.value === 'account' || current.itemQuantityEnabled,
+                          allowRepeatPurchase: event.target.value === 'account' || current.allowRepeatPurchase,
+                          autoCreateMember: event.target.value === 'account' || current.autoCreateMember }))}>
+                        <option value="digital">Produk Digital</option>
+                        <option value="account">Produk Akun</option>
+                      </select>
+                    </label>
+                  )}
 
                   <label className="digital-upload-field">
                     Image
@@ -4783,7 +4836,12 @@ function AdminPage({
                     </div>
                   )}
 
-                  <div className="digital-platform-box">
+                  {isAccountBuilder ? (
+                    <AccountStockFields key={editingDigitalProductId || 'new-account'} form={digitalProductForm}
+                      productId={editingDigitalProductId} onDetect={onDetectAccountSheets} onSync={onSyncAccountStock}
+                      onBusyChange={setIsAccountSheetBusy}
+                      onChange={(patch) => setDigitalProductForm((current) => ({ ...current, ...patch }))} />
+                  ) : <div className="digital-platform-box">
                     <div className="digital-builder-card-heading compact">
                       <h3>Platform</h3>
                       <small>Tempat file atau akses produk disimpan.</small>
@@ -4815,7 +4873,7 @@ function AdminPage({
                       onChange={handleDigitalProductFormChange}
                       placeholder="Nama file, contoh: template-canva.zip"
                     />
-                  </div>
+                  </div>}
                 </section>
 
                 <section className="digital-builder-card">
@@ -4876,6 +4934,7 @@ function AdminPage({
                     <input
                       name="itemQuantityEnabled"
                       type="checkbox"
+                      disabled={isAccountBuilder}
                       checked={digitalProductForm.itemQuantityEnabled}
                       onChange={handleDigitalProductFormChange}
                     />
@@ -4886,11 +4945,13 @@ function AdminPage({
                       <input
                         name="itemQuantity"
                         type="text"
+                        readOnly={isAccountBuilder}
                         inputMode="numeric"
                         value={digitalProductForm.itemQuantity}
                         onChange={handleDigitalProductFormChange}
                         placeholder="100"
                       />
+                      {isAccountBuilder && <small>Stok dihitung dari akun tersedia di Spreadsheet.</small>}
                     </label>
                   )}
 
@@ -4915,6 +4976,7 @@ function AdminPage({
                     <input
                       name="allowRepeatPurchase"
                       type="checkbox"
+                      disabled={isAccountBuilder}
                       checked={digitalProductForm.allowRepeatPurchase === true}
                       onChange={handleDigitalProductFormChange}
                     />

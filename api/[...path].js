@@ -296,6 +296,12 @@ async function routeRequest(request, response) {
     return
   }
 
+  if (route === 'account-stock') {
+    await requireUser(request, 'admin')
+    sendJson(response, 501, { message: 'Koneksi stok Google Sheets memakai backend PHP + MySQL hosting Domainesia.' })
+    return
+  }
+
   if (route === 'digital-products') {
     if (request.method === 'GET') {
       sendJson(response, 200, await fetchDigitalProducts(request))

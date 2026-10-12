@@ -30,6 +30,9 @@ try {
     $existingProductCreatedAt = $pdo
         ->query('SELECT id, created_at FROM digital_products')
         ->fetchAll(PDO::FETCH_KEY_PAIR);
+    $sourceQuery = $pdo->prepare('SELECT * FROM account_product_sources WHERE product_id = ?');
+    $inventoryQuery = $pdo->prepare('SELECT COUNT(*) FROM product_account_stock WHERE product_id = ?');
+    $saveSource = $pdo->prepare('INSERT INTO account_product_sources (product_id, spreadsheet_id, sheet_tab) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE spreadsheet_id = VALUES(spreadsheet_id), sheet_tab = VALUES(sheet_tab)');
     $pdo->exec('DELETE FROM digital_products');
 
     foreach (array_slice($products, 0, 300) as $index => $product) {
@@ -38,7 +41,31 @@ try {
         }
 
         $id = clean_text($product['id'] ?? make_id('product'), 120) ?: make_id('product');
-        $productType = clean_text($product['productType'] ?? 'digital', 40) === 'prompt' ? 'prompt' : 'digital';
+        $requestedType = clean_text($product['productType'] ?? 'digital', 40);
+        $productType = in_array($requestedType, ['digital', 'prompt', 'account'], true) ? $requestedType : 'digital';
+        $inventoryQuery->execute([$id]);
+        $hasInventory = (int) $inventoryQuery->fetchColumn() > 0;
+        if ($productType === 'account') {
+            $sheetId = account_sheet_id((string) ($product['accountSpreadsheetId'] ?? ''));
+            $tab = (string) ($product['accountSheetTab'] ?? '');
+            account_sheet_range($tab, 'A1:F1');
+            $sourceQuery->execute([$id]);
+            $source = $sourceQuery->fetch();
+            if ($hasInventory && $source && ($source['spreadsheet_id'] !== $sheetId || $source['sheet_tab'] !== $tab)) {
+                throw new InvalidArgumentException('Sumber stok yang sudah diimpor tidak dapat diganti. Buat produk akun baru untuk tab lain.');
+            }
+            $saveSource->execute([$id, $sheetId, $tab]);
+            $product['itemQuantityEnabled'] = true;
+            $countQuery = $pdo->prepare("SELECT COUNT(*) FROM product_account_stock WHERE product_id = ? AND status = 'available'");
+            $countQuery->execute([$id]);
+            $product['itemQuantity'] = (int) $countQuery->fetchColumn();
+            $product['allowRepeatPurchase'] = true;
+            $product['autoCreateMember'] = true;
+            $product['fileUrl'] = '';
+            $product['platformType'] = 'account';
+        } elseif ($hasInventory) {
+            throw new InvalidArgumentException('Produk dengan stok akun tidak dapat diubah menjadi jenis produk lain.');
+        }
         $promptItems = $productType === 'prompt'
             ? digital_prompt_items_public($product['promptItems'] ?? [], clean_text($product['promptContent'] ?? '', 40000))
             : [];
@@ -117,7 +144,7 @@ try {
         $pdo->rollBack();
     }
 
-    send_json(500, ['message' => 'Produk digital tidak bisa disimpan.']);
+    send_json($error instanceof InvalidArgumentException ? 422 : 500, ['message' => $error instanceof InvalidArgumentException ? $error->getMessage() : 'Produk digital tidak bisa disimpan.']);
 }
 
 send_json(200, fetch_digital_products($pdo, current_user()));

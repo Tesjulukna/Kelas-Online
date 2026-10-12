@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/_account-stock.php';
+
 function commerce_json($value): array
 {
     $decoded = json_decode((string) ($value ?? '{}'), true);
@@ -100,6 +102,22 @@ function commerce_fetch_product(PDO $pdo, string $productId, bool $activeOnly = 
     $activeOnly ? $query->execute([$productId, 'Aktif']) : $query->execute([$productId]);
     $product = $query->fetch();
 
+    if ($product && ($product['product_type'] ?? '') === 'account' && !$pdo->inTransaction()) {
+        account_stock_ensure_schema($pdo);
+        $pdo->beginTransaction();
+        try {
+            $lock = $pdo->prepare('SELECT id FROM digital_products WHERE id = ? FOR UPDATE');
+            $lock->execute([$productId]);
+            account_stock_release_expired($pdo, $productId);
+            $product['item_quantity'] = account_stock_refresh_count($pdo, $productId);
+            $product['item_quantity_enabled'] = 1;
+            $pdo->commit();
+        } catch (Throwable $error) {
+            $pdo->rollBack();
+            throw $error;
+        }
+    }
+
     return $product ?: null;
 }
 
@@ -180,6 +198,10 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
 
     if (!$product) {
         send_json(404, ['message' => 'Produk digital tidak ditemukan.']);
+    }
+
+    if (($product['product_type'] ?? '') === 'account') {
+        return commerce_grant_account_product($pdo, $product, $args);
     }
 
     $memberId = clean_text($args['memberId'] ?? '', 120);
@@ -293,6 +315,39 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
     ];
 }
 
+function commerce_grant_account_product(PDO $pdo, array $product, array $args): array
+{
+    $ownsTransaction = !$pdo->inTransaction();
+    if ($ownsTransaction) {
+        account_stock_ensure_schema($pdo);
+        $pdo->beginTransaction();
+    }
+    try {
+        $orderId = clean_text($args['orderId'] ?? '', 180);
+        $memberId = clean_text($args['memberId'] ?? '', 120);
+        $email = clean_email($args['buyerEmail'] ?? '');
+        account_stock_assign($pdo, $product['id'], $orderId, $email);
+        $query = $pdo->prepare('SELECT * FROM digital_product_access WHERE order_id = ? AND product_id = ? LIMIT 1');
+        $query->execute([$orderId, $product['id']]);
+        $access = $query->fetch();
+        $granted = !$access;
+        if (!$access) {
+            $id = make_id('access');
+            $insert = $pdo->prepare('INSERT INTO digital_product_access (id, product_id, product_title, member_id, buyer_name, buyer_email, source, order_id, status, download_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            $insert->execute([$id, $product['id'], $product['title'], $memberId, clean_text($args['buyerName'] ?? 'Pelanggan', 160),
+                $email, clean_text($args['source'] ?? 'checkout', 80), $orderId, 'active', '']);
+            $query->execute([$orderId, $product['id']]);
+            $access = $query->fetch();
+        }
+        if ($ownsTransaction) $pdo->commit();
+        if ($ownsTransaction && function_exists('send_digital_product_delivery_email')) account_stock_dispatch($pdo, $orderId);
+        return ['granted' => $granted, 'access' => $access, 'product' => $product];
+    } catch (Throwable $error) {
+        if ($ownsTransaction && $pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+}
+
 function commerce_class_bundled_product_ids($value): array
 {
     $ids = is_string($value) ? json_decode($value, true) : $value;
@@ -343,7 +398,7 @@ function commerce_grant_class_bundled_products(PDO $pdo, array $args): array
     foreach ($productIds as $productId) {
         $product = $productsById[$productId] ?? null;
 
-        if (!$product) {
+        if (!$product || ($product['product_type'] ?? '') === 'account') {
             continue;
         }
 

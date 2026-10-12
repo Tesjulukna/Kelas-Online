@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import CertificateTemplateCanvas from '../components/CertificateTemplateCanvas'
+import AccountPurchaseLinks from '../components/AccountPurchaseLinks'
 import DashboardShell from '../components/DashboardShell'
 import FeaturedBundleSection from '../components/FeaturedBundleSection'
 import Icon from '../components/Icon'
@@ -919,6 +920,7 @@ function MemberPage({
       }))
     }
     activeSellableProducts.forEach((product) => {
+      if (product.productType === 'account') return
       const isPrompt = product.productType === 'prompt'
       if ((isPrompt && !bundleSettings.allowPrompts) || (!isPrompt && !bundleSettings.allowDigitalProducts)) return
       items.push({
@@ -3929,6 +3931,7 @@ function MemberPage({
                   </div>
 
                   <div className="digital-product-sticky-actions">
+                    <AccountPurchaseLinks product={product} accessRows={digitalProductAccess} onOpen={openDigitalProductAccessPage} />
                     {showExpiredNotice && (
                       <span className="expired-payment-notice">
                         <span>Pembayaran sebelumnya expired.</span>
@@ -4151,6 +4154,7 @@ function MemberPage({
                       >
                         Detail
                       </button>
+                      <AccountPurchaseLinks product={product} accessRows={digitalProductAccess} onOpen={openDigitalProductAccessPage} />
                       <button
                         className={`btn ${blockNewPurchase ? 'btn-secondary' : 'btn-primary'} member-class-button`}
                         type="button"

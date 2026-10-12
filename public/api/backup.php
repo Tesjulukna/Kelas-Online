@@ -2,6 +2,7 @@
 
 require __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/_vouchers.php';
+require_once __DIR__ . '/_account-stock.php';
 
 ensure_method(['GET', 'POST']);
 require_user('admin');
@@ -10,6 +11,7 @@ $pdo = db();
 
 ensure_site_settings_table($pdo);
 voucher_ensure_schema($pdo);
+account_stock_ensure_schema($pdo);
 
 function backup_tables(): array
 {
@@ -31,6 +33,8 @@ function backup_tables(): array
         'payment_snapshots',
         'digital_products',
         'digital_product_access',
+        'account_product_sources',
+        'product_account_stock',
         'testimonials',
         'certificate_templates',
         'certificates',
@@ -97,7 +101,9 @@ function insert_table_rows(PDO $pdo, string $table, array $rows): void
         $quotedNames = array_map(static fn(string $name): string => "`$name`", $names);
         $placeholders = implode(', ', array_fill(0, count($names), '?'));
         $query = $pdo->prepare(
-            "INSERT INTO `$table` (" . implode(', ', $quotedNames) . ") VALUES ($placeholders)",
+            "INSERT INTO `$table` (" . implode(', ', $quotedNames) . ") VALUES ($placeholders)"
+                . (in_array($table, ['account_product_sources', 'product_account_stock'], true)
+                    ? ' ON DUPLICATE KEY UPDATE ' . ($table === 'product_account_stock' ? 'id = id' : 'product_id = product_id') : ''),
         );
         $query->execute(array_values($cleanRow));
     }
@@ -176,6 +182,8 @@ $insertOrder = [
     'payment_snapshots',
     'digital_products',
     'digital_product_access',
+    'account_product_sources',
+    'product_account_stock',
     'testimonials',
     'certificate_templates',
     'certificates',
@@ -200,6 +208,11 @@ try {
     foreach ($insertOrder as $table) {
         $rows = is_array($tables[$table] ?? null) ? $tables[$table] : [];
         insert_table_rows($pdo, $table, $rows);
+    }
+
+    // Preserve existing sales when restoring an older backup, then derive stock again.
+    foreach ($pdo->query("SELECT id FROM digital_products WHERE product_type = 'account'")->fetchAll(PDO::FETCH_COLUMN) as $productId) {
+        account_stock_refresh_count($pdo, $productId);
     }
 
     if (empty($tables['site_settings']) && is_array($backup['websiteSettings'] ?? null)) {

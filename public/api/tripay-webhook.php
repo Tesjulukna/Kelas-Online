@@ -107,6 +107,7 @@ if (!tripay_is_paid($data)) {
 
     if ($update->rowCount() > 0 && in_array($status, ['expired', 'failed', 'cancelled', 'canceled', 'void', 'voided', 'closed'], true)) {
         voucher_release($pdo, $order['merchant_ref'] ?? $merchantRef, 'tripay_' . $status);
+        account_stock_release($pdo, $order['merchant_ref'] ?? $merchantRef);
     }
 
     send_json(200, [
@@ -149,6 +150,7 @@ if (in_array($order['status'] ?? '', ['processed', 'paid'], true)) {
         send_json(500, ['message' => 'Pembayaran sudah diproses, tetapi status voucher belum dapat diselesaikan.']);
     }
     $pdo->commit();
+    account_stock_dispatch($pdo, $order['merchant_ref'] ?? $merchantRef);
     send_json(200, [
         'ok' => true,
         'duplicate' => true,
@@ -286,7 +288,8 @@ if ($isDigitalProductOrder) {
             clean_text($accessResult['product']['product_type'] ?? ($orderPayload['product_type'] ?? 'digital'), 40)
         )
         : clean_asset_url($accessResult['product']['file_url'] ?? '', 1000);
-    $emailResult = send_digital_product_delivery_email([
+    $stockEmailResult = account_stock_dispatch($pdo, $accessResult['access']['order_id'] ?? '');
+    $emailResult = ($accessResult['product']['product_type'] ?? '') === 'account' ? $stockEmailResult : send_digital_product_delivery_email([
         'buyerName' => clean_text($order['buyer_name'] ?? 'Pelanggan', 160),
         'buyerEmail' => clean_email($order['buyer_email'] ?? ''),
         'productTitle' => clean_text($accessResult['product']['title'] ?? $order['class_title'] ?? 'Produk digital', 180),

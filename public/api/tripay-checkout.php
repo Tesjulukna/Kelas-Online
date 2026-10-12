@@ -82,6 +82,7 @@ if ($checkoutType === 'bundle') {
         if ($type === 'digital_product') {
             $item = commerce_fetch_product($pdo, $id, true);
             if (!$item) continue;
+            if (($item['product_type'] ?? '') === 'account') send_json(422, ['message' => 'Produk akun dibeli satu per checkout; pilih melalui menu Produk Digital.']);
             $isPrompt = clean_text($item['product_type'] ?? '', 40) === 'prompt';
             if (($isPrompt && empty($bundleRules['allowPrompts'])) || (!$isPrompt && empty($bundleRules['allowDigitalProducts']))) continue;
             $accessQuery = $pdo->prepare('SELECT id FROM digital_product_access WHERE product_id = ? AND status = ? AND (member_id = ? OR buyer_email = ?) LIMIT 1');
@@ -561,6 +562,11 @@ if ($normalizedBuyerPhone !== '') {
     $checkoutPayload['customer_phone'] = $normalizedBuyerPhone;
 }
 
+try {
+    $finishAccountReservation = account_stock_prepare_invoice($pdo, $checkoutType === 'digital_product' ? $checkoutItem : [], $merchantRef, $checkoutPayload['expired_time']);
+} catch (Throwable $error) {
+    send_json(409, ['message' => $error->getMessage()]);
+}
 $tripayResponse = tripay_post_transaction($config, $checkoutPayload);
 $tripayData = is_array($tripayResponse['data']['data'] ?? null)
     ? $tripayResponse['data']['data']
@@ -614,6 +620,7 @@ $insert->execute([
     ], JSON_UNESCAPED_UNICODE),
 ]);
 
+$finishAccountReservation();
 if ($voucherReservation) {
     $voucherReservationSettled = true;
 }

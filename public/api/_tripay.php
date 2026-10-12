@@ -18,6 +18,8 @@ function tripay_ensure_column(PDO $pdo, string $table, string $column, string $d
 
 function tripay_ensure_schema(PDO $pdo): void
 {
+    require_once __DIR__ . '/_account-stock.php';
+    account_stock_ensure_schema($pdo);
     tripay_ensure_column($pdo, 'classes', 'price', 'INT NOT NULL DEFAULT 0 AFTER revenue');
     tripay_ensure_column($pdo, 'classes', 'tripay_product_key', "VARCHAR(180) NOT NULL DEFAULT '' AFTER lynk_product_key");
 

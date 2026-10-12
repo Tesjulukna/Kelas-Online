@@ -165,16 +165,14 @@ function send_resend_email(array $message): array
         'html' => (string) ($message['html'] ?? ''),
     ];
     $curl = curl_init('https://api.resend.com/emails');
+    $headers = ['Authorization: Bearer ' . $apiKey, 'Content-Type: application/json',
+        'Accept: application/json', 'User-Agent: ibnucreative-domainesia-api'];
+    if (!empty($message['idempotencyKey'])) $headers[] = 'Idempotency-Key: ' . email_clean_header($message['idempotencyKey'], 256);
 
     curl_setopt_array($curl, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json',
-            'Accept: application/json',
-            'User-Agent: ibnucreative-domainesia-api',
-        ],
+        CURLOPT_HTTPHEADER => $headers,
         CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
         CURLOPT_TIMEOUT => 25,
     ]);
@@ -415,11 +413,22 @@ function send_digital_product_delivery_email(array $order): array
     $downloadUrl = clean_asset_url($order['downloadUrl'] ?? '', 1000);
     $deliveryNote = (string) ($order['deliveryNote'] ?? '');
     $isPrompt = clean_text($order['productType'] ?? '', 40) === 'prompt';
-    $itemLabel = $isPrompt ? 'Prompt' : 'Produk digital';
+    $isAccount = ($order['productType'] ?? '') === 'account';
+    $credentials = $isAccount && is_array($order['accountCredentials'] ?? null) ? $order['accountCredentials'] : null;
+    // Account emails are sent only by the durable stock delivery queue.
+    if ($isAccount && !$credentials) {
+        $orderId = rawurldecode(basename(parse_url($downloadUrl, PHP_URL_PATH) ?: ''));
+        if ($orderId !== '' && function_exists('account_stock_dispatch') && !db()->inTransaction()) {
+            return account_stock_dispatch(db(), $orderId);
+        }
+        return ['sent' => false, 'message' => 'Email akun diproses melalui antrean pengiriman stok.'];
+    }
+    $itemLabel = $isAccount ? 'Akun' : ($isPrompt ? 'Prompt' : 'Produk digital');
     $text = "Halo {$order['buyerName']},\n\n"
         . "{$itemLabel} Anda sudah siap diakses.\n\n"
         . "{$itemLabel}: {$order['productTitle']}\n"
         . ($downloadUrl ? "Link akses: {$downloadUrl}\n" : '')
+        . ($credentials ? "Email/username: {$credentials['username']}\nPassword: {$credentials['password']}\n" : '')
         . ($deliveryNote ? "Catatan akses:\n{$deliveryNote}\n" : '')
         . "\nSimpan email ini untuk mengakses produk Anda kembali.\n\nIbnuCreative Academy";
     $button = $downloadUrl
@@ -431,6 +440,7 @@ function send_digital_product_delivery_email(array $order): array
         . '<p>' . email_escape($itemLabel) . ' Anda sudah siap. Silakan akses dari link berikut.</p>'
         . '<p><strong>' . email_escape($itemLabel) . ':</strong> ' . email_escape($order['productTitle'] ?? $itemLabel) . '</p>'
         . $button
+        . ($credentials ? '<p><strong>Email/username:</strong><br>' . email_escape($credentials['username']) . '</p><p><strong>Password:</strong><br><span style="white-space:pre-wrap">' . email_escape($credentials['password']) . '</span></p>' : '')
         . ($downloadUrl ? '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($downloadUrl) . '">' . email_escape($downloadUrl) . '</a></p>' : '')
         . ($deliveryNote ? '<p><strong>Catatan akses:</strong><br>' . email_escape_breaks($deliveryNote) . '</p>' : '')
         . '<p>IbnuCreative Academy</p>'
@@ -439,6 +449,7 @@ function send_digital_product_delivery_email(array $order): array
     return send_resend_email([
         'to' => $order['buyerEmail'] ?? '',
         'subject' => $itemLabel . ' ' . ($order['productTitle'] ?? 'IbnuCreative') . ' sudah siap',
+        'idempotencyKey' => $order['idempotencyKey'] ?? '',
         'text' => $text,
         'html' => $html,
     ]);

@@ -25490,3 +25490,43 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
     padding: 10px;
   }
 }
+.account-sheet-box {
+  display: grid;
+  gap: 12px;
+}
+
+.account-sheet-box p,
+.account-sheet-box h3 {
+  margin: 0;
+}
+
+.account-sheet-box code {
+  overflow-wrap: anywhere;
+}
+
+.account-sheet-box select {
+  width: 100%;
+  min-width: 0;
+}
+
+.account-purchase-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.account-access-box {
+  display: grid;
+  gap: 12px;
+}
+
+.account-access-box pre {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  user-select: text;
+}

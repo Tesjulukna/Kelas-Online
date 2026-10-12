@@ -68,6 +68,7 @@ function ProductAccessPage({
   const accessProduct = localizeContent(accessData?.product, language)
   const delivery = localizeContent(accessData?.delivery, language)
   const isPrompt = accessProduct?.productType === 'prompt'
+  const isAccount = accessProduct?.productType === 'account'
   const promptContent = delivery?.promptContent || accessProduct?.promptContent || ''
   const rawPromptItems = Array.isArray(delivery?.promptItems)
     ? delivery.promptItems
@@ -162,7 +163,27 @@ function ProductAccessPage({
               <p>Cek emailmu juga. Kami sudah mengirimkan link akses dan detail {isPrompt ? 'prompt' : 'produk'} ke email pembeli.</p>
             </div>
 
-            {isPrompt && visiblePromptItems.length ? (
+            {isAccount ? (
+              <section className="public-detail-section public-access-note account-access-box">
+                <p className="eyebrow">Detail akun pembelian</p>
+                {delivery?.accountCredentials ? (
+                  <>
+                    <label>Email / username</label>
+                    <pre>{delivery.accountCredentials.username}</pre>
+                    <button className="btn btn-secondary" type="button" onClick={() => handleCopyPrompt(delivery.accountCredentials.username, 'Username')}>Salin Username</button>
+                    <label>Password</label>
+                    <pre>{delivery.accountCredentials.password}</pre>
+                    <button className="btn btn-secondary" type="button" onClick={() => handleCopyPrompt(delivery.accountCredentials.password, 'Password')}>Salin Password</button>
+                    {copyStatus && <small role="status">{copyStatus}</small>}
+                  </>
+                ) : (
+                  <>
+                    <p>Detail akun dikirim ke email pembeli. Login dengan akun member pembeli untuk melihatnya di sini.</p>
+                    <a className="btn btn-primary" href="/login">Login Member</a>
+                  </>
+                )}
+              </section>
+            ) : isPrompt && visiblePromptItems.length ? (
               <section className="public-detail-section public-access-note prompt-access-box">
                 <p className="eyebrow">Isi prompt</p>
                 <div className="prompt-access-list">

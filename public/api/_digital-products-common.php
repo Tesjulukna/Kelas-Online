@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/_account-stock.php';
+
 function digital_json($value): array
 {
     if (is_array($value)) {
@@ -61,6 +63,7 @@ function ensure_digital_product_column(PDO $pdo, string $column, string $definit
 
 function ensure_digital_products_schema(PDO $pdo): void
 {
+    account_stock_ensure_schema($pdo);
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS digital_products (
             id VARCHAR(120) PRIMARY KEY,
@@ -125,7 +128,7 @@ function ensure_digital_products_schema(PDO $pdo): void
 function digital_product_public(array $row): array
 {
     $productType = clean_text($row['product_type'] ?? 'digital', 40);
-    $productType = $productType === 'prompt' ? 'prompt' : 'digital';
+    $productType = in_array($productType, ['digital', 'prompt', 'account'], true) ? $productType : 'digital';
 
     return [
         'id' => $row['id'],
@@ -218,6 +221,19 @@ function fetch_digital_products(PDO $pdo, ?array $user): array
         : $pdo->query($selectProducts . " WHERE p.status = 'Aktif' ORDER BY p.updated_at DESC, p.id ASC");
 
     $products = array_map('digital_product_public', $query->fetchAll());
+    if ($isAdmin) {
+        $sources = $pdo->query('SELECT * FROM account_product_sources')->fetchAll();
+        $byProduct = [];
+        foreach ($sources as $source) $byProduct[$source['product_id']] = $source;
+        foreach ($products as &$product) {
+            if ($product['productType'] !== 'account') continue;
+            $source = $byProduct[$product['id']] ?? [];
+            $product['accountSpreadsheetId'] = $source['spreadsheet_id'] ?? '';
+            $product['accountSheetTab'] = $source['sheet_tab'] ?? '';
+            $product['accountStockSyncedAt'] = $source['synced_at'] ?? '';
+        }
+        unset($product);
+    }
     $access = [];
 
     if ($isAdmin) {

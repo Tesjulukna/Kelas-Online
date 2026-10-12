@@ -1145,7 +1145,9 @@ function HomePage({
     }
 
     let isCurrent = true
-    fetch(`${publicProductAccessApiPath}?order=${encodeURIComponent(accessOrderCode)}`)
+    fetch(`${publicProductAccessApiPath}?order=${encodeURIComponent(accessOrderCode)}`, {
+      cache: 'no-store', headers: sessionToken ? { 'X-Session-Token': sessionToken } : {},
+    })
       .then(async (response) => {
         const data = await response.json().catch(() => ({}))
 
@@ -1173,7 +1175,7 @@ function HomePage({
     return () => {
       isCurrent = false
     }
-  }, [accessOrderCode, accessRefreshKey, publicProductAccessApiPath])
+  }, [accessOrderCode, accessRefreshKey, publicProductAccessApiPath, sessionToken])
 
   const openClassDetail = (classId) => {
     const course = homepageClasses.find((item) => item.id === classId || item.publicCode === classId)

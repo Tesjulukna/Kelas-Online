@@ -30,6 +30,8 @@ if ($order) {
     $productId = clean_text($payload['product_id'] ?? '', 120);
     $product = $productId !== '' ? commerce_fetch_product($pdo, $productId, false) : null;
     $productRow = $product ?: [];
+    $accountCredentials = $paid && ($productRow['product_type'] ?? '') === 'account'
+        ? account_stock_delivery($pdo, $order['merchant_ref'], $productId, current_user()) : null;
     $productPublic = $product ? digital_product_public($product) : [
         'id' => $productId,
         'productType' => clean_text($payload['product_type'] ?? 'digital', 40) === 'prompt' ? 'prompt' : 'digital',
@@ -50,6 +52,8 @@ if ($order) {
         'buyerName' => clean_text($order['buyer_name'] ?? '', 160),
         'product' => $productPublic,
         'delivery' => $paid ? [
+            'accountCredentials' => $accountCredentials,
+            'accountRequiresLogin' => ($productRow['product_type'] ?? '') === 'account' && !$accountCredentials,
             'downloadUrl' => clean_asset_url($productRow['file_url'] ?? ($payload['delivery_url'] ?? ''), 1000),
             'deliveryNote' => clean_text($productRow['delivery_note'] ?? ($payload['delivery_note'] ?? ''), 1200),
             'deliveryNoteEn' => clean_text($productRow['delivery_note_en'] ?? '', 1200),
@@ -75,6 +79,8 @@ if (!$access) {
 
 $product = commerce_fetch_product($pdo, $access['product_id'], false);
 $productRow = $product ?: [];
+$accountCredentials = ($productRow['product_type'] ?? '') === 'account'
+    ? account_stock_delivery($pdo, $orderCode, $access['product_id'], current_user()) : null;
 
 send_json(200, [
     'ok' => true,
@@ -92,6 +98,8 @@ send_json(200, [
         'fileName' => '',
     ],
     'delivery' => [
+        'accountCredentials' => $accountCredentials,
+        'accountRequiresLogin' => ($productRow['product_type'] ?? '') === 'account' && !$accountCredentials,
         'downloadUrl' => clean_asset_url($productRow['file_url'] ?? ($access['download_url'] ?? ''), 1000),
         'deliveryNote' => clean_text($productRow['delivery_note'] ?? '', 1200),
         'deliveryNoteEn' => clean_text($productRow['delivery_note_en'] ?? '', 1200),
