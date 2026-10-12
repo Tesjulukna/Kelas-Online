@@ -3621,9 +3621,20 @@ function App() {
               websiteSettings={websiteSettings}
               onClassesChange={handleClassesChange}
               onDigitalProductsChange={handleDigitalProductsChange}
-              onDetectAccountSheets={async (spreadsheet) => requestJson('/api/account-stock', {
-                method: 'POST', body: JSON.stringify({ action: 'tabs', spreadsheet }),
-              })}
+              onDetectAccountSheets={async (spreadsheet) => {
+                const controller = new AbortController()
+                const timeout = window.setTimeout(() => controller.abort(), 60000)
+                try {
+                  return await requestJson('/api/account-stock', {
+                    method: 'POST', signal: controller.signal,
+                    body: JSON.stringify({ action: 'tabs', spreadsheet }),
+                  })
+                } catch (error) {
+                  throw new Error(error.name === 'AbortError'
+                    ? 'Google Sheets belum merespons. Coba lagi dan periksa konfigurasi akun layanan di hosting.'
+                    : error.message)
+                } finally { window.clearTimeout(timeout) }
+              }}
               onSyncAccountStock={async (productId) => {
                 const data = await requestJson('/api/account-stock', {
                   method: 'POST', body: JSON.stringify({ action: 'sync', productId }),

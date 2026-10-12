@@ -25509,6 +25509,14 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   min-width: 0;
 }
 
+.account-sheet-status {
+  padding: 12px;
+  border: 1px solid #93c5fd;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.08);
+  overflow-wrap: anywhere;
+}
+
 .account-purchase-links {
   display: flex;
   flex-wrap: wrap;

@@ -6,13 +6,15 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
   const [busy, setBusy] = useState(false)
   const requestRef = useRef(0)
   const detectedRef = useRef('')
+  const busyRef = useRef(false)
 
   useEffect(() => () => { requestRef.current += 1 }, [])
 
   const detect = async () => {
     const spreadsheet = form.accountSpreadsheetId.trim()
-    if (!spreadsheet || busy || detectedRef.current === spreadsheet) return
+    if (!spreadsheet || busyRef.current || detectedRef.current === spreadsheet) return
     const request = ++requestRef.current
+    busyRef.current = true
     setBusy(true)
     onBusyChange(true)
     setStatus('Mendeteksi tab Spreadsheet...')
@@ -27,15 +29,16 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
           ? form.accountSheetTab : nextTabs.length === 1 ? nextTabs[0].title : '' })
       setStatus(`${result.title || 'Spreadsheet'}: ${nextTabs.length} tab ditemukan.`)
     } catch (error) {
-      if (request === requestRef.current) setStatus(error.message)
+      if (request === requestRef.current) setStatus(error.message || 'Tab belum dapat dideteksi. Periksa koneksi Google Sheets di server.')
     } finally {
-      if (request === requestRef.current) { setBusy(false); onBusyChange(false) }
+      if (request === requestRef.current) { busyRef.current = false; setBusy(false); onBusyChange(false) }
     }
   }
 
   const sync = async () => {
-    if (!productId || busy) return
+    if (!productId || busyRef.current) return
     const request = ++requestRef.current
+    busyRef.current = true
     setBusy(true)
     onBusyChange(true)
     setStatus('Menyinkronkan stok...')
@@ -48,7 +51,7 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
     } catch (error) {
       if (request === requestRef.current) setStatus(error.message)
     } finally {
-      if (request === requestRef.current) { setBusy(false); onBusyChange(false) }
+      if (request === requestRef.current) { busyRef.current = false; setBusy(false); onBusyChange(false) }
     }
   }
 
@@ -69,9 +72,11 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
           }} />
       </label>
       <button className="btn btn-secondary" type="button" disabled={busy || !form.accountSpreadsheetId}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => { detectedRef.current = ''; detect() }}>
-        {busy ? 'Memproses...' : 'Deteksi Tab Spreadsheet'}
+        {busy ? 'Menghubungkan Google Sheets...' : 'Deteksi Tab Spreadsheet'}
       </button>
+      {status && <p className="account-sheet-status" role="status" aria-live="polite">{status}</p>}
       <label>
         Tab stok akun
         <select value={form.accountSheetTab} disabled={busy} onChange={(event) => onChange({ accountSheetTab: event.target.value })}>
@@ -88,7 +93,6 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
       {productId && <button className="btn btn-secondary" type="button" disabled={busy} onClick={sync}>Sinkronkan Stok Tersimpan</button>}
       <small>Simpan produk untuk memakai perubahan sumber. Penambahan baris stok masuk setelah sinkronisasi.</small>
       {form.accountStockSyncedAt && <small>Sinkronisasi terakhir: {form.accountStockSyncedAt}</small>}
-      {status && <p role="status">{status}</p>}
     </div>
   )
 }
