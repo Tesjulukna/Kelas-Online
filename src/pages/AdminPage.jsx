@@ -548,6 +548,7 @@ function createEmptyDigitalProductForm() {
     accountSpreadsheetId: '',
     accountSheetTab: '',
     accountStockSyncedAt: '',
+    accountTokenDays: '0',
     title: '',
     titleEn: '',
     description: '',
@@ -1155,19 +1156,19 @@ function AdminPage({
   const [memberActivityFilter, setMemberActivityFilter] = useState('all')
   const [isMemberFilterOpen, setIsMemberFilterOpen] = useState(false)
   const isPromptBuilder = digitalProductForm.productType === 'prompt'
-  const isAccountBuilder = digitalProductForm.productType === 'account'
+  const isAccountBuilder = ['account', 'auto_account'].includes(digitalProductForm.productType)
   const [isAccountSheetBusy, setIsAccountSheetBusy] = useState(false)
   const digitalOnlyProducts = digitalProducts.filter((product) => product.productType !== 'prompt')
   const promptProducts = digitalProducts.filter((product) => product.productType === 'prompt')
   const memberDigitalProducts = digitalOnlyProducts.filter(
-    (product) => product.productType !== 'account' && product.status === 'Aktif' && product.showOnMember !== false,
+    (product) => !['account', 'auto_account'].includes(product.productType) && product.status === 'Aktif' && product.showOnMember !== false,
   )
   const memberPromptProducts = promptProducts.filter(
     (product) => product.status === 'Aktif' && product.showOnMember !== false,
   )
   const bundleEditorAllItems = [
     ...classes.filter((item) => item.status === 'Aktif').map((item) => ({ ...item, type: 'class', kind: 'Kelas' })),
-    ...digitalProducts.filter((item) => item.status === 'Aktif' && item.productType !== 'account').map((item) => ({ ...item, type: 'digital_product', kind: item.productType === 'prompt' ? 'Prompt' : 'Produk digital' })),
+    ...digitalProducts.filter((item) => item.status === 'Aktif' && !['account', 'auto_account'].includes(item.productType)).map((item) => ({ ...item, type: 'digital_product', kind: item.productType === 'prompt' ? 'Prompt' : 'Produk digital' })),
   ]
   const bundleEditorCatalog = bundleEditorAllItems.filter((item) => {
     const query = bundleItemSearch.trim().toLowerCase()
@@ -2338,7 +2339,7 @@ function AdminPage({
         editingDigitalProductId ||
         digitalProductForm.id ||
         `${digitalProductForm.productType === 'prompt' ? 'prompt' : 'digital-product'}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      productType: ['digital', 'prompt', 'account'].includes(digitalProductForm.productType) ? digitalProductForm.productType : 'digital',
+      productType: ['digital', 'prompt', 'account', 'auto_account'].includes(digitalProductForm.productType) ? digitalProductForm.productType : 'digital',
       title: digitalProductForm.title.trim(),
       titleEn: digitalProductForm.titleEn.trim(),
       price: Math.max(0, Math.round(Number(digitalProductForm.price) || 0)),
@@ -2395,14 +2396,15 @@ function AdminPage({
       return
     }
 
-    if (payload.productType === 'account') {
+    if (['account', 'auto_account'].includes(payload.productType)) {
       if (!payload.accountSpreadsheetId || !payload.accountSheetTab) {
         onNotify('Tempel link Spreadsheet, deteksi tab, lalu pilih tab stok akun.')
         return
       }
-      payload.itemQuantityEnabled = true
+      payload.itemQuantityEnabled = payload.productType === 'account'
       payload.allowRepeatPurchase = true
       payload.autoCreateMember = true
+      if (payload.productType === 'auto_account') payload.requireCustomerName = true
     }
 
     if (payload.productType === 'prompt' && !payload.promptItems.length) {
@@ -2424,7 +2426,7 @@ function AdminPage({
           ? current.map((item) => (item.id === payload.id ? payload : item))
           : [payload, ...current]
       })
-      if (payload.productType === 'account') {
+      if (['account', 'auto_account'].includes(payload.productType)) {
         try {
           const result = await onSyncAccountStock(payload.id)
           onNotify(result.message || 'Produk akun disimpan dan stok tersinkron.')
@@ -2451,7 +2453,8 @@ function AdminPage({
     setIsAccountSheetBusy(false)
     setDigitalProductForm({
       id: product.id,
-      productType: ['digital', 'prompt', 'account'].includes(product.productType) ? product.productType : 'digital',
+      productType: ['digital', 'prompt', 'account', 'auto_account'].includes(product.productType) ? product.productType : 'digital',
+      accountTokenDays: String(product.accountTokenDays || 0),
       accountSpreadsheetId: product.accountSpreadsheetId || '',
       accountSheetTab: product.accountSheetTab || '',
       accountStockSyncedAt: product.accountStockSyncedAt || '',
@@ -4598,11 +4601,12 @@ function AdminPage({
                       Jenis produk
                       <select value={digitalProductForm.productType} disabled={isAccountSheetBusy}
                         onChange={(event) => setDigitalProductForm((current) => ({ ...current, productType: event.target.value,
-                          itemQuantityEnabled: event.target.value === 'account' || current.itemQuantityEnabled,
-                          allowRepeatPurchase: event.target.value === 'account' || current.allowRepeatPurchase,
-                          autoCreateMember: event.target.value === 'account' || current.autoCreateMember }))}>
+                          itemQuantityEnabled: event.target.value === 'auto_account' ? false : event.target.value === 'account' || current.itemQuantityEnabled,
+                          allowRepeatPurchase: ['account', 'auto_account'].includes(event.target.value) || current.allowRepeatPurchase,
+                          autoCreateMember: ['account', 'auto_account'].includes(event.target.value) || current.autoCreateMember }))}>
                         <option value="digital">Produk Digital</option>
                         <option value="account">Produk Akun</option>
+                        <option value="auto_account">Produk Akun Otomatis</option>
                       </select>
                     </label>
                   )}

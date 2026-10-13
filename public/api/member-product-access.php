@@ -35,7 +35,7 @@ $productsById = [];
 if ($requestedProductIds) {
     $placeholders = implode(',', array_fill(0, count($requestedProductIds), '?'));
     $productQuery = $pdo->prepare(
-        "SELECT id, title, file_url FROM digital_products WHERE id IN ({$placeholders}) AND product_type <> 'account'",
+        "SELECT id, title, file_url FROM digital_products WHERE id IN ({$placeholders}) AND product_type NOT IN ('account', 'auto_account')",
     );
     $productQuery->execute($requestedProductIds);
 

@@ -45,6 +45,9 @@ function account_gas_result(string $body): array
             'INVALID_ROW' => 'Isi username/password dan pilih status tersedia atau nonaktif.',
             'ROW_CHANGED' => 'Baris berubah sejak dimuat. Muat ulang data sebelum mengedit.',
             'DUPLICATE_USERNAME' => 'Email/username tersebut sudah ada pada baris lain.',
+            'INVALID_TAB' => 'Isi nama tab maksimal 100 karakter tanpa tanda [ ] : * ? / atau backslash.',
+            'INVALID_TOKEN_HEADER' => 'Tab akun otomatis harus memakai kolom: id, name, token, status, order_id, buyer_email, created_at, expires_at. Pilih tab token atau buat tab baru.',
+            'INVALID_TOKEN' => 'Data registrasi token tidak valid.',
         ];
         throw new RuntimeException($messages[$response['code'] ?? ''] ?? 'Permintaan GAS gagal. Periksa deployment dan konfigurasi script.');
     }

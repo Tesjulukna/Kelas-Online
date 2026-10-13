@@ -33,7 +33,7 @@ function gasHandle_(request) {
   if (secret.length < 32 || !allowed.length) gasFail_('CONFIG_MISSING');
   if (typeof request.secret !== 'string' || request.secret !== secret) gasFail_('UNAUTHORIZED');
   if (!allowed.includes(request.spreadsheetId)) gasFail_('SPREADSHEET_NOT_ALLOWED');
-  if (!['tabs', 'rows', 'mark_sold', 'update_row'].includes(request.action)) gasFail_('INVALID_ACTION');
+  if (!['tabs', 'rows', 'mark_sold', 'update_row', 'create_tab', 'token_rows', 'register_token', 'validate_token'].includes(request.action)) gasFail_('INVALID_ACTION');
   let spreadsheet;
   try { spreadsheet = SpreadsheetApp.openById(request.spreadsheetId); }
   catch (error) { gasFail_('SPREADSHEET_UNAVAILABLE'); }
@@ -42,8 +42,12 @@ function gasHandle_(request) {
       .filter(sheet => sheet.getType() === SpreadsheetApp.SheetType.GRID)
       .map(sheet => ({ properties: { sheetId: sheet.getSheetId(), title: sheet.getName(), sheetType: 'GRID' } })) };
   }
+  if (request.action === 'create_tab') return gasCreateTab_(spreadsheet, request);
   const sheet = spreadsheet.getSheetByName(request.tab);
   if (!sheet) gasFail_('TAB_NOT_FOUND');
+  if (request.action === 'token_rows') return { values: gasTokenRows_(sheet) };
+  if (request.action === 'register_token') return gasRegisterToken_(sheet, request);
+  if (request.action === 'validate_token') return gasValidateToken_(sheet, request);
   if (request.action === 'rows') return { values: gasRows_(sheet) };
   if (request.action === 'update_row') return gasUpdateRow_(sheet, request);
   if (typeof request.accountId !== 'string' || typeof request.orderId !== 'string' || !request.orderId || request.orderId.length > 180 || typeof request.buyerEmail !== 'string' || !request.buyerEmail || request.buyerEmail.length > 180) gasFail_('INVALID_SALE');
@@ -69,6 +73,73 @@ function gasHandle_(request) {
     SpreadsheetApp.flush();
     return { updated: true };
   } finally { lock.releaseLock(); }
+}
+
+function gasCreateTab_(spreadsheet, request) {
+  if (typeof request.tab !== 'string' || !request.tab.trim() || request.tab.length > 100 || /[\[\]:*?/\\]/.test(request.tab)
+    || !['account', 'auto_account'].includes(request.kind)) gasFail_('INVALID_TAB');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) gasFail_('BUSY');
+  try {
+    let sheet = spreadsheet.getSheetByName(request.tab);
+    if (sheet) {
+      if (request.kind === 'auto_account') gasTokenRows_(sheet);
+      else gasRows_(sheet);
+    } else {
+      sheet = spreadsheet.insertSheet(request.tab);
+      const header = request.kind === 'auto_account' ? gasTokenHeader_() : ['id', 'username', 'password', 'status', 'order_id', 'buyer_email'];
+      sheet.getRange(1, 1, 1, header.length).setNumberFormat('@').setValues([header]);
+      sheet.setFrozenRows(1);
+      SpreadsheetApp.flush();
+    }
+    return { tab: sheet.getName(), sheetId: sheet.getSheetId() };
+  } finally { lock.releaseLock(); }
+}
+
+function gasTokenHeader_() { return ['id', 'name', 'token', 'status', 'order_id', 'buyer_email', 'created_at', 'expires_at']; }
+
+function gasTokenRows_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 10001) gasFail_('TOO_MANY_ROWS');
+  const values = sheet.getRange(1, 1, Math.max(lastRow, 1), 8).getDisplayValues();
+  if (values[0].map(value => value.trim().toLowerCase()).join('|') !== gasTokenHeader_().join('|')) gasFail_('INVALID_TOKEN_HEADER');
+  return values;
+}
+
+function gasRegisterToken_(sheet, request) {
+  if (typeof request.accountId !== 'string' || !request.accountId || request.accountId.length > 120
+    || typeof request.name !== 'string' || !request.name.trim() || request.name.length > 160
+    || typeof request.token !== 'string' || !/^[a-f0-9]{64}$/.test(request.token)
+    || typeof request.orderId !== 'string' || !request.orderId || request.orderId.length > 180
+    || typeof request.buyerEmail !== 'string' || !request.buyerEmail || request.buyerEmail.length > 180
+    || !Number.isFinite(Date.parse(request.createdAt))
+    || (request.expiresAt && !Number.isFinite(Date.parse(request.expiresAt)))) gasFail_('INVALID_TOKEN');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) gasFail_('BUSY');
+  try {
+    const values = gasTokenRows_(sheet);
+    const existing = values.slice(1).find(row => row[4] === request.orderId);
+    if (existing) {
+      if (existing[0] !== request.accountId || existing[2] !== request.token || existing[5] !== request.buyerEmail) gasFail_('SALE_CONFLICT');
+      return { updated: true };
+    }
+    if (values.slice(1).some(row => row[0] === request.accountId || row[2] === request.token)) gasFail_('SALE_CONFLICT');
+    if (values.length >= 10001) gasFail_('TOO_MANY_ROWS');
+    const row = [request.accountId, request.name, request.token, 'active', request.orderId, request.buyerEmail, request.createdAt, request.expiresAt || ''];
+    sheet.getRange(values.length + 1, 1, 1, 8).setNumberFormat('@').setValues([row.map(gasSheetText_)]);
+    SpreadsheetApp.flush();
+    return { updated: true };
+  } finally { lock.releaseLock(); }
+}
+
+function gasValidateToken_(sheet, request) {
+  if (typeof request.token !== 'string' || !/^[a-f0-9]{64}$/.test(request.token)) return { valid: false };
+  const matches = gasTokenRows_(sheet).slice(1).filter(row => row[2] === request.token);
+  if (matches.length !== 1) return { valid: false };
+  const row = matches[0];
+  if (row[3].trim().toLowerCase() !== 'active') return { valid: false };
+  if (row[7] && (!Number.isFinite(Date.parse(row[7])) || Date.parse(row[7]) <= Date.now())) return { valid: false };
+  return { valid: true, accountId: row[0], name: row[1], expiresAt: row[7] || null };
 }
 
 function gasUpdateRow_(sheet, request) {

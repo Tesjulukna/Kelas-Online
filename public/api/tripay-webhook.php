@@ -289,7 +289,7 @@ if ($isDigitalProductOrder) {
         )
         : clean_asset_url($accessResult['product']['file_url'] ?? '', 1000);
     $stockEmailResult = account_stock_dispatch($pdo, $accessResult['access']['order_id'] ?? '');
-    $emailResult = ($accessResult['product']['product_type'] ?? '') === 'account' ? $stockEmailResult : send_digital_product_delivery_email([
+    $emailResult = in_array($accessResult['product']['product_type'] ?? '', ['account', 'auto_account'], true) ? $stockEmailResult : send_digital_product_delivery_email([
         'buyerName' => clean_text($order['buyer_name'] ?? 'Pelanggan', 160),
         'buyerEmail' => clean_email($order['buyer_email'] ?? ''),
         'productTitle' => clean_text($accessResult['product']['title'] ?? $order['class_title'] ?? 'Produk digital', 180),

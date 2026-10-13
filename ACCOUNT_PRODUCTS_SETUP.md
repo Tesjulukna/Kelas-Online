@@ -1,5 +1,7 @@
 # Produk Akun dari Google Spreadsheet
 
+Untuk jenis **Produk Akun Otomatis** yang membuat nama/token setelah pembayaran dan memakai tab terpisah, lihat [panduan akun otomatis](AUTOMATIC_ACCOUNTS_SETUP.md).
+
 Fitur ini memakai backend PHP + MySQL pada hosting Domainesia. Tambah Produk → Jenis produk → **Produk Akun**. Spreadsheet menjadi sumber input stok; database website mengendalikan reservasi dan penjualan. Satu checkout berisi satu akun. Produk akun tidak masuk bonus kelas atau bundling.
 
 ## Konfigurasi server sekali saja

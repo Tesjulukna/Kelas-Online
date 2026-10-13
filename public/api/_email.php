@@ -413,7 +413,7 @@ function send_digital_product_delivery_email(array $order): array
     $downloadUrl = clean_asset_url($order['downloadUrl'] ?? '', 1000);
     $deliveryNote = (string) ($order['deliveryNote'] ?? '');
     $isPrompt = clean_text($order['productType'] ?? '', 40) === 'prompt';
-    $isAccount = ($order['productType'] ?? '') === 'account';
+    $isAccount = in_array($order['productType'] ?? '', ['account', 'auto_account'], true);
     $credentials = $isAccount && is_array($order['accountCredentials'] ?? null) ? $order['accountCredentials'] : null;
     // Account emails are sent only by the durable stock delivery queue.
     if ($isAccount && !$credentials) {
@@ -428,7 +428,7 @@ function send_digital_product_delivery_email(array $order): array
         . "{$itemLabel} Anda sudah siap diakses.\n\n"
         . "{$itemLabel}: {$order['productTitle']}\n"
         . ($downloadUrl ? "Link akses: {$downloadUrl}\n" : '')
-        . ($credentials ? "Email/username: {$credentials['username']}\nPassword: {$credentials['password']}\n" : '')
+        . ($credentials ? (!empty($credentials['token']) ? "Nama: {$credentials['username']}\nToken login: {$credentials['token']}\n" . (!empty($credentials['expiresAt']) ? "Berlaku sampai: {$credentials['expiresAt']}\n" : '') : "Email/username: {$credentials['username']}\nPassword: {$credentials['password']}\n") : '')
         . (!empty($credentials['productUrl']) ? "Link produk: {$credentials['productUrl']}\n" . (!empty($credentials['fileName']) ? "Nama file: {$credentials['fileName']}\n" : '') : '')
         . ($deliveryNote ? "Catatan akses:\n{$deliveryNote}\n" : '')
         . "\nSimpan email ini untuk mengakses produk Anda kembali.\n\nIbnuCreative Academy";
@@ -441,7 +441,7 @@ function send_digital_product_delivery_email(array $order): array
         . '<p>' . email_escape($itemLabel) . ' Anda sudah siap. Silakan akses dari link berikut.</p>'
         . '<p><strong>' . email_escape($itemLabel) . ':</strong> ' . email_escape($order['productTitle'] ?? $itemLabel) . '</p>'
         . $button
-        . ($credentials ? '<p><strong>Email/username:</strong><br>' . email_escape($credentials['username']) . '</p><p><strong>Password:</strong><br><span style="white-space:pre-wrap">' . email_escape($credentials['password']) . '</span></p>' : '')
+        . ($credentials ? '<p><strong>' . (!empty($credentials['token']) ? 'Nama' : 'Email/username') . ':</strong><br>' . email_escape($credentials['username']) . '</p><p><strong>' . (!empty($credentials['token']) ? 'Token login' : 'Password') . ':</strong><br><span style="white-space:pre-wrap;overflow-wrap:anywhere">' . email_escape($credentials['token'] ?? $credentials['password']) . '</span></p>' . (!empty($credentials['expiresAt']) ? '<p>Berlaku sampai: ' . email_escape($credentials['expiresAt']) . '</p>' : '') : '')
         . (!empty($credentials['productUrl']) ? '<p><strong>Link produk:</strong><br><a href="' . email_escape($credentials['productUrl']) . '">' . email_escape($credentials['fileName'] ?: $credentials['productUrl']) . '</a></p>' : '')
         . ($downloadUrl ? '<p>Jika tombol tidak bisa dibuka, salin link ini:<br><a href="' . email_escape($downloadUrl) . '">' . email_escape($downloadUrl) . '</a></p>' : '')
         . ($deliveryNote ? '<p><strong>Catatan akses:</strong><br>' . email_escape_breaks($deliveryNote) . '</p>' : '')

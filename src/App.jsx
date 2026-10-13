@@ -824,7 +824,8 @@ function cleanDigitalProducts(value) {
     .filter((item) => item?.id && item?.title)
     .map((item) => ({
       id: cleanText(item.id),
-      productType: ['digital', 'prompt', 'account'].includes(item.productType) ? item.productType : 'digital',
+      productType: ['digital', 'prompt', 'account', 'auto_account'].includes(item.productType) ? item.productType : 'digital',
+      accountTokenDays: Math.max(0, Math.min(3650, Math.round(Number(item.accountTokenDays) || 0))),
       accountSpreadsheetId: cleanLongText(item.accountSpreadsheetId || '', 180),
       accountSheetTab: cleanLongText(item.accountSheetTab || '', 100),
       accountStockSyncedAt: cleanText(item.accountStockSyncedAt || ''),

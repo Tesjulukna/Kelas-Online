@@ -1444,7 +1444,7 @@ function cleanClassesForDb(value) {
 
 function cleanDigitalProductsForDb(value) {
   const source = Array.isArray(value) ? value.slice(0, 300) : []
-  if (source.some((item) => item?.productType === 'account')) {
+  if (source.some((item) => ['account', 'auto_account'].includes(item?.productType))) {
     throw new ApiError(501, 'Produk akun Google Sheets memakai backend PHP + MySQL hosting Domainesia.')
   }
 

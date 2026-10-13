@@ -30,7 +30,7 @@ if ($order) {
     $productId = clean_text($payload['product_id'] ?? '', 120);
     $product = $productId !== '' ? commerce_fetch_product($pdo, $productId, false) : null;
     $productRow = $product ?: [];
-    $accountCredentials = $paid && ($productRow['product_type'] ?? '') === 'account'
+    $accountCredentials = $paid && in_array($productRow['product_type'] ?? '', ['account', 'auto_account'], true)
         ? account_stock_delivery($pdo, $order['merchant_ref'], $productId, current_user()) : null;
     $productPublic = $product ? digital_product_public($product) : [
         'id' => $productId,
@@ -53,7 +53,7 @@ if ($order) {
         'product' => $productPublic,
         'delivery' => $paid ? [
             'accountCredentials' => $accountCredentials,
-            'accountRequiresLogin' => ($productRow['product_type'] ?? '') === 'account' && !$accountCredentials,
+            'accountRequiresLogin' => in_array($productRow['product_type'] ?? '', ['account', 'auto_account'], true) && !$accountCredentials,
             'downloadUrl' => clean_asset_url($productRow['file_url'] ?? ($payload['delivery_url'] ?? ''), 1000),
             'deliveryNote' => clean_text($productRow['delivery_note'] ?? ($payload['delivery_note'] ?? ''), 1200),
             'deliveryNoteEn' => clean_text($productRow['delivery_note_en'] ?? '', 1200),
@@ -79,7 +79,7 @@ if (!$access) {
 
 $product = commerce_fetch_product($pdo, $access['product_id'], false);
 $productRow = $product ?: [];
-$accountCredentials = ($productRow['product_type'] ?? '') === 'account'
+$accountCredentials = in_array($productRow['product_type'] ?? '', ['account', 'auto_account'], true)
     ? account_stock_delivery($pdo, $orderCode, $access['product_id'], current_user()) : null;
 
 send_json(200, [
@@ -99,7 +99,7 @@ send_json(200, [
     ],
     'delivery' => [
         'accountCredentials' => $accountCredentials,
-        'accountRequiresLogin' => ($productRow['product_type'] ?? '') === 'account' && !$accountCredentials,
+        'accountRequiresLogin' => in_array($productRow['product_type'] ?? '', ['account', 'auto_account'], true) && !$accountCredentials,
         'downloadUrl' => clean_asset_url($productRow['file_url'] ?? ($access['download_url'] ?? ''), 1000),
         'deliveryNote' => clean_text($productRow['delivery_note'] ?? '', 1200),
         'deliveryNoteEn' => clean_text($productRow['delivery_note_en'] ?? '', 1200),

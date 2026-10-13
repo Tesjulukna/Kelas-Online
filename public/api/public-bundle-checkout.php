@@ -136,7 +136,7 @@ foreach (array_slice($requestedBundleItems, 0, 50) as $requestedItem) {
 
     if ($type === 'digital_product') {
         $item = commerce_fetch_product($pdo, $id, true);
-        if (($item['product_type'] ?? '') === 'account') send_json(422, ['message' => 'Produk akun dibeli satu per checkout; pilih melalui menu Produk Digital.']);
+        if (in_array($item['product_type'] ?? '', ['account', 'auto_account'], true)) send_json(422, ['message' => 'Produk akun dibeli satu per checkout; pilih melalui menu Produk Digital.']);
 
         if (!$item) {
             continue;

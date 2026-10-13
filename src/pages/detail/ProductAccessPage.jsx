@@ -68,7 +68,8 @@ function ProductAccessPage({
   const accessProduct = localizeContent(accessData?.product, language)
   const delivery = localizeContent(accessData?.delivery, language)
   const isPrompt = accessProduct?.productType === 'prompt'
-  const isAccount = accessProduct?.productType === 'account'
+  const isAccount = ['account', 'auto_account'].includes(accessProduct?.productType)
+  const isAutomaticAccount = accessProduct?.productType === 'auto_account'
   const promptContent = delivery?.promptContent || accessProduct?.promptContent || ''
   const rawPromptItems = Array.isArray(delivery?.promptItems)
     ? delivery.promptItems
@@ -168,12 +169,13 @@ function ProductAccessPage({
                 <p className="eyebrow">Detail akun pembelian</p>
                 {delivery?.accountCredentials ? (
                   <>
-                    <label>Email / username</label>
+                    <label>{isAutomaticAccount ? 'Nama' : 'Email / username'}</label>
                     <pre>{delivery.accountCredentials.username}</pre>
                     <button className="btn btn-secondary" type="button" onClick={() => handleCopyPrompt(delivery.accountCredentials.username, 'Username')}>Salin Username</button>
-                    <label>Password</label>
-                    <pre>{delivery.accountCredentials.password}</pre>
-                    <button className="btn btn-secondary" type="button" onClick={() => handleCopyPrompt(delivery.accountCredentials.password, 'Password')}>Salin Password</button>
+                    <label>{isAutomaticAccount ? 'Token login' : 'Password'}</label>
+                    <pre>{delivery.accountCredentials.token || delivery.accountCredentials.password}</pre>
+                    <button className="btn btn-secondary" type="button" onClick={() => handleCopyPrompt(delivery.accountCredentials.token || delivery.accountCredentials.password, isAutomaticAccount ? 'Token' : 'Password')}>{isAutomaticAccount ? 'Salin Token' : 'Salin Password'}</button>
+                    {delivery.accountCredentials.expiresAt && <small>Berlaku sampai: {new Date(delivery.accountCredentials.expiresAt).toLocaleString('id-ID')}</small>}
                     {copyStatus && <small role="status">{copyStatus}</small>}
                     {delivery.accountCredentials.productUrl && (
                       <a className="btn btn-primary" href={delivery.accountCredentials.productUrl} target="_blank" rel="noreferrer">
@@ -184,7 +186,8 @@ function ProductAccessPage({
                   </>
                 ) : (
                   <>
-                    <p>Detail akun dikirim ke email pembeli. Login dengan akun member pembeli untuk melihatnya di sini.</p>
+                    <p>{isAutomaticAccount ? 'Token dikirim setelah registrasi GAS selesai. Login sebagai pembeli, lalu cek ulang jika token masih diproses.' : 'Detail akun dikirim ke email pembeli. Login dengan akun member pembeli untuk melihatnya di sini.'}</p>
+                    {isAutomaticAccount && <button className="btn btn-secondary" type="button" onClick={onRetry}>Cek Ulang Token</button>}
                     <a className="btn btn-primary" href="/login">Login Member</a>
                   </>
                 )}

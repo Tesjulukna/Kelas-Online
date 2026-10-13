@@ -539,7 +539,7 @@ function DetailProduk({
           type="button"
           disabled={isSoldOut && !isOwned}
           onClick={() => {
-            if (isOwned && product.productType !== 'account' && onOpenAccess) {
+            if (isOwned && !['account', 'auto_account'].includes(product.productType) && onOpenAccess) {
               onOpenAccess(product)
               return
             }

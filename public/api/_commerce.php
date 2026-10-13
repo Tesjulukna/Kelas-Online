@@ -123,6 +123,7 @@ function commerce_fetch_product(PDO $pdo, string $productId, bool $activeOnly = 
 
 function commerce_product_stock_managed(array $product): bool
 {
+    if (($product['product_type'] ?? '') === 'auto_account') return false;
     return commerce_flag_enabled($product['item_quantity_enabled'] ?? 0);
 }
 
@@ -200,7 +201,7 @@ function commerce_grant_digital_product_access(PDO $pdo, array $args): array
         send_json(404, ['message' => 'Produk digital tidak ditemukan.']);
     }
 
-    if (($product['product_type'] ?? '') === 'account') {
+    if (in_array($product['product_type'] ?? '', ['account', 'auto_account'], true)) {
         return commerce_grant_account_product($pdo, $product, $args);
     }
 
@@ -326,7 +327,11 @@ function commerce_grant_account_product(PDO $pdo, array $product, array $args): 
         $orderId = clean_text($args['orderId'] ?? '', 180);
         $memberId = clean_text($args['memberId'] ?? '', 120);
         $email = clean_email($args['buyerEmail'] ?? '');
-        account_stock_assign($pdo, $product['id'], $orderId, $email);
+        if (($product['product_type'] ?? '') === 'auto_account') {
+            automatic_account_assign($pdo, $product, $orderId, $email, clean_text($args['buyerName'] ?? '', 160));
+        } else {
+            account_stock_assign($pdo, $product['id'], $orderId, $email);
+        }
         $query = $pdo->prepare('SELECT * FROM digital_product_access WHERE order_id = ? AND product_id = ? LIMIT 1');
         $query->execute([$orderId, $product['id']]);
         $access = $query->fetch();
@@ -398,7 +403,7 @@ function commerce_grant_class_bundled_products(PDO $pdo, array $args): array
     foreach ($productIds as $productId) {
         $product = $productsById[$productId] ?? null;
 
-        if (!$product || ($product['product_type'] ?? '') === 'account') {
+        if (!$product || in_array($product['product_type'] ?? '', ['account', 'auto_account'], true)) {
             continue;
         }
 

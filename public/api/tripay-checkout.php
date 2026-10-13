@@ -82,7 +82,7 @@ if ($checkoutType === 'bundle') {
         if ($type === 'digital_product') {
             $item = commerce_fetch_product($pdo, $id, true);
             if (!$item) continue;
-            if (($item['product_type'] ?? '') === 'account') send_json(422, ['message' => 'Produk akun dibeli satu per checkout; pilih melalui menu Produk Digital.']);
+            if (in_array($item['product_type'] ?? '', ['account', 'auto_account'], true)) send_json(422, ['message' => 'Produk akun dibeli satu per checkout; pilih melalui menu Produk Digital.']);
             $isPrompt = clean_text($item['product_type'] ?? '', 40) === 'prompt';
             if (($isPrompt && empty($bundleRules['allowPrompts'])) || (!$isPrompt && empty($bundleRules['allowDigitalProducts']))) continue;
             $accessQuery = $pdo->prepare('SELECT id FROM digital_product_access WHERE product_id = ? AND status = ? AND (member_id = ? OR buyer_email = ?) LIMIT 1');

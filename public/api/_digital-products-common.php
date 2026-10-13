@@ -82,6 +82,7 @@ function ensure_digital_products_schema(PDO $pdo): void
 
     ensure_digital_product_column($pdo, 'display_sales', 'INT NULL');
     ensure_digital_product_column($pdo, 'product_type', "VARCHAR(40) NOT NULL DEFAULT 'digital'");
+    ensure_digital_product_column($pdo, 'account_token_days', 'INT NOT NULL DEFAULT 0');
     ensure_digital_product_column($pdo, 'title_en', "VARCHAR(180) NOT NULL DEFAULT ''");
     ensure_digital_product_column($pdo, 'description_en', 'LONGTEXT NULL');
     ensure_digital_product_column($pdo, 'rating', 'DECIMAL(2,1) NULL');
@@ -128,11 +129,12 @@ function ensure_digital_products_schema(PDO $pdo): void
 function digital_product_public(array $row): array
 {
     $productType = clean_text($row['product_type'] ?? 'digital', 40);
-    $productType = in_array($productType, ['digital', 'prompt', 'account'], true) ? $productType : 'digital';
+    $productType = in_array($productType, ['digital', 'prompt', 'account', 'auto_account'], true) ? $productType : 'digital';
 
     return [
         'id' => $row['id'],
         'productType' => $productType,
+        'accountTokenDays' => (int) ($row['account_token_days'] ?? 0),
         'title' => $row['title'],
         'titleEn' => $row['title_en'] ?? '',
         'description' => $row['description'] ?? '',
@@ -226,7 +228,7 @@ function fetch_digital_products(PDO $pdo, ?array $user): array
         $byProduct = [];
         foreach ($sources as $source) $byProduct[$source['product_id']] = $source;
         foreach ($products as &$product) {
-            if ($product['productType'] !== 'account') continue;
+            if (!in_array($product['productType'], ['account', 'auto_account'], true)) continue;
             $source = $byProduct[$product['id']] ?? [];
             $product['accountSpreadsheetId'] = $source['spreadsheet_id'] ?? '';
             $product['accountSheetTab'] = $source['sheet_tab'] ?? '';

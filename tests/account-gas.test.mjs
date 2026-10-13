@@ -15,22 +15,25 @@ function harness() {
   let opened = 0
   let writes = 0
   let released = 0
-  const sheet = {
-    getName: () => 'Stok Akun', getType: () => 'GRID', getSheetId: () => 0,
-    getLastRow: () => rows.length,
-    getRange(row, column) {
+  const sheets = new Map()
+  const makeSheet = (name, content, id) => ({
+    getName: () => name, getType: () => 'GRID', getSheetId: () => id,
+    getLastRow: () => content.length, setFrozenRows() {},
+    getRange(row, column, height, width) {
       return {
-        getDisplayValues: () => rows.map(value => [...value]),
+        getDisplayValues: () => content.length ? content.map(value => Array.from({ length: width }, (_, index) => value[index] ?? '')) : [Array(width).fill('')],
         setNumberFormat() { return this },
-        setValues(values) { writes++; rows[row - 1].splice(column - 1, values[0].length, ...values[0].map(value => value.startsWith("'") ? value.slice(1) : value)); return this },
+        setValues(values) { writes++; content[row - 1] ||= Array(width).fill(''); content[row - 1].splice(column - 1, values[0].length, ...values[0].map(value => value.startsWith("'") ? value.slice(1) : value)); return this },
       }
     },
-  }
+  })
+  sheets.set('Stok Akun', makeSheet('Stok Akun', rows, 0))
   const context = vm.createContext({
     PropertiesService: { getScriptProperties: () => ({ getProperty: key => ({ WEBSITE_SHARED_SECRET: secret, ALLOWED_SPREADSHEET_IDS: 'test-spreadsheet-id' })[key] }) },
     SpreadsheetApp: { SheetType: { GRID: 'GRID' }, flush() {}, openById() {
       opened++
-      return { getName: () => 'Spreadsheet', getSheets: () => [sheet], getSheetByName: title => title === 'Stok Akun' ? sheet : null }
+      return { getName: () => 'Spreadsheet', getSheets: () => [...sheets.values()], getSheetByName: title => sheets.get(title) || null,
+        insertSheet(name) { const sheet = makeSheet(name, [], sheets.size); sheets.set(name, sheet); return sheet } }
     } },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() { released++ } }) },
     ContentService: { MimeType: { JSON: 'application/json' }, createTextOutput: content => ({ setMimeType: () => content }) },
@@ -39,8 +42,44 @@ function harness() {
   const call = args => JSON.parse(context.doPost({ postData: { contents: JSON.stringify({
     secret, spreadsheetId: 'test-spreadsheet-id', tab: 'Stok Akun', ...args,
   }) } }))
-  return { call, rows, counts: () => ({ opened, writes, released }) }
+  return { call, rows, counts: () => ({ opened, writes, released }),
+    setCell(tab, row, column, value) { sheets.get(tab).getRange(row, column, 1, 1).setValues([[value]]) } }
 }
+
+test('GAS membuat tab token terpisah dan mencatat satu token per pesanan', () => {
+  const bridge = harness()
+  assert.equal(bridge.call({ action: 'create_tab', tab: 'Token A', kind: 'auto_account' }).ok, true)
+  assert.equal(bridge.call({ action: 'create_tab', tab: 'Token B', kind: 'auto_account' }).ok, true)
+  const sale = { action: 'register_token', tab: 'Token A', accountId: 'auto-1', name: 'Pembeli', token: 'ab'.repeat(32),
+    orderId: 'paid-1', buyerEmail: 'buyer@example.test', createdAt: new Date().toISOString(), expiresAt: '' }
+  assert.equal(bridge.call(sale).data.updated, true)
+  assert.equal(bridge.call(sale).data.updated, true)
+  assert.equal(bridge.call({ action: 'token_rows', tab: 'Token A' }).data.values.length, 2)
+  assert.equal(bridge.call({ action: 'token_rows', tab: 'Token B' }).data.values.length, 1)
+  assert.equal(bridge.call({ ...sale, token: 'cd'.repeat(32) }).code, 'SALE_CONFLICT')
+  assert.equal(bridge.call({ action: 'create_tab', tab: 'Stok Akun', kind: 'auto_account' }).code, 'INVALID_TOKEN_HEADER')
+})
+
+test('validasi token terikat tab, status aktif, dan masa berlaku', () => {
+  const bridge = harness()
+  bridge.call({ action: 'create_tab', tab: 'Token A', kind: 'auto_account' })
+  bridge.call({ action: 'create_tab', tab: 'Token B', kind: 'auto_account' })
+  const sale = { action: 'register_token', tab: 'Token A', accountId: 'auto-1', name: 'Pembeli', token: 'ab'.repeat(32),
+    orderId: 'paid-1', buyerEmail: 'buyer@example.test', createdAt: new Date().toISOString(), expiresAt: '' }
+  bridge.call(sale)
+  const result = bridge.call({ action: 'validate_token', tab: 'Token A', token: sale.token })
+  assert.equal(result.data.valid, true)
+  assert.equal(result.data.name, 'Pembeli')
+  assert.ok(!JSON.stringify(result).includes(sale.token))
+  assert.equal(bridge.call({ action: 'validate_token', tab: 'Token B', token: sale.token }).data.valid, false)
+  assert.equal(bridge.call({ action: 'validate_token', tab: 'Token A', token: 'wrong' }).data.valid, false)
+  bridge.setCell('Token A', 2, 4, 'disabled')
+  assert.equal(bridge.call({ action: 'validate_token', tab: 'Token A', token: sale.token }).data.valid, false)
+  assert.equal(bridge.call(sale).data.updated, true)
+  assert.equal(bridge.call({ action: 'validate_token', tab: 'Token A', token: sale.token }).data.valid, false)
+  bridge.call({ ...sale, accountId: 'expired', orderId: 'expired-order', token: 'cd'.repeat(32), expiresAt: '2000-01-01T00:00:00Z' })
+  assert.equal(bridge.call({ action: 'validate_token', tab: 'Token A', token: 'cd'.repeat(32) }).data.valid, false)
+})
 
 test('GAS mendeteksi tab dan membaca stok dengan kunci koneksi', () => {
   const bridge = harness()

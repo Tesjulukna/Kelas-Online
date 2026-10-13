@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/_account-gas.php';
+require_once __DIR__ . '/_automatic-accounts.php';
 
 // Credentials never belong in catalog responses or checkout payloads.
 function account_stock_key(): string
@@ -337,12 +338,15 @@ function account_stock_assign(PDO $pdo, string $productId, string $orderId, stri
 function account_stock_delivery(PDO $pdo, string $orderId, string $productId, ?array $user): ?array
 {
     if (($user['role'] ?? '') !== 'member' && ($user['role'] ?? '') !== 'admin') return null;
-    $query = $pdo->prepare("SELECT s.credentials FROM product_account_stock s JOIN digital_product_access a ON a.order_id = s.order_id AND a.product_id = s.product_id
+    $query = $pdo->prepare("SELECT s.credentials, s.sheet_synced FROM product_account_stock s JOIN digital_product_access a ON a.order_id = s.order_id AND a.product_id = s.product_id
         WHERE s.order_id = ? AND s.product_id = ? AND s.status = 'sold' AND a.status = 'active'
         AND ((a.member_id <> '' AND a.member_id = ?) OR (a.buyer_email <> '' AND a.buyer_email = ?) OR ? = 'admin') LIMIT 1");
     $query->execute([$orderId, $productId, $user['userId'] ?? '', $user['email'] ?? '', $user['role'] ?? '']);
-    $value = $query->fetchColumn();
-    return $value ? account_stock_decrypt($value) : null;
+    $row = $query->fetch();
+    if (!$row) return null;
+    $credentials = account_stock_decrypt($row['credentials']);
+    if (($credentials['kind'] ?? '') === 'token' && !$row['sheet_synced']) return null;
+    return $credentials;
 }
 
 function account_stock_write_sale(PDO $pdo, array $row): void
@@ -366,6 +370,14 @@ function account_stock_dispatch(PDO $pdo, string $orderId, ?callable $sendEmail 
     $query->execute([$orderId]);
     $row = $query->fetch();
     if (!$row) return ['sent' => false];
+    $credentials = account_stock_decrypt($row['credentials']);
+    if (($credentials['kind'] ?? '') === 'token' && !$row['sheet_synced']) {
+        $touch = $pdo->prepare('UPDATE product_account_stock SET last_attempt_at = ? WHERE id = ?');
+        $touch->execute([time(), $row['id']]);
+        try { ($writeSale ?? 'automatic_account_register')($pdo, $row); }
+        catch (Throwable $error) { return ['sent' => false, 'message' => 'Token sedang menunggu registrasi GAS.']; }
+        $row['sheet_synced'] = 1;
+    }
     // Deliver email first. A slow Google API must not delay delivery to the buyer.
     $result = ['sent' => $row['email_status'] === 'sent'];
     if (!$result['sent']) {
@@ -376,7 +388,7 @@ function account_stock_dispatch(PDO $pdo, string $orderId, ?callable $sendEmail 
             $credentials = account_stock_decrypt($row['credentials']);
             $result = ($sendEmail ?? 'send_digital_product_delivery_email')([
                 'buyerName' => 'Pelanggan', 'buyerEmail' => $row['buyer_email'], 'productTitle' => $row['product_title'],
-                'productType' => 'account', 'accountCredentials' => $credentials, 'deliveryNote' => $row['delivery_note'],
+                'productType' => ($credentials['kind'] ?? '') === 'token' ? 'auto_account' : 'account', 'accountCredentials' => $credentials, 'deliveryNote' => $row['delivery_note'],
                 'downloadUrl' => $row['delivery_url'] ?? '', 'idempotencyKey' => 'account-delivery/' . hash('sha256', $orderId),
             ]);
         } catch (Throwable $error) { $result = ['sent' => false]; }

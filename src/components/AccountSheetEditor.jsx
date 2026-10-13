@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { accountRowStatus, accountSheetPage } from '../utils/accountSheetView'
 
-const statusLabel = value => ({ available: 'Tersedia', tersedia: 'Tersedia', disabled: 'Nonaktif', nonaktif: 'Nonaktif', sold: 'Terjual', terjual: 'Terjual', reserved: 'Menunggu pembayaran', external_sold: 'Terjual' })[value] || value
+const statusLabel = value => ({ active: 'Aktif', expired: 'Kedaluwarsa', available: 'Tersedia', tersedia: 'Tersedia', disabled: 'Nonaktif', nonaktif: 'Nonaktif', sold: 'Terjual', terjual: 'Terjual', reserved: 'Menunggu pembayaran', external_sold: 'Terjual' })[value] || value
 
-export default function AccountSheetEditor({ spreadsheet, tab, onRequest, onBusyChange }) {
+export default function AccountSheetEditor({ spreadsheet, tab, onRequest, onBusyChange, kind = 'account' }) {
+  const automatic = kind === 'auto_account'
   const [data, setData] = useState(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
@@ -37,13 +38,13 @@ export default function AccountSheetEditor({ spreadsheet, tab, onRequest, onBusy
       setEditing(null)
       setShowPassword(false)
       setPage(0)
-      onRequest({ action: 'rows', spreadsheet, tab })
+      onRequest({ action: 'rows', spreadsheet, tab, kind })
         .then(result => { if (current) { setData(result); setMessage('') } })
         .catch(error => { if (current) setMessage(error.message || 'Data belum dapat dimuat.') })
         .finally(() => { if (current) setBusy(false) })
     }, 0)
     return () => { current = false; window.clearTimeout(timer) }
-  }, [spreadsheet, tab, onRequest, refresh])
+  }, [spreadsheet, tab, onRequest, refresh, kind])
 
   const rows = (data?.values || []).slice(1).filter(row => row.some(value => String(value).trim()))
   const result = accountSheetPage(rows, data?.stockStatuses, { query, status: filterStatus, page, pageSize })
@@ -68,11 +69,11 @@ export default function AccountSheetEditor({ spreadsheet, tab, onRequest, onBusy
   const table = (
         <div className="account-sheet-table-scroll">
           <table className="account-sheet-table">
-            <thead><tr>{['ID Akun', 'Email / Username', 'Password', 'Status', 'ID Pesanan', 'Email Pembeli', 'Aksi'].map(label => <th key={label}>{label}</th>)}</tr></thead>
+            <thead><tr>{['ID Akun', automatic ? 'Nama' : 'Email / Username', automatic ? 'Token' : 'Password', 'Status', 'ID Pesanan', 'Email Pembeli', ...(automatic ? ['Dibuat', 'Berlaku sampai'] : []), 'Aksi'].map(label => <th key={label}>{label}</th>)}</tr></thead>
             <tbody>{visible.map((raw, index) => {
               const row = Array.from({ length: 6 }, (_, cell) => String(raw[cell] ?? ''))
               const status = accountRowStatus(row, data?.stockStatuses)
-              const locked = ['sold', 'terjual', 'reserved', 'external_sold'].includes(status) || Boolean(row[4] || row[5])
+              const locked = automatic || ['sold', 'terjual', 'reserved', 'external_sold'].includes(status) || Boolean(row[4] || row[5])
               const active = editing === raw
               return <tr key={`${page}:${index}`}>
                 <td>{row[0]}</td>
@@ -83,6 +84,7 @@ export default function AccountSheetEditor({ spreadsheet, tab, onRequest, onBusy
                 </> : showPassword ? row[2] : '••••••••'}</td>
                 <td>{active ? <select aria-label="Status akun" value={draft[3]} disabled={busy} onChange={event => setDraft(value => value.map((cell, i) => i === 3 ? event.target.value : cell))}><option value="available">Tersedia</option><option value="disabled">Nonaktif</option></select> : statusLabel(status)}</td>
                 <td>{row[4] || '—'}</td><td>{row[5] || '—'}</td>
+                {automatic && <><td>{raw[6] || '—'}</td><td>{raw[7] || 'Tanpa batas waktu'}</td></>}
                 <td>{active ? <div className="account-sheet-row-actions">
                   <button type="button" className="btn btn-primary" disabled={busy} onClick={save}>Simpan Baris</button>
                   <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => { setEditing(null); setShowPassword(false) }}>Batal</button>
@@ -94,7 +96,7 @@ export default function AccountSheetEditor({ spreadsheet, tab, onRequest, onBusy
   )
 
   const actions = <div className="account-sheet-row-actions">
-    <button className="btn btn-secondary" type="button" onClick={() => setShowPassword(value => !value)}>{showPassword ? 'Sembunyikan Password' : 'Lihat Password'}</button>
+    <button className="btn btn-secondary" type="button" onClick={() => setShowPassword(value => !value)}>{showPassword ? 'Sembunyikan' : automatic ? 'Lihat Token' : 'Lihat Password'}</button>
     <button className="btn btn-secondary" type="button" disabled={navigationDisabled} onClick={() => setRefresh(value => value + 1)}>Muat Ulang</button>
   </div>
 
@@ -119,7 +121,7 @@ export default function AccountSheetEditor({ spreadsheet, tab, onRequest, onBusy
           </div>
           <div className="account-sheet-filters">
             <label>Pencarian<input type="search" value={query} disabled={navigationDisabled} placeholder="ID akun, username, pesanan, email pembeli" onChange={event => { setQuery(event.target.value); setPage(0) }} /></label>
-            <label>Filter status<select value={filterStatus} disabled={navigationDisabled} onChange={event => { setFilterStatus(event.target.value); setPage(0) }}><option value="all">Semua Status</option><option value="available">Tersedia</option><option value="reserved">Menunggu Pembayaran</option><option value="sold">Terjual</option><option value="disabled">Nonaktif</option></select></label>
+            <label>Filter status<select value={filterStatus} disabled={navigationDisabled} onChange={event => { setFilterStatus(event.target.value); setPage(0) }}><option value="all">Semua Status</option>{automatic ? <option value="active">Aktif</option> : <><option value="available">Tersedia</option><option value="reserved">Menunggu Pembayaran</option><option value="sold">Terjual</option></>}<option value="disabled">Nonaktif</option></select></label>
             <label>Akun per halaman<select value={pageSize} disabled={navigationDisabled} onChange={event => { setPageSize(Number(event.target.value)); setPage(0) }}><option value={20}>20</option><option value={50}>50</option></select></label>
           </div>
           {actions}

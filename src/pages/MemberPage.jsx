@@ -920,7 +920,7 @@ function MemberPage({
       }))
     }
     activeSellableProducts.forEach((product) => {
-      if (product.productType === 'account') return
+      if (['account', 'auto_account'].includes(product.productType)) return
       const isPrompt = product.productType === 'prompt'
       if ((isPrompt && !bundleSettings.allowPrompts) || (!isPrompt && !bundleSettings.allowDigitalProducts)) return
       items.push({

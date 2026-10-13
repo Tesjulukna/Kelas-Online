@@ -1,5 +1,5 @@
 export default function AccountPurchaseLinks({ product, accessRows, onOpen }) {
-  if (product.productType !== 'account') return null
+  if (!['account', 'auto_account'].includes(product.productType)) return null
   const purchases = accessRows.filter((access) => access.productId === product.id && access.status === 'active' && access.orderId)
   if (!purchases.length) return null
   return (

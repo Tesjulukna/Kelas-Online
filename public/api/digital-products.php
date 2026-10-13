@@ -26,6 +26,19 @@ $insert = $pdo->prepare(
 $restoreProductCreatedAt = $pdo->prepare('UPDATE digital_products SET created_at = ? WHERE id = ?');
 
 try {
+    $existingSources = $pdo->query('SELECT p.id, p.product_type, s.spreadsheet_id, s.sheet_tab FROM digital_products p LEFT JOIN account_product_sources s ON s.product_id = p.id')->fetchAll();
+    $existingSourcesById = [];
+    foreach ($existingSources as $source) $existingSourcesById[$source['id']] = $source;
+    foreach ($products as $product) {
+        if (($product['productType'] ?? '') !== 'auto_account') continue;
+        $sheetId = account_sheet_id((string) ($product['accountSpreadsheetId'] ?? ''));
+        $tab = (string) ($product['accountSheetTab'] ?? '');
+        account_sheet_range($tab, 'A1:H1');
+        $old = $existingSourcesById[$product['id'] ?? ''] ?? [];
+        if (($old['product_type'] ?? '') !== 'auto_account' || ($old['spreadsheet_id'] ?? '') !== $sheetId || ($old['sheet_tab'] ?? '') !== $tab) {
+            account_gas_request('token_rows', $sheetId, ['tab' => $tab]);
+        }
+    }
     $pdo->beginTransaction();
     $existingProductCreatedAt = $pdo
         ->query('SELECT id, created_at FROM digital_products')
@@ -33,6 +46,7 @@ try {
     $sourceQuery = $pdo->prepare('SELECT * FROM account_product_sources WHERE product_id = ?');
     $inventoryQuery = $pdo->prepare('SELECT COUNT(*) FROM product_account_stock WHERE product_id = ?');
     $saveSource = $pdo->prepare('INSERT INTO account_product_sources (product_id, spreadsheet_id, sheet_tab) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE spreadsheet_id = VALUES(spreadsheet_id), sheet_tab = VALUES(sheet_tab)');
+    $existingProductTypes = $pdo->query('SELECT id, product_type FROM digital_products')->fetchAll(PDO::FETCH_KEY_PAIR);
     $pdo->exec('DELETE FROM digital_products');
 
     foreach (array_slice($products, 0, 300) as $index => $product) {
@@ -42,25 +56,30 @@ try {
 
         $id = clean_text($product['id'] ?? make_id('product'), 120) ?: make_id('product');
         $requestedType = clean_text($product['productType'] ?? 'digital', 40);
-        $productType = in_array($requestedType, ['digital', 'prompt', 'account'], true) ? $requestedType : 'digital';
+        $productType = in_array($requestedType, ['digital', 'prompt', 'account', 'auto_account'], true) ? $requestedType : 'digital';
         $inventoryQuery->execute([$id]);
         $hasInventory = (int) $inventoryQuery->fetchColumn() > 0;
-        if ($productType === 'account') {
+        if ($hasInventory && ($existingProductTypes[$id] ?? $productType) !== $productType) throw new InvalidArgumentException('Jenis produk dengan akun terjual/stok terimpor tidak dapat diganti.');
+        if (in_array($productType, ['account', 'auto_account'], true)) {
             $sheetId = account_sheet_id((string) ($product['accountSpreadsheetId'] ?? ''));
             $tab = (string) ($product['accountSheetTab'] ?? '');
             account_sheet_range($tab, 'A1:F1');
             $sourceQuery->execute([$id]);
             $source = $sourceQuery->fetch();
+            $otherSource = $pdo->prepare('SELECT product_id FROM account_product_sources WHERE spreadsheet_id = ? AND sheet_tab = ? AND product_id <> ? LIMIT 1');
+            $otherSource->execute([$sheetId, $tab, $id]);
+            if ($otherSource->fetchColumn()) throw new InvalidArgumentException('Tab ini sudah terhubung ke produk lain. Pilih atau buat tab terpisah untuk produk ini.');
             if ($hasInventory && $source && ($source['spreadsheet_id'] !== $sheetId || $source['sheet_tab'] !== $tab)) {
                 throw new InvalidArgumentException('Sumber stok yang sudah diimpor tidak dapat diganti. Buat produk akun baru untuk tab lain.');
             }
             $saveSource->execute([$id, $sheetId, $tab]);
-            $product['itemQuantityEnabled'] = true;
+            $product['itemQuantityEnabled'] = $productType === 'account';
             $countQuery = $pdo->prepare("SELECT COUNT(*) FROM product_account_stock WHERE product_id = ? AND status = 'available'");
             $countQuery->execute([$id]);
             $product['itemQuantity'] = (int) $countQuery->fetchColumn();
             $product['allowRepeatPurchase'] = true;
             $product['autoCreateMember'] = true;
+            if ($productType === 'auto_account') $product['requireCustomerName'] = true;
         } elseif ($hasInventory) {
             throw new InvalidArgumentException('Produk dengan stok akun tidak dapat diubah menjadi jenis produk lain.');
         }
@@ -130,6 +149,10 @@ try {
             clean_text($product['promptExamples'] ?? '', 8000),
             clean_text($product['promptLicense'] ?? 'Personal & commercial use', 120),
         ]);
+        if ($productType === 'auto_account') {
+            $tokenDaysUpdate = $pdo->prepare('UPDATE digital_products SET account_token_days = ? WHERE id = ?');
+            $tokenDaysUpdate->execute([clean_number($product['accountTokenDays'] ?? 0, 0, 3650), $id]);
+        }
 
         if (isset($existingProductCreatedAt[$id])) {
             $restoreProductCreatedAt->execute([$existingProductCreatedAt[$id], $id]);
