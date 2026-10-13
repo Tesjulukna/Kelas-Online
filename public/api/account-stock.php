@@ -13,7 +13,7 @@ $payload = read_json_body();
 try {
     if (($payload['action'] ?? '') === 'tabs') {
         $id = account_sheet_id((string) ($payload['spreadsheet'] ?? ''));
-        $data = account_sheets_request($id, '?fields=properties(title),sheets(properties(sheetId,title,sheetType))');
+        $data = account_gas_request('tabs', $id);
         $tabs = account_sheet_tabs($data);
         send_json(200, ['spreadsheetId' => $id, 'title' => $data['properties']['title'] ?? '', 'tabs' => $tabs]);
     }

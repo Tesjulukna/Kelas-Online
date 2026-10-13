@@ -89,7 +89,7 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
       </label>
       <p>Kolom A–F: <code>id, username, password, status, order_id, buyer_email</code>. Isi status <code>available</code> untuk akun siap jual.</p>
       <a href="/templates/account-stock.csv" download>Unduh template stok akun</a>
-      <small>Bagikan Spreadsheet sebagai Editor ke akun layanan Google website.</small>
+      <small>Gunakan Spreadsheet milik akun Google yang men-deploy GAS. URL GAS dan kunci koneksi diatur di hosting.</small>
       {productId && <button className="btn btn-secondary" type="button" disabled={busy} onClick={sync}>Sinkronkan Stok Tersimpan</button>}
       <small>Simpan produk untuk memakai perubahan sumber. Penambahan baris stok masuk setelah sinkronisasi.</small>
       {form.accountStockSyncedAt && <small>Sinkronisasi terakhir: {form.accountStockSyncedAt}</small>}

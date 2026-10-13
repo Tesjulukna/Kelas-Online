@@ -2,15 +2,65 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/_account-gas.php';
+
 // Credentials never belong in catalog responses or checkout payloads.
 function account_stock_key(): string
 {
     $config = api_config();
     $hex = (string) (getenv('ACCOUNT_STOCK_KEY') ?: ($config['account_stock_key'] ?? ''));
+    if ($hex === '') {
+        $file = (string) (getenv('ACCOUNT_STOCK_KEY_FILE') ?: ($config['account_stock_key_file'] ?? dirname(__DIR__, 3) . '/.ibnucreative-private/account-stock.key'));
+        return account_stock_file_key($file, trim((string) ($_SERVER['DOCUMENT_ROOT'] ?? '')) ?: dirname(__DIR__));
+    }
     if (!preg_match('/^[a-f0-9]{64}$/i', $hex)) {
-        throw new RuntimeException('Kunci enkripsi stok akun belum dikonfigurasi di server.');
+        throw new RuntimeException('Kunci enkripsi stok akun yang dikonfigurasi tidak valid.');
     }
     return hex2bin($hex);
+}
+
+function account_stock_file_key(string $file, string $publicRoot): string
+{
+    $directory = dirname($file);
+    if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) {
+        throw new RuntimeException('Folder privat kunci tidak dapat dibuat. Beri izin tulis pada folder home hosting atau atur account_stock_key_file di luar public_html.');
+    }
+    $privateDirectory = realpath($directory);
+    $root = realpath($publicRoot);
+    if ($privateDirectory === false || $root === false) throw new RuntimeException('Lokasi folder privat kunci tidak valid.');
+    $normalize = static fn(string $path): string => strtolower(str_replace('\\', '/', rtrim($path, '/\\')));
+    $privatePath = $normalize($privateDirectory);
+    $publicPath = $normalize($root);
+    if ($privatePath === $publicPath || strpos($privatePath . '/', $publicPath . '/') === 0 || is_link($file)) {
+        throw new RuntimeException('File kunci harus disimpan di luar folder publik website.');
+    }
+    $file = $privateDirectory . DIRECTORY_SEPARATOR . basename($file);
+    $lock = @fopen($file . '.lock', 'c');
+    if ($lock === false) throw new RuntimeException('File kunci privat tidak dapat dibuat. Periksa izin tulis hosting.');
+    @chmod($file . '.lock', 0600);
+    $temporary = null;
+    try {
+        if (!flock($lock, LOCK_EX)) throw new RuntimeException('Kunci enkripsi belum dapat dikunci. Coba lagi.');
+        if (is_file($file)) {
+            $hex = trim((string) @file_get_contents($file));
+            if (!preg_match('/^[a-f0-9]{64}$/i', $hex)) throw new RuntimeException('File kunci enkripsi tidak valid. Pulihkan dari backup; kunci tidak diganti otomatis.');
+            return hex2bin($hex);
+        }
+        $hex = bin2hex(random_bytes(32));
+        $temporary = $file . '.' . bin2hex(random_bytes(6)) . '.tmp';
+        $handle = @fopen($temporary, 'x');
+        if ($handle === false) throw new RuntimeException('File kunci sementara tidak dapat dibuat.');
+        try {
+            if (!chmod($temporary, 0600) || fwrite($handle, $hex) !== 64 || !fflush($handle)) throw new RuntimeException('Kunci enkripsi tidak dapat disimpan dengan aman.');
+        } finally { fclose($handle); }
+        if (!@rename($temporary, $file)) throw new RuntimeException('File kunci enkripsi tidak dapat disimpan.');
+        $temporary = null;
+        return hex2bin($hex);
+    } finally {
+        if ($temporary !== null && is_file($temporary)) @unlink($temporary);
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
 }
 
 function account_stock_encrypt(array $credentials): string
@@ -94,58 +144,9 @@ function account_sheet_tabs(array $spreadsheet): array
     return $tabs;
 }
 
-function account_google_http(string $url, string $method = 'GET', array $headers = [], ?string $body = null): array
-{
-    if (!function_exists('curl_init')) throw new RuntimeException('Ekstensi cURL belum aktif di server.');
-    $curl = curl_init($url);
-    curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CUSTOMREQUEST => $method,
-        CURLOPT_HTTPHEADER => $headers, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 25,
-        CURLOPT_FOLLOWLOCATION => false]);
-    if ($body !== null) curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
-    $result = curl_exec($curl);
-    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    curl_close($curl);
-    if ($result === false || $status < 200 || $status >= 300) {
-        // Do not echo Google response bodies: they may contain private data.
-        throw new RuntimeException($status === 403 || $status === 404
-            ? 'Spreadsheet tidak dapat diakses. Aktifkan Sheets API dan bagikan Spreadsheet ke email akun layanan sebagai Editor.'
-            : 'Koneksi Google Spreadsheet gagal. Periksa konfigurasi akun layanan dan coba lagi.');
-    }
-    return json_decode($result, true, 512, JSON_THROW_ON_ERROR);
-}
-
-function account_google_token(): string
-{
-    static $token = null;
-    if ($token !== null) return $token;
-    $config = api_config();
-    $path = (string) (getenv('GOOGLE_SHEETS_CREDENTIALS_FILE') ?: ($config['google_sheets_credentials_file'] ?? ''));
-    if ($path === '' || !is_file($path)) throw new RuntimeException('Akun layanan Google Sheets belum dikonfigurasi di server.');
-    $credentials = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
-    if (empty($credentials['client_email']) || empty($credentials['private_key'])) throw new RuntimeException('Konfigurasi akun layanan Google tidak valid.');
-    $encode = static fn(string $value): string => rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
-    $unsigned = $encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT'])) . '.' . $encode(json_encode([
-        'iss' => $credentials['client_email'], 'scope' => 'https://www.googleapis.com/auth/spreadsheets',
-        'aud' => 'https://oauth2.googleapis.com/token', 'iat' => time(), 'exp' => time() + 3600,
-    ]));
-    if (!openssl_sign($unsigned, $signature, $credentials['private_key'], OPENSSL_ALGO_SHA256)) throw new RuntimeException('Akun layanan Google tidak dapat digunakan.');
-    $response = account_google_http('https://oauth2.googleapis.com/token', 'POST', ['Content-Type: application/x-www-form-urlencoded'], http_build_query([
-        'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion' => $unsigned . '.' . $encode($signature),
-    ]));
-    if (empty($response['access_token'])) throw new RuntimeException('Token Google Sheets tidak tersedia.');
-    return $token = $response['access_token'];
-}
-
-function account_sheets_request(string $spreadsheetId, string $suffix = '', string $method = 'GET', ?array $body = null): array
-{
-    return account_google_http('https://sheets.googleapis.com/v4/spreadsheets/' . rawurlencode(account_sheet_id($spreadsheetId)) . $suffix,
-        $method, ['Authorization: Bearer ' . account_google_token(), 'Content-Type: application/json'],
-        $body !== null ? json_encode($body, JSON_THROW_ON_ERROR) : null);
-}
-
 function account_sheet_rows(string $spreadsheetId, string $tab): array
 {
-    $response = account_sheets_request($spreadsheetId, '/values/' . rawurlencode(account_sheet_range($tab, 'A1:F10002')) . '?valueRenderOption=FORMATTED_VALUE');
+    $response = account_gas_request('rows', account_sheet_id($spreadsheetId), ['tab' => $tab]);
     return account_parse_sheet_rows($response['values'] ?? []);
 }
 
@@ -343,12 +344,11 @@ function account_stock_write_sale(PDO $pdo, array $row): void
     $query->execute([$row['product_id']]);
     $source = $query->fetch();
     if (!$source) throw new RuntimeException('Sumber Spreadsheet pesanan tidak tersedia.');
-    $rows = account_sheet_rows($source['spreadsheet_id'], $source['sheet_tab']);
-    $sheetRow = $rows[$row['account_id']]['row'] ?? null;
-    if (!$sheetRow) throw new RuntimeException('ID akun terjual tidak ditemukan di Spreadsheet.');
-    account_sheets_request($source['spreadsheet_id'], '/values/' . rawurlencode(account_sheet_range($source['sheet_tab'], 'D' . $sheetRow . ':F' . $sheetRow)) . '?valueInputOption=RAW', 'PUT', [
-        'values' => [['sold', $row['order_id'], $row['buyer_email']]],
+    $result = account_gas_request('mark_sold', $source['spreadsheet_id'], [
+        'tab' => $source['sheet_tab'], 'accountId' => $row['account_id'],
+        'orderId' => $row['order_id'], 'buyerEmail' => $row['buyer_email'],
     ]);
+    if (($result['updated'] ?? false) !== true) throw new RuntimeException('GAS belum mengonfirmasi pembaruan status akun.');
     $update = $pdo->prepare("UPDATE product_account_stock SET sheet_synced = 1 WHERE id = ? AND status = 'sold'");
     $update->execute([$row['id']]);
 }

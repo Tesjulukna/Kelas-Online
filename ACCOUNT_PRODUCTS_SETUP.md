@@ -4,17 +4,22 @@ Fitur ini memakai backend PHP + MySQL pada hosting Domainesia. Tambah Produk →
 
 ## Konfigurasi server sekali saja
 
-1. Di Google Cloud, aktifkan **Google Sheets API**, buat **Service Account**, lalu unduh kunci JSON.
-2. Simpan JSON **di luar `public_html`**, contoh `/home/USER/private/google-sheets.json`. Jangan simpan di repository atau upload lewat form produk.
+1. Buka Spreadsheet → **Extensions → Apps Script**. Salin isi [Code.gs](integrations/google-apps-script/Code.gs) ke editor script.
+2. Buka **Project Settings → Script Properties** dan tambahkan:
+
+   - `WEBSITE_SHARED_SECRET`: kunci acak minimal 32 karakter (jangan kirim ke chat).
+   - `ALLOWED_SPREADSHEET_IDS`: `10xinrs8cvW5paiCfWX63xKT5uluINeWyPzyn5rP2MCU`. Jika memakai beberapa Spreadsheet, pisahkan ID dengan koma.
+
+   Deploy → **New deployment → Web app**, pilih **Execute as: Me**, **Who has access: Anyone**, beri izin Google, lalu salin URL yang berakhir `/exec`. Script hanya menerima permintaan yang membawa kunci rahasia dan ID Spreadsheet yang diizinkan. Setelah mengubah kode script, edit deployment dan pilih **New version** agar URL /exec memakai kode terbaru.
 3. Tambahkan dua entri ke array konfigurasi `public_html/api/config.php` di hosting:
 
    ```php
-   'google_sheets_credentials_file' => '/home/USER/private/google-sheets.json',
-   'account_stock_key' => 'KUNCI_ACAK_HEX_64_KARAKTER',
+   'google_sheets_gas_url' => 'https://script.google.com/macros/s/DEPLOYMENT_ID/exec',
+   'google_sheets_gas_secret' => 'KUNCI_YANG_SAMA_DENGAN_WEBSITE_SHARED_SECRET',
    ```
 
-   Alternatif: environment `GOOGLE_SHEETS_CREDENTIALS_FILE` dan `ACCOUNT_STOCK_KEY`.
-   Buat kunci acak di terminal hosting dengan `php -r 'echo bin2hex(random_bytes(32));'`. Simpan kunci itu dengan aman; menggantinya membuat stok yang sudah dienkripsi tidak dapat dibuka. Backup database tidak menyertakan kunci ini.
+   Alternatif: environment `GOOGLE_SHEETS_GAS_URL` dan `GOOGLE_SHEETS_GAS_SECRET`. File JSON Service Account tidak diperlukan.
+   Kunci enkripsi stok dibuat otomatis saat pertama digunakan dan disimpan di `/home/USER/.ibnucreative-private/account-stock.key`, di luar `public_html`. PHP memerlukan izin tulis ke folder home. Jika diperlukan, atur `account_stock_key_file` atau `ACCOUNT_STOCK_KEY_FILE` ke lokasi privat lain. Backup file kunci ini bersama database; jangan menghapusnya. Backup database tidak menyertakan file kunci. Jika sebelumnya sudah memakai `account_stock_key`/`ACCOUNT_STOCK_KEY`, pertahankan nilainya: konfigurasi lama tetap didahulukan agar stok lama tidak kehilangan akses.
 4. Pastikan PHP memiliki OpenSSL, cURL, dan PDO MySQL. User database harus dapat membuat tabel. Tabel stok dibuat otomatis pada akses backend.
 5. Konfigurasi email Resend yang sudah digunakan website (`resend_api_key`, `resend_from_email`) tetap diperlukan. Callback Tripay harus aktif.
 6. Tambahkan cron setiap 5 menit:
@@ -27,7 +32,7 @@ Fitur ini memakai backend PHP + MySQL pada hosting Domainesia. Tambah Produk →
 
 ## Spreadsheet privat
 
-Bagikan Spreadsheet sebagai **Editor** ke `client_email` pada JSON service account. Tidak perlu Publish to web atau akses siapa saja.
+Spreadsheet dapat tetap **privat**. Akun Google yang men-deploy GAS harus memiliki akses Editor ke Spreadsheet. Tidak perlu Publish to web. Website menghubungi GAS melalui backend; kunci koneksi tidak dikirim ke browser.
 
 Impor [template CSV](public/templates/account-stock.csv) ke tab pilihan. Kolom A–F harus berurutan:
 
@@ -66,4 +71,4 @@ Jika Google atau email sedang bermasalah, penjualan tetap tersimpan; worker menc
 
 Sebelum penjualan nyata, lakukan satu pembayaran sandbox dengan Spreadsheet privat dan email percobaan. Kredensial Google/hosting tidak termasuk repository, sehingga uji koneksi Google dan pengiriman nyata dilakukan setelah konfigurasi server.
 
-Referensi implementasi: [Google service account](https://developers.google.com/identity/protocols/oauth2/service-account), [daftar tab Spreadsheet](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/get), [membaca nilai](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/get), [memperbarui nilai](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/update), dan [Resend idempotency](https://resend.com/docs/dashboard/emails/idempotency-keys).
+Referensi implementasi: [GAS Web Apps](https://developers.google.com/apps-script/guides/web), [ContentService dan redirect JSON](https://developers.google.com/apps-script/guides/content), [Script Properties](https://developers.google.com/apps-script/reference/properties/properties-service), [LockService](https://developers.google.com/apps-script/reference/lock/lock-service), dan [Resend idempotency](https://resend.com/docs/dashboard/emails/idempotency-keys).

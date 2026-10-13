@@ -41,6 +41,33 @@ class InventoryTestPDO extends PDO {
     }
 }
 putenv('ACCOUNT_STOCK_KEY=' . str_repeat('ab', 32));
+$keyDirectory = sys_get_temp_dir() . '/ibnu-stock-key-test-' . bin2hex(random_bytes(6));
+mkdir($keyDirectory, 0700);
+mkdir($keyDirectory . '/public', 0700);
+try {
+    $keyFile = $keyDirectory . '/private/account.key';
+    $autoKey = account_stock_file_key($keyFile, $keyDirectory . '/public');
+    check(strlen($autoKey) === 32, 'Kunci otomatis harus 256 bit.');
+    check(account_stock_file_key($keyFile, $keyDirectory . '/public') === $autoKey, 'Kunci harus tetap sama saat dibaca ulang.');
+    file_put_contents($keyFile, 'broken');
+    rejects(fn() => account_stock_file_key($keyFile, $keyDirectory . '/public'), 'File kunci rusak tidak boleh diganti otomatis.');
+    rejects(fn() => account_stock_file_key($keyDirectory . '/public/exposed.key', $keyDirectory . '/public'), 'Kunci tidak boleh disimpan dalam web root.');
+} finally {
+    if (is_file($keyDirectory . '/private/account.key')) unlink($keyDirectory . '/private/account.key');
+    if (is_file($keyDirectory . '/private/account.key.lock')) unlink($keyDirectory . '/private/account.key.lock');
+    if (is_dir($keyDirectory . '/private')) rmdir($keyDirectory . '/private');
+    rmdir($keyDirectory . '/public');
+    rmdir($keyDirectory);
+}
+putenv('GOOGLE_SHEETS_GAS_URL=https://script.google.com/macros/s/test-deployment/exec');
+putenv('GOOGLE_SHEETS_GAS_SECRET=' . str_repeat('test', 10));
+check(account_gas_config()['url'] === 'https://script.google.com/macros/s/test-deployment/exec', 'Konfigurasi GAS tanpa JSON service account harus diterima.');
+check(account_gas_redirect_allowed('https://script.googleusercontent.com/macros/echo?test=1'), 'Redirect ContentService resmi harus diterima.');
+check(!account_gas_redirect_allowed('https://example.test/private'), 'Redirect keluar Google harus ditolak.');
+check(!account_gas_redirect_allowed('https://user@script.googleusercontent.com/macros/echo'), 'Redirect dengan userinfo harus ditolak.');
+check(account_gas_result('{"ok":true,"data":{"values":[]}}') === ['values' => []], 'JSON GAS harus dibaca.');
+rejects(fn() => account_gas_result('<html>Login Google</html>'), 'Respons login HTML tidak boleh dianggap sukses.');
+rejects(fn() => account_gas_result('{"ok":false,"code":"UNAUTHORIZED"}'), 'Kunci GAS salah harus menghasilkan error.');
 $pdo = new InventoryTestPDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
 $pdo->exec('CREATE TABLE digital_products (id TEXT PRIMARY KEY, product_type TEXT, title TEXT, item_quantity_enabled INTEGER, item_quantity INTEGER, updated_at TEXT)');
 $pdo->exec('CREATE TABLE digital_product_access (id TEXT PRIMARY KEY, product_id TEXT, product_title TEXT, member_id TEXT, buyer_name TEXT, buyer_email TEXT, source TEXT, order_id TEXT, status TEXT, download_url TEXT)');

@@ -1,0 +1,78 @@
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+import test from 'node:test'
+import vm from 'node:vm'
+
+const source = await readFile(new URL('../integrations/google-apps-script/Code.gs', import.meta.url), 'utf8')
+
+function harness() {
+  const secret = 'test-secret-for-google-apps-script-12345'
+  const rows = [
+    ['id', 'username', 'password', 'status', 'order_id', 'buyer_email'],
+    ['akun-2', 'two@example.test', 'secret2', 'available', '', ''],
+    ['akun-1', 'one@example.test', 'secret1', 'available', '', ''],
+  ]
+  let opened = 0
+  let writes = 0
+  let released = 0
+  const sheet = {
+    getName: () => 'Stok Akun', getType: () => 'GRID', getSheetId: () => 0,
+    getLastRow: () => rows.length,
+    getRange(row, column) {
+      return {
+        getDisplayValues: () => rows.map(value => [...value]),
+        setNumberFormat() { return this },
+        setValues(values) { writes++; rows[row - 1].splice(column - 1, 3, ...values[0]); return this },
+      }
+    },
+  }
+  const context = vm.createContext({
+    PropertiesService: { getScriptProperties: () => ({ getProperty: key => ({ WEBSITE_SHARED_SECRET: secret, ALLOWED_SPREADSHEET_IDS: 'test-spreadsheet-id' })[key] }) },
+    SpreadsheetApp: { SheetType: { GRID: 'GRID' }, flush() {}, openById() {
+      opened++
+      return { getName: () => 'Spreadsheet', getSheets: () => [sheet], getSheetByName: title => title === 'Stok Akun' ? sheet : null }
+    } },
+    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() { released++ } }) },
+    ContentService: { MimeType: { JSON: 'application/json' }, createTextOutput: content => ({ setMimeType: () => content }) },
+  })
+  vm.runInContext(source, context)
+  const call = args => JSON.parse(context.doPost({ postData: { contents: JSON.stringify({
+    secret, spreadsheetId: 'test-spreadsheet-id', tab: 'Stok Akun', ...args,
+  }) } }))
+  return { call, rows, counts: () => ({ opened, writes, released }) }
+}
+
+test('GAS mendeteksi tab dan membaca stok dengan kunci koneksi', () => {
+  const bridge = harness()
+  const tabs = bridge.call({ action: 'tabs' })
+  assert.equal(tabs.ok, true)
+  assert.deepEqual(tabs.data.sheets[0].properties, { sheetId: 0, title: 'Stok Akun', sheetType: 'GRID' })
+  assert.ok(!JSON.stringify(tabs).includes('secret1'))
+  assert.equal(bridge.call({ action: 'rows' }).data.values[2][2], 'secret1')
+})
+
+test('GAS menolak kunci salah dan Spreadsheet di luar daftar sebelum membaca data', () => {
+  const bridge = harness()
+  assert.equal(bridge.call({ action: 'rows', secret: 'wrong' }).code, 'UNAUTHORIZED')
+  assert.equal(bridge.call({ action: 'rows', spreadsheetId: 'another-id' }).code, 'SPREADSHEET_NOT_ALLOWED')
+  assert.equal(bridge.counts().opened, 0)
+})
+
+test('GAS memperbarui akun berdasarkan ID dan mengabaikan pengulangan pesanan yang sama', () => {
+  const bridge = harness()
+  const sale = { action: 'mark_sold', accountId: 'akun-1', orderId: 'order-1', buyerEmail: 'buyer@example.test' }
+  assert.equal(bridge.call(sale).data.updated, true)
+  assert.deepEqual(bridge.rows[2], ['akun-1', 'one@example.test', 'secret1', 'sold', 'order-1', 'buyer@example.test'])
+  assert.equal(bridge.rows[1][3], 'available')
+  assert.equal(bridge.call(sale).data.updated, true)
+  assert.equal(bridge.counts().writes, 1)
+  assert.equal(bridge.call({ ...sale, orderId: 'order-2' }).code, 'SALE_CONFLICT')
+  assert.equal(bridge.counts().released, 3)
+})
+
+test('GAS menolak header yang salah tanpa mengubah Sheet', () => {
+  const bridge = harness()
+  bridge.rows[0][0] = 'wrong'
+  assert.equal(bridge.call({ action: 'rows' }).code, 'INVALID_HEADER')
+  assert.equal(bridge.counts().writes, 0)
+})

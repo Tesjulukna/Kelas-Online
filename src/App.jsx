@@ -3631,7 +3631,7 @@ function App() {
                   })
                 } catch (error) {
                   throw new Error(error.name === 'AbortError'
-                    ? 'Google Sheets belum merespons. Coba lagi dan periksa konfigurasi akun layanan di hosting.'
+                    ? 'Google Sheets belum merespons. Coba lagi dan periksa URL GAS serta kunci koneksi di hosting.'
                     : error.message)
                 } finally { window.clearTimeout(timeout) }
               }}
