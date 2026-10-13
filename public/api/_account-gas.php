@@ -40,6 +40,10 @@ function account_gas_result(string $body): array
             'ACCOUNT_NOT_FOUND' => 'ID akun terjual tidak ditemukan di Spreadsheet.',
             'SALE_CONFLICT' => 'Akun di Spreadsheet sudah terkait pesanan lain atau dinonaktifkan.',
             'BUSY' => 'Spreadsheet sedang diproses. Coba lagi beberapa saat.',
+            'INVALID_ACTION' => 'Perbarui Code.gs lalu deploy New version untuk mengaktifkan editor Spreadsheet.',
+            'INVALID_ROW' => 'Isi username/password dan pilih status tersedia atau nonaktif.',
+            'ROW_CHANGED' => 'Baris berubah sejak dimuat. Muat ulang data sebelum mengedit.',
+            'DUPLICATE_USERNAME' => 'Email/username tersebut sudah ada pada baris lain.',
         ];
         throw new RuntimeException($messages[$response['code'] ?? ''] ?? 'Permintaan GAS gagal. Periksa deployment dan konfigurasi script.');
     }

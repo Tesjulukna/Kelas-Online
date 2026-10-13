@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmDialog from './components/ConfirmDialog'
 import ForgotPasswordModal from './components/ForgotPasswordModal'
 import Icon from './components/Icon'
@@ -2762,6 +2762,19 @@ function App() {
     return applyDigitalProductsResponse(data)
   }
 
+  const handleAccountSheetRequest = useCallback(async (payload) => {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 60000)
+    try {
+      return await requestJson('/api/account-stock', {
+        method: 'POST', signal: controller.signal, body: JSON.stringify(payload),
+      })
+    } catch (error) {
+      throw new Error(error.name === 'AbortError'
+        ? 'GAS belum merespons. Muat ulang data untuk memeriksa hasil sebelum mencoba lagi.' : error.message, { cause: error })
+    } finally { window.clearTimeout(timeout) }
+  }, [])
+
   const handleDigitalProductReviewLike = async ({ productId, reviewId, liked }) => {
     const data = await requestJson(digitalProductReviewLikeApiPath, {
       method: 'POST',
@@ -3621,6 +3634,7 @@ function App() {
               websiteSettings={websiteSettings}
               onClassesChange={handleClassesChange}
               onDigitalProductsChange={handleDigitalProductsChange}
+              onAccountSheetRequest={handleAccountSheetRequest}
               onDetectAccountSheets={async (spreadsheet) => {
                 const controller = new AbortController()
                 const timeout = window.setTimeout(() => controller.abort(), 60000)
@@ -3632,7 +3646,7 @@ function App() {
                 } catch (error) {
                   throw new Error(error.name === 'AbortError'
                     ? 'Google Sheets belum merespons. Coba lagi dan periksa URL GAS serta kunci koneksi di hosting.'
-                    : error.message)
+                    : error.message, { cause: error })
                 } finally { window.clearTimeout(timeout) }
               }}
               onSyncAccountStock={async (productId) => {

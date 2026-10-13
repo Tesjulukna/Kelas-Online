@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import AccountSheetEditor from './AccountSheetEditor'
 
-export default function AccountStockFields({ form, productId, onChange, onDetect, onSync, onBusyChange }) {
+export default function AccountStockFields({ form, productId, onChange, onDetect, onSync, onBusyChange, onSheetRequest }) {
   const [tabs, setTabs] = useState([])
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
+  const [editorBusy, setEditorBusy] = useState(false)
   const requestRef = useRef(0)
   const detectedRef = useRef('')
   const busyRef = useRef(false)
@@ -12,7 +14,7 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
 
   const detect = async () => {
     const spreadsheet = form.accountSpreadsheetId.trim()
-    if (!spreadsheet || busyRef.current || detectedRef.current === spreadsheet) return
+    if (!spreadsheet || busyRef.current || editorBusy || detectedRef.current === spreadsheet) return
     const request = ++requestRef.current
     busyRef.current = true
     setBusy(true)
@@ -36,7 +38,7 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
   }
 
   const sync = async () => {
-    if (!productId || busyRef.current) return
+    if (!productId || busyRef.current || editorBusy) return
     const request = ++requestRef.current
     busyRef.current = true
     setBusy(true)
@@ -61,7 +63,7 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
       <p>Satu baris untuk satu akun. Detail akun dikirim ke email pembeli setelah pembayaran sukses.</p>
       <label>
         Link atau ID Spreadsheet
-        <input type="text" value={form.accountSpreadsheetId} disabled={busy}
+        <input type="text" value={form.accountSpreadsheetId} disabled={busy || editorBusy}
           placeholder="https://docs.google.com/spreadsheets/d/..." onBlur={detect}
           onChange={(event) => {
             requestRef.current += 1
@@ -71,7 +73,7 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
             onChange({ accountSpreadsheetId: event.target.value, accountSheetTab: '' })
           }} />
       </label>
-      <button className="btn btn-secondary" type="button" disabled={busy || !form.accountSpreadsheetId}
+      <button className="btn btn-secondary" type="button" disabled={busy || editorBusy || !form.accountSpreadsheetId}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => { detectedRef.current = ''; detect() }}>
         {busy ? 'Menghubungkan Google Sheets...' : 'Deteksi Tab Spreadsheet'}
@@ -79,7 +81,7 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
       {status && <p className="account-sheet-status" role="status" aria-live="polite">{status}</p>}
       <label>
         Tab stok akun
-        <select value={form.accountSheetTab} disabled={busy} onChange={(event) => onChange({ accountSheetTab: event.target.value })}>
+        <select value={form.accountSheetTab} disabled={busy || editorBusy} onChange={(event) => onChange({ accountSheetTab: event.target.value })}>
           <option value="">Pilih tab hasil deteksi</option>
           {form.accountSheetTab && !tabs.some((tab) => tab.title === form.accountSheetTab) && (
             <option value={form.accountSheetTab}>{form.accountSheetTab}</option>
@@ -87,10 +89,15 @@ export default function AccountStockFields({ form, productId, onChange, onDetect
           {tabs.map((tab) => <option key={tab.id} value={tab.title}>{tab.title}</option>)}
         </select>
       </label>
+      {form.accountSpreadsheetId && form.accountSheetTab && onSheetRequest && (
+        <AccountSheetEditor key={`${form.accountSpreadsheetId}:${form.accountSheetTab}`}
+          spreadsheet={form.accountSpreadsheetId} tab={form.accountSheetTab} onRequest={onSheetRequest}
+          onBusyChange={(value) => { setEditorBusy(value); onBusyChange(value) }} />
+      )}
       <p>Kolom A–F: <code>id, username, password, status, order_id, buyer_email</code>. Isi status <code>available</code> untuk akun siap jual.</p>
       <a href="/templates/account-stock.csv" download>Unduh template stok akun</a>
       <small>Gunakan Spreadsheet milik akun Google yang men-deploy GAS. URL GAS dan kunci koneksi diatur di hosting.</small>
-      {productId && <button className="btn btn-secondary" type="button" disabled={busy} onClick={sync}>Sinkronkan Stok Tersimpan</button>}
+      {productId && <button className="btn btn-secondary" type="button" disabled={busy || editorBusy} onClick={sync}>Sinkronkan Stok Tersimpan</button>}
       <small>Simpan produk untuk memakai perubahan sumber. Penambahan baris stok masuk setelah sinkronisasi.</small>
       {form.accountStockSyncedAt && <small>Sinkronisasi terakhir: {form.accountStockSyncedAt}</small>}
     </div>

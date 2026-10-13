@@ -25538,3 +25538,10 @@ body:has(.app-shell.public-theme-dark:not(.role-admin)),
   font-size: 15px;
   user-select: text;
 }
+.account-sheet-editor { min-width: 0; display: grid; gap: 12px; }
+.account-sheet-editor-heading, .account-sheet-row-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.account-sheet-table-scroll { width: 100%; overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 10px; }
+.account-sheet-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
+.account-sheet-table th, .account-sheet-table td { padding: 10px; text-align: left; border-bottom: 1px solid #cbd5e1; overflow-wrap: anywhere; max-width: 240px; }
+.account-sheet-table th { background: rgba(59, 130, 246, .08); }
+.account-sheet-table input { min-width: 160px; }

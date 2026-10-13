@@ -55,6 +55,8 @@ Impor [template CSV](public/templates/account-stock.csv) ke tab pilihan. Kolom A
 4. Isi judul, thumbnail, harga, dan catatan penggunaan. Bagian **Platform** juga dapat diisi link produk dan nama file; link tersebut disertakan bersama akun di email dan halaman akses pembeli. Simpan produk: website mengimpor stok setelah produk tersimpan.
 5. Untuk menambah atau memperbarui stok, edit Sheet, lalu buka Edit Produk → **Sinkronkan Stok Tersimpan**. Sinkronisasi memakai sumber terakhir yang sudah disimpan.
 
+Setelah tab dipilih, **Data Spreadsheet** otomatis tampil di Tambah/Edit Produk. Tabel menampilkan ID, username, password (disembunyikan sampai tombol Lihat Password ditekan), status, ID pesanan, dan email pembeli. Klik **Edit → Simpan Baris** untuk menyimpan username, password, atau status tersedia/nonaktif langsung ke Spreadsheet. Stok baris yang sudah diimpor juga diperbarui di database. ID akun dan data pembelian tidak dapat diedit; akun yang sedang direservasi atau sudah terjual terkunci. Untuk tab pada produk baru, simpan produk agar stok masuk ke website. Muat Ulang membaca perubahan terbaru dan membuang draf edit. Script GAS perlu diperbarui ke Code.gs terbaru dan deployment **New version** untuk memakai fitur edit.
+
 Jumlah stok dihitung dari akun yang dapat dipesan. Akun ditahan saat invoice dibuat agar tidak dipesan pembeli lain. Pembayaran sukses mengubahnya menjadi terjual; gagal/kedaluwarsa mengembalikannya ke stok. Sinkronisasi tidak akan mengaktifkan kembali akun yang sudah terjual, meskipun status di Sheet dikembalikan ke `available`.
 
 ## Pengiriman dan akses

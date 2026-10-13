@@ -41,6 +41,12 @@ class InventoryTestPDO extends PDO {
     }
 }
 putenv('ACCOUNT_STOCK_KEY=' . str_repeat('ab', 32));
+account_stock_assert_editable(null);
+account_stock_assert_editable(['status' => 'available']);
+account_stock_assert_editable(['status' => 'disabled']);
+foreach (['reserved', 'sold', 'external_sold'] as $protectedStatus) {
+    rejects(fn() => account_stock_assert_editable(['status' => $protectedStatus]), 'Akun sedang dipesan/terjual harus terkunci dari editor.');
+}
 $keyDirectory = sys_get_temp_dir() . '/ibnu-stock-key-test-' . bin2hex(random_bytes(6));
 mkdir($keyDirectory, 0700);
 mkdir($keyDirectory . '/public', 0700);

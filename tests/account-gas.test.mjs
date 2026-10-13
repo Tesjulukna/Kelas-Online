@@ -22,7 +22,7 @@ function harness() {
       return {
         getDisplayValues: () => rows.map(value => [...value]),
         setNumberFormat() { return this },
-        setValues(values) { writes++; rows[row - 1].splice(column - 1, 3, ...values[0]); return this },
+        setValues(values) { writes++; rows[row - 1].splice(column - 1, values[0].length, ...values[0].map(value => value.startsWith("'") ? value.slice(1) : value)); return this },
       }
     },
   }
@@ -75,4 +75,34 @@ test('GAS menolak header yang salah tanpa mengubah Sheet', () => {
   bridge.rows[0][0] = 'wrong'
   assert.equal(bridge.call({ action: 'rows' }).code, 'INVALID_HEADER')
   assert.equal(bridge.counts().writes, 0)
+})
+
+test('editor GAS menyimpan username/password dan status sambil mempertahankan ID', () => {
+  const bridge = harness()
+  const original = [...bridge.rows[2]]
+  const updated = ['akun-1', 'changed@example.test', '=special-password', 'disabled', '', '']
+  const result = bridge.call({ action: 'update_row', original, updated })
+  assert.equal(result.ok, true)
+  assert.deepEqual(bridge.rows[2], updated)
+  assert.deepEqual(result.data.values[2], updated)
+  assert.equal(bridge.rows[1][1], 'two@example.test')
+})
+
+test('editor GAS menolak edit lama, username duplikat, dan perubahan ID', () => {
+  const bridge = harness()
+  const original = [...bridge.rows[2]]
+  const updated = ['akun-1', 'changed@example.test', 'pw', 'available', '', '']
+  assert.equal(bridge.call({ action: 'update_row', original, updated: ['new-id', ...updated.slice(1)] }).code, 'INVALID_ROW')
+  assert.equal(bridge.call({ action: 'update_row', original, updated: ['akun-1', 'two@example.test', 'pw', 'available', '', ''] }).code, 'DUPLICATE_USERNAME')
+  bridge.rows[2][2] = 'changed-by-other-admin'
+  assert.equal(bridge.call({ action: 'update_row', original, updated }).code, 'ROW_CHANGED')
+  assert.equal(bridge.counts().writes, 0)
+})
+
+test('editor GAS tidak boleh mengaktifkan kembali akun terjual', () => {
+  const bridge = harness()
+  bridge.call({ action: 'mark_sold', accountId: 'akun-1', orderId: 'order-1', buyerEmail: 'buyer@example.test' })
+  const original = [...bridge.rows[2]]
+  assert.equal(bridge.call({ action: 'update_row', original, updated: ['akun-1', 'one@example.test', 'pw', 'available', '', ''] }).code, 'SALE_CONFLICT')
+  assert.equal(bridge.counts().writes, 1)
 })

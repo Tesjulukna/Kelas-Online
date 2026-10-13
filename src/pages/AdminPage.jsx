@@ -954,6 +954,7 @@ function AdminPage({
   onDigitalProductsChange = async () => { },
   onDetectAccountSheets = async () => { throw new Error('Koneksi Google Sheets belum tersedia.') },
   onSyncAccountStock = async () => { throw new Error('Sinkronisasi stok akun belum tersedia.') },
+  onAccountSheetRequest = async () => { throw new Error('Editor Spreadsheet belum tersedia.') },
   onWebsiteSettingsChange = async () => { },
   onSyncTripayPaymentMethods = async () => [],
   onDownloadBackup = async () => { },
@@ -4838,6 +4839,7 @@ function AdminPage({
                   {isAccountBuilder && (
                     <AccountStockFields key={editingDigitalProductId || 'new-account'} form={digitalProductForm}
                       productId={editingDigitalProductId} onDetect={onDetectAccountSheets} onSync={onSyncAccountStock}
+                      onSheetRequest={onAccountSheetRequest}
                       onBusyChange={setIsAccountSheetBusy}
                       onChange={(patch) => setDigitalProductForm((current) => ({ ...current, ...patch }))} />
                   )}

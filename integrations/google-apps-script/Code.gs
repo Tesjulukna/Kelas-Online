@@ -33,7 +33,7 @@ function gasHandle_(request) {
   if (secret.length < 32 || !allowed.length) gasFail_('CONFIG_MISSING');
   if (typeof request.secret !== 'string' || request.secret !== secret) gasFail_('UNAUTHORIZED');
   if (!allowed.includes(request.spreadsheetId)) gasFail_('SPREADSHEET_NOT_ALLOWED');
-  if (!['tabs', 'rows', 'mark_sold'].includes(request.action)) gasFail_('INVALID_ACTION');
+  if (!['tabs', 'rows', 'mark_sold', 'update_row'].includes(request.action)) gasFail_('INVALID_ACTION');
   let spreadsheet;
   try { spreadsheet = SpreadsheetApp.openById(request.spreadsheetId); }
   catch (error) { gasFail_('SPREADSHEET_UNAVAILABLE'); }
@@ -45,6 +45,7 @@ function gasHandle_(request) {
   const sheet = spreadsheet.getSheetByName(request.tab);
   if (!sheet) gasFail_('TAB_NOT_FOUND');
   if (request.action === 'rows') return { values: gasRows_(sheet) };
+  if (request.action === 'update_row') return gasUpdateRow_(sheet, request);
   if (typeof request.accountId !== 'string' || typeof request.orderId !== 'string' || !request.orderId || request.orderId.length > 180 || typeof request.buyerEmail !== 'string' || !request.buyerEmail || request.buyerEmail.length > 180) gasFail_('INVALID_SALE');
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) gasFail_('BUSY');
@@ -70,6 +71,32 @@ function gasHandle_(request) {
   } finally { lock.releaseLock(); }
 }
 
+function gasUpdateRow_(sheet, request) {
+  const original = request.original;
+  const updated = request.updated;
+  if (!Array.isArray(original) || !Array.isArray(updated) || original.length !== 6 || updated.length !== 6
+    || !original.every(value => typeof value === 'string') || !updated.every(value => typeof value === 'string')
+    || !updated[0].trim() || updated[0] !== original[0] || !updated[1].trim() || updated[1].length > 500
+    || !updated[2] || updated[2].length > 4000 || !['available', 'disabled'].includes(updated[3])
+    || updated[4] || updated[5]) gasFail_('INVALID_ROW');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) gasFail_('BUSY');
+  try {
+    const values = gasRows_(sheet);
+    const matches = values.map((row, index) => index > 0 && row[0] === original[0] ? index : -1).filter(index => index >= 0);
+    if (matches.length !== 1) gasFail_('ACCOUNT_NOT_FOUND');
+    const index = matches[0];
+    const current = values[index];
+    if (JSON.stringify(current) !== JSON.stringify(original)) gasFail_('ROW_CHANGED');
+    if (!['', 'available', 'tersedia', 'disabled', 'nonaktif'].includes(current[3].trim().toLowerCase()) || current[4] || current[5]) gasFail_('SALE_CONFLICT');
+    if (values.some((row, rowIndex) => rowIndex > 0 && rowIndex !== index && row[1].trim().toLowerCase() === updated[1].trim().toLowerCase())) gasFail_('DUPLICATE_USERNAME');
+    sheet.getRange(index + 1, 1, 1, 6).setNumberFormat('@').setValues([updated.map(gasSheetText_)]);
+    SpreadsheetApp.flush();
+    values[index] = updated;
+    return { values };
+  } finally { lock.releaseLock(); }
+}
+
 function gasRows_(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow > 10001) gasFail_('TOO_MANY_ROWS');
@@ -80,5 +107,5 @@ function gasRows_(sheet) {
 }
 
 function gasSheetText_(value) {
-  return /^[=+\-@]/.test(value) ? "'" + value : value;
+  return /^[=+\-@']/.test(value) ? "'" + value : value;
 }

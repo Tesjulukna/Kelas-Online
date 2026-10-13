@@ -191,6 +191,13 @@ function account_stock_refresh_count(PDO $pdo, string $productId): int
     return $count;
 }
 
+function account_stock_assert_editable(?array $stock): void
+{
+    if ($stock && !in_array($stock['status'], ['available', 'disabled'], true)) {
+        throw new RuntimeException('Akun sedang dipesan atau sudah terjual; baris ini tidak dapat diedit.');
+    }
+}
+
 function account_stock_import(PDO $pdo, array $source, array $rows): int
 {
     $productId = $source['product_id'];
