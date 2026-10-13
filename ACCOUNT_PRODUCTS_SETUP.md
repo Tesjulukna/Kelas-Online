@@ -18,6 +18,8 @@ Fitur ini memakai backend PHP + MySQL pada hosting Domainesia. Tambah Produk →
    'google_sheets_gas_secret' => 'KUNCI_YANG_SAMA_DENGAN_WEBSITE_SHARED_SECRET',
    ```
 
+   **Ganti** isi teks contoh setelah `=>` dengan nilai asli. Setiap baris hanya memiliki satu nilai: `'google_sheets_gas_url' => 'URL_ASLI',`. Jangan memakai format `'google_sheets_gas_url' => 'TEKS_CONTOH', 'URL_ASLI',` karena URL asli menjadi item array lain dan tidak dibaca. Kunci koneksi adalah nilai `WEBSITE_SHARED_SECRET` dari Script Properties, bukan ID deployment yang terdapat pada URL GAS.
+
    Alternatif: environment `GOOGLE_SHEETS_GAS_URL` dan `GOOGLE_SHEETS_GAS_SECRET`. File JSON Service Account tidak diperlukan.
    Kunci enkripsi stok dibuat otomatis saat pertama digunakan dan disimpan di `/home/USER/.ibnucreative-private/account-stock.key`, di luar `public_html`. PHP memerlukan izin tulis ke folder home. Jika diperlukan, atur `account_stock_key_file` atau `ACCOUNT_STOCK_KEY_FILE` ke lokasi privat lain. Backup file kunci ini bersama database; jangan menghapusnya. Backup database tidak menyertakan file kunci. Jika sebelumnya sudah memakai `account_stock_key`/`ACCOUNT_STOCK_KEY`, pertahankan nilainya: konfigurasi lama tetap didahulukan agar stok lama tidak kehilangan akses.
 4. Pastikan PHP memiliki OpenSSL, cURL, dan PDO MySQL. User database harus dapat membuat tabel. Tabel stok dibuat otomatis pada akses backend.

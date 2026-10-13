@@ -7,10 +7,11 @@ function account_gas_config(): array
     $config = api_config();
     $url = trim((string) (getenv('GOOGLE_SHEETS_GAS_URL') ?: ($config['google_sheets_gas_url'] ?? '')));
     $secret = (string) (getenv('GOOGLE_SHEETS_GAS_SECRET') ?: ($config['google_sheets_gas_secret'] ?? ''));
-    if ($url === '' || strlen($secret) < 32) throw new RuntimeException('Koneksi GAS belum dikonfigurasi. Isi URL Web App dan kunci koneksi di server.');
+    if ($url === '') throw new RuntimeException('google_sheets_gas_url belum diisi di config.php hosting.');
     if (!preg_match('#^https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec$#', $url)) {
-        throw new RuntimeException('URL GAS harus berupa URL deployment https://script.google.com/macros/s/.../exec.');
+        throw new RuntimeException('Nilai google_sheets_gas_url harus langsung berupa URL https://script.google.com/macros/s/.../exec setelah tanda =>. Ganti teks contoh, jangan tambahkan URL sebagai item setelah koma.');
     }
+    if (strlen($secret) < 32) throw new RuntimeException('google_sheets_gas_secret harus berupa kunci minimal 32 karakter, sama dengan WEBSITE_SHARED_SECRET di Script Properties GAS. Ganti teks contoh setelah tanda =>.');
     return ['url' => $url, 'secret' => $secret];
 }
 
